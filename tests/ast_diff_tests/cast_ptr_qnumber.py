@@ -19,7 +19,7 @@ class CastExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CastExpr
                         expr:
@@ -47,7 +47,7 @@ class CastExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CastExpr
                         expr:
@@ -75,7 +75,7 @@ class CastExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CastExpr
                         expr:
@@ -103,14 +103,14 @@ class CastExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CastExpr
                         expr:
                           ColumnRef
                             column: "x"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                         type_name: "VARCHAR(100)"
               from_clause: (none)
               where_clause: (none)
@@ -132,14 +132,14 @@ class CastExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CastExpr
                         expr:
                           ColumnRef
                             column: "x"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                         type_name: "DECIMAL(10,2)"
               from_clause: (none)
               where_clause: (none)
@@ -161,14 +161,14 @@ class CastExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CastExpr
                         expr:
                           ColumnRef
                             column: "x"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                         type_name: "DOUBLE PRECISION"
               from_clause: (none)
               where_clause: (none)
@@ -190,14 +190,14 @@ class CastExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CastExpr
                         expr:
                           Literal
                             literal_type: INTEGER
                             source: "1"
-                        type_name: null
+                        type_name: (none)
               from_clause: (none)
               where_clause: (none)
               groupby: (none)
@@ -222,7 +222,7 @@ class PtrExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: PTR
@@ -254,15 +254,15 @@ class PtrExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: PTR
                         left:
                           ColumnRef
                             column: "j"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                         right:
                           Literal
                             literal_type: STRING
@@ -291,7 +291,7 @@ class QnumberLiteral(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: QNUMBER
@@ -316,7 +316,7 @@ class QnumberLiteral(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: QNUMBER
@@ -345,7 +345,7 @@ class RowValue(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ExprList [2 items]
                         Literal
@@ -374,7 +374,7 @@ class RowValue(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ExprList [3 items]
                         Literal

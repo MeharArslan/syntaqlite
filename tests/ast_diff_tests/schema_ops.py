@@ -18,8 +18,10 @@ class DropTable(TestSuite):
               if_exists: FALSE
               target:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
 """,
         )
 
@@ -32,8 +34,10 @@ class DropTable(TestSuite):
               if_exists: TRUE
               target:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
 """,
         )
 
@@ -46,8 +50,12 @@ class DropTable(TestSuite):
               if_exists: FALSE
               target:
                 QualifiedName
-                  object_name: "t"
-                  schema: "main"
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema:
+                    IdentName
+                      source: "main"
 """,
         )
 
@@ -64,8 +72,10 @@ class DropOther(TestSuite):
               if_exists: FALSE
               target:
                 QualifiedName
-                  object_name: "idx"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "idx"
+                  schema: (none)
 """,
         )
 
@@ -78,8 +88,10 @@ class DropOther(TestSuite):
               if_exists: FALSE
               target:
                 QualifiedName
-                  object_name: "v"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "v"
+                  schema: (none)
 """,
         )
 
@@ -92,8 +104,10 @@ class DropOther(TestSuite):
               if_exists: FALSE
               target:
                 QualifiedName
-                  object_name: "tr"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "tr"
+                  schema: (none)
 """,
         )
 
@@ -109,10 +123,14 @@ class AlterTableRename(TestSuite):
               op: RENAME_TABLE
               target:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
-              new_name: "t2"
-              old_name: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
+              new_name:
+                IdentName
+                  source: "t2"
+              old_name: (none)
 """,
         )
 
@@ -124,10 +142,16 @@ class AlterTableRename(TestSuite):
               op: RENAME_COLUMN
               target:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
-              new_name: "c2"
-              old_name: "c1"
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
+              new_name:
+                IdentName
+                  source: "c2"
+              old_name:
+                IdentName
+                  source: "c1"
 """,
         )
 
@@ -139,10 +163,16 @@ class AlterTableRename(TestSuite):
               op: RENAME_COLUMN
               target:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
-              new_name: "c2"
-              old_name: "c1"
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
+              new_name:
+                IdentName
+                  source: "c2"
+              old_name:
+                IdentName
+                  source: "c1"
 """,
         )
 
@@ -158,10 +188,14 @@ class AlterTableDropAdd(TestSuite):
               op: DROP_COLUMN
               target:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
-              new_name: null
-              old_name: "c1"
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
+              new_name: (none)
+              old_name:
+                IdentName
+                  source: "c1"
 """,
         )
 
@@ -172,8 +206,10 @@ class AlterTableDropAdd(TestSuite):
             AlterTableStmt
               op: ADD_COLUMN
               target: (none)
-              new_name: null
-              old_name: "c1"
+              new_name: (none)
+              old_name:
+                IdentName
+                  source: "c1"
 """,
         )
 
@@ -259,9 +295,11 @@ class SavepointControl(TestSuite):
         return DiffTestBlueprint(
             sql="SAVEPOINT sp1",
             out="""\
-SavepointStmt
-  op: SAVEPOINT
-  savepoint_name: "sp1"
+            SavepointStmt
+              op: SAVEPOINT
+              savepoint_name:
+                IdentName
+                  source: "sp1"
 """,
         )
 
@@ -269,9 +307,11 @@ SavepointStmt
         return DiffTestBlueprint(
             sql="RELEASE sp1",
             out="""\
-SavepointStmt
-  op: RELEASE
-  savepoint_name: "sp1"
+            SavepointStmt
+              op: RELEASE
+              savepoint_name:
+                IdentName
+                  source: "sp1"
 """,
         )
 
@@ -279,9 +319,11 @@ SavepointStmt
         return DiffTestBlueprint(
             sql="RELEASE SAVEPOINT sp1",
             out="""\
-SavepointStmt
-  op: RELEASE
-  savepoint_name: "sp1"
+            SavepointStmt
+              op: RELEASE
+              savepoint_name:
+                IdentName
+                  source: "sp1"
 """,
         )
 
@@ -289,9 +331,11 @@ SavepointStmt
         return DiffTestBlueprint(
             sql="ROLLBACK TO sp1",
             out="""\
-SavepointStmt
-  op: ROLLBACK_TO
-  savepoint_name: "sp1"
+            SavepointStmt
+              op: ROLLBACK_TO
+              savepoint_name:
+                IdentName
+                  source: "sp1"
 """,
         )
 
@@ -299,8 +343,10 @@ SavepointStmt
         return DiffTestBlueprint(
             sql="ROLLBACK TO SAVEPOINT sp1",
             out="""\
-SavepointStmt
-  op: ROLLBACK_TO
-  savepoint_name: "sp1"
+            SavepointStmt
+              op: ROLLBACK_TO
+              savepoint_name:
+                IdentName
+                  source: "sp1"
 """,
         )

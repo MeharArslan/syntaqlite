@@ -17,8 +17,8 @@ class DeleteBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
@@ -33,16 +33,16 @@ class DeleteBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause:
                 BinaryExpr
                   op: EQ
                   left:
                     ColumnRef
                       column: "x"
-                      table: null
-                      schema: null
+                      table: (none)
+                      schema: (none)
                   right:
                     Literal
                       literal_type: INTEGER
@@ -61,7 +61,7 @@ class DeleteBasic(TestSuite):
                 TableRef
                   table_name: "t"
                   schema: "main"
-                  alias: null
+                  alias: (none)
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
@@ -81,8 +81,8 @@ class InsertBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -110,18 +110,18 @@ class InsertBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns:
                 ExprList [2 items]
                   ColumnRef
                     column: "a"
-                    table: null
-                    schema: null
+                    table: (none)
+                    schema: (none)
                   ColumnRef
                     column: "b"
-                    table: null
-                    schema: null
+                    table: (none)
+                    schema: (none)
               source:
                 ValuesClause
                   rows:
@@ -145,8 +145,8 @@ class InsertBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 SelectStmt
@@ -155,13 +155,13 @@ class InsertBasic(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "s"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -180,8 +180,8 @@ class InsertBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source: (none)
 """,
@@ -200,8 +200,8 @@ class InsertConflict(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -223,8 +223,8 @@ class InsertConflict(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -246,8 +246,8 @@ class InsertConflict(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -269,8 +269,8 @@ class InsertConflict(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -292,8 +292,8 @@ class InsertConflict(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -315,8 +315,8 @@ class InsertConflict(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -342,8 +342,8 @@ class UpdateBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -369,8 +369,8 @@ class UpdateBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               setlist:
                 SetClauseList [2 items]
                   SetClause
@@ -394,8 +394,8 @@ class UpdateBasic(TestSuite):
                   left:
                     ColumnRef
                       column: "id"
-                      table: null
-                      schema: null
+                      table: (none)
+                      schema: (none)
                   right:
                     Literal
                       literal_type: INTEGER
@@ -414,8 +414,8 @@ class UpdateBasic(TestSuite):
               table:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -455,7 +455,7 @@ class DmlWithCte(TestSuite):
                           ResultColumnList [1 items]
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
@@ -473,8 +473,8 @@ class DmlWithCte(TestSuite):
                   table:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   columns: (none)
                   source:
                     SelectStmt
@@ -483,13 +483,13 @@ class DmlWithCte(TestSuite):
                         ResultColumnList [1 items]
                           ResultColumn
                             flags: STAR
-                            alias: null
+                            alias: (none)
                             expr: (none)
                       from_clause:
                         TableRef
                           table_name: "cte"
-                          schema: null
-                          alias: null
+                          schema: (none)
+                          alias: (none)
                       where_clause: (none)
                       groupby: (none)
                       having: (none)

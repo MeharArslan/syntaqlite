@@ -13,12 +13,12 @@ class CreateVirtualTable(TestSuite):
         return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE vt USING fts5(content)",
             out="""\
-CreateVirtualTableStmt
-  table_name: "vt"
-  schema: null
-  module_name: "fts5"
-  if_not_exists: FALSE
-  module_args: "content"
+            CreateVirtualTableStmt
+              table_name: "vt"
+              schema: (none)
+              module_name: "fts5"
+              if_not_exists: FALSE
+              module_args: "content"
 """,
         )
 
@@ -26,12 +26,12 @@ CreateVirtualTableStmt
         return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE vt USING mod",
             out="""\
-CreateVirtualTableStmt
-  table_name: "vt"
-  schema: null
-  module_name: "mod"
-  if_not_exists: FALSE
-  module_args: null
+            CreateVirtualTableStmt
+              table_name: "vt"
+              schema: (none)
+              module_name: "mod"
+              if_not_exists: FALSE
+              module_args: (none)
 """,
         )
 
@@ -39,12 +39,12 @@ CreateVirtualTableStmt
         return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE IF NOT EXISTS vt USING fts5(content)",
             out="""\
-CreateVirtualTableStmt
-  table_name: "vt"
-  schema: null
-  module_name: "fts5"
-  if_not_exists: TRUE
-  module_args: "content"
+            CreateVirtualTableStmt
+              table_name: "vt"
+              schema: (none)
+              module_name: "fts5"
+              if_not_exists: TRUE
+              module_args: "content"
 """,
         )
 
@@ -52,12 +52,12 @@ CreateVirtualTableStmt
         return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE main.vt USING fts5",
             out="""\
-CreateVirtualTableStmt
-  table_name: "vt"
-  schema: "main"
-  module_name: "fts5"
-  if_not_exists: FALSE
-  module_args: null
+            CreateVirtualTableStmt
+              table_name: "vt"
+              schema: "main"
+              module_name: "fts5"
+              if_not_exists: FALSE
+              module_args: (none)
 """,
         )
 
@@ -65,12 +65,12 @@ CreateVirtualTableStmt
         return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE vt USING fts5(content, detail=column)",
             out="""\
-CreateVirtualTableStmt
-  table_name: "vt"
-  schema: null
-  module_name: "fts5"
-  if_not_exists: FALSE
-  module_args: "content, detail=column"
+            CreateVirtualTableStmt
+              table_name: "vt"
+              schema: (none)
+              module_name: "fts5"
+              if_not_exists: FALSE
+              module_args: "content, detail=column"
 """,
         )
 

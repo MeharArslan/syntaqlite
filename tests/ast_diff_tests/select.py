@@ -19,7 +19,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: INTEGER
@@ -44,7 +44,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: FLOAT
@@ -69,7 +69,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: STRING
@@ -94,7 +94,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: NULL
@@ -119,7 +119,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: PLUS
@@ -151,7 +151,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: STAR
@@ -183,7 +183,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: LT
@@ -215,7 +215,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: EQ
@@ -247,7 +247,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: AND
@@ -279,7 +279,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: OR
@@ -311,7 +311,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: CONCAT
@@ -343,7 +343,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       UnaryExpr
                         op: MINUS
@@ -371,7 +371,7 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       UnaryExpr
                         op: NOT
@@ -399,25 +399,29 @@ class SelectBasic(TestSuite):
                 ResultColumnList [2 items]
                   ResultColumn
                     flags: (none)
-                    alias: "x"
+                    alias:
+                      IdentName
+                        source: "x"
                     expr:
                       ColumnRef
                         column: "a"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                   ResultColumn
                     flags: (none)
-                    alias: "y"
+                    alias:
+                      IdentName
+                        source: "y"
                     expr:
                       ColumnRef
                         column: "b"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -437,17 +441,19 @@ class SelectBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: "x"
+                    alias:
+                      IdentName
+                        source: "x"
                     expr:
                       ColumnRef
                         column: "a"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)

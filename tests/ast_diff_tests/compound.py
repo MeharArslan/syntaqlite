@@ -22,7 +22,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -41,7 +41,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -69,7 +69,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -88,7 +88,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -116,7 +116,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -135,7 +135,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -163,7 +163,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -182,7 +182,7 @@ class CompoundSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -211,7 +211,7 @@ class SubqueryExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       SubqueryExpr
                         select:
@@ -221,7 +221,7 @@ class SubqueryExpr(TestSuite):
                               ResultColumnList [1 items]
                                 ResultColumn
                                   flags: (none)
-                                  alias: null
+                                  alias: (none)
                                   expr:
                                     Literal
                                       literal_type: INTEGER
@@ -253,7 +253,7 @@ class SubqueryExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ExistsExpr
                         select:
@@ -263,7 +263,7 @@ class SubqueryExpr(TestSuite):
                               ResultColumnList [1 items]
                                 ResultColumn
                                   flags: (none)
-                                  alias: null
+                                  alias: (none)
                                   expr:
                                     Literal
                                       literal_type: INTEGER
@@ -299,7 +299,7 @@ class InExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       InExpr
                         negated: FALSE
@@ -338,7 +338,7 @@ class InExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       InExpr
                         negated: TRUE
@@ -377,7 +377,7 @@ class InExpr(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       InExpr
                         negated: FALSE
@@ -394,7 +394,7 @@ class InExpr(TestSuite):
                                   ResultColumnList [1 items]
                                     ResultColumn
                                       flags: (none)
-                                      alias: null
+                                      alias: (none)
                                       expr:
                                         Literal
                                           literal_type: INTEGER

@@ -28,7 +28,7 @@ class WithClause(TestSuite):
                           ResultColumnList [1 items]
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
@@ -47,13 +47,13 @@ class WithClause(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -78,12 +78,12 @@ class WithClause(TestSuite):
                       ExprList [2 items]
                         ColumnRef
                           column: "a"
-                          table: null
-                          schema: null
+                          table: (none)
+                          schema: (none)
                         ColumnRef
                           column: "b"
-                          table: null
-                          schema: null
+                          table: (none)
+                          schema: (none)
                     select:
                       SelectStmt
                         flags: (none)
@@ -91,14 +91,14 @@ class WithClause(TestSuite):
                           ResultColumnList [2 items]
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
                                   source: "1"
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
@@ -117,13 +117,13 @@ class WithClause(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -148,8 +148,8 @@ class WithClause(TestSuite):
                       ExprList [1 items]
                         ColumnRef
                           column: "x"
-                          table: null
-                          schema: null
+                          table: (none)
+                          schema: (none)
                     select:
                       CompoundSelect
                         op: UNION_ALL
@@ -160,7 +160,7 @@ class WithClause(TestSuite):
                               ResultColumnList [1 items]
                                 ResultColumn
                                   flags: (none)
-                                  alias: null
+                                  alias: (none)
                                   expr:
                                     Literal
                                       literal_type: INTEGER
@@ -179,15 +179,15 @@ class WithClause(TestSuite):
                               ResultColumnList [1 items]
                                 ResultColumn
                                   flags: (none)
-                                  alias: null
+                                  alias: (none)
                                   expr:
                                     BinaryExpr
                                       op: PLUS
                                       left:
                                         ColumnRef
                                           column: "x"
-                                          table: null
-                                          schema: null
+                                          table: (none)
+                                          schema: (none)
                                       right:
                                         Literal
                                           literal_type: INTEGER
@@ -195,8 +195,8 @@ class WithClause(TestSuite):
                             from_clause:
                               TableRef
                                 table_name: "cnt"
-                                schema: null
-                                alias: null
+                                schema: (none)
+                                alias: (none)
                             where_clause: (none)
                             groupby: (none)
                             having: (none)
@@ -210,17 +210,17 @@ class WithClause(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           ColumnRef
                             column: "x"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                   from_clause:
                     TableRef
                       table_name: "cnt"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -249,7 +249,7 @@ class WithClause(TestSuite):
                           ResultColumnList [1 items]
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
@@ -272,7 +272,7 @@ class WithClause(TestSuite):
                           ResultColumnList [1 items]
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
@@ -291,13 +291,13 @@ class WithClause(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -326,7 +326,7 @@ class WithClause(TestSuite):
                           ResultColumnList [1 items]
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
@@ -345,13 +345,13 @@ class WithClause(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -380,7 +380,7 @@ class WithClause(TestSuite):
                           ResultColumnList [1 items]
                             ResultColumn
                               flags: (none)
-                              alias: null
+                              alias: (none)
                               expr:
                                 Literal
                                   literal_type: INTEGER
@@ -399,13 +399,13 @@ class WithClause(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)

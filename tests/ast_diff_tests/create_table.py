@@ -15,14 +15,16 @@ class CreateTableBasic(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints: (none)
@@ -36,22 +38,28 @@ class CreateTableBasic(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [3 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
+                    column_name:
+                      IdentName
+                        source: "b"
                     type_name: "TEXT"
                     constraints: (none)
                   ColumnDef
-                    column_name: "c"
+                    column_name:
+                      IdentName
+                        source: "c"
                     type_name: "REAL"
                     constraints: (none)
               table_constraints: (none)
@@ -65,23 +73,29 @@ class CreateTableBasic(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [3 items]
                   ColumnDef
-                    column_name: "a"
-                    type_name: null
+                    column_name:
+                      IdentName
+                        source: "a"
+                    type_name: (none)
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
-                    type_name: null
+                    column_name:
+                      IdentName
+                        source: "b"
+                    type_name: (none)
                     constraints: (none)
                   ColumnDef
-                    column_name: "c"
-                    type_name: null
+                    column_name:
+                      IdentName
+                        source: "c"
+                    type_name: (none)
                     constraints: (none)
               table_constraints: (none)
               as_select: (none)
@@ -94,18 +108,22 @@ class CreateTableBasic(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [2 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "VARCHAR(255)"
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
+                    column_name:
+                      IdentName
+                        source: "b"
                     type_name: "DECIMAL(10, 2)"
                     constraints: (none)
               table_constraints: (none)
@@ -123,14 +141,16 @@ class CreateTableModifiers(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: TRUE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints: (none)
@@ -144,14 +164,16 @@ class CreateTableModifiers(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: TRUE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints: (none)
@@ -172,7 +194,9 @@ class CreateTableModifiers(TestSuite):
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints: (none)
@@ -190,24 +214,26 @@ class CreateTableOptions(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: WITHOUT_ROWID
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: PRIMARY_KEY
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -224,14 +250,16 @@ class CreateTableOptions(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: STRICT
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints: (none)
@@ -245,24 +273,26 @@ class CreateTableOptions(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: WITHOUT_ROWID STRICT
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: PRIMARY_KEY
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -283,7 +313,7 @@ class CreateTableAsSelect(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t2"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
@@ -296,13 +326,13 @@ class CreateTableAsSelect(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t1"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -322,24 +352,26 @@ class ColumnConstraintDefault(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: DEFAULT
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr:
                             Literal
@@ -359,24 +391,26 @@ class ColumnConstraintDefault(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "TEXT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: DEFAULT
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr:
                             Literal
@@ -396,24 +430,26 @@ class ColumnConstraintDefault(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: DEFAULT
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr:
                             UnaryExpr
@@ -436,24 +472,26 @@ class ColumnConstraintDefault(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: DEFAULT
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr:
                             BinaryExpr
@@ -480,24 +518,26 @@ class ColumnConstraintDefault(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: DEFAULT
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr:
                             Literal
@@ -521,24 +561,26 @@ class ColumnConstraintKeys(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: PRIMARY_KEY
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -555,24 +597,26 @@ class ColumnConstraintKeys(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INTEGER"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: PRIMARY_KEY
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: TRUE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -589,24 +633,26 @@ class ColumnConstraintKeys(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: PRIMARY_KEY
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: DESC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -623,24 +669,26 @@ class ColumnConstraintKeys(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "TEXT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: NOT_NULL
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -657,24 +705,26 @@ class ColumnConstraintKeys(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "TEXT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: UNIQUE
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -695,24 +745,26 @@ class ColumnConstraintCheck(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: CHECK
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr:
@@ -721,8 +773,8 @@ class ColumnConstraintCheck(TestSuite):
                               left:
                                 ColumnRef
                                   column: "a"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               right:
                                 Literal
                                   literal_type: INTEGER
@@ -744,24 +796,26 @@ class ColumnConstraintReferences(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: REFERENCES
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -773,8 +827,8 @@ class ColumnConstraintReferences(TestSuite):
                                 ExprList [1 items]
                                   ColumnRef
                                     column: "id"
-                                    table: null
-                                    schema: null
+                                    table: (none)
+                                    schema: (none)
                               on_delete: NO_ACTION
                               on_update: NO_ACTION
                               is_deferred: FALSE
@@ -789,24 +843,26 @@ class ColumnConstraintReferences(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: REFERENCES
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -818,8 +874,8 @@ class ColumnConstraintReferences(TestSuite):
                                 ExprList [1 items]
                                   ColumnRef
                                     column: "id"
-                                    table: null
-                                    schema: null
+                                    table: (none)
+                                    schema: (none)
                               on_delete: CASCADE
                               on_update: NO_ACTION
                               is_deferred: FALSE
@@ -834,24 +890,26 @@ class ColumnConstraintReferences(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: REFERENCES
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -863,8 +921,8 @@ class ColumnConstraintReferences(TestSuite):
                                 ExprList [1 items]
                                   ColumnRef
                                     column: "id"
-                                    table: null
-                                    schema: null
+                                    table: (none)
+                                    schema: (none)
                               on_delete: NO_ACTION
                               on_update: SET_NULL
                               is_deferred: FALSE
@@ -883,20 +941,22 @@ class ColumnConstraintCollate(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "TEXT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: COLLATE
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
@@ -921,28 +981,32 @@ class ColumnConstraintGenerated(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [2 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
+                    column_name:
+                      IdentName
+                        source: "b"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: GENERATED
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: STORED
                           default_expr: (none)
                           check_expr: (none)
@@ -952,8 +1016,8 @@ class ColumnConstraintGenerated(TestSuite):
                               left:
                                 ColumnRef
                                   column: "a"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               right:
                                 Literal
                                   literal_type: INTEGER
@@ -970,28 +1034,32 @@ class ColumnConstraintGenerated(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [2 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
+                    column_name:
+                      IdentName
+                        source: "b"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: GENERATED
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -1001,8 +1069,8 @@ class ColumnConstraintGenerated(TestSuite):
                               left:
                                 ColumnRef
                                   column: "a"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               right:
                                 Literal
                                   literal_type: INTEGER
@@ -1023,14 +1091,16 @@ class ColumnConstraintName(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints:
                       ColumnConstraintList [1 items]
@@ -1040,7 +1110,7 @@ class ColumnConstraintName(TestSuite):
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
@@ -1061,25 +1131,29 @@ class TableConstraintPrimaryKey(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [2 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
+                    column_name:
+                      IdentName
+                        source: "b"
                     type_name: "INT"
                     constraints: (none)
               table_constraints:
                 TableConstraintList [1 items]
                   TableConstraint
                     kind: PRIMARY_KEY
-                    constraint_name: null
+                    constraint_name: (none)
                     onconf: DEFAULT
                     is_autoincrement: FALSE
                     pk_columns:
@@ -1088,16 +1162,16 @@ class TableConstraintPrimaryKey(TestSuite):
                           expr:
                             ColumnRef
                               column: "a"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                           sort_order: ASC
                           nulls_order: NONE
                         OrderingTerm
                           expr:
                             ColumnRef
                               column: "b"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                           sort_order: ASC
                           nulls_order: NONE
                     fk_columns: (none)
@@ -1113,14 +1187,16 @@ class TableConstraintPrimaryKey(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints:
@@ -1136,8 +1212,8 @@ class TableConstraintPrimaryKey(TestSuite):
                           expr:
                             ColumnRef
                               column: "a"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                           sort_order: ASC
                           nulls_order: NONE
                     fk_columns: (none)
@@ -1157,25 +1233,29 @@ class TableConstraintUnique(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [2 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
+                    column_name:
+                      IdentName
+                        source: "b"
                     type_name: "INT"
                     constraints: (none)
               table_constraints:
                 TableConstraintList [1 items]
                   TableConstraint
                     kind: UNIQUE
-                    constraint_name: null
+                    constraint_name: (none)
                     onconf: DEFAULT
                     is_autoincrement: FALSE
                     pk_columns:
@@ -1184,16 +1264,16 @@ class TableConstraintUnique(TestSuite):
                           expr:
                             ColumnRef
                               column: "a"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                           sort_order: ASC
                           nulls_order: NONE
                         OrderingTerm
                           expr:
                             ColumnRef
                               column: "b"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                           sort_order: ASC
                           nulls_order: NONE
                     fk_columns: (none)
@@ -1213,25 +1293,29 @@ class TableConstraintCheck(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [2 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
                   ColumnDef
-                    column_name: "b"
+                    column_name:
+                      IdentName
+                        source: "b"
                     type_name: "INT"
                     constraints: (none)
               table_constraints:
                 TableConstraintList [1 items]
                   TableConstraint
                     kind: CHECK
-                    constraint_name: null
+                    constraint_name: (none)
                     onconf: DEFAULT
                     is_autoincrement: FALSE
                     pk_columns: (none)
@@ -1242,13 +1326,13 @@ class TableConstraintCheck(TestSuite):
                         left:
                           ColumnRef
                             column: "a"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                         right:
                           ColumnRef
                             column: "b"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                     fk_clause: (none)
               as_select: (none)
 """,
@@ -1264,21 +1348,23 @@ class TableConstraintForeignKey(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints:
                 TableConstraintList [1 items]
                   TableConstraint
                     kind: FOREIGN_KEY
-                    constraint_name: null
+                    constraint_name: (none)
                     onconf: DEFAULT
                     is_autoincrement: FALSE
                     pk_columns: (none)
@@ -1286,8 +1372,8 @@ class TableConstraintForeignKey(TestSuite):
                       ExprList [1 items]
                         ColumnRef
                           column: "a"
-                          table: null
-                          schema: null
+                          table: (none)
+                          schema: (none)
                     check_expr: (none)
                     fk_clause:
                       ForeignKeyClause
@@ -1296,8 +1382,8 @@ class TableConstraintForeignKey(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "id"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         on_delete: NO_ACTION
                         on_update: NO_ACTION
                         is_deferred: FALSE
@@ -1311,21 +1397,23 @@ class TableConstraintForeignKey(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints:
                 TableConstraintList [1 items]
                   TableConstraint
                     kind: FOREIGN_KEY
-                    constraint_name: null
+                    constraint_name: (none)
                     onconf: DEFAULT
                     is_autoincrement: FALSE
                     pk_columns: (none)
@@ -1333,8 +1421,8 @@ class TableConstraintForeignKey(TestSuite):
                       ExprList [1 items]
                         ColumnRef
                           column: "a"
-                          table: null
-                          schema: null
+                          table: (none)
+                          schema: (none)
                     check_expr: (none)
                     fk_clause:
                       ForeignKeyClause
@@ -1343,8 +1431,8 @@ class TableConstraintForeignKey(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "id"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         on_delete: CASCADE
                         on_update: SET_NULL
                         is_deferred: FALSE
@@ -1358,21 +1446,23 @@ class TableConstraintForeignKey(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "a"
+                    column_name:
+                      IdentName
+                        source: "a"
                     type_name: "INT"
                     constraints: (none)
               table_constraints:
                 TableConstraintList [1 items]
                   TableConstraint
                     kind: FOREIGN_KEY
-                    constraint_name: null
+                    constraint_name: (none)
                     onconf: DEFAULT
                     is_autoincrement: FALSE
                     pk_columns: (none)
@@ -1380,8 +1470,8 @@ class TableConstraintForeignKey(TestSuite):
                       ExprList [1 items]
                         ColumnRef
                           column: "a"
-                          table: null
-                          schema: null
+                          table: (none)
+                          schema: (none)
                     check_expr: (none)
                     fk_clause:
                       ForeignKeyClause
@@ -1390,8 +1480,8 @@ class TableConstraintForeignKey(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "id"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         on_delete: NO_ACTION
                         on_update: NO_ACTION
                         is_deferred: TRUE

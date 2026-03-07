@@ -19,7 +19,7 @@ class FunctionCallBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "random"
@@ -47,7 +47,7 @@ class FunctionCallBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "abs"
@@ -79,7 +79,7 @@ class FunctionCallBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "max"
@@ -117,7 +117,7 @@ class FunctionCallBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "count"
@@ -145,7 +145,7 @@ class FunctionCallBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "count"
@@ -177,7 +177,7 @@ class FunctionCallBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "abs"

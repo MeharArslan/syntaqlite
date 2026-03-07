@@ -15,7 +15,7 @@ class CreateTriggerBasic(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -25,8 +25,10 @@ class CreateTriggerBasic(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -36,7 +38,7 @@ class CreateTriggerBasic(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -57,7 +59,7 @@ class CreateTriggerBasic(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: AFTER
@@ -67,8 +69,10 @@ class CreateTriggerBasic(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -78,7 +82,7 @@ class CreateTriggerBasic(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -99,7 +103,7 @@ class CreateTriggerBasic(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: INSTEAD_OF
@@ -109,8 +113,10 @@ class CreateTriggerBasic(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "v"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "v"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -120,7 +126,7 @@ class CreateTriggerBasic(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -141,7 +147,7 @@ class CreateTriggerBasic(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -151,8 +157,10 @@ class CreateTriggerBasic(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -162,7 +170,7 @@ class CreateTriggerBasic(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -187,7 +195,7 @@ class CreateTriggerOptions(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: TRUE
               if_not_exists: FALSE
               timing: BEFORE
@@ -197,8 +205,10 @@ class CreateTriggerOptions(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -208,7 +218,7 @@ class CreateTriggerOptions(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -229,7 +239,7 @@ class CreateTriggerOptions(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: TRUE
               timing: BEFORE
@@ -239,8 +249,10 @@ class CreateTriggerOptions(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -250,7 +262,7 @@ class CreateTriggerOptions(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -281,8 +293,10 @@ class CreateTriggerOptions(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -292,7 +306,7 @@ class CreateTriggerOptions(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -313,7 +327,7 @@ class CreateTriggerOptions(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -324,16 +338,18 @@ class CreateTriggerOptions(TestSuite):
                     ExprList [2 items]
                       ColumnRef
                         column: "col1"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                       ColumnRef
                         column: "col2"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -343,7 +359,7 @@ class CreateTriggerOptions(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -364,7 +380,7 @@ class CreateTriggerOptions(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -374,8 +390,10 @@ class CreateTriggerOptions(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -385,7 +403,7 @@ class CreateTriggerOptions(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -410,7 +428,7 @@ class CreateTriggerWhen(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -420,8 +438,10 @@ class CreateTriggerWhen(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr:
                 BinaryExpr
                   op: GT
@@ -429,7 +449,7 @@ class CreateTriggerWhen(TestSuite):
                     ColumnRef
                       column: "x"
                       table: "new"
-                      schema: null
+                      schema: (none)
                   right:
                     Literal
                       literal_type: INTEGER
@@ -442,7 +462,7 @@ class CreateTriggerWhen(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -463,7 +483,7 @@ class CreateTriggerWhen(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -473,8 +493,10 @@ class CreateTriggerWhen(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -484,7 +506,7 @@ class CreateTriggerWhen(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -509,7 +531,7 @@ class CreateTriggerBody(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -519,8 +541,10 @@ class CreateTriggerBody(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -529,8 +553,8 @@ class CreateTriggerBody(TestSuite):
                     table:
                       TableRef
                         table_name: "t2"
-                        schema: null
-                        alias: null
+                        schema: (none)
+                        alias: (none)
                     setlist:
                       SetClauseList [1 items]
                         SetClause
@@ -553,7 +577,7 @@ class CreateTriggerBody(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -563,8 +587,10 @@ class CreateTriggerBody(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -573,8 +599,8 @@ class CreateTriggerBody(TestSuite):
                     table:
                       TableRef
                         table_name: "t2"
-                        schema: null
-                        alias: null
+                        schema: (none)
+                        alias: (none)
                     columns: (none)
                     source:
                       ValuesClause
@@ -593,7 +619,7 @@ class CreateTriggerBody(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -603,8 +629,10 @@ class CreateTriggerBody(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [1 items]
@@ -612,16 +640,16 @@ class CreateTriggerBody(TestSuite):
                     table:
                       TableRef
                         table_name: "t2"
-                        schema: null
-                        alias: null
+                        schema: (none)
+                        alias: (none)
                     where_clause:
                       BinaryExpr
                         op: EQ
                         left:
                           ColumnRef
                             column: "x"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                         right:
                           Literal
                             literal_type: INTEGER
@@ -637,7 +665,7 @@ class CreateTriggerBody(TestSuite):
             out="""\
             CreateTriggerStmt
               trigger_name: "tr"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               timing: BEFORE
@@ -647,8 +675,10 @@ class CreateTriggerBody(TestSuite):
                   columns: (none)
               table:
                 QualifiedName
-                  object_name: "t"
-                  schema: null
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               when_expr: (none)
               body:
                 TriggerCmdList [2 items]
@@ -658,7 +688,7 @@ class CreateTriggerBody(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER
@@ -676,7 +706,7 @@ class CreateTriggerBody(TestSuite):
                       ResultColumnList [1 items]
                         ResultColumn
                           flags: (none)
-                          alias: null
+                          alias: (none)
                           expr:
                             Literal
                               literal_type: INTEGER

@@ -19,7 +19,7 @@ class AggregateFunctionOrderBy(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       AggregateFunctionCall
                         func_name: "GROUP_CONCAT"
@@ -28,16 +28,16 @@ class AggregateFunctionOrderBy(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "name"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         orderby:
                           OrderByList [1 items]
                             OrderingTerm
                               expr:
                                 ColumnRef
                                   column: "name"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: ASC
                               nulls_order: NONE
                         filter_clause: (none)
@@ -45,8 +45,8 @@ class AggregateFunctionOrderBy(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -66,7 +66,7 @@ class AggregateFunctionOrderBy(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       AggregateFunctionCall
                         func_name: "GROUP_CONCAT"
@@ -75,8 +75,8 @@ class AggregateFunctionOrderBy(TestSuite):
                           ExprList [2 items]
                             ColumnRef
                               column: "name"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                             Literal
                               literal_type: STRING
                               source: "','"
@@ -86,8 +86,8 @@ class AggregateFunctionOrderBy(TestSuite):
                               expr:
                                 ColumnRef
                                   column: "name"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: DESC
                               nulls_order: NONE
                         filter_clause: (none)
@@ -95,8 +95,8 @@ class AggregateFunctionOrderBy(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -116,7 +116,7 @@ class AggregateFunctionOrderBy(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       AggregateFunctionCall
                         func_name: "GROUP_CONCAT"
@@ -125,16 +125,16 @@ class AggregateFunctionOrderBy(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "name"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         orderby:
                           OrderByList [1 items]
                             OrderingTerm
                               expr:
                                 ColumnRef
                                   column: "name"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: ASC
                               nulls_order: NONE
                         filter_clause: (none)
@@ -142,8 +142,8 @@ class AggregateFunctionOrderBy(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -167,7 +167,7 @@ class RaiseExpression(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       RaiseExpr
                         raise_type: IGNORE
@@ -192,7 +192,7 @@ class RaiseExpression(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       RaiseExpr
                         raise_type: ROLLBACK
@@ -220,7 +220,7 @@ class RaiseExpression(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       RaiseExpr
                         raise_type: ABORT
@@ -248,7 +248,7 @@ class RaiseExpression(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       RaiseExpr
                         raise_type: FAIL

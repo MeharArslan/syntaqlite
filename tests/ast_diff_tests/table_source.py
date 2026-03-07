@@ -19,13 +19,13 @@ class TableRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -45,13 +45,15 @@ class TableRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: "x"
+                  schema: (none)
+                  alias:
+                    IdentName
+                      source: "x"
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -71,13 +73,13 @@ class TableRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 TableRef
                   table_name: "t"
                   schema: "main"
-                  alias: null
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -97,13 +99,15 @@ class TableRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 TableRef
                   table_name: "t"
                   schema: "main"
-                  alias: "x"
+                  alias:
+                    IdentName
+                      source: "x"
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -127,7 +131,7 @@ class JoinBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -135,13 +139,13 @@ class JoinBasic(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -163,7 +167,7 @@ class JoinBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -171,13 +175,13 @@ class JoinBasic(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -185,12 +189,12 @@ class JoinBasic(TestSuite):
                         ColumnRef
                           column: "id"
                           table: "a"
-                          schema: null
+                          schema: (none)
                       right:
                         ColumnRef
                           column: "id"
                           table: "b"
-                          schema: null
+                          schema: (none)
                   using_columns: (none)
               where_clause: (none)
               groupby: (none)
@@ -211,7 +215,7 @@ class JoinBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -219,13 +223,13 @@ class JoinBasic(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -233,12 +237,12 @@ class JoinBasic(TestSuite):
                         ColumnRef
                           column: "id"
                           table: "a"
-                          schema: null
+                          schema: (none)
                       right:
                         ColumnRef
                           column: "id"
                           table: "b"
-                          schema: null
+                          schema: (none)
                   using_columns: (none)
               where_clause: (none)
               groupby: (none)
@@ -259,7 +263,7 @@ class JoinBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -267,13 +271,13 @@ class JoinBasic(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -281,12 +285,12 @@ class JoinBasic(TestSuite):
                         ColumnRef
                           column: "id"
                           table: "a"
-                          schema: null
+                          schema: (none)
                       right:
                         ColumnRef
                           column: "id"
                           table: "b"
-                          schema: null
+                          schema: (none)
                   using_columns: (none)
               where_clause: (none)
               groupby: (none)
@@ -307,7 +311,7 @@ class JoinBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -315,13 +319,13 @@ class JoinBasic(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -343,7 +347,7 @@ class JoinBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -351,13 +355,13 @@ class JoinBasic(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -365,12 +369,12 @@ class JoinBasic(TestSuite):
                         ColumnRef
                           column: "id"
                           table: "a"
-                          schema: null
+                          schema: (none)
                       right:
                         ColumnRef
                           column: "id"
                           table: "b"
-                          schema: null
+                          schema: (none)
                   using_columns: (none)
               where_clause: (none)
               groupby: (none)
@@ -391,7 +395,7 @@ class JoinBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -399,13 +403,13 @@ class JoinBasic(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -413,12 +417,12 @@ class JoinBasic(TestSuite):
                         ColumnRef
                           column: "id"
                           table: "a"
-                          schema: null
+                          schema: (none)
                       right:
                         ColumnRef
                           column: "id"
                           table: "b"
-                          schema: null
+                          schema: (none)
                   using_columns: (none)
               where_clause: (none)
               groupby: (none)
@@ -443,7 +447,7 @@ class JoinNatural(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -451,13 +455,13 @@ class JoinNatural(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -479,7 +483,7 @@ class JoinNatural(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -487,13 +491,13 @@ class JoinNatural(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -519,7 +523,7 @@ class JoinUsing(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -527,20 +531,20 @@ class JoinUsing(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns:
                     ExprList [1 items]
                       ColumnRef
                         column: "id"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -560,7 +564,7 @@ class JoinUsing(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -568,24 +572,24 @@ class JoinUsing(TestSuite):
                   left:
                     TableRef
                       table_name: "a"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   right:
                     TableRef
                       table_name: "b"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns:
                     ExprList [2 items]
                       ColumnRef
                         column: "id"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                       ColumnRef
                         column: "name"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -609,7 +613,7 @@ class JoinMultiple(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 JoinClause
@@ -620,13 +624,13 @@ class JoinMultiple(TestSuite):
                       left:
                         TableRef
                           table_name: "a"
-                          schema: null
-                          alias: null
+                          schema: (none)
+                          alias: (none)
                       right:
                         TableRef
                           table_name: "b"
-                          schema: null
-                          alias: null
+                          schema: (none)
+                          alias: (none)
                       on_expr:
                         BinaryExpr
                           op: EQ
@@ -634,18 +638,18 @@ class JoinMultiple(TestSuite):
                             ColumnRef
                               column: "id"
                               table: "a"
-                              schema: null
+                              schema: (none)
                           right:
                             ColumnRef
                               column: "id"
                               table: "b"
-                              schema: null
+                              schema: (none)
                       using_columns: (none)
                   right:
                     TableRef
                       table_name: "c"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -653,12 +657,12 @@ class JoinMultiple(TestSuite):
                         ColumnRef
                           column: "id"
                           table: "b"
-                          schema: null
+                          schema: (none)
                       right:
                         ColumnRef
                           column: "id"
                           table: "c"
-                          schema: null
+                          schema: (none)
                   using_columns: (none)
               where_clause: (none)
               groupby: (none)
@@ -683,7 +687,7 @@ class SubqueryTableSource(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 SubqueryTableSource
@@ -694,7 +698,7 @@ class SubqueryTableSource(TestSuite):
                         ResultColumnList [1 items]
                           ResultColumn
                             flags: (none)
-                            alias: null
+                            alias: (none)
                             expr:
                               Literal
                                 literal_type: INTEGER
@@ -706,7 +710,9 @@ class SubqueryTableSource(TestSuite):
                       orderby: (none)
                       limit_clause: (none)
                       window_clause: (none)
-                  alias: "t"
+                  alias:
+                    IdentName
+                      source: "t"
               where_clause: (none)
               groupby: (none)
               having: (none)

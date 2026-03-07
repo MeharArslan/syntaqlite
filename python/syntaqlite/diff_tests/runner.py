@@ -43,7 +43,7 @@ def print_failed(name: str, elapsed_ms: int) -> None:
     print(f"{failed} {name} ({elapsed_ms} ms)")
 
 
-def print_failure_details(result: TestResult, rebaseline: bool = False) -> None:
+def print_failure_details(result: TestResult) -> None:
     """Print failure details."""
     if result.error:
         print(f"Error: {result.error}")
@@ -52,13 +52,111 @@ def print_failure_details(result: TestResult, rebaseline: bool = False) -> None:
         for line in format_diff(result.expected, result.actual):
             print(line)
 
-        if rebaseline:
-            print()
-            print("Suggested update:")
-            print('            out="""')
-            for line in result.actual.splitlines():
-                print(f"                {line}")
-            print('            """,')
+
+def _apply_rebaseline(root_dir: Path, test_dir: str, results: List[TestResult]) -> None:
+    """Rewrite failing test expectations in-place."""
+    import importlib
+    import inspect
+    from glob import glob as _glob
+
+    # Collect rebaseline-able failures (skip error/timeout results)
+    updates = {r.name: r.actual for r in results if not r.passed and not r.error and r.actual}
+    if not updates:
+        return
+
+    # Discover test suites to obtain method objects
+    test_base = root_dir / test_dir
+    # file_path -> [(method_obj, actual_output)]
+    file_updates: dict = {}
+
+    for test_file in sorted(_glob(str(test_base / "*.py"))):
+        path = Path(test_file)
+        if path.name == "__init__.py":
+            continue
+        relative = path.relative_to(root_dir)
+        module_name = str(relative.with_suffix("")).replace("/", ".")
+        module = importlib.import_module(module_name)
+
+        from python.syntaqlite.diff_tests.testing import TestSuite
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            if not (issubclass(obj, TestSuite) and obj is not TestSuite):
+                continue
+            for attr in dir(obj):
+                if not attr.startswith("test_"):
+                    continue
+                test_name = f"{obj.__name__}.{attr[5:]}"
+                if test_name not in updates:
+                    continue
+                method = getattr(obj, attr)
+                src_file = inspect.getsourcefile(method)
+                if src_file not in file_updates:
+                    file_updates[src_file] = []
+                file_updates[src_file].append((method, updates[test_name]))
+
+    rebaselined = 0
+    for src_file, method_updates in file_updates.items():
+        rebaselined += _rewrite_test_file(src_file, method_updates)
+
+    print(f"Rebaselined {rebaselined} test(s) in {len(file_updates)} file(s).")
+
+
+def _rewrite_test_file(file_path: str, updates: list) -> int:
+    """Rewrite out= blocks in a single test file. Returns count of rewrites."""
+    import inspect
+
+    with open(file_path) as f:
+        lines = f.readlines()
+
+    # Collect (0-indexed start line, method, actual) and sort bottom-to-top
+    # so replacements don't shift line numbers for earlier entries.
+    located = []
+    for method, actual in updates:
+        _, start_line = inspect.getsourcelines(method)
+        located.append((start_line - 1, method, actual))  # 1-indexed → 0-indexed
+    located.sort(key=lambda x: x[0], reverse=True)
+
+    count = 0
+    for start_idx, method, actual in located:
+        # Find `out="""\` within the next 50 lines of the method.
+        out_start = None
+        for i in range(start_idx, min(start_idx + 50, len(lines))):
+            if 'out="""\\\n' in lines[i]:
+                out_start = i
+                break
+        if out_start is None:
+            print(f"Warning: no out block found for {method.__qualname__}", file=sys.stderr)
+            continue
+
+        # Detect indentation of the `out="""` line.
+        indent = len(lines[out_start]) - len(lines[out_start].lstrip())
+        indent_str = " " * indent
+
+        # Find the closing `""",` line (unindented, at column 0).
+        out_end = None
+        for i in range(out_start + 1, len(lines)):
+            if lines[i].rstrip("\n") == '""",':
+                out_end = i
+                break
+        if out_end is None:
+            print(f"Warning: no end of out block found for {method.__qualname__}", file=sys.stderr)
+            continue
+
+        # Build replacement lines.
+        # Backslashes must be doubled so Python reads them back correctly
+        # when the out block is a triple-quoted string in the test file.
+        new_lines = [f'{indent_str}out="""\\\n']
+        for line in actual.splitlines():
+            escaped = line.replace('\\', '\\\\')
+            new_lines.append(f'{indent_str}{escaped}\n' if line else '\n')
+        new_lines.append('""",\n')
+
+        lines[out_start:out_end + 1] = new_lines
+        count += 1
+
+    with open(file_path, "w") as f:
+        f.writelines(lines)
+
+    return count
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -142,7 +240,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     print_run(result.name)
                 if verbosity >= 1:
                     print_failed(result.name, result.elapsed_ms)
-                print_failure_details(result, args.rebaseline)
+                if not args.rebaseline:
+                    print_failure_details(result)
                 failed_tests.append(result.name)
 
     elapsed_ms = int((time.time() - start_time) * 1000)
@@ -159,6 +258,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"{msg} {passed} tests.")
 
     if failed > 0:
+        if args.rebaseline:
+            _apply_rebaseline(root_dir, args.test_dir, results)
+            return 0
         msg = colorize("[  FAILED  ]", Colors.RED)
         print(f"{msg} {failed} tests, listed below:")
         for name in failed_tests:

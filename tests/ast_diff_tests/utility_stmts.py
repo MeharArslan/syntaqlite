@@ -13,11 +13,11 @@ class PragmaStmts(TestSuite):
         return DiffTestBlueprint(
             sql="PRAGMA journal_mode",
             out="""\
-PragmaStmt
-  pragma_name: "journal_mode"
-  schema: null
-  value: null
-  pragma_form: BARE
+            PragmaStmt
+              pragma_name: "journal_mode"
+              schema: (none)
+              value: (none)
+              pragma_form: BARE
 """,
         )
 
@@ -25,11 +25,11 @@ PragmaStmt
         return DiffTestBlueprint(
             sql="PRAGMA main.journal_mode",
             out="""\
-PragmaStmt
-  pragma_name: "journal_mode"
-  schema: "main"
-  value: null
-  pragma_form: BARE
+            PragmaStmt
+              pragma_name: "journal_mode"
+              schema: "main"
+              value: (none)
+              pragma_form: BARE
 """,
         )
 
@@ -37,11 +37,11 @@ PragmaStmt
         return DiffTestBlueprint(
             sql="PRAGMA journal_mode = wal",
             out="""\
-PragmaStmt
-  pragma_name: "journal_mode"
-  schema: null
-  value: "wal"
-  pragma_form: EQ
+            PragmaStmt
+              pragma_name: "journal_mode"
+              schema: (none)
+              value: "wal"
+              pragma_form: EQ
 """,
         )
 
@@ -49,11 +49,11 @@ PragmaStmt
         return DiffTestBlueprint(
             sql="PRAGMA table_info(t)",
             out="""\
-PragmaStmt
-  pragma_name: "table_info"
-  schema: null
-  value: "t"
-  pragma_form: CALL
+            PragmaStmt
+              pragma_name: "table_info"
+              schema: (none)
+              value: "t"
+              pragma_form: CALL
 """,
         )
 
@@ -61,11 +61,11 @@ PragmaStmt
         return DiffTestBlueprint(
             sql="PRAGMA cache_size = -2000",
             out="""\
-PragmaStmt
-  pragma_name: "cache_size"
-  schema: null
-  value: "-2000"
-  pragma_form: EQ
+            PragmaStmt
+              pragma_name: "cache_size"
+              schema: (none)
+              value: "-2000"
+              pragma_form: EQ
 """,
         )
 
@@ -77,10 +77,10 @@ class AnalyzeReindexStmts(TestSuite):
         return DiffTestBlueprint(
             sql="ANALYZE",
             out="""\
-AnalyzeStmt
-  target_name: null
-  schema: null
-  kind: ANALYZE
+            AnalyzeOrReindexStmt
+              target_name: (none)
+              schema: (none)
+              kind: ANALYZE
 """,
         )
 
@@ -88,10 +88,10 @@ AnalyzeStmt
         return DiffTestBlueprint(
             sql="ANALYZE t",
             out="""\
-AnalyzeStmt
-  target_name: "t"
-  schema: null
-  kind: ANALYZE
+            AnalyzeOrReindexStmt
+              target_name: "t"
+              schema: (none)
+              kind: ANALYZE
 """,
         )
 
@@ -99,10 +99,10 @@ AnalyzeStmt
         return DiffTestBlueprint(
             sql="ANALYZE main.t",
             out="""\
-AnalyzeStmt
-  target_name: "t"
-  schema: "main"
-  kind: ANALYZE
+            AnalyzeOrReindexStmt
+              target_name: "t"
+              schema: "main"
+              kind: ANALYZE
 """,
         )
 
@@ -110,10 +110,10 @@ AnalyzeStmt
         return DiffTestBlueprint(
             sql="REINDEX",
             out="""\
-AnalyzeStmt
-  target_name: null
-  schema: null
-  kind: REINDEX
+            AnalyzeOrReindexStmt
+              target_name: (none)
+              schema: (none)
+              kind: REINDEX
 """,
         )
 
@@ -121,10 +121,10 @@ AnalyzeStmt
         return DiffTestBlueprint(
             sql="REINDEX t",
             out="""\
-AnalyzeStmt
-  target_name: "t"
-  schema: null
-  kind: REINDEX
+            AnalyzeOrReindexStmt
+              target_name: "t"
+              schema: (none)
+              kind: REINDEX
 """,
         )
 
@@ -144,8 +144,8 @@ class AttachDetachStmts(TestSuite):
               db_name:
                 ColumnRef
                   column: "db2"
-                  table: null
-                  schema: null
+                  table: (none)
+                  schema: (none)
               key: (none)
 """,
         )
@@ -162,8 +162,8 @@ class AttachDetachStmts(TestSuite):
               db_name:
                 ColumnRef
                   column: "db2"
-                  table: null
-                  schema: null
+                  table: (none)
+                  schema: (none)
               key: (none)
 """,
         )
@@ -176,8 +176,8 @@ class AttachDetachStmts(TestSuite):
               db_name:
                 ColumnRef
                   column: "db2"
-                  table: null
-                  schema: null
+                  table: (none)
+                  schema: (none)
 """,
         )
 
@@ -189,8 +189,8 @@ class AttachDetachStmts(TestSuite):
               db_name:
                 ColumnRef
                   column: "db2"
-                  table: null
-                  schema: null
+                  table: (none)
+                  schema: (none)
 """,
         )
 
@@ -203,7 +203,7 @@ class VacuumStmts(TestSuite):
             sql="VACUUM",
             out="""\
             VacuumStmt
-              schema: null
+              schema: (none)
               filename: (none)
 """,
         )
@@ -213,7 +213,7 @@ class VacuumStmts(TestSuite):
             sql="VACUUM INTO 'backup.db'",
             out="""\
             VacuumStmt
-              schema: null
+              schema: (none)
               filename:
                 Literal
                   literal_type: STRING
@@ -248,7 +248,7 @@ class ExplainStmts(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -276,13 +276,13 @@ class ExplainStmts(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -302,7 +302,7 @@ class CreateIndexStmts(TestSuite):
             out="""\
             CreateIndexStmt
               index_name: "idx"
-              schema: null
+              schema: (none)
               table_name: "t"
               is_unique: FALSE
               if_not_exists: FALSE
@@ -312,8 +312,8 @@ class CreateIndexStmts(TestSuite):
                     expr:
                       ColumnRef
                         column: "x"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                     sort_order: ASC
                     nulls_order: NONE
               where_clause: (none)
@@ -326,7 +326,7 @@ class CreateIndexStmts(TestSuite):
             out="""\
             CreateIndexStmt
               index_name: "idx"
-              schema: null
+              schema: (none)
               table_name: "t"
               is_unique: TRUE
               if_not_exists: FALSE
@@ -336,8 +336,8 @@ class CreateIndexStmts(TestSuite):
                     expr:
                       ColumnRef
                         column: "x"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                     sort_order: ASC
                     nulls_order: NONE
               where_clause: (none)
@@ -350,7 +350,7 @@ class CreateIndexStmts(TestSuite):
             out="""\
             CreateIndexStmt
               index_name: "idx"
-              schema: null
+              schema: (none)
               table_name: "t"
               is_unique: FALSE
               if_not_exists: TRUE
@@ -360,8 +360,8 @@ class CreateIndexStmts(TestSuite):
                     expr:
                       ColumnRef
                         column: "x"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                     sort_order: ASC
                     nulls_order: NONE
               where_clause: (none)
@@ -374,7 +374,7 @@ class CreateIndexStmts(TestSuite):
             out="""\
             CreateIndexStmt
               index_name: "idx"
-              schema: null
+              schema: (none)
               table_name: "t"
               is_unique: FALSE
               if_not_exists: FALSE
@@ -384,8 +384,8 @@ class CreateIndexStmts(TestSuite):
                     expr:
                       ColumnRef
                         column: "x"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                     sort_order: ASC
                     nulls_order: NONE
               where_clause:
@@ -394,8 +394,8 @@ class CreateIndexStmts(TestSuite):
                   left:
                     ColumnRef
                       column: "x"
-                      table: null
-                      schema: null
+                      table: (none)
+                      schema: (none)
                   right:
                     Literal
                       literal_type: INTEGER
@@ -419,8 +419,8 @@ class CreateIndexStmts(TestSuite):
                     expr:
                       ColumnRef
                         column: "x"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                     sort_order: ASC
                     nulls_order: NONE
               where_clause: (none)
@@ -433,7 +433,7 @@ class CreateIndexStmts(TestSuite):
             out="""\
             CreateIndexStmt
               index_name: "idx"
-              schema: null
+              schema: (none)
               table_name: "t"
               is_unique: FALSE
               if_not_exists: FALSE
@@ -443,16 +443,16 @@ class CreateIndexStmts(TestSuite):
                     expr:
                       ColumnRef
                         column: "x"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                     sort_order: ASC
                     nulls_order: NONE
                   OrderingTerm
                     expr:
                       ColumnRef
                         column: "y"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                     sort_order: DESC
                     nulls_order: NONE
               where_clause: (none)
@@ -469,7 +469,7 @@ class CreateViewStmts(TestSuite):
             out="""\
             CreateViewStmt
               view_name: "v"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               column_names: (none)
@@ -480,13 +480,13 @@ class CreateViewStmts(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -502,7 +502,7 @@ class CreateViewStmts(TestSuite):
             out="""\
             CreateViewStmt
               view_name: "v"
-              schema: null
+              schema: (none)
               is_temp: TRUE
               if_not_exists: FALSE
               column_names: (none)
@@ -513,13 +513,13 @@ class CreateViewStmts(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -535,7 +535,7 @@ class CreateViewStmts(TestSuite):
             out="""\
             CreateViewStmt
               view_name: "v"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: TRUE
               column_names: (none)
@@ -546,13 +546,13 @@ class CreateViewStmts(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: STAR
-                        alias: null
+                        alias: (none)
                         expr: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -568,19 +568,19 @@ class CreateViewStmts(TestSuite):
             out="""\
             CreateViewStmt
               view_name: "v"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               column_names:
                 ExprList [2 items]
                   ColumnRef
                     column: "a"
-                    table: null
-                    schema: null
+                    table: (none)
+                    schema: (none)
                   ColumnRef
                     column: "b"
-                    table: null
-                    schema: null
+                    table: (none)
+                    schema: (none)
               select:
                 SelectStmt
                   flags: (none)
@@ -588,25 +588,25 @@ class CreateViewStmts(TestSuite):
                     ResultColumnList [2 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           ColumnRef
                             column: "x"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           ColumnRef
                             column: "y"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
                   from_clause:
                     TableRef
                       table_name: "t"
-                      schema: null
-                      alias: null
+                      schema: (none)
+                      alias: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)

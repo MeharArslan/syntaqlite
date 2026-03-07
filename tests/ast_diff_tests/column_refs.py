@@ -19,12 +19,12 @@ class ColumnRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "x"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               from_clause: (none)
               where_clause: (none)
               groupby: (none)
@@ -45,12 +45,12 @@ class ColumnRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "x"
                         table: "t"
-                        schema: null
+                        schema: (none)
               from_clause: (none)
               where_clause: (none)
               groupby: (none)
@@ -71,7 +71,7 @@ class ColumnRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "x"
@@ -97,28 +97,28 @@ class ColumnRefBasic(TestSuite):
                 ResultColumnList [3 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "a"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "b"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "c"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               from_clause: (none)
               where_clause: (none)
               groupby: (none)
@@ -139,7 +139,9 @@ class ColumnRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: "t"
+                    alias:
+                      IdentName
+                        source: "t"
                     expr: (none)
               from_clause: (none)
               where_clause: (none)
@@ -161,23 +163,23 @@ class ColumnRefBasic(TestSuite):
                 ResultColumnList [3 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "a"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "b"
                         table: "t"
-                        schema: null
+                        schema: (none)
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BinaryExpr
                         op: PLUS
@@ -188,8 +190,8 @@ class ColumnRefBasic(TestSuite):
                         right:
                           ColumnRef
                             column: "x"
-                            table: null
-                            schema: null
+                            table: (none)
+                            schema: (none)
               from_clause: (none)
               where_clause: (none)
               groupby: (none)

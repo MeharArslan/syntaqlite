@@ -19,10 +19,10 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
-                        op: ISNULL
+                        op: IS_NULL
                         left:
                           Literal
                             literal_type: INTEGER
@@ -48,10 +48,10 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
-                        op: NOTNULL
+                        op: NOT_NULL
                         left:
                           Literal
                             literal_type: INTEGER
@@ -77,10 +77,10 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
-                        op: NOTNULL
+                        op: NOT_NULL
                         left:
                           Literal
                             literal_type: INTEGER
@@ -106,7 +106,7 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
                         op: IS
@@ -138,7 +138,7 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
                         op: IS_NOT
@@ -170,7 +170,7 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
                         op: IS
@@ -202,7 +202,7 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
                         op: IS_NOT
@@ -234,7 +234,7 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
                         op: IS_NOT_DISTINCT
@@ -266,7 +266,7 @@ class IsExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       IsExpr
                         op: IS_DISTINCT
@@ -302,7 +302,7 @@ class BetweenExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BetweenExpr
                         negated: FALSE
@@ -338,7 +338,7 @@ class BetweenExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       BetweenExpr
                         negated: TRUE
@@ -378,7 +378,7 @@ class LikeExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       LikeExpr
                         negated: FALSE
@@ -411,7 +411,7 @@ class LikeExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       LikeExpr
                         negated: TRUE
@@ -444,7 +444,7 @@ class LikeExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       LikeExpr
                         negated: FALSE
@@ -484,7 +484,7 @@ class CaseExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CaseExpr
                         operand: (none)
@@ -523,7 +523,7 @@ class CaseExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CaseExpr
                         operand:
@@ -571,7 +571,7 @@ class CaseExprBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CaseExpr
                         operand: (none)

@@ -19,7 +19,7 @@ class WindowFunctionBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "row_number"
@@ -28,7 +28,7 @@ class WindowFunctionBasic(TestSuite):
                         filter_clause: (none)
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by: (none)
                             orderby:
                               OrderByList [1 items]
@@ -36,16 +36,16 @@ class WindowFunctionBasic(TestSuite):
                                   expr:
                                     ColumnRef
                                       column: "id"
-                                      table: null
-                                      schema: null
+                                      table: (none)
+                                      schema: (none)
                                   sort_order: ASC
                                   nulls_order: NONE
                             frame: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -65,7 +65,7 @@ class WindowFunctionBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "count"
@@ -74,20 +74,20 @@ class WindowFunctionBasic(TestSuite):
                         filter_clause: (none)
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by:
                               ExprList [1 items]
                                 ColumnRef
                                   column: "a"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                             orderby: (none)
                             frame: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -107,7 +107,7 @@ class WindowFunctionBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -116,8 +116,8 @@ class WindowFunctionBasic(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause: (none)
                         over_clause:
                           WindowDef
@@ -128,8 +128,8 @@ class WindowFunctionBasic(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -141,7 +141,7 @@ class WindowFunctionBasic(TestSuite):
                     window_name: "w"
                     window_def:
                       WindowDef
-                        base_window_name: null
+                        base_window_name: (none)
                         partition_by: (none)
                         orderby:
                           OrderByList [1 items]
@@ -149,8 +149,8 @@ class WindowFunctionBasic(TestSuite):
                               expr:
                                 ColumnRef
                                   column: "x"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: ASC
                               nulls_order: NONE
                         frame: (none)
@@ -171,7 +171,7 @@ class FilterClause(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -180,16 +180,16 @@ class FilterClause(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause:
                           BinaryExpr
                             op: GT
                             left:
                               ColumnRef
                                 column: "x"
-                                table: null
-                                schema: null
+                                table: (none)
+                                schema: (none)
                             right:
                               Literal
                                 literal_type: INTEGER
@@ -198,8 +198,8 @@ class FilterClause(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -219,7 +219,7 @@ class FilterClause(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -228,23 +228,23 @@ class FilterClause(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause:
                           BinaryExpr
                             op: GT
                             left:
                               ColumnRef
                                 column: "x"
-                                table: null
-                                schema: null
+                                table: (none)
+                                schema: (none)
                             right:
                               Literal
                                 literal_type: INTEGER
                                 source: "0"
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by: (none)
                             orderby:
                               OrderByList [1 items]
@@ -252,16 +252,16 @@ class FilterClause(TestSuite):
                                   expr:
                                     ColumnRef
                                       column: "y"
-                                      table: null
-                                      schema: null
+                                      table: (none)
+                                      schema: (none)
                                   sort_order: ASC
                                   nulls_order: NONE
                             frame: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -285,7 +285,7 @@ class FrameSpecification(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -294,12 +294,12 @@ class FrameSpecification(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause: (none)
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by: (none)
                             orderby:
                               OrderByList [1 items]
@@ -307,8 +307,8 @@ class FrameSpecification(TestSuite):
                                   expr:
                                     ColumnRef
                                       column: "y"
-                                      table: null
-                                      schema: null
+                                      table: (none)
+                                      schema: (none)
                                   sort_order: ASC
                                   nulls_order: NONE
                             frame:
@@ -332,8 +332,8 @@ class FrameSpecification(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -353,7 +353,7 @@ class FrameSpecification(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -362,12 +362,12 @@ class FrameSpecification(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause: (none)
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by: (none)
                             orderby:
                               OrderByList [1 items]
@@ -375,8 +375,8 @@ class FrameSpecification(TestSuite):
                                   expr:
                                     ColumnRef
                                       column: "y"
-                                      table: null
-                                      schema: null
+                                      table: (none)
+                                      schema: (none)
                                   sort_order: ASC
                                   nulls_order: NONE
                             frame:
@@ -394,8 +394,8 @@ class FrameSpecification(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -415,7 +415,7 @@ class FrameSpecification(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -424,12 +424,12 @@ class FrameSpecification(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause: (none)
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by: (none)
                             orderby:
                               OrderByList [1 items]
@@ -437,8 +437,8 @@ class FrameSpecification(TestSuite):
                                   expr:
                                     ColumnRef
                                       column: "y"
-                                      table: null
-                                      schema: null
+                                      table: (none)
+                                      schema: (none)
                                   sort_order: ASC
                                   nulls_order: NONE
                             frame:
@@ -456,8 +456,8 @@ class FrameSpecification(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -477,7 +477,7 @@ class FrameSpecification(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -486,12 +486,12 @@ class FrameSpecification(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause: (none)
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by: (none)
                             orderby:
                               OrderByList [1 items]
@@ -499,8 +499,8 @@ class FrameSpecification(TestSuite):
                                   expr:
                                     ColumnRef
                                       column: "y"
-                                      table: null
-                                      schema: null
+                                      table: (none)
+                                      schema: (none)
                                   sort_order: ASC
                                   nulls_order: NONE
                             frame:
@@ -521,8 +521,8 @@ class FrameSpecification(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -546,13 +546,13 @@ class WindowClause(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias: null
+                    alias: (none)
                     expr: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -564,7 +564,7 @@ class WindowClause(TestSuite):
                     window_name: "w"
                     window_def:
                       WindowDef
-                        base_window_name: null
+                        base_window_name: (none)
                         partition_by: (none)
                         orderby:
                           OrderByList [1 items]
@@ -572,8 +572,8 @@ class WindowClause(TestSuite):
                               expr:
                                 ColumnRef
                                   column: "x"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: ASC
                               nulls_order: NONE
                         frame: (none)
@@ -590,7 +590,7 @@ class WindowClause(TestSuite):
                 ResultColumnList [2 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "sum"
@@ -599,8 +599,8 @@ class WindowClause(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause: (none)
                         over_clause:
                           WindowDef
@@ -610,7 +610,7 @@ class WindowClause(TestSuite):
                             frame: (none)
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       FunctionCall
                         func_name: "avg"
@@ -619,8 +619,8 @@ class WindowClause(TestSuite):
                           ExprList [1 items]
                             ColumnRef
                               column: "y"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         filter_clause: (none)
                         over_clause:
                           WindowDef
@@ -631,8 +631,8 @@ class WindowClause(TestSuite):
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -644,7 +644,7 @@ class WindowClause(TestSuite):
                     window_name: "w1"
                     window_def:
                       WindowDef
-                        base_window_name: null
+                        base_window_name: (none)
                         partition_by: (none)
                         orderby:
                           OrderByList [1 items]
@@ -652,8 +652,8 @@ class WindowClause(TestSuite):
                               expr:
                                 ColumnRef
                                   column: "a"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: ASC
                               nulls_order: NONE
                         frame: (none)
@@ -661,21 +661,21 @@ class WindowClause(TestSuite):
                     window_name: "w2"
                     window_def:
                       WindowDef
-                        base_window_name: null
+                        base_window_name: (none)
                         partition_by:
                           ExprList [1 items]
                             ColumnRef
                               column: "b"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                         orderby:
                           OrderByList [1 items]
                             OrderingTerm
                               expr:
                                 ColumnRef
                                   column: "c"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: ASC
                               nulls_order: NONE
                         frame: (none)
@@ -696,7 +696,7 @@ class AggregateWithWindowFunction(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       AggregateFunctionCall
                         func_name: "group_concat"
@@ -705,8 +705,8 @@ class AggregateWithWindowFunction(TestSuite):
                           ExprList [2 items]
                             ColumnRef
                               column: "x"
-                              table: null
-                              schema: null
+                              table: (none)
+                              schema: (none)
                             Literal
                               literal_type: STRING
                               source: "','"
@@ -716,8 +716,8 @@ class AggregateWithWindowFunction(TestSuite):
                               expr:
                                 ColumnRef
                                   column: "y"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                               sort_order: ASC
                               nulls_order: NONE
                         filter_clause:
@@ -726,28 +726,28 @@ class AggregateWithWindowFunction(TestSuite):
                             left:
                               ColumnRef
                                 column: "z"
-                                table: null
-                                schema: null
+                                table: (none)
+                                schema: (none)
                             right:
                               Literal
                                 literal_type: INTEGER
                                 source: "0"
                         over_clause:
                           WindowDef
-                            base_window_name: null
+                            base_window_name: (none)
                             partition_by:
                               ExprList [1 items]
                                 ColumnRef
                                   column: "a"
-                                  table: null
-                                  schema: null
+                                  table: (none)
+                                  schema: (none)
                             orderby: (none)
                             frame: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)

@@ -632,7 +632,7 @@ static void dump_node_recursive(DumpBuf* b,
         memcpy(&sp, field_ptr, sizeof(sp));
         dump_indent(b, mem, indent + 1);
         if (sp.length == 0) {
-          dump_printf(b, mem, "%s: null\n", fm->name);
+          dump_printf(b, mem, "%s: (none)\n", fm->name);
         } else {
           dump_printf(b, mem, "%s: \"%.*s\"\n", fm->name, (int)sp.length,
                       p->source + sp.offset);

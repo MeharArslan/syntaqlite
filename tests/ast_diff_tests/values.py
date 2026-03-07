@@ -112,7 +112,7 @@ class ValuesClause(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER

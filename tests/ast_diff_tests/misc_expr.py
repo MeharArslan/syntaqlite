@@ -19,7 +19,7 @@ class BindParameters(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Variable
                         source: "?"
@@ -43,7 +43,7 @@ class BindParameters(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Variable
                         source: "?1"
@@ -67,7 +67,7 @@ class BindParameters(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Variable
                         source: ":name"
@@ -91,7 +91,7 @@ class BindParameters(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Variable
                         source: "@name"
@@ -115,7 +115,7 @@ class BindParameters(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Variable
                         source: "$name"
@@ -143,7 +143,7 @@ class CollateExpressions(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CollateExpr
                         expr:
@@ -171,7 +171,7 @@ class CollateExpressions(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       CollateExpr
                         expr:
@@ -203,7 +203,7 @@ class DateTimeKeywords(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: CURRENT
@@ -228,7 +228,7 @@ class DateTimeKeywords(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: CURRENT
@@ -253,7 +253,7 @@ class DateTimeKeywords(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: CURRENT
