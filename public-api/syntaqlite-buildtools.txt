@@ -101,8 +101,6 @@ pub syntaqlite_buildtools::commands::SqliteExtract::actions_dir: alloc::string::
 pub syntaqlite_buildtools::commands::SqliteExtract::nodes_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteExtract::output_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteExtract::sqlite_src: alloc::string::String
-pub syntaqlite_buildtools::commands::SqliteParserCodegen::cflag_audit_json: core::option::Option<alloc::string::String>
-pub syntaqlite_buildtools::commands::SqliteParserCodegen::cflag_versions_out: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::commands::SqliteParserCodegen::functions_json: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::CHeader::include: alloc::string::String
 pub syntaqlite_buildtools::output_resolver::CHeader::write: core::option::Option<alloc::string::String>

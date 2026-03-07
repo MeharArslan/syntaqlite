@@ -19,6 +19,8 @@ use crate::output_resolver::OutputLayout;
 const SQLITE_DIALECT_CRATE: &str = "syntaqlite-syntax";
 const SQLITE_SHARED_CRATE: &str = "syntaqlite-syntax";
 const SQLITE_FUNCTIONS_CATALOG: &str = "syntaqlite/src/sqlite/functions_catalog.rs";
+const SQLITE_CFLAGS_RS: &str = "syntaqlite/src/sqlite/cflags.rs";
+const SYNTAX_CFLAGS_RS: &str = "syntaqlite-syntax/src/sqlite/cflags.rs";
 
 fn write_file(path: &Path, content: impl AsRef<[u8]>) -> Result<(), String> {
     fs::write(path, content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
@@ -114,11 +116,6 @@ impl SqliteCodegen {
 pub struct SqliteParserCodegen {
     /// Path to functions.json. When provided, generates `functions_catalog.rs`.
     pub functions_json: Option<String>,
-    /// Path to the cflag audit JSON. Required when `cflag_entries_out` is set.
-    pub cflag_audit_json: Option<String>,
-    /// Output path for the generated cflag entries Rust file (`cflag_entries.rs`).
-    /// Requires `cflag_audit_json`.
-    pub cflag_entries_out: Option<String>,
 }
 
 impl SqliteParserCodegen {
@@ -128,19 +125,15 @@ impl SqliteParserCodegen {
     ///
     /// Returns an error if codegen or file I/O fails.
     pub fn run(&self) -> Result<(), String> {
+        // Always regenerate both flag enums from the stable CFLAG_REGISTRY.
+        crate::util::cflag_entries_codegen::write_sqlite_flag_rs(SQLITE_CFLAGS_RS)?;
+        crate::util::cflag_entries_codegen::write_syntax_flag_rs(SYNTAX_CFLAGS_RS)?;
+
         if let Some(json_path) = &self.functions_json {
             crate::util::functions_codegen::write_functions_catalog_file(
                 json_path,
                 SQLITE_FUNCTIONS_CATALOG,
             )?;
-        }
-
-        if let Some(entries_out) = &self.cflag_entries_out {
-            let audit_path = self
-                .cflag_audit_json
-                .as_deref()
-                .ok_or("cflag_audit_json is required when cflag_entries_out is given")?;
-            crate::util::cflag_entries_codegen::write_cflag_entries_file(audit_path, entries_out)?;
         }
 
         Ok(())

@@ -93,15 +93,6 @@ struct CodegenSqliteParserArgs {
     /// When provided, generates `functions_catalog.rs` at its hardcoded workspace path.
     #[arg(long)]
     functions_json: Option<String>,
-
-    /// Path to the cflag audit JSON (optional; required if --cflag-entries-out is given).
-    #[arg(long)]
-    cflag_audit_json: Option<String>,
-
-    /// Output path for the generated cflag entries Rust file (`cflag_entries.rs`).
-    /// Requires --cflag-audit-json.
-    #[arg(long, requires = "cflag_audit_json")]
-    cflag_entries_out: Option<String>,
 }
 
 // ── sqlite-extract ────────────────────────────────────────────────────────────
@@ -163,8 +154,6 @@ fn main() {
         .run(),
         Command::CodegenSqliteParser(args) => commands::SqliteParserCodegen {
             functions_json: args.functions_json.clone(),
-            cflag_audit_json: args.cflag_audit_json.clone(),
-            cflag_entries_out: args.cflag_entries_out.clone(),
         }
         .run(),
         Command::SqliteExtract(args) => commands::SqliteExtract {

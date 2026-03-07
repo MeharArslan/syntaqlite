@@ -3,7 +3,7 @@
 
 //! `SQLite` dialect — semantic handle, function catalog, and formatter statics.
 
-pub(crate) mod cflag_entries;
+pub(crate) mod cflags;
 pub(crate) mod dialect;
 pub(crate) mod fmt_statics;
 pub(crate) mod functions_catalog;

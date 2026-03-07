@@ -4,7 +4,7 @@
 // ── Public API ───────────────────────────────────────────────────────────────
 
 #[doc(inline)]
-pub use crate::cflags::SqliteFlag;
+pub use crate::sqlite::cflags::SqliteSyntaxFlag;
 
 /// Snapshot of C-parser compatibility flags for the `SQLite` grammar.
 ///
@@ -19,19 +19,16 @@ pub use crate::cflags::SqliteFlag;
 pub struct SqliteSyntaxFlags(pub(crate) ffi::CCflags);
 
 impl SqliteSyntaxFlags {
-    /// Returns `true` if the C-compact parser flag at index `idx` is enabled.
-    ///
-    /// `idx` must be a C-compact index (0–21), as defined by
-    /// `SYNQ_CFLAG_IDX_*` in `cflags.h`.
+    /// Returns `true` if parser flag `flag` is enabled.
     #[inline]
-    pub fn has_compact(&self, idx: u32) -> bool {
-        self.0.has(idx)
+    pub fn has(&self, flag: SqliteSyntaxFlag) -> bool {
+        self.0.has(flag as u32)
     }
 
-    /// Return a copy of these flags with the C-compact parser flag at `idx` enabled.
+    /// Return a copy of these flags with `flag` enabled.
     #[must_use]
-    pub fn with_compact(mut self, idx: u32) -> Self {
-        self.0.set(idx);
+    pub fn with(mut self, flag: SqliteSyntaxFlag) -> Self {
+        self.0.set(flag as u32);
         self
     }
 }
@@ -89,6 +86,19 @@ pub enum SqliteVersion {
 }
 
 impl SqliteVersion {
+    /// Parse a version string or the literal `"latest"`.
+    ///
+    /// The string `"latest"` (case-insensitive) maps to [`SqliteVersion::Latest`].
+    /// All other inputs are forwarded to [`SqliteVersion::parse`].
+    /// Returns `Err` if the version is not recognised.
+    pub fn parse_with_latest(s: &str) -> Result<Self, String> {
+        let s = s.trim();
+        if s.eq_ignore_ascii_case("latest") {
+            return Ok(Self::Latest);
+        }
+        Self::parse(s).ok_or_else(|| format!("unknown or unsupported SQLite version: '{s}'"))
+    }
+
     /// Parse a version string, ignoring the patch component.
     ///
     /// Accepts `"3.35"`, `"3.35.0"`, `"3.35.5"`, etc.
@@ -258,7 +268,7 @@ pub(crate) mod ffi {
     ///
     /// A packed bitfield over the parser-group compile-time flags (22 flags,
     /// packed into 3 bytes). Indices match the `SYNQ_CFLAG_IDX_*` C constants
-    /// and the generated [`crate::cflags::SqliteFlag`] Rust enum.
+    /// and the generated [`crate::sqlite::cflags::SqliteSyntaxFlag`] Rust enum.
     #[repr(C)]
     #[derive(Clone, Copy, Default)]
     pub(crate) struct CCflags {

@@ -213,7 +213,6 @@ pub use parser::IncrementalParseSession;
 // ==== Internal modules ====
 
 pub(crate) mod ast;
-pub(crate) mod cflags;
 mod grammar;
 pub(crate) mod parser;
 pub(crate) mod tokenizer;
