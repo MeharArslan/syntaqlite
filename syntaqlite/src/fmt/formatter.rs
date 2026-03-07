@@ -49,7 +49,10 @@ impl Formatter {
     }
 
     /// Create a formatter bound to the given dialect with custom configuration.
-    pub fn with_dialect_config(dialect: impl Into<AnyDialect>, format_config: &FormatConfig) -> Self {
+    pub fn with_dialect_config(
+        dialect: impl Into<AnyDialect>,
+        format_config: &FormatConfig,
+    ) -> Self {
         let dialect = dialect.into();
         assert!(
             dialect.has_fmt_data(),
@@ -98,8 +101,11 @@ impl Formatter {
         // a child node falls inside a macro region. No comments exist in this
         // path, so CommentCtx is populated with tokens only.
         self.token_entries.clear();
-        self.token_entries
-            .extend(erased.token_spans().map(|(offset, length)| TokenEntry { offset, length }));
+        self.token_entries.extend(
+            erased
+                .token_spans()
+                .map(|(offset, length)| TokenEntry { offset, length }),
+        );
 
         let root_id = erased.root_id();
         self.parts.clear();
@@ -109,7 +115,10 @@ impl Formatter {
         let comment_ctx = if self.token_entries.is_empty() {
             None
         } else {
-            Some(CommentCtx::new(vec![], std::mem::take(&mut self.token_entries)))
+            Some(CommentCtx::new(
+                vec![],
+                std::mem::take(&mut self.token_entries),
+            ))
         };
 
         let ctx = FmtCtx {

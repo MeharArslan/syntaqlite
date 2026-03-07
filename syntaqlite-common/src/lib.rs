@@ -7,6 +7,267 @@
 //!
 //! Safe for the bootstrap tool (`syntaqlite-buildtools`) to depend on.
 
+/// Semantic role types shared between the codegen tool and the runtime.
+///
+/// [`SemanticRole`] is `#[repr(C, u8)]` so the Rust in-memory layout
+/// **is** the C wire format — the codegen tool byte-encodes constructed values
+/// and the runtime casts the pointer directly to `&[SemanticRole]` without
+/// any decoding.
+pub mod roles {
+    /// Sentinel value for a `u8` field that is absent (replaces `Option<u8>`).
+    ///
+    /// Using a sentinel avoids `Option<u8>` in `SemanticRole` variant fields,
+    /// which would inflate the size from 1 byte to 2 bytes per field and break
+    /// the flat `#[repr(C, u8)]` layout.
+    pub const FIELD_ABSENT: u8 = 0xFF;
+
+    /// Index into a node's field array (0-based).
+    pub type FieldIdx = u8;
+
+    /// The kind of relation a [`SemanticRole::SourceRef`] binding introduces.
+    ///
+    /// `#[repr(u8)]` so it fits in a single byte inside `SemanticRole`.
+    #[repr(u8)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum RelationKind {
+        /// Standard SQL table.
+        Table = 0,
+        /// View — kept separate from `Table` for catalog queries.
+        View = 1,
+        /// Perfetto interval-structured data.
+        Interval = 2,
+        /// Perfetto tree-structured data.
+        Tree = 3,
+        /// Perfetto graph-structured data.
+        Graph = 4,
+    }
+
+    /// The semantic role assigned to an AST node type.
+    ///
+    /// Generated from `semantic { ... }` annotations in `.synq` files and stored
+    /// in a byte array indexed by node tag.  `Transparent` means the engine
+    /// recurses into children without special handling.
+    ///
+    /// ## Layout
+    ///
+    /// `#[repr(C, u8)]` guarantees that:
+    /// - byte 0 is the discriminant tag,
+    /// - bytes 1–N are the payload fields (all `u8`), in declaration order,
+    /// - remaining bytes up to `size_of::<SemanticRole>()` are zero-padding.
+    ///
+    /// The largest variant (`Query`) has 7 `u8` fields, so
+    /// `size_of::<SemanticRole>() == 8` on all supported targets.
+    ///
+    /// Optional fields use [`FIELD_ABSENT`] (`0xFF`) as a sentinel instead of
+    /// `Option<u8>` to keep every field exactly 1 byte.
+    #[repr(C, u8)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum SemanticRole {
+        // ── Catalog roles ─────────────────────────────────────────────────
+        /// CREATE TABLE statement: registers a table in the catalog.
+        DefineTable {
+            /// Field index of the table name.
+            name: FieldIdx,
+            /// Field index of the column-definition list (`FIELD_ABSENT` if absent).
+            columns: FieldIdx,
+            /// Field index of an AS-SELECT body (`FIELD_ABSENT` if absent).
+            select: FieldIdx,
+        } = 0,
+        /// CREATE VIEW statement: registers a view in the catalog.
+        DefineView {
+            /// Field index of the view name.
+            name: FieldIdx,
+            /// Field index of the optional declared column list (`FIELD_ABSENT` if absent).
+            columns: FieldIdx,
+            /// Field index of the SELECT body.
+            select: FieldIdx,
+        } = 1,
+        /// CREATE FUNCTION statement: registers a function in the catalog.
+        DefineFunction {
+            /// Field index of the function name.
+            name: FieldIdx,
+            /// Field index of the argument list (`FIELD_ABSENT` if absent).
+            args: FieldIdx,
+            /// Field index of a return-type child node (`FIELD_ABSENT` if absent).
+            return_type: FieldIdx,
+        } = 2,
+        /// Annotates a return-type descriptor node.
+        ReturnSpec {
+            /// Field index of the column list child (`FIELD_ABSENT` if scalar-returning).
+            columns: FieldIdx,
+        } = 3,
+        /// Module import statement: registers an imported module name.
+        Import {
+            /// Field index of the module name.
+            module: FieldIdx,
+        } = 4,
+
+        // ── Column-list items ──────────────────────────────────────────────
+        /// A single column definition within a CREATE TABLE column list.
+        ColumnDef {
+            /// Field index of the column name.
+            name: FieldIdx,
+            /// Field index of the type annotation (`FIELD_ABSENT` if absent).
+            type_: FieldIdx,
+            /// Field index of the constraint list (`FIELD_ABSENT` if absent).
+            constraints: FieldIdx,
+        } = 5,
+
+        // ── Result columns ─────────────────────────────────────────────────
+        /// A single result column in a SELECT list.
+        ResultColumn {
+            /// Field index of the flags bitfield (e.g. `STAR = 1`).
+            flags: FieldIdx,
+            /// Field index of the alias.
+            alias: FieldIdx,
+            /// Field index of the value expression.
+            expr: FieldIdx,
+        } = 6,
+
+        // ── Expressions ────────────────────────────────────────────────────
+        /// Function/aggregate/window call: validate name and arg count.
+        Call {
+            /// Field index of the function name.
+            name: FieldIdx,
+            /// Field index of the argument list.
+            args: FieldIdx,
+        } = 7,
+        /// Column reference: validate column and optional table qualifier.
+        ColumnRef {
+            /// Field index of the column name.
+            column: FieldIdx,
+            /// Field index of the optional table qualifier.
+            table: FieldIdx,
+        } = 8,
+
+        // ── Sources ────────────────────────────────────────────────────────
+        /// Table/view reference in FROM — adds binding to current scope.
+        SourceRef {
+            /// The kind of relation being referenced (`#[repr(u8)]`).
+            kind: RelationKind,
+            /// Field index of the relation name.
+            name: FieldIdx,
+            /// Field index of the alias.
+            alias: FieldIdx,
+        } = 9,
+        /// Subquery in FROM — opens a fresh scope, then binds alias in outer scope.
+        ScopedSource {
+            /// Field index of the subquery body.
+            body: FieldIdx,
+            /// Field index of the alias.
+            alias: FieldIdx,
+        } = 10,
+
+        // ── Scope structure ────────────────────────────────────────────────
+        /// SELECT statement: process `from` first, then validate `exprs`.
+        Query {
+            /// Field index of the FROM clause.
+            from: FieldIdx,
+            /// Field index of the result-column list.
+            columns: FieldIdx,
+            /// Field index of the WHERE clause.
+            where_clause: FieldIdx,
+            /// Field index of the GROUP BY clause.
+            groupby: FieldIdx,
+            /// Field index of the HAVING clause.
+            having: FieldIdx,
+            /// Field index of the ORDER BY clause.
+            orderby: FieldIdx,
+            /// Field index of the LIMIT clause.
+            limit_clause: FieldIdx,
+        } = 11,
+        /// CTE definition: binds a name to a subquery body.
+        CteBinding {
+            /// Field index of the CTE name.
+            name: FieldIdx,
+            /// Optional declared column list (`FIELD_ABSENT` if absent).
+            columns: FieldIdx,
+            /// Field index of the SELECT body.
+            body: FieldIdx,
+        } = 12,
+        /// WITH clause: sequential CTE scope wrapping a main query.
+        CteScope {
+            /// Field index of the RECURSIVE flag.
+            recursive: FieldIdx,
+            /// Field index of the CTE binding list.
+            bindings: FieldIdx,
+            /// Field index of the main query body.
+            body: FieldIdx,
+        } = 13,
+        /// CREATE TRIGGER: injects OLD/NEW into the trigger body scope.
+        TriggerScope {
+            /// Field index of the target table.
+            target: FieldIdx,
+            /// Field index of the WHEN expression.
+            when: FieldIdx,
+            /// Field index of the trigger body.
+            body: FieldIdx,
+        } = 14,
+
+        /// No semantic role — recurse into children generically.
+        Transparent = 15,
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::mem::size_of;
+
+        #[test]
+        fn semantic_role_is_8_bytes() {
+            // Largest variant (Query) has 7 u8 fields → 1 (tag) + 7 (payload) = 8.
+            assert_eq!(size_of::<SemanticRole>(), 8);
+        }
+
+        #[test]
+        fn relation_kind_is_1_byte() {
+            assert_eq!(size_of::<RelationKind>(), 1);
+        }
+
+        #[test]
+        fn discriminants_are_correct() {
+            // Verify byte-0 discriminants match the explicit `= N` values.
+            let check = |role: SemanticRole, expected: u8| {
+                let byte0 = unsafe { *(&role as *const SemanticRole as *const u8) };
+                assert_eq!(byte0, expected, "wrong discriminant for variant");
+            };
+            check(
+                SemanticRole::DefineTable {
+                    name: 0,
+                    columns: 0,
+                    select: 0,
+                },
+                0,
+            );
+            check(SemanticRole::Transparent, 15);
+        }
+
+        #[test]
+        fn payload_bytes_are_at_expected_offsets() {
+            // Query has 7 fields starting at byte 1.
+            let role = SemanticRole::Query {
+                from: 1,
+                columns: 2,
+                where_clause: 3,
+                groupby: 4,
+                having: 5,
+                orderby: 6,
+                limit_clause: 7,
+            };
+            let bytes =
+                unsafe { std::slice::from_raw_parts(&role as *const SemanticRole as *const u8, 8) };
+            assert_eq!(bytes[0], 11); // discriminant
+            assert_eq!(bytes[1], 1); // from
+            assert_eq!(bytes[2], 2); // columns
+            assert_eq!(bytes[3], 3); // where_clause
+            assert_eq!(bytes[4], 4); // groupby
+            assert_eq!(bytes[5], 5); // having
+            assert_eq!(bytes[6], 6); // orderby
+            assert_eq!(bytes[7], 7); // limit_clause
+        }
+    }
+}
+
 /// Formatter bytecode types shared between the codegen tool and the runtime.
 pub mod fmt {
     /// Binary encoding of formatter bytecode programs.

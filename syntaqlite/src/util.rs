@@ -58,9 +58,8 @@ impl SqliteFlags {
 
 // ── Conversion between SqliteFlags and SqliteSyntaxFlags ─────────────────────
 //
-// Parser flags occupy indices 0–21 in both representations.
-// SqliteFlag::as_syntax_flag() maps each parser flag to its SqliteSyntaxFlag
-// counterpart; non-parser flags return None and are silently dropped.
+// SqliteFlag::as_syntax_flag() provides the explicit typed mapping for each
+// parser flag; non-parser flags return None and are silently dropped.
 
 impl From<SqliteFlags> for SqliteSyntaxFlags {
     /// Convert full Rust flags to C-compact parser flags.
@@ -71,9 +70,10 @@ impl From<SqliteFlags> for SqliteSyntaxFlags {
         let mut s = SqliteSyntaxFlags::default();
         for &flag in SqliteFlag::all() {
             if let Some(sf) = flag.as_syntax_flag()
-                && flags.has(flag) {
-                    s = s.with(sf);
-                }
+                && flags.has(flag)
+            {
+                s = s.with(sf);
+            }
         }
         s
     }
@@ -83,10 +83,11 @@ impl From<SqliteSyntaxFlags> for SqliteFlags {
     /// Convert C-compact parser flags to full Rust flags.
     fn from(s: SqliteSyntaxFlags) -> Self {
         let mut flags = SqliteFlags::default();
-        for &sf in SqliteSyntaxFlag::all() {
-            if s.has(sf) {
-                // Parser flags 0–21 have identical discriminants in both enums.
-                flags.0 |= 1u64 << (sf as u32);
+        for &flag in SqliteFlag::all() {
+            if let Some(sf) = flag.as_syntax_flag()
+                && s.has(sf)
+            {
+                flags = flags.with(flag);
             }
         }
         flags
@@ -104,7 +105,11 @@ mod tests {
         for &flag in SqliteFlag::all() {
             let idx = flag as u32;
             if flag.categories().contains(&"parser") {
-                assert!(idx < 22, "parser flag {} has index {idx}, expected < 22", flag.name());
+                assert!(
+                    idx < 22,
+                    "parser flag {} has index {idx}, expected < 22",
+                    flag.name()
+                );
             } else {
                 assert!(
                     idx >= 22,
@@ -161,12 +166,18 @@ mod cflag_tests {
 
     #[test]
     fn parse_version_known() {
-        assert_eq!(SqliteVersion::parse_with_latest("3.35.0"), Ok(SqliteVersion::V3_35));
+        assert_eq!(
+            SqliteVersion::parse_with_latest("3.35.0"),
+            Ok(SqliteVersion::V3_35)
+        );
     }
 
     #[test]
     fn parse_version_latest() {
-        assert_eq!(SqliteVersion::parse_with_latest("latest"), Ok(SqliteVersion::Latest));
+        assert_eq!(
+            SqliteVersion::parse_with_latest("latest"),
+            Ok(SqliteVersion::Latest)
+        );
     }
 
     #[test]
@@ -177,19 +188,14 @@ mod cflag_tests {
     #[test]
     fn parse_cflag_known() {
         assert_eq!(
-            SqliteFlag::from_prefixed_name("SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC"),
-            Ok(SqliteFlag::OmitWindowfunc)
+            SqliteFlag::from_name("SQLITE_OMIT_WINDOWFUNC"),
+            Some(SqliteFlag::OmitWindowfunc)
         );
     }
 
     #[test]
-    fn parse_cflag_bad_prefix() {
-        assert!(SqliteFlag::from_prefixed_name("SQLITE_OMIT_WINDOWFUNC").is_err());
-    }
-
-    #[test]
     fn parse_cflag_unknown() {
-        assert!(SqliteFlag::from_prefixed_name("SYNTAQLITE_CFLAG_SQLITE_OMIT_NONEXISTENT").is_err());
+        assert!(SqliteFlag::from_name("SQLITE_OMIT_NONEXISTENT").is_none());
     }
 
     #[test]

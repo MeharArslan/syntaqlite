@@ -15,7 +15,7 @@ use crate::dialect_codegen::rust_ast::{RustAstPaths, generate_rust_tokens};
 use crate::dialect_codegen::rust_dialect::{
     generate_cargo_toml, generate_grammar_module, generate_rust_build_rs, generate_rust_lib,
 };
-use crate::dialect_codegen::semantic_roles_codegen::generate_rust_semantic_roles;
+use crate::dialect_codegen::semantic_roles_codegen::generate_c_roles_h;
 use crate::parser_tools::{
     keyword_hash, mkkeyword, parser_pipeline, sqlite_fragments, tokenizer_assembly,
 };
@@ -132,10 +132,6 @@ pub(crate) struct RustCodegenArtifacts {
     pub cargo_toml: String,
     /// Functions catalog (`functions_catalog.rs`).
     pub functions_catalog_rs: Option<String>,
-    /// Semantic role table (`semantic_roles.rs`).
-    pub semantic_roles_rs: Option<String>,
-    /// Formatter statics (`fmt_statics.rs`).
-    pub fmt_statics_rs: Option<String>,
 }
 
 /// All generated C and Rust artifacts produced by the codegen pipeline.
@@ -175,6 +171,8 @@ pub(crate) struct CodegenArtifacts {
     pub runtime_tokens_h: String,
     /// `SQLite` cflag index constants header (`cflags.h`).
     pub cflags_h: String,
+    /// Semantic role byte array header (`dialect_roles.h`).
+    pub dialect_roles_h: String,
     /// Generated Rust sources, when `include_rust` was set.
     pub rust: Option<RustCodegenArtifacts>,
 }
@@ -541,7 +539,7 @@ pub(crate) fn generate_codegen_artifacts(
         .generate_c_field_metadata(request.dialect.name())
         .map_err(|e: CMetaCodegenError| e.to_string())?;
     let dialect_fmt_h = ast_model
-        .generate_c_fmt_tables()
+        .generate_c_fmt_tables(request.dialect.name())
         .map_err(|e: CFmtCodegenError| e.to_string())?;
     let token_defines = extract_token_defines(&parse_h);
     // Build keyword set from the base mkkeywordhash table + dialect extra keywords.
@@ -593,17 +591,6 @@ pub(crate) fn generate_codegen_artifacts(
                 request.crate_name.unwrap_or_else(|| request.dialect.name()),
             ),
             functions_catalog_rs: None,
-            semantic_roles_rs: Some(generate_rust_semantic_roles(
-                &ast_model,
-                &request.dialect.name().to_ascii_uppercase(),
-            )),
-            fmt_statics_rs: Some(
-                dialect_codegen::fmt_compiler::generate_rust_fmt_statics(
-                    &ast_model,
-                    &request.dialect.name().to_ascii_uppercase(),
-                )
-                .map_err(|e| format!("fmt statics codegen: {e}"))?,
-            ),
         })
     } else {
         None
@@ -611,6 +598,7 @@ pub(crate) fn generate_codegen_artifacts(
 
     let runtime_tokens_h = generate_runtime_tokens_header(&token_defines);
     let cflags_h = crate::extract::generate_cflags_h("parser");
+    let dialect_roles_h = generate_c_roles_h(&ast_model, request.dialect.name());
 
     Ok(CodegenArtifacts {
         parse_h,
@@ -630,6 +618,7 @@ pub(crate) fn generate_codegen_artifacts(
         dialect_dispatch_h,
         runtime_tokens_h,
         cflags_h,
+        dialect_roles_h,
         rust,
     })
 }

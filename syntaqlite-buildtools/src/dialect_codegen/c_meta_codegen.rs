@@ -43,73 +43,97 @@ impl Display for CFmtCodegenError {
 impl std::error::Error for CFmtCodegenError {}
 
 impl AstModel<'_> {
-    pub(crate) fn generate_c_fmt_tables(&self) -> Result<String, CFmtCodegenError> {
+    /// Generate a C header containing all formatter tables for `dialect`.
+    ///
+    /// Strings are CSR-encoded: a flat `uint8_t` byte buffer plus a `uint32_t`
+    /// offsets array with N+1 entries (offsets[N] = total byte count).  All
+    /// symbol names are prefixed with `{dialect}_fmt_` so that `dialect.c` can
+    /// re-export them as non-static `syntaqlite_{dialect}_fmt_*()` functions.
+    pub(crate) fn generate_c_fmt_tables(&self, dialect: &str) -> Result<String, CFmtCodegenError> {
         let compiled =
             super::fmt_compiler::try_compile_all(self).map_err(CFmtCodegenError::FmtCompile)?;
 
+        let upper = dialect.to_uppercase();
+        let guard = format!("SYNTAQLITE_{upper}_DIALECT_FMT_H");
+        let p = format!("{dialect}_fmt"); // symbol prefix
+
         let mut w = CWriter::new();
         w.file_header();
-        w.header_guard_start("SYNTAQLITE_DIALECT_FMT_H");
+        w.header_guard_start(&guard);
         w.include_system("stdint.h");
         w.newline();
 
-        w.line("static const char* const fmt_strings[] = {");
-        w.indent();
+        // ── String table (CSR encoding) ──────────────────────────────────────
+        // Build flat byte buffer and N+1 offset array.
+        let mut str_data: Vec<u8> = Vec::new();
+        let mut str_offsets: Vec<u32> = Vec::new();
         for s in &compiled.strings {
-            let escaped = s
-                .replace('\\', "\\\\")
-                .replace('"', "\\\"")
-                .replace('\n', "\\n");
-            w.line(&format!("\"{escaped}\","));
+            str_offsets.push(str_data.len() as u32);
+            str_data.extend_from_slice(s.as_bytes());
         }
-        w.dedent();
+        str_offsets.push(str_data.len() as u32); // sentinel: offsets[N] = total length
+        let str_count = compiled.strings.len();
+
+        w.line(&format!("static const uint8_t {p}_string_data[] = {{"));
+        for chunk in str_data.chunks(16) {
+            let vals: Vec<String> = chunk.iter().map(|b| format!("0x{b:02x}")).collect();
+            w.line(&format!("    {},", vals.join(",")));
+        }
         w.line("};");
         w.newline();
 
-        w.line("static const uint16_t fmt_string_lens[] = {");
-        w.indent();
-        for chunk in compiled.strings.chunks(16) {
-            let vals: Vec<String> = chunk.iter().map(|s| format!("{}", s.len())).collect();
-            w.line(&format!("{},", vals.join(",")));
+        w.line(&format!("static const uint32_t {p}_string_offsets[] = {{"));
+        for chunk in str_offsets.chunks(16) {
+            let vals: Vec<String> = chunk.iter().map(|v| format!("{v}")).collect();
+            w.line(&format!("    {},", vals.join(",")));
         }
-        w.dedent();
         w.line("};");
         w.newline();
+        w.line(&format!(
+            "static const uint32_t {p}_string_count = {str_count};"
+        ));
+        w.newline();
 
-        w.line("static const uint16_t fmt_enum_display[] = {");
-        w.indent();
+        // ── Enum display table ───────────────────────────────────────────────
+        let edlen = compiled.enum_display.len();
+        w.line(&format!("static const uint16_t {p}_enum_display[] = {{"));
         for chunk in compiled.enum_display.chunks(16) {
             let vals: Vec<String> = chunk.iter().map(|v| format!("{v}")).collect();
-            w.line(&format!("{},", vals.join(",")));
+            w.line(&format!("    {},", vals.join(",")));
         }
-        w.dedent();
         w.line("};");
         w.newline();
+        w.line(&format!(
+            "static const uint32_t {p}_enum_display_count = {edlen};"
+        ));
+        w.newline();
 
+        // ── Ops pool ─────────────────────────────────────────────────────────
         let mut op_pool: Vec<syntaqlite_common::fmt::bytecode::RawOp> = Vec::new();
         let mut node_ranges: Vec<(&str, u16, u16)> = Vec::new();
-
         for cn in &compiled.nodes {
             let offset = u16::try_from(op_pool.len()).expect("fmt op pool offset fits in u16");
             let length = u16::try_from(cn.ops.len()).expect("fmt op count fits in u16");
             op_pool.extend_from_slice(&cn.ops);
             node_ranges.push((&cn.name, offset, length));
         }
+        let opslen = op_pool.len() * 6; // each RawOp = 6 bytes
 
-        w.line("static const uint8_t fmt_ops[] = {");
-        w.indent();
+        w.line(&format!("static const uint8_t {p}_ops[] = {{"));
         for op in &op_pool {
             let b_bytes = op.b.to_le_bytes();
             let c_bytes = op.c.to_le_bytes();
             w.line(&format!(
-                "{},{},{},{},{},{},",
+                "    {},{},{},{},{},{},",
                 op.opcode, op.a, b_bytes[0], b_bytes[1], c_bytes[0], c_bytes[1],
             ));
         }
-        w.dedent();
         w.line("};");
         w.newline();
+        w.line(&format!("static const uint32_t {p}_ops_count = {opslen};"));
+        w.newline();
 
+        // ── Dispatch table ────────────────────────────────────────────────────
         let mut dispatch_table: Vec<u32> = vec![0xFFFF_0000; compiled.tag_count];
         let mut ordinal_map: std::collections::HashMap<&str, usize> =
             std::collections::HashMap::new();
@@ -123,18 +147,21 @@ impl AstModel<'_> {
                 dispatch_table[ordinal] = (u32::from(offset) << 16) | u32::from(length);
             }
         }
+        let displen = dispatch_table.len();
 
-        w.line("static const uint32_t fmt_dispatch[] = {");
-        w.indent();
+        w.line(&format!("static const uint32_t {p}_dispatch[] = {{"));
         for chunk in dispatch_table.chunks(8) {
             let vals: Vec<String> = chunk.iter().map(|v| format!("0x{v:08x}")).collect();
-            w.line(&format!("{},", vals.join(",")));
+            w.line(&format!("    {},", vals.join(",")));
         }
-        w.dedent();
         w.line("};");
         w.newline();
+        w.line(&format!(
+            "static const uint32_t {p}_dispatch_count = {displen};"
+        ));
+        w.newline();
 
-        w.header_guard_end("SYNTAQLITE_DIALECT_FMT_H");
+        w.header_guard_end(&guard);
         Ok(w.finish())
     }
 

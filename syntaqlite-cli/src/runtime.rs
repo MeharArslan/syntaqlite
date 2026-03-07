@@ -10,11 +10,11 @@ use std::path::PathBuf;
 
 use clap::ValueEnum;
 use syntaqlite::any::{AnyParser, ParseOutcome};
+use syntaqlite::{AnyDialect, FormatError};
 use syntaqlite::{
     Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, FormatConfig, Formatter,
     KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,
 };
-use syntaqlite::{AnyDialect, FormatError};
 
 use super::{Cli, Command};
 
@@ -284,7 +284,12 @@ fn cmd_validate(
     Ok(())
 }
 
-fn validate_source(dialect: &AnyDialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
+fn validate_source(
+    dialect: &AnyDialect,
+    source: &str,
+    file: &str,
+    config: &ValidationConfig,
+) -> bool {
     let catalog = Catalog::new(dialect.clone());
     let mut analyzer = SemanticAnalyzer::with_dialect(dialect.clone());
     let model = analyzer.analyze(source, &catalog, config);

@@ -9,6 +9,8 @@
 #include "csrc/sqlite/dialect_tokens.h"
 #include "csrc/sqlite/sqlite_parse.h"
 #include "csrc/sqlite/sqlite_tokenize.h"
+#include "csrc/sqlite/dialect_fmt.h"
+#include "csrc/sqlite/dialect_roles.h"
 
 extern const char synq_sqlite_zKWText[];
 extern const unsigned short int synq_sqlite_aKWOffset[];
@@ -69,3 +71,16 @@ SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version, Syntaql
   SyntaqliteGrammar g = {&SQLITE_GRAMMAR, sqlite_version, cflags};
   return g;
 }
+
+const uint8_t * syntaqlite_sqlite_fmt_string_data(void) { return sqlite_fmt_string_data; }
+const uint32_t * syntaqlite_sqlite_fmt_string_offsets(void) { return sqlite_fmt_string_offsets; }
+uint32_t syntaqlite_sqlite_fmt_string_count(void) { return sqlite_fmt_string_count; }
+const uint16_t * syntaqlite_sqlite_fmt_enum_display(void) { return sqlite_fmt_enum_display; }
+uint32_t syntaqlite_sqlite_fmt_enum_display_count(void) { return sqlite_fmt_enum_display_count; }
+const uint8_t * syntaqlite_sqlite_fmt_ops(void) { return sqlite_fmt_ops; }
+uint32_t syntaqlite_sqlite_fmt_ops_count(void) { return sqlite_fmt_ops_count; }
+const uint32_t * syntaqlite_sqlite_fmt_dispatch(void) { return sqlite_fmt_dispatch; }
+uint32_t syntaqlite_sqlite_fmt_dispatch_count(void) { return sqlite_fmt_dispatch_count; }
+
+const uint8_t * syntaqlite_sqlite_roles_data(void) { return sqlite_roles_data; }
+uint32_t syntaqlite_sqlite_roles_count(void) { return sqlite_roles_count; }

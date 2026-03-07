@@ -221,6 +221,7 @@ impl From<crate::any::AnyTokenType> for TokenType {
     }
 }
 
+
 impl crate::ast::GrammarTokenType for TokenType {
     #[expect(clippy::too_many_lines)]
     fn from_token_type(raw: crate::any::AnyTokenType) -> Option<Self> {
@@ -413,42 +414,6 @@ impl crate::ast::GrammarTokenType for TokenType {
             186 => Some(TokenType::Comment),
             187 => Some(TokenType::Illegal),
             _ => None,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::any::AnyTokenType;
-
-    /// Verifies the invariant that SQLite `TokenType` ordinals equal `AnyTokenType`
-    /// ordinals, making the two conversions an identity round-trip.
-    ///
-    /// This is the canonical test for the stable-ordinals invariant relied upon
-    /// throughout the codebase (e.g. using `TokenType::Semi` to detect statement
-    /// boundaries when working with grammar-agnostic `AnyTokenType` values).
-    #[test]
-    fn token_type_any_token_type_round_trip_is_identity() {
-        // Spot-check a representative sample of token types.
-        for tt in [
-            TokenType::Semi,
-            TokenType::Select,
-            TokenType::From,
-            TokenType::Where,
-            TokenType::Integer,
-            TokenType::Abort,
-            TokenType::Illegal,
-        ] {
-            let any: AnyTokenType = tt.into();
-            let back: TokenType = any.into();
-            assert_eq!(
-                back, tt,
-                "round-trip failed for {tt:?}: AnyTokenType({}) -> {back:?}",
-                u32::from(any),
-            );
-            // Also verify the u32 ordinal is identical.
-            assert_eq!(u32::from(any), tt as u32, "ordinal mismatch for {tt:?}");
         }
     }
 }

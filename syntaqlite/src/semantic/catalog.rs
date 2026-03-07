@@ -11,8 +11,14 @@ use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFiel
 
 use crate::dialect::AnyDialect;
 use crate::dialect::{
-    FunctionCategory as DialectFunctionCategory, SemanticRole, is_function_available,
+    FIELD_ABSENT, FunctionCategory as DialectFunctionCategory, SemanticRole, is_function_available,
 };
+
+/// Convert a `u8` field index with [`FIELD_ABSENT`] sentinel to `Option<u8>`.
+#[inline]
+fn opt_field(v: u8) -> Option<u8> {
+    (v != FIELD_ABSENT).then_some(v)
+}
 
 // ── Core layer types ─────────────────────────────────────────────────────────
 
@@ -444,7 +450,13 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, columns, select, dialect.roles());
+                let cols = extract_columns(
+                    stmt,
+                    &fields,
+                    opt_field(columns),
+                    opt_field(select),
+                    dialect.roles(),
+                );
                 self.layers[target.index()].insert_relation(name_val, cols);
             }
             SemanticRole::DefineView {
@@ -456,7 +468,13 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, columns, Some(select), dialect.roles());
+                let cols = extract_columns(
+                    stmt,
+                    &fields,
+                    opt_field(columns),
+                    Some(select),
+                    dialect.roles(),
+                );
                 self.layers[target.index()].insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction {
@@ -468,10 +486,10 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let arity = extract_function_arity(stmt, &fields, args);
+                let arity = extract_function_arity(stmt, &fields, opt_field(args));
                 let layer = &mut self.layers[target.index()];
                 layer.insert_function_overload(name_val.clone(), FunctionCategory::Scalar, arity);
-                if is_table_returning(stmt, &fields, return_type, dialect.roles()) {
+                if is_table_returning(stmt, &fields, opt_field(return_type), dialect.roles()) {
                     layer.insert_table_function(name_val, AritySpec::Any, Vec::new());
                 }
             }
@@ -737,10 +755,10 @@ fn is_table_returning<'a>(
     let Some(&SemanticRole::ReturnSpec { columns }) = roles.get(tag_idx) else {
         return false;
     };
-    let Some(cols_idx) = columns else {
+    if columns == FIELD_ABSENT {
         return false;
-    };
-    matches!(rt_fields[cols_idx as usize], FieldValue::NodeId(id) if !id.is_null())
+    }
+    matches!(rt_fields[columns as usize], FieldValue::NodeId(id) if !id.is_null())
 }
 
 /// Extract argument count for a function DDL contribution.

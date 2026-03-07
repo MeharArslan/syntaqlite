@@ -12,185 +12,9 @@ use syntaqlite_syntax::typed::TypedGrammar;
 use libloading;
 pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
-// ── Semantic role types ───────────────────────────────────────────────────────
+// ── Semantic role types (re-exported from syntaqlite-common) ─────────────────
 
-/// Index into a node's field array (0-based).
-pub type FieldIdx = u8;
-
-/// The kind of relation a `SourceRef` binding introduces into scope.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RelationKind {
-    /// Standard SQL table.
-    Table,
-    /// View — kept separate from `Table` for catalog queries.
-    View,
-    /// Perfetto interval-structured data.
-    Interval,
-    /// Perfetto tree-structured data.
-    Tree,
-    /// Perfetto graph-structured data.
-    Graph,
-}
-
-/// The semantic role assigned to an AST node type.
-///
-/// Generated from `semantic { ... }` annotations in `.synq` files and stored
-/// in a static array indexed by node tag. `Transparent` means the engine
-/// recurses into children without special handling.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SemanticRole {
-    // ── Catalog roles ─────────────────────────────────────────────────────
-    /// CREATE TABLE statement: registers a table in the catalog.
-    DefineTable {
-        /// Field index of the table name.
-        name: FieldIdx,
-        /// Field index of the column-definition list, if present.
-        columns: Option<FieldIdx>,
-        /// Field index of an AS-SELECT body, if present.
-        select: Option<FieldIdx>,
-    },
-    /// CREATE VIEW statement: registers a view in the catalog.
-    DefineView {
-        /// Field index of the view name.
-        name: FieldIdx,
-        /// Field index of the optional declared column list.
-        columns: Option<FieldIdx>,
-        /// Field index of the SELECT body.
-        select: FieldIdx,
-    },
-    /// CREATE FUNCTION statement: registers a function in the catalog.
-    DefineFunction {
-        /// Field index of the function name.
-        name: FieldIdx,
-        /// Field index of the argument list, if present.
-        args: Option<FieldIdx>,
-        /// Optional field index of a return-type child node.
-        /// The accumulator looks up that child's [`SemanticRole`] and dispatches
-        /// on [`SemanticRole::ReturnSpec`] to determine if the function is
-        /// table-returning.
-        return_type: Option<FieldIdx>,
-    },
-    /// Annotates a return-type descriptor node (e.g. `PerfettoReturnType`).
-    ///
-    /// `columns` points to a column-list child; a non-null `NodeId` at runtime
-    /// means the enclosing function is table-returning. Any dialect with a
-    /// dedicated return-type descriptor node can use this role regardless of
-    /// how the surrounding syntax is structured.
-    ReturnSpec {
-        /// Field index of the column list child, or `None` if scalar-returning.
-        columns: Option<FieldIdx>,
-    },
-    /// Module import statement: registers an imported module name.
-    Import {
-        /// Field index of the module name.
-        module: FieldIdx,
-    },
-
-    // ── Column-list items — used during define_table column extraction ─────
-    /// A single column definition within a CREATE TABLE column list.
-    ColumnDef {
-        /// Field index of the column name.
-        name: FieldIdx,
-        /// Field index of the type annotation, if present.
-        type_: Option<FieldIdx>,
-        /// Field index of the constraint list, if present.
-        constraints: Option<FieldIdx>,
-    },
-
-    // ── Result columns — used during SELECT column inference ───────────────
-    /// A single result column in a SELECT list.
-    ResultColumn {
-        /// Field index of the flags bitfield (e.g. `STAR = 1`).
-        flags: FieldIdx,
-        /// Field index of the alias, if present.
-        alias: FieldIdx,
-        /// Field index of the value expression.
-        expr: FieldIdx,
-    },
-
-    // ── Expressions ───────────────────────────────────────────────────────
-    /// Function/aggregate/window call: validate name and arg count.
-    Call {
-        /// Field index of the function name.
-        name: FieldIdx,
-        /// Field index of the argument list.
-        args: FieldIdx,
-    },
-    /// Column reference: validate column and optional table qualifier.
-    ColumnRef {
-        /// Field index of the column name.
-        column: FieldIdx,
-        /// Field index of the optional table qualifier.
-        table: FieldIdx,
-    },
-
-    // ── Sources ───────────────────────────────────────────────────────────
-    /// Table/view reference in FROM — adds binding to current scope.
-    SourceRef {
-        /// The kind of relation being referenced.
-        kind: RelationKind,
-        /// Field index of the relation name.
-        name: FieldIdx,
-        /// Field index of the alias, if present.
-        alias: FieldIdx,
-    },
-    /// Subquery in FROM — opens a fresh scope, then binds alias in outer scope.
-    ScopedSource {
-        /// Field index of the subquery body.
-        body: FieldIdx,
-        /// Field index of the alias.
-        alias: FieldIdx,
-    },
-
-    // ── Scope structure ───────────────────────────────────────────────────
-    /// SELECT statement: process `from` first, then validate `exprs`.
-    Query {
-        /// Field index of the FROM clause.
-        from: FieldIdx,
-        /// Field index of the result-column list.
-        columns: FieldIdx,
-        /// Field index of the WHERE clause.
-        where_clause: FieldIdx,
-        /// Field index of the GROUP BY clause.
-        groupby: FieldIdx,
-        /// Field index of the HAVING clause.
-        having: FieldIdx,
-        /// Field index of the ORDER BY clause.
-        orderby: FieldIdx,
-        /// Field index of the LIMIT clause.
-        limit_clause: FieldIdx,
-    },
-    /// CTE definition: binds a name to a subquery body.
-    CteBinding {
-        /// Field index of the CTE name.
-        name: FieldIdx,
-        /// Optional declared column list (rename/alias for body result columns).
-        columns: Option<FieldIdx>,
-        /// Field index of the SELECT body.
-        body: FieldIdx,
-    },
-    /// WITH clause: sequential CTE scope wrapping a main query.
-    CteScope {
-        /// Field index of the RECURSIVE flag.
-        recursive: FieldIdx,
-        /// Field index of the CTE binding list.
-        bindings: FieldIdx,
-        /// Field index of the main query body.
-        body: FieldIdx,
-    },
-    /// CREATE TRIGGER: injects OLD/NEW into the trigger body scope.
-    TriggerScope {
-        /// Field index of the target table.
-        target: FieldIdx,
-        /// Field index of the WHEN expression.
-        when: FieldIdx,
-        /// Field index of the trigger body.
-        body: FieldIdx,
-    },
-
-    /// No semantic role — recurse into children generically.
-    Transparent,
-}
+pub use syntaqlite_common::roles::{FIELD_ABSENT, FieldIdx, RelationKind, SemanticRole};
 
 // ── Function catalog types ────────────────────────────────────────────────────
 
@@ -294,7 +118,7 @@ pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &AnyDial
 ///
 /// This bundles:
 /// - a typed grammar handle `G`
-/// - formatter bytecode tables
+/// - formatter bytecode tables (all C-native raw pointers)
 /// - semantic role table (indexed by node tag)
 ///
 /// Use [`AnyDialect`] (= `TypedDialect<AnyGrammar>`) when the grammar is
@@ -306,14 +130,32 @@ pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &AnyDial
 pub struct TypedDialect<G: TypedGrammar> {
     grammar: G,
 
-    // Formatter data — Rust-generated statics.
-    fmt_strings: &'static [&'static str],
-    fmt_enum_display: &'static [u16],
-    fmt_ops: &'static [u8],
-    fmt_dispatch: &'static [u32],
+    // Formatter data — all C-native raw pointers from dialect.c exports.
+    //
+    // String table uses CSR encoding: flat `uint8_t` byte buffer + `uint32_t`
+    // offsets array with `fmt_str_count + 1` entries (offsets[N] = total byte count).
+    // All other arrays are plain flat arrays.
+    //
+    // Invariant: if non-null, each pointer points into static data (built-in binary)
+    // or into a shared library kept alive by `_keep_alive` (dynamic dialects).
+    fmt_str_data: *const u8,
+    fmt_str_offsets: *const u32, // fmt_str_count + 1 entries
+    fmt_str_count: usize,
+    fmt_enum_display: *const u16,
+    fmt_enum_display_len: usize,
+    fmt_ops: *const u8,
+    fmt_ops_len: usize,
+    fmt_dispatch: *const u32,
+    fmt_dispatch_len: usize,
 
-    // Semantic role table — generated from `semantic { ... }` annotations.
-    roles: &'static [SemanticRole],
+    // Semantic role table — C-generated byte data.
+    //
+    // Points to an array of `SemanticRole` values generated by the C codegen
+    // pipeline (`dialect_roles.h`) and exposed via `syntaqlite_<name>_roles_data()`.
+    // Invariant: if non-null, `roles_ptr` points to `roles_len` consecutive valid
+    // `SemanticRole` values with the same `#[repr(C, u8)]` layout as this binary.
+    roles_ptr: *const SemanticRole,
+    roles_len: usize,
 
     /// Rust-side cflag set (all 42 flags, u64 bitset). Distinct from the
     /// C-ABI `SqliteSyntaxFlags` stored in the grammar — this covers
@@ -418,26 +260,45 @@ unsafe impl<G: TypedGrammar> Send for TypedDialect<G> {}
 unsafe impl<G: TypedGrammar> Sync for TypedDialect<G> {}
 
 impl<G: TypedGrammar> TypedDialect<G> {
-    /// Construct from a typed grammar + generated static tables.
+    /// Construct from a typed grammar with all C-native data pointers.
     ///
-    /// External dialect authors build a `TypedDialect<G>` and convert to
-    /// [`AnyDialect`] via `.into()` to pass to `Formatter`, `SemanticAnalyzer`,
-    /// or `LspHost`.
-    pub fn new(
+    /// All pointer arguments must point to data that lives at least as long as
+    /// this `TypedDialect` (use `'static` for built-in dialects).  Pass null
+    /// pointers / zero counts to indicate absent data (e.g. in tests or stubs).
+    ///
+    /// # Safety
+    ///
+    /// Each non-null pointer must be valid for `count` elements of its type,
+    /// properly aligned, and not aliased mutably for the lifetime of this value.
+    /// `fmt_str_offsets` must have `fmt_str_count + 1` entries.
+    #[allow(clippy::too_many_arguments)]
+    pub unsafe fn new(
         grammar: G,
-        fmt_strings: &'static [&'static str],
-        fmt_enum_display: &'static [u16],
-        fmt_ops: &'static [u8],
-        fmt_dispatch: &'static [u32],
-        roles: &'static [SemanticRole],
+        fmt_str_data: *const u8,
+        fmt_str_offsets: *const u32,
+        fmt_str_count: usize,
+        fmt_enum_display: *const u16,
+        fmt_enum_display_len: usize,
+        fmt_ops: *const u8,
+        fmt_ops_len: usize,
+        fmt_dispatch: *const u32,
+        fmt_dispatch_len: usize,
+        roles_ptr: *const SemanticRole,
+        roles_len: usize,
     ) -> Self {
         TypedDialect {
             grammar,
-            fmt_strings,
+            fmt_str_data,
+            fmt_str_offsets,
+            fmt_str_count,
             fmt_enum_display,
+            fmt_enum_display_len,
             fmt_ops,
+            fmt_ops_len,
             fmt_dispatch,
-            roles,
+            fmt_dispatch_len,
+            roles_ptr,
+            roles_len,
             ext_cflags: crate::util::SqliteFlags::default(),
             _keep_alive: None,
         }
@@ -450,12 +311,16 @@ impl<G: TypedGrammar> TypedDialect<G> {
 
     /// The semantic role table for this dialect, indexed by node tag.
     pub(crate) fn roles(&self) -> &'static [SemanticRole] {
-        self.roles
+        if self.roles_ptr.is_null() || self.roles_len == 0 {
+            return &[];
+        }
+        // SAFETY: invariant on roles_ptr/roles_len documented on the struct.
+        unsafe { std::slice::from_raw_parts(self.roles_ptr, self.roles_len) }
     }
 
     /// Whether this dialect has formatter data.
     pub(crate) fn has_fmt_data(&self) -> bool {
-        !self.fmt_strings.is_empty()
+        !self.fmt_str_data.is_null() && self.fmt_str_count > 0
     }
 
     /// Read the packed `fmt_dispatch` entry for a node tag.
@@ -463,11 +328,15 @@ impl<G: TypedGrammar> TypedDialect<G> {
         &self,
         tag: syntaqlite_syntax::any::AnyNodeTag,
     ) -> Option<(&[u8], usize)> {
-        let idx = u32::from(tag) as usize;
-        if idx >= self.fmt_dispatch.len() {
+        if self.fmt_dispatch.is_null() {
             return None;
         }
-        let packed = self.fmt_dispatch[idx];
+        let idx = u32::from(tag) as usize;
+        if idx >= self.fmt_dispatch_len {
+            return None;
+        }
+        // SAFETY: fmt_dispatch is non-null and idx < fmt_dispatch_len.
+        let packed = unsafe { *self.fmt_dispatch.add(idx) };
         let offset = (packed >> 16) as u16;
         let length = (packed & 0xFFFF) as u16;
         if offset == 0xFFFF {
@@ -475,30 +344,45 @@ impl<G: TypedGrammar> TypedDialect<G> {
         }
         let byte_offset = offset as usize * 6;
         let byte_len = length as usize * 6;
-        let slice = &self.fmt_ops[byte_offset..byte_offset + byte_len];
+        // SAFETY: fmt_ops is valid for fmt_ops_len bytes; dispatch entries are
+        // checked at codegen time to stay within bounds.
+        let slice = unsafe { std::slice::from_raw_parts(self.fmt_ops.add(byte_offset), byte_len) };
         Some((slice, length as usize))
     }
 
-    /// Look up a string from the fmt string table by index.
+    /// Look up a string from the fmt string table by index (CSR encoding).
     #[inline]
     pub(crate) fn fmt_string(&self, idx: u16) -> &'static str {
         let i = idx as usize;
         assert!(
-            i < self.fmt_strings.len(),
-            "string index {} out of bounds (count={})",
-            i,
-            self.fmt_strings.len(),
+            i < self.fmt_str_count,
+            "string index {i} out of bounds (count={})",
+            self.fmt_str_count
         );
-        self.fmt_strings[i]
+        // SAFETY: fmt_str_offsets has fmt_str_count + 1 entries.
+        let (start, end) = unsafe {
+            (
+                *self.fmt_str_offsets.add(i) as usize,
+                *self.fmt_str_offsets.add(i + 1) as usize,
+            )
+        };
+        // SAFETY: fmt_str_data is valid for the full string buffer; bytes are UTF-8 (codegen).
+        unsafe {
+            std::str::from_utf8_unchecked(std::slice::from_raw_parts(
+                self.fmt_str_data.add(start),
+                end - start,
+            ))
+        }
     }
 
     /// Look up a value in the enum display table.
     pub(crate) fn fmt_enum_display_val(&self, idx: usize) -> u16 {
         assert!(
-            idx < self.fmt_enum_display.len(),
-            "enum_display index {idx} out of bounds",
+            idx < self.fmt_enum_display_len,
+            "enum_display index {idx} out of bounds"
         );
-        self.fmt_enum_display[idx]
+        // SAFETY: fmt_enum_display is valid for fmt_enum_display_len entries.
+        unsafe { *self.fmt_enum_display.add(idx) }
     }
 }
 
@@ -513,9 +397,9 @@ impl AnyDialect {
     ///
     /// Dropping the last clone of the returned `Dialect` unloads the library.
     ///
-    /// Dynamically loaded dialects supply only the parser grammar; no formatter
-    /// bytecode or semantic role tables are present. This means `fmt` and
-    /// semantic validation are unavailable for dynamic dialects.
+    /// Also attempts to load `syntaqlite_<name>_roles_data` and
+    /// `syntaqlite_<name>_roles_count` for semantic validation; falls back to
+    /// empty roles if those symbols are absent.
     #[cfg(feature = "dynload")]
     pub fn load(path: &str, name: Option<&str>) -> Result<Self, String> {
         // SAFETY: We keep `lib` alive in an `Arc` below so the grammar pointer
@@ -543,18 +427,93 @@ impl AnyDialect {
         // SAFETY: `raw.template` points into the shared library kept alive by
         // `keep_alive`. Dropping the last Dialect clone unloads the library.
         let grammar = unsafe { AnyGrammar::new(raw) };
+        // Load semantic roles from the dynamic library (optional - falls back to
+        // empty if the dialect does not export the roles symbols).
+        let roles_data_sym = match name {
+            Some(n) => format!("syntaqlite_{n}_roles_data"),
+            None => "syntaqlite_roles_data".to_string(),
+        };
+        let roles_count_sym = match name {
+            Some(n) => format!("syntaqlite_{n}_roles_count"),
+            None => "syntaqlite_roles_count".to_string(),
+        };
+        // SAFETY: We call these functions immediately and do not retain the symbol.
+        // The returned pointer remains valid as long as the library is loaded,
+        // which is ensured by keep_alive below.
+        let (roles_ptr, roles_len) = unsafe {
+            let data_ptr = lib
+                .get::<unsafe extern "C" fn() -> *const u8>(roles_data_sym.as_bytes())
+                .ok()
+                .map(|f| f());
+            let count = lib
+                .get::<unsafe extern "C" fn() -> u32>(roles_count_sym.as_bytes())
+                .ok()
+                .map(|f| f());
+            match (data_ptr, count) {
+                (Some(ptr), Some(n)) if !ptr.is_null() => (ptr as *const SemanticRole, n as usize),
+                _ => (std::ptr::null(), 0),
+            }
+        };
+
+        // Load fmt tables from the dynamic library (optional).
+        let n = name.unwrap_or("");
+        macro_rules! sym_ptr {
+            ($suffix:expr, $t:ty) => {{
+                let sym_name = if n.is_empty() {
+                    format!("syntaqlite_{}", $suffix)
+                } else {
+                    format!("syntaqlite_{n}_{}", $suffix)
+                };
+                // SAFETY: lib is valid; symbol resolved and called immediately; result is static ptr.
+                unsafe {
+                    lib.get::<unsafe extern "C" fn() -> *const $t>(sym_name.as_bytes())
+                        .ok()
+                        .map(|f| f())
+                        .unwrap_or(std::ptr::null())
+                }
+            }};
+        }
+        macro_rules! sym_u32 {
+            ($suffix:expr) => {{
+                let sym_name = if n.is_empty() {
+                    format!("syntaqlite_{}", $suffix)
+                } else {
+                    format!("syntaqlite_{n}_{}", $suffix)
+                };
+                // SAFETY: lib is valid; symbol resolved and called immediately.
+                unsafe {
+                    lib.get::<unsafe extern "C" fn() -> u32>(sym_name.as_bytes())
+                        .ok()
+                        .map(|f| f())
+                        .unwrap_or(0) as usize
+                }
+            }};
+        }
+        let fmt_str_data = sym_ptr!("fmt_string_data", u8);
+        let fmt_str_offsets = sym_ptr!("fmt_string_offsets", u32);
+        let fmt_str_count = sym_u32!("fmt_string_count");
+        let fmt_enum_display = sym_ptr!("fmt_enum_display", u16);
+        let fmt_enum_display_len = sym_u32!("fmt_enum_display_count");
+        let fmt_ops = sym_ptr!("fmt_ops", u8);
+        let fmt_ops_len = sym_u32!("fmt_ops_count");
+        let fmt_dispatch = sym_ptr!("fmt_dispatch", u32);
+        let fmt_dispatch_len = sym_u32!("fmt_dispatch_count");
+
         let keep_alive: Arc<dyn Send + Sync> = Arc::new(lib);
 
-        // TODO(lalitm): dynamic dialects should also load formatter bytecode
-        // and semantic role tables from the shared library so that `fmt` and
-        // validation work for external dialects.
         Ok(TypedDialect {
             grammar,
-            fmt_strings: &[],
-            fmt_enum_display: &[],
-            fmt_ops: &[],
-            fmt_dispatch: &[],
-            roles: &[],
+            fmt_str_data,
+            fmt_str_offsets,
+            fmt_str_count,
+            fmt_enum_display,
+            fmt_enum_display_len,
+            fmt_ops,
+            fmt_ops_len,
+            fmt_dispatch,
+            fmt_dispatch_len,
+            roles_ptr,
+            roles_len,
             ext_cflags: crate::util::SqliteFlags::default(),
             _keep_alive: Some(keep_alive),
         })
@@ -620,11 +579,17 @@ impl<G: TypedGrammar> TypedDialect<G> {
     pub fn erase(self) -> AnyDialect {
         AnyDialect {
             grammar: self.grammar.into(),
-            fmt_strings: self.fmt_strings,
+            fmt_str_data: self.fmt_str_data,
+            fmt_str_offsets: self.fmt_str_offsets,
+            fmt_str_count: self.fmt_str_count,
             fmt_enum_display: self.fmt_enum_display,
+            fmt_enum_display_len: self.fmt_enum_display_len,
             fmt_ops: self.fmt_ops,
+            fmt_ops_len: self.fmt_ops_len,
             fmt_dispatch: self.fmt_dispatch,
-            roles: self.roles,
+            fmt_dispatch_len: self.fmt_dispatch_len,
+            roles_ptr: self.roles_ptr,
+            roles_len: self.roles_len,
             ext_cflags: self.ext_cflags,
             _keep_alive: self._keep_alive,
         }
@@ -638,15 +603,23 @@ mod tests {
     #[test]
     #[cfg(feature = "sqlite")]
     fn dialect_roles_returns_slice() {
-        // Build a typed dialect from the SQLite grammar, then erase to AnyDialect.
-        let typed = TypedDialect::new(
-            syntaqlite_syntax::typed::grammar(),
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-        );
+        // Build a typed dialect from the SQLite grammar with no data, then erase.
+        let typed = unsafe {
+            TypedDialect::new(
+                syntaqlite_syntax::typed::grammar(),
+                std::ptr::null(),
+                std::ptr::null(),
+                0, // fmt strings (CSR)
+                std::ptr::null(),
+                0, // fmt enum_display
+                std::ptr::null(),
+                0, // fmt ops
+                std::ptr::null(),
+                0, // fmt dispatch
+                std::ptr::null(),
+                0, // roles
+            )
+        };
         let d: AnyDialect = typed.erase();
         let roles: &[SemanticRole] = d.roles();
         assert!(roles.is_empty());
@@ -657,20 +630,22 @@ mod tests {
         let _ = SemanticRole::Transparent;
         let _ = SemanticRole::DefineTable {
             name: 0,
-            columns: None,
-            select: None,
+            columns: FIELD_ABSENT,
+            select: FIELD_ABSENT,
         };
         let _ = SemanticRole::DefineView {
             name: 0,
-            columns: None,
+            columns: FIELD_ABSENT,
             select: 1,
         };
         let _ = SemanticRole::DefineFunction {
             name: 0,
-            args: None,
-            return_type: None,
+            args: FIELD_ABSENT,
+            return_type: FIELD_ABSENT,
         };
-        let _ = SemanticRole::ReturnSpec { columns: None };
+        let _ = SemanticRole::ReturnSpec {
+            columns: FIELD_ABSENT,
+        };
         let _ = SemanticRole::Import { module: 0 };
     }
 

@@ -83,16 +83,12 @@ pub(crate) fn generate_sqlite_flag_rs() -> String {
     out.push_str("//! Compile-time feature flags for the `SQLite` dialect.\n\n");
 
     out.push_str("use syntaqlite_syntax::util::SqliteSyntaxFlag;\n\n");
-
     out.push_str("/// A compile-time feature flag for the `SQLite` dialect.\n");
     out.push_str("///\n");
     out.push_str("/// Pass a variant to [`crate::util::SqliteFlags::has`],\n");
     out.push_str(
         "/// [`crate::util::SqliteFlags::with`], or [`crate::util::SqliteFlags::without`].\n",
     );
-    out.push_str("///\n");
-    out.push_str("/// Parser-level flags (discriminants 0–21) correspond 1-to-1 with\n");
-    out.push_str("/// [`SqliteSyntaxFlag`] and the C compact `SYNQ_CFLAG_IDX_*` values.\n");
     out.push_str("#[repr(u32)]\n");
     out.push_str("#[derive(Debug, Clone, Copy, PartialEq, Eq)]\n");
     out.push_str("pub enum SqliteFlag {\n");
@@ -156,15 +152,21 @@ pub(crate) fn generate_sqlite_flag_rs() -> String {
 
     /// The corresponding [`SqliteSyntaxFlag`], if this is a parser-level flag.
     pub(crate) fn as_syntax_flag(self) -> Option<SqliteSyntaxFlag> {
-        if self.is_parser_flag() {
-            SqliteSyntaxFlag::from_index(self as u32)
-        } else {
-            None
-        }
-    }
-}
+        match self {
 "#,
     );
+    // Emit one arm per parser-category flag; all others map to None.
+    for &(name, _, cats) in CFLAG_REGISTRY {
+        if cats.contains(&"parser") {
+            let v = variant_name(name);
+            writeln!(out, "            Self::{v} => Some(SqliteSyntaxFlag::{v}),")
+                .expect("write to String");
+        }
+    }
+    out.push_str("            _ => None,\n");
+    out.push_str("        }\n");
+    out.push_str("    }\n");
+    out.push_str("}\n");
     out
 }
 

@@ -12,8 +12,4 @@ pub(crate) mod cflag_entries;
 #[cfg(feature = "sqlite")]
 pub(crate) mod dialect;
 #[cfg(feature = "sqlite")]
-pub(crate) mod fmt_statics;
-#[cfg(feature = "sqlite")]
 pub(crate) mod functions_catalog;
-#[cfg(feature = "sqlite")]
-pub(crate) mod semantic_roles;

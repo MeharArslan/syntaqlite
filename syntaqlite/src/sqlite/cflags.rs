@@ -10,9 +10,6 @@ use syntaqlite_syntax::util::SqliteSyntaxFlag;
 ///
 /// Pass a variant to [`crate::util::SqliteFlags::has`],
 /// [`crate::util::SqliteFlags::with`], or [`crate::util::SqliteFlags::without`].
-///
-/// Parser-level flags (discriminants 0–21) correspond 1-to-1 with
-/// [`SqliteSyntaxFlag`] and the C compact `SYNQ_CFLAG_IDX_*` values.
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SqliteFlag {
@@ -255,17 +252,6 @@ impl SqliteFlag {
         Self::ALL.iter().copied().find(|f| f.name() == s)
     }
 
-    /// Look up a flag by its full prefixed name
-    /// (e.g. `"SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC"`).
-    ///
-    /// Returns `Err` if the prefix is missing or the flag name is unknown.
-    pub fn from_prefixed_name(s: &str) -> Result<Self, String> {
-        let flag_name = s
-            .strip_prefix("SYNTAQLITE_CFLAG_")
-            .ok_or_else(|| format!("cflag name must start with 'SYNTAQLITE_CFLAG_', got '{s}'"))?;
-        Self::from_name(flag_name).ok_or_else(|| format!("unknown cflag: '{s}'"))
-    }
-
     /// All known flags in stable index order.
     pub(crate) fn all() -> &'static [Self] {
         Self::ALL
@@ -278,10 +264,32 @@ impl SqliteFlag {
 
     /// The corresponding [`SqliteSyntaxFlag`], if this is a parser-level flag.
     pub(crate) fn as_syntax_flag(self) -> Option<SqliteSyntaxFlag> {
-        if self.is_parser_flag() {
-            SqliteSyntaxFlag::from_index(self as u32)
-        } else {
-            None
+        match self {
+            Self::OmitAltertable => Some(SqliteSyntaxFlag::OmitAltertable),
+            Self::OmitAnalyze => Some(SqliteSyntaxFlag::OmitAnalyze),
+            Self::OmitAttach => Some(SqliteSyntaxFlag::OmitAttach),
+            Self::OmitAutoincrement => Some(SqliteSyntaxFlag::OmitAutoincrement),
+            Self::OmitCast => Some(SqliteSyntaxFlag::OmitCast),
+            Self::OmitCompoundSelect => Some(SqliteSyntaxFlag::OmitCompoundSelect),
+            Self::OmitCte => Some(SqliteSyntaxFlag::OmitCte),
+            Self::OmitExplain => Some(SqliteSyntaxFlag::OmitExplain),
+            Self::OmitForeignKey => Some(SqliteSyntaxFlag::OmitForeignKey),
+            Self::OmitGeneratedColumns => Some(SqliteSyntaxFlag::OmitGeneratedColumns),
+            Self::OmitPragma => Some(SqliteSyntaxFlag::OmitPragma),
+            Self::OmitReindex => Some(SqliteSyntaxFlag::OmitReindex),
+            Self::OmitReturning => Some(SqliteSyntaxFlag::OmitReturning),
+            Self::OmitSubquery => Some(SqliteSyntaxFlag::OmitSubquery),
+            Self::OmitTempdb => Some(SqliteSyntaxFlag::OmitTempdb),
+            Self::OmitTrigger => Some(SqliteSyntaxFlag::OmitTrigger),
+            Self::OmitVacuum => Some(SqliteSyntaxFlag::OmitVacuum),
+            Self::OmitView => Some(SqliteSyntaxFlag::OmitView),
+            Self::OmitVirtualtable => Some(SqliteSyntaxFlag::OmitVirtualtable),
+            Self::OmitWindowfunc => Some(SqliteSyntaxFlag::OmitWindowfunc),
+            Self::EnableOrderedSetAggregates => {
+                Some(SqliteSyntaxFlag::EnableOrderedSetAggregates)
+            }
+            Self::EnableUpdateDeleteLimit => Some(SqliteSyntaxFlag::EnableUpdateDeleteLimit),
+            _ => None,
         }
     }
 }

@@ -63,6 +63,8 @@ pub struct OutputLayout {
     pub runtime_tokens_h: CHeader,
     /// `SQLite` cflag index constants header (`cflags.h`).
     pub cflags_h: CHeader,
+    /// Semantic role byte array header (`dialect_roles.h`).
+    pub dialect_roles_h: CHeader,
 
     // ── Rust sources (src/) ─────────────────────────────────────────────────
     /// Rust token constants (`tokens.rs`).
@@ -77,10 +79,6 @@ pub struct OutputLayout {
     pub lib_rs: Option<String>,
     /// Functions catalog (`functions_catalog.rs`).
     pub functions_catalog_rs: Option<String>,
-    /// Semantic role table (`semantic_roles.rs`).
-    pub semantic_roles_rs: Option<String>,
-    /// Formatter statics (`fmt_statics.rs`).
-    pub fmt_statics_rs: Option<String>,
 
     // ── Crate root ───────────────────────────────────────────────────────────
     /// Build script (`build.rs`).
@@ -102,6 +100,7 @@ impl OutputLayout {
             tokenize_h: &self.tokenize_h.include,
             keyword_h: &self.keyword_h.include,
             tokens_header: &self.tokens_h.include,
+            dialect_roles_h: &self.dialect_roles_h.include,
         }
     }
 
@@ -139,9 +138,8 @@ impl OutputLayout {
                 write: Some(format!("{csrc}/dialect_meta.h")),
                 include: format!("{ip}dialect_meta.h"),
             },
-            // fmt data moved to Rust statics; do not generate dialect_fmt.h for SQLite
             dialect_fmt_h: CHeader {
-                write: None,
+                write: Some(format!("{csrc}/dialect_fmt.h")),
                 include: format!("{ip}dialect_fmt.h"),
             },
             dialect_tokens_h: CHeader {
@@ -190,6 +188,10 @@ impl OutputLayout {
                 write: Some(format!("{sc}/include/syntaqlite/cflags.h")),
                 include: "syntaqlite/cflags.h".to_string(),
             },
+            dialect_roles_h: CHeader {
+                write: Some(format!("{csrc}/dialect_roles.h")),
+                include: format!("{ip}dialect_roles.h"),
+            },
             // Rust: all in dialect_crate/src/sqlite/ subdirectory
             tokens_rs: Some(format!("{dc}/src/sqlite/tokens.rs")),
             ffi_rs: Some(format!("{dc}/src/sqlite/ffi.rs")),
@@ -197,8 +199,6 @@ impl OutputLayout {
             grammar_rs: Some(format!("{dc}/src/sqlite/grammar.rs")),
             lib_rs: None, // hand-maintained
             functions_catalog_rs: None,
-            semantic_roles_rs: Some("syntaqlite/src/sqlite/semantic_roles.rs".to_string()),
-            fmt_statics_rs: Some("syntaqlite/src/sqlite/fmt_statics.rs".to_string()),
             // Crate root: hand-maintained for the internal crate
             build_rs: None,
             cargo_toml: None,
@@ -274,14 +274,16 @@ impl OutputLayout {
                 write: None,
                 include: "syntaqlite/cflags.h".to_string(),
             },
+            dialect_roles_h: CHeader {
+                write: Some("csrc/dialect_roles.h".to_string()),
+                include: "dialect_roles.h".to_string(),
+            },
             tokens_rs: Some("src/tokens.rs".to_string()),
             ffi_rs: Some("src/ffi.rs".to_string()),
             ast_rs: Some("src/ast.rs".to_string()),
             grammar_rs: None, // grammar accessor lives in lib.rs for external dialects
             lib_rs: Some("src/lib.rs".to_string()),
             functions_catalog_rs: None,
-            semantic_roles_rs: None,
-            fmt_statics_rs: None,
             build_rs: Some("build.rs".to_string()),
             cargo_toml: Some("Cargo.toml".to_string()),
         }
@@ -358,14 +360,16 @@ impl OutputLayout {
                 write: None,
                 include: "syntaqlite/cflags.h".to_string(),
             },
+            dialect_roles_h: CHeader {
+                write: Some("csrc/dialect_roles.h".to_string()),
+                include: format!("{ip}dialect_roles.h"),
+            },
             tokens_rs: None,
             ffi_rs: None,
             ast_rs: None,
             grammar_rs: None,
             lib_rs: None,
             functions_catalog_rs: None,
-            semantic_roles_rs: None,
-            fmt_statics_rs: None,
             build_rs: None,
             cargo_toml: None,
         }
@@ -426,6 +430,7 @@ impl OutputLayout {
         }
         write(&self.runtime_tokens_h.write, &artifacts.runtime_tokens_h)?;
         write(&self.cflags_h.write, &artifacts.cflags_h)?;
+        write(&self.dialect_roles_h.write, &artifacts.dialect_roles_h)?;
 
         // Rust
         if let Some(rust) = artifacts.rust {
@@ -438,12 +443,6 @@ impl OutputLayout {
             write(&self.lib_rs, &rust.lib_rs)?;
             if let Some(ref content) = rust.functions_catalog_rs {
                 write(&self.functions_catalog_rs, content)?;
-            }
-            if let Some(ref content) = rust.semantic_roles_rs {
-                write(&self.semantic_roles_rs, content)?;
-            }
-            if let Some(ref content) = rust.fmt_statics_rs {
-                write(&self.fmt_statics_rs, content)?;
             }
             write(&self.build_rs, &rust.build_rs)?;
             write(&self.cargo_toml, &rust.cargo_toml)?;

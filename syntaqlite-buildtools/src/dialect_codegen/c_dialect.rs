@@ -30,6 +30,8 @@ pub struct DialectCIncludes<'a> {
     pub keyword_h: &'a str,
     /// Include path for the tokens header (the `SYNTAQLITE_TK_*` defines).
     pub tokens_header: &'a str,
+    /// Include path for `dialect_roles.h` (semantic role byte array).
+    pub dialect_roles_h: &'a str,
 }
 
 /// Classify a token name into a `TokenCategory` byte value.
@@ -115,6 +117,12 @@ pub(crate) fn generate_dialect_c(
     }
     w.include_local(includes.parse_api_h);
     w.include_local(includes.tokenize_h);
+    if !includes.dialect_fmt_h.is_empty() {
+        w.include_local(includes.dialect_fmt_h);
+    }
+    if !includes.dialect_roles_h.is_empty() {
+        w.include_local(includes.dialect_roles_h);
+    }
     w.newline();
 
     if tokens.is_some() {
@@ -212,6 +220,56 @@ pub(crate) fn generate_dialect_c(
     ));
     w.line("  return g;");
     w.line("}");
+
+    if !includes.dialect_fmt_h.is_empty() {
+        w.newline();
+        let p = format!("{dialect}_fmt");
+        for (ret, sym, field) in [
+            (
+                "const uint8_t *",
+                "fmt_string_data",
+                format!("{p}_string_data"),
+            ),
+            (
+                "const uint32_t *",
+                "fmt_string_offsets",
+                format!("{p}_string_offsets"),
+            ),
+            ("uint32_t", "fmt_string_count", format!("{p}_string_count")),
+            (
+                "const uint16_t *",
+                "fmt_enum_display",
+                format!("{p}_enum_display"),
+            ),
+            (
+                "uint32_t",
+                "fmt_enum_display_count",
+                format!("{p}_enum_display_count"),
+            ),
+            ("const uint8_t *", "fmt_ops", format!("{p}_ops")),
+            ("uint32_t", "fmt_ops_count", format!("{p}_ops_count")),
+            ("const uint32_t *", "fmt_dispatch", format!("{p}_dispatch")),
+            (
+                "uint32_t",
+                "fmt_dispatch_count",
+                format!("{p}_dispatch_count"),
+            ),
+        ] {
+            w.line(&format!(
+                "{ret} syntaqlite_{dialect}_{sym}(void) {{ return {field}; }}"
+            ));
+        }
+    }
+
+    if !includes.dialect_roles_h.is_empty() {
+        w.newline();
+        w.line(&format!(
+            "const uint8_t * syntaqlite_{dialect}_roles_data(void) {{ return {dialect}_roles_data; }}"
+        ));
+        w.line(&format!(
+            "uint32_t syntaqlite_{dialect}_roles_count(void) {{ return {dialect}_roles_count; }}"
+        ));
+    }
 
     w.finish()
 }
@@ -385,6 +443,7 @@ mod tests {
             tokenize_h: "sqlite_tokenize.h",
             keyword_h: "sqlite_keyword.h",
             tokens_header: "syntaqlite_sqlite/sqlite_tokens.h",
+            dialect_roles_h: "",
         }
     }
 
@@ -547,12 +606,13 @@ mod tests {
             tokenize_h: "csrc/sqlite/sqlite_tokenize.h",
             keyword_h: "csrc/sqlite/sqlite_keyword.h",
             tokens_header: "syntaqlite_sqlite/sqlite_tokens.h",
+            dialect_roles_h: "",
         };
         let c = generate_dialect_c("sqlite", None, &includes);
         // Internal headers use the full csrc/sqlite/ path
         assert!(c.contains("\"csrc/sqlite/dialect_meta.h\""));
-        // fmt and builder headers are no longer included in dialect.c
-        assert!(!c.contains("\"csrc/sqlite/dialect_fmt.h\""));
+        // fmt header is included; builder is not (it's only for AST construction, not dialect.c)
+        assert!(c.contains("\"csrc/sqlite/dialect_fmt.h\""));
         assert!(!c.contains("\"csrc/sqlite/dialect_builder.h\""));
         // Public headers are hardcoded
         assert!(c.contains("\"syntaqlite/parser.h\""));
@@ -564,10 +624,10 @@ mod tests {
     #[test]
     fn dialect_c_default_includes_no_prefix() {
         let c = generate_dialect_c("sqlite", None, &default_includes());
-        // Default: meta header included, fmt/builder not included
+        // Default: meta and fmt headers included; builder is not
         assert!(c.contains("\"dialect_meta.h\""));
         assert!(!c.contains("\"dialect_builder.h\""));
-        assert!(!c.contains("\"dialect_fmt.h\""));
+        assert!(c.contains("\"dialect_fmt.h\""));
         assert!(c.contains("\"syntaqlite/parser.h\""));
         assert!(c.contains("\"syntaqlite_sqlite/sqlite_tokens.h\""));
     }

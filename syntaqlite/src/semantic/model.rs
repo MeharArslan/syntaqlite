@@ -3,8 +3,8 @@
 
 //! Result types for a single semantic analysis pass.
 
-use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
 use syntaqlite_syntax::ParserTokenFlags;
+use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
 
 use super::diagnostics::Diagnostic;
 

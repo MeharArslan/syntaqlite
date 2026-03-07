@@ -5,14 +5,14 @@
 
 use std::collections::HashSet;
 
+use syntaqlite_syntax::ParserConfig;
 use syntaqlite_syntax::any::{
-    AnyNodeId, AnyParseError, AnyParser, AnyParsedStatement, AnyTokenType, FieldValue, NodeFields,
+    AnyNodeId, AnyParseError, AnyParsedStatement, AnyParser, AnyTokenType, FieldValue, NodeFields,
     ParseOutcome,
 };
-use syntaqlite_syntax::ParserConfig;
 
 use crate::dialect::AnyDialect;
-use crate::dialect::SemanticRole;
+use crate::dialect::{FIELD_ABSENT, SemanticRole};
 
 use super::ValidationConfig;
 use super::catalog::{
@@ -720,18 +720,22 @@ impl<'a> ValidationPass<'a> {
             let cte_body_id = Self::field_node_id(&cte_fields, cte_body_idx);
 
             // Extract declared column names (if a column list is present).
-            let declared_cols: Option<Vec<&'a str>> = columns_field_idx.and_then(|cidx| {
-                let list_id = Self::field_node_id(&cte_fields, cidx)?;
-                let children = stmt.list_children(list_id)?;
-                let names: Vec<&'a str> = children
-                    .iter()
-                    .copied()
-                    .filter(|id| !id.is_null())
-                    .map(|id| self.name_text(stmt, Some(id)))
-                    .filter(|s| !s.is_empty())
-                    .collect();
-                if names.is_empty() { None } else { Some(names) }
-            });
+            let declared_cols: Option<Vec<&'a str>> = if columns_field_idx != FIELD_ABSENT {
+                (|| -> Option<Vec<&'a str>> {
+                    let list_id = Self::field_node_id(&cte_fields, columns_field_idx)?;
+                    let children = stmt.list_children(list_id)?;
+                    let names: Vec<&'a str> = children
+                        .iter()
+                        .copied()
+                        .filter(|id| !id.is_null())
+                        .map(|id| self.name_text(stmt, Some(id)))
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    if names.is_empty() { None } else { Some(names) }
+                })()
+            } else {
+                None
+            };
 
             // For recursive CTEs, register the name before visiting the body.
             if is_recursive && !cte_name.is_empty() {

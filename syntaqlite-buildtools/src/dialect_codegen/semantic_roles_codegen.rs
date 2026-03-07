@@ -1,16 +1,33 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Codegen for the `SemanticRole` static table.
+//! Codegen for the semantic role byte table.
 //!
-//! `generate_rust_semantic_roles` emits a `&[SemanticRole]` static indexed by
-//! node tag, one entry per node-like item (node or list) in the dialect's AST
-//! model. Nodes without a `semantic { ... }` annotation emit `Transparent`.
+//! `generate_c_roles_h` emits a C header containing the role data as a flat
+//! `uint8_t` byte array.  The layout matches `SemanticRole`'s `#[repr(C, u8)]`
+//! representation exactly (discriminant in byte 0, payload bytes in bytes 1–N,
+//! zero-padded to `size_of::<SemanticRole>()` = 8 bytes per entry).
+//!
+//! The header is included by `dialect.c`, which re-exports the data through
+//! two non-static C symbols so Rust can link to them:
+//!
+//! ```c
+//! const uint8_t *syntaqlite_<name>_roles_data(void);
+//! uint32_t       syntaqlite_<name>_roles_count(void);
+//! ```
+//!
+//! On the Rust side, `TypedDialect::roles()` casts the pointer directly to
+//! `&[SemanticRole]` — zero-decode cost.
+
+use std::mem::size_of;
+
+use syntaqlite_common::roles::{FIELD_ABSENT, RelationKind, SemanticRole};
 
 use super::AstModel;
-use crate::util::rust_writer::RustWriter;
-
+use crate::util::c_writer::CWriter;
 use crate::util::synq_parser::{Field, SemanticRole as SynqRole};
+
+const ROLE_SIZE: usize = size_of::<SemanticRole>();
 
 /// Return the 0-based index of `field_name` in the node's field list.
 fn field_index(fields: &[Field], field_name: &str) -> u8 {
@@ -20,101 +37,144 @@ fn field_index(fields: &[Field], field_name: &str) -> u8 {
         .unwrap_or_else(|| panic!("field '{field_name}' not found in field list")) as u8
 }
 
-/// Emit a single `SemanticRole` variant expression for an annotated node.
-fn emit_role(fields: &[Field], role: &SynqRole) -> String {
+/// Construct the raw bytes for a `SemanticRole` in a deterministic way:
+/// byte 0 is the discriminant (read from a Rust-constructed value of that
+/// variant), bytes 1–N are the payload fields explicitly, and all remaining
+/// bytes are zero (no undefined padding sneaking in).
+fn role_to_bytes(fields: &[Field], synq_role: Option<&SynqRole>) -> [u8; ROLE_SIZE] {
     let fi = |name: &str| field_index(fields, name);
-    let opt = |name: &Option<String>| -> String {
-        match name {
-            Some(f) => format!("Some({})", fi(f)),
-            None => "None".into(),
-        }
+    let opt = |name: &Option<String>| name.as_ref().map_or(FIELD_ABSENT, |n| fi(n));
+
+    // Helper: read the discriminant from a constructed SemanticRole value.
+    // With #[repr(C, u8)], byte 0 is always the discriminant tag.
+    let disc = |role: SemanticRole| -> u8 {
+        // SAFETY: #[repr(C, u8)] guarantees byte 0 is the discriminant.
+        unsafe { *(&role as *const SemanticRole as *const u8) }
     };
+
+    let mut bytes = [0u8; ROLE_SIZE];
+
+    let Some(role) = synq_role else {
+        // No annotation → Transparent.
+        bytes[0] = disc(SemanticRole::Transparent);
+        return bytes;
+    };
+
     match role {
         // ── Catalog roles ────────────────────────────────────────────────
         SynqRole::DefineTable {
             name,
             columns,
             select,
-        } => format!(
-            "SemanticRole::DefineTable {{ name: {}, columns: {}, select: {} }}",
-            fi(name),
-            opt(columns),
-            opt(select)
-        ),
+        } => {
+            bytes[0] = disc(SemanticRole::DefineTable {
+                name: 0,
+                columns: 0,
+                select: 0,
+            });
+            bytes[1] = fi(name);
+            bytes[2] = opt(columns);
+            bytes[3] = opt(select);
+        }
         SynqRole::DefineView {
             name,
             columns,
             select,
-        } => format!(
-            "SemanticRole::DefineView {{ name: {}, columns: {}, select: {} }}",
-            fi(name),
-            opt(columns),
-            fi(select)
-        ),
+        } => {
+            bytes[0] = disc(SemanticRole::DefineView {
+                name: 0,
+                columns: 0,
+                select: 0,
+            });
+            bytes[1] = fi(name);
+            bytes[2] = opt(columns);
+            bytes[3] = fi(select);
+        }
         SynqRole::DefineFunction {
             name,
             args,
             return_type,
-        } => format!(
-            "SemanticRole::DefineFunction {{ name: {}, args: {}, return_type: {} }}",
-            fi(name),
-            opt(args),
-            opt(return_type)
-        ),
-        SynqRole::ReturnSpec { columns } => {
-            format!("SemanticRole::ReturnSpec {{ columns: {} }}", opt(columns))
+        } => {
+            bytes[0] = disc(SemanticRole::DefineFunction {
+                name: 0,
+                args: 0,
+                return_type: 0,
+            });
+            bytes[1] = fi(name);
+            bytes[2] = opt(args);
+            bytes[3] = opt(return_type);
         }
-        SynqRole::Import { module } => format!("SemanticRole::Import {{ module: {} }}", fi(module)),
+        SynqRole::ReturnSpec { columns } => {
+            bytes[0] = disc(SemanticRole::ReturnSpec { columns: 0 });
+            bytes[1] = opt(columns);
+        }
+        SynqRole::Import { module } => {
+            bytes[0] = disc(SemanticRole::Import { module: 0 });
+            bytes[1] = fi(module);
+        }
         // ── Column-list items ─────────────────────────────────────────────
         SynqRole::ColumnDef {
             name,
             type_name,
             constraints,
-        } => format!(
-            "SemanticRole::ColumnDef {{ name: {}, type_: {}, constraints: {} }}",
-            fi(name),
-            opt(type_name),
-            opt(constraints)
-        ),
+        } => {
+            bytes[0] = disc(SemanticRole::ColumnDef {
+                name: 0,
+                type_: 0,
+                constraints: 0,
+            });
+            bytes[1] = fi(name);
+            bytes[2] = opt(type_name);
+            bytes[3] = opt(constraints);
+        }
         // ── Result columns ────────────────────────────────────────────────
-        SynqRole::ResultColumn { flags, alias, expr } => format!(
-            "SemanticRole::ResultColumn {{ flags: {}, alias: {}, expr: {} }}",
-            fi(flags),
-            fi(alias),
-            fi(expr)
-        ),
+        SynqRole::ResultColumn { flags, alias, expr } => {
+            bytes[0] = disc(SemanticRole::ResultColumn {
+                flags: 0,
+                alias: 0,
+                expr: 0,
+            });
+            bytes[1] = fi(flags);
+            bytes[2] = fi(alias);
+            bytes[3] = fi(expr);
+        }
         // ── Expressions ───────────────────────────────────────────────────
-        SynqRole::Call { name, args } => format!(
-            "SemanticRole::Call {{ name: {}, args: {} }}",
-            fi(name),
-            fi(args)
-        ),
-        SynqRole::ColumnRef { column, table } => format!(
-            "SemanticRole::ColumnRef {{ column: {}, table: {} }}",
-            fi(column),
-            fi(table)
-        ),
+        SynqRole::Call { name, args } => {
+            bytes[0] = disc(SemanticRole::Call { name: 0, args: 0 });
+            bytes[1] = fi(name);
+            bytes[2] = fi(args);
+        }
+        SynqRole::ColumnRef { column, table } => {
+            bytes[0] = disc(SemanticRole::ColumnRef {
+                column: 0,
+                table: 0,
+            });
+            bytes[1] = fi(column);
+            bytes[2] = fi(table);
+        }
         // ── Sources ───────────────────────────────────────────────────────
         SynqRole::SourceRef { kind, name, alias } => {
-            let kind_variant = match kind.as_str() {
-                "table" => "RelationKind::Table",
-                "view" => "RelationKind::View",
-                "interval" => "RelationKind::Interval",
-                "tree" => "RelationKind::Tree",
-                "graph" => "RelationKind::Graph",
+            bytes[0] = disc(SemanticRole::SourceRef {
+                kind: RelationKind::Table,
+                name: 0,
+                alias: 0,
+            });
+            bytes[1] = match kind.as_str() {
+                "table" => RelationKind::Table as u8,
+                "view" => RelationKind::View as u8,
+                "interval" => RelationKind::Interval as u8,
+                "tree" => RelationKind::Tree as u8,
+                "graph" => RelationKind::Graph as u8,
                 other => panic!("unknown RelationKind literal '{other}' in source_ref"),
             };
-            format!(
-                "SemanticRole::SourceRef {{ kind: {kind_variant}, name: {}, alias: {} }}",
-                fi(name),
-                fi(alias)
-            )
+            bytes[2] = fi(name);
+            bytes[3] = fi(alias);
         }
-        SynqRole::ScopedSource { body, alias } => format!(
-            "SemanticRole::ScopedSource {{ body: {}, alias: {} }}",
-            fi(body),
-            fi(alias)
-        ),
+        SynqRole::ScopedSource { body, alias } => {
+            bytes[0] = disc(SemanticRole::ScopedSource { body: 0, alias: 0 });
+            bytes[1] = fi(body);
+            bytes[2] = fi(alias);
+        }
         // ── Scope structure ───────────────────────────────────────────────
         SynqRole::Query {
             from,
@@ -124,87 +184,125 @@ fn emit_role(fields: &[Field], role: &SynqRole) -> String {
             having,
             orderby,
             limit_clause,
-        } => format!(
-            "SemanticRole::Query {{ from: {}, columns: {}, where_clause: {}, groupby: {}, having: {}, orderby: {}, limit_clause: {} }}",
-            fi(from),
-            fi(columns),
-            fi(where_clause),
-            fi(groupby),
-            fi(having),
-            fi(orderby),
-            fi(limit_clause)
-        ),
+        } => {
+            bytes[0] = disc(SemanticRole::Query {
+                from: 0,
+                columns: 0,
+                where_clause: 0,
+                groupby: 0,
+                having: 0,
+                orderby: 0,
+                limit_clause: 0,
+            });
+            bytes[1] = fi(from);
+            bytes[2] = fi(columns);
+            bytes[3] = fi(where_clause);
+            bytes[4] = fi(groupby);
+            bytes[5] = fi(having);
+            bytes[6] = fi(orderby);
+            bytes[7] = fi(limit_clause);
+        }
         SynqRole::CteBinding {
             name,
             columns,
             body,
-        } => format!(
-            "SemanticRole::CteBinding {{ name: {}, columns: {}, body: {} }}",
-            fi(name),
-            opt(columns),
-            fi(body)
-        ),
+        } => {
+            bytes[0] = disc(SemanticRole::CteBinding {
+                name: 0,
+                columns: 0,
+                body: 0,
+            });
+            bytes[1] = fi(name);
+            bytes[2] = opt(columns);
+            bytes[3] = fi(body);
+        }
         SynqRole::CteScope {
             recursive,
             bindings,
             body,
-        } => format!(
-            "SemanticRole::CteScope {{ recursive: {}, bindings: {}, body: {} }}",
-            fi(recursive),
-            fi(bindings),
-            fi(body)
-        ),
-        SynqRole::TriggerScope { target, when, body } => format!(
-            "SemanticRole::TriggerScope {{ target: {}, when: {}, body: {} }}",
-            fi(target),
-            fi(when),
-            fi(body)
-        ),
+        } => {
+            bytes[0] = disc(SemanticRole::CteScope {
+                recursive: 0,
+                bindings: 0,
+                body: 0,
+            });
+            bytes[1] = fi(recursive);
+            bytes[2] = fi(bindings);
+            bytes[3] = fi(body);
+        }
+        SynqRole::TriggerScope { target, when, body } => {
+            bytes[0] = disc(SemanticRole::TriggerScope {
+                target: 0,
+                when: 0,
+                body: 0,
+            });
+            bytes[1] = fi(target);
+            bytes[2] = fi(when);
+            bytes[3] = fi(body);
+        }
     }
+
+    bytes
 }
 
-/// Generate a Rust source file containing the `{PREFIX}_SEMANTIC_ROLES` static.
+/// Generate a C header file containing the semantic role byte array for a dialect.
 ///
-/// `prefix` should be uppercase (e.g. `"SQLITE"`), matching the naming
-/// convention used by the other formatter statics.
-pub(crate) fn generate_rust_semantic_roles(model: &AstModel, prefix: &str) -> String {
-    let mut w = RustWriter::new();
+/// The output defines:
+/// - `static const uint8_t <prefix>_roles_data[N * ROLE_SIZE]` — packed role bytes,
+/// - `static const uint32_t <prefix>_roles_count` — number of `SemanticRole` entries.
+///
+/// `prefix` should be lowercase (e.g. `"sqlite"`), matching the dialect name.
+/// The C symbols `syntaqlite_<prefix>_roles_data()` and
+/// `syntaqlite_<prefix>_roles_count()` are exposed in `dialect.c`.
+pub(crate) fn generate_c_roles_h(model: &AstModel, prefix: &str) -> String {
+    let upper = prefix.to_uppercase();
+    let guard = format!("SYNTAQLITE_{upper}_DIALECT_ROLES_H");
+
+    let mut w = CWriter::new();
     w.file_header();
-
-    w.lines(&format!(
-        "use crate::dialect::{{RelationKind, SemanticRole}};\n\
-         \n\
-         /// Semantic role table for the `{prefix}` dialect, indexed by node tag.\n\
-         /// Tags are 1-based; index 0 is an unused sentinel.\n\
-         pub(crate) static {prefix}_SEMANTIC_ROLES: &[SemanticRole] = &["
+    w.header_guard_start(&guard);
+    w.include_system("stdint.h");
+    w.newline();
+    w.line(&format!(
+        "/* Semantic role byte array for the {prefix} dialect. */\n\
+         /* Each entry is {ROLE_SIZE} bytes: 1 discriminant + up to 7 payload bytes. */"
     ));
+    w.newline();
 
-    // Index 0 is unused — node tags start at 1.
-    w.lines("    SemanticRole::Transparent, // (index 0 — unused sentinel)");
+    // Collect all entries.
+    let mut all_bytes: Vec<u8> = Vec::new();
+    let mut count: u32 = 0;
+
+    // Entry 0 — unused sentinel (Transparent).
+    let transparent_bytes = role_to_bytes(&[], None);
+    all_bytes.extend_from_slice(&transparent_bytes);
+    count += 1;
 
     for node_like in model.node_like_items() {
         use super::NodeLikeRef;
-        let (item_name, semantic) = match node_like {
-            NodeLikeRef::Node(n) => (n.name, n.semantic),
-            NodeLikeRef::List(l) => (l.name, None),
+        let (fields, synq_role) = match node_like {
+            NodeLikeRef::Node(n) => (n.fields, n.semantic.map(|s| &s.role)),
+            NodeLikeRef::List(_) => (&[][..], None),
         };
-
-        let role_expr = match semantic.map(|a| &a.role) {
-            Some(role) => {
-                // Get the fields for this node (lists have no semantic annotation).
-                let fields = match node_like {
-                    NodeLikeRef::Node(n) => n.fields,
-                    NodeLikeRef::List(_) => unreachable!("lists never have semantic annotations"),
-                };
-                emit_role(fields, role)
-            }
-            None => "SemanticRole::Transparent".into(),
-        };
-
-        w.lines(&format!("    {role_expr}, // {item_name}"));
+        let entry = role_to_bytes(fields, synq_role);
+        all_bytes.extend_from_slice(&entry);
+        count += 1;
     }
 
-    w.lines("];");
+    // Emit the byte array.
+    w.line(&format!("static const uint8_t {prefix}_roles_data[] = {{"));
+    // 8 bytes per line (one role per line).
+    for chunk in all_bytes.chunks(ROLE_SIZE) {
+        let vals: Vec<String> = chunk.iter().map(|b| format!("0x{b:02x}")).collect();
+        w.line(&format!("    {},", vals.join(",")));
+    }
+    w.line("};");
+    w.newline();
+    w.line(&format!(
+        "static const uint32_t {prefix}_roles_count = {count};"
+    ));
+    w.newline();
+    w.header_guard_end(&guard);
     w.finish()
 }
 
@@ -218,16 +316,50 @@ mod tests {
         parse_synq_file(synq).expect("parse failed")
     }
 
+    /// Cast a byte buffer back to a slice of `SemanticRole` values for assertion.
+    ///
+    /// # Safety
+    /// The caller must ensure `bytes` was produced by `generate_c_roles_h` with
+    /// the same `SemanticRole` `#[repr(C, u8)]` layout as the current binary.
+    unsafe fn bytes_to_roles(bytes: &[u8]) -> &[SemanticRole] {
+        assert_eq!(bytes.len() % ROLE_SIZE, 0);
+        // SAFETY: caller guarantees bytes were produced with the same SemanticRole repr
+        unsafe {
+            std::slice::from_raw_parts(
+                bytes.as_ptr() as *const SemanticRole,
+                bytes.len() / ROLE_SIZE,
+            )
+        }
+    }
+
+    /// Extract the raw role bytes from a generated header string.
+    fn extract_bytes_from_header(header: &str, prefix: &str) -> Vec<u8> {
+        let start_marker = format!("static const uint8_t {prefix}_roles_data[] = {{");
+        let start = header.find(&start_marker).expect("data array not found") + start_marker.len();
+        let end = header[start..].find("};").expect("closing brace not found") + start;
+        let body = &header[start..end];
+        let mut out = Vec::new();
+        // Values are comma-separated with no spaces between them on each line.
+        for tok in body.split(|c: char| c == ',' || c.is_whitespace()) {
+            let tok = tok.trim();
+            if tok.starts_with("0x") || tok.starts_with("0X") {
+                out.push(u8::from_str_radix(&tok[2..], 16).expect("invalid hex byte"));
+            }
+        }
+        out
+    }
+
     #[test]
     fn transparent_for_node_without_annotation() {
         let items = model_from("node Foo { x: inline SyntaqliteSourceSpan }");
         let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        assert!(out.contains("SemanticRole::Transparent"), "got:\n{out}");
-        assert!(
-            out.contains("// Foo"),
-            "expected node name comment, got:\n{out}"
-        );
+        let header = generate_c_roles_h(&model, "test");
+        let bytes = extract_bytes_from_header(&header, "test");
+        // 2 entries: sentinel + Foo
+        assert_eq!(bytes.len(), 2 * ROLE_SIZE);
+        let roles = unsafe { bytes_to_roles(&bytes) };
+        assert_eq!(roles[0], SemanticRole::Transparent); // sentinel
+        assert_eq!(roles[1], SemanticRole::Transparent); // Foo — no annotation
     }
 
     #[test]
@@ -242,22 +374,22 @@ mod tests {
             }",
         );
         let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        // table_name = field 0, columns = field 2, as_select = field 3
-        assert!(
-            out.contains(
-                "SemanticRole::DefineTable { name: 0, columns: Some(2), select: Some(3) }"
-            ),
-            "got:\n{out}"
-        );
-        assert!(
-            out.contains("// CreateTableStmt"),
-            "expected node name comment, got:\n{out}"
+        let header = generate_c_roles_h(&model, "test");
+        let bytes = extract_bytes_from_header(&header, "test");
+        let roles = unsafe { bytes_to_roles(&bytes) };
+        // table_name = 0, columns = 2, as_select = 3
+        assert_eq!(
+            roles[1],
+            SemanticRole::DefineTable {
+                name: 0,
+                columns: 2,
+                select: 3
+            }
         );
     }
 
     #[test]
-    fn define_table_optional_fields_are_none_when_absent() {
+    fn define_table_optional_fields_absent_when_not_given() {
         let items = model_from(
             r"node CreateTableStmt {
                 table_name: inline SyntaqliteSourceSpan
@@ -265,10 +397,16 @@ mod tests {
             }",
         );
         let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        assert!(
-            out.contains("SemanticRole::DefineTable { name: 0, columns: None, select: None }"),
-            "got:\n{out}"
+        let header = generate_c_roles_h(&model, "test");
+        let bytes = extract_bytes_from_header(&header, "test");
+        let roles = unsafe { bytes_to_roles(&bytes) };
+        assert_eq!(
+            roles[1],
+            SemanticRole::DefineTable {
+                name: 0,
+                columns: FIELD_ABSENT,
+                select: FIELD_ABSENT
+            }
         );
     }
 
@@ -283,117 +421,17 @@ mod tests {
             }",
         );
         let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        // view_name = 0, select = 2, no columns
-        assert!(
-            out.contains("SemanticRole::DefineView { name: 0, columns: None, select: 2 }"),
-            "got:\n{out}"
-        );
-    }
-
-    #[test]
-    fn define_view_with_explicit_columns() {
-        let items = model_from(
-            r"node CreatePerfettoViewStmt {
-                view_name: inline SyntaqliteSourceSpan
-                schema: index PerfettoArgDefList
-                select: index Select
-                semantic { define_view(name: view_name, columns: schema, select: select) }
-            }",
-        );
-        let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        // view_name = 0, schema = 1, select = 2
-        assert!(
-            out.contains("SemanticRole::DefineView { name: 0, columns: Some(1), select: 2 }"),
-            "got:\n{out}"
-        );
-    }
-
-    #[test]
-    fn define_function_with_optional_args() {
-        let items = model_from(
-            r"node CreateFunctionStmt {
-                func_name: inline SyntaqliteSourceSpan
-                args: index ArgList
-                semantic { define_function(name: func_name, args: args) }
-            }",
-        );
-        let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        assert!(
-            out.contains(
-                "SemanticRole::DefineFunction { name: 0, args: Some(1), return_type: None }"
-            ),
-            "got:\n{out}"
-        );
-    }
-
-    #[test]
-    fn return_spec_with_table_columns() {
-        let items = model_from(
-            r"node ReturnType {
-                cols: index ColList
-                semantic { return_spec(table_columns: cols) }
-            }",
-        );
-        let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        assert!(
-            out.contains("SemanticRole::ReturnSpec { columns: Some(0) }"),
-            "got:\n{out}"
-        );
-    }
-
-    #[test]
-    fn return_spec_without_table_columns_is_none() {
-        let items = model_from(
-            r"node ReturnType {
-                scalar_type: inline SyntaqliteSourceSpan
-                semantic { return_spec() }
-            }",
-        );
-        let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        assert!(
-            out.contains("SemanticRole::ReturnSpec { columns: None }"),
-            "got:\n{out}"
-        );
-    }
-
-    #[test]
-    fn define_function_with_return_type() {
-        let items = model_from(
-            r"node CreateFunctionStmt {
-                func_name: inline SyntaqliteSourceSpan
-                return_type: index ReturnType
-                semantic { define_function(name: func_name, return_type: return_type) }
-            }",
-        );
-        let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        // func_name = field 0, return_type = field 1
-        assert!(
-            out.contains(
-                "SemanticRole::DefineFunction { name: 0, args: None, return_type: Some(1) }"
-            ),
-            "got:\n{out}"
-        );
-    }
-
-    #[test]
-    fn import_with_correct_field_index() {
-        let items = model_from(
-            r"node IncludeModuleStmt {
-                module_name: inline SyntaqliteSourceSpan
-                semantic { import(module: module_name) }
-            }",
-        );
-        let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        assert!(
-            out.contains("SemanticRole::Import { module: 0 }"),
-            "got:\n{out}"
+        let header = generate_c_roles_h(&model, "test");
+        let bytes = extract_bytes_from_header(&header, "test");
+        let roles = unsafe { bytes_to_roles(&bytes) };
+        // view_name=0, no columns, select=2
+        assert_eq!(
+            roles[1],
+            SemanticRole::DefineView {
+                name: 0,
+                columns: FIELD_ABSENT,
+                select: 2
+            }
         );
     }
 
@@ -404,23 +442,51 @@ mod tests {
                list FooList { Foo }",
         );
         let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        // Three entries: sentinel at index 0, Foo (Transparent), FooList (Transparent)
-        let count = out.matches("SemanticRole::Transparent").count();
-        assert_eq!(
-            count, 3,
-            "expected 3 Transparent entries (1 sentinel + 2 nodes), got:\n{out}"
+        let header = generate_c_roles_h(&model, "test");
+        let bytes = extract_bytes_from_header(&header, "test");
+        let roles = unsafe { bytes_to_roles(&bytes) };
+        // 3 entries: sentinel, Foo, FooList
+        assert_eq!(roles[0], SemanticRole::Transparent);
+        assert_eq!(roles[1], SemanticRole::Transparent); // Foo
+        assert_eq!(roles[2], SemanticRole::Transparent); // FooList
+    }
+
+    #[test]
+    fn count_matches_node_count() {
+        let items = model_from(
+            r"node Foo { x: inline SyntaqliteSourceSpan }
+               node Bar { y: inline SyntaqliteSourceSpan }",
+        );
+        let model = AstModel::new(&items);
+        let header = generate_c_roles_h(&model, "test");
+        // 3 entries: sentinel + 2 nodes
+        assert!(
+            header.contains("static const uint32_t test_roles_count = 3;"),
+            "got:\n{header}"
         );
     }
 
     #[test]
-    fn static_name_uses_prefix() {
-        let items = model_from("node Foo { x: inline SyntaqliteSourceSpan }");
+    fn source_ref_kind_bytes_correct() {
+        let items = model_from(
+            r"node TableRef {
+                name: inline SyntaqliteSourceSpan
+                schema: inline SyntaqliteSourceSpan
+                alias: inline SyntaqliteSourceSpan
+                semantic { source_ref(kind: table, name: name, alias: alias) }
+            }",
+        );
         let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "SQLITE");
-        assert!(
-            out.contains("SQLITE_SEMANTIC_ROLES: &[SemanticRole]"),
-            "got:\n{out}"
+        let header = generate_c_roles_h(&model, "test");
+        let bytes = extract_bytes_from_header(&header, "test");
+        let roles = unsafe { bytes_to_roles(&bytes) };
+        assert_eq!(
+            roles[1],
+            SemanticRole::SourceRef {
+                kind: RelationKind::Table,
+                name: 0,
+                alias: 2
+            }
         );
     }
 }
