@@ -13,7 +13,8 @@ use crate::dialect_codegen::c_dialect::{
 use crate::dialect_codegen::c_meta_codegen::{CFmtCodegenError, CMetaCodegenError};
 use crate::dialect_codegen::rust_ast::{RustAstPaths, generate_rust_tokens};
 use crate::dialect_codegen::rust_dialect::{
-    generate_cargo_toml, generate_grammar_module, generate_rust_build_rs, generate_rust_lib,
+    generate_cargo_toml, generate_dialect_module, generate_grammar_module, generate_rust_build_rs,
+    generate_rust_lib,
 };
 use crate::dialect_codegen::semantic_roles_codegen::generate_c_roles_h;
 use crate::parser_tools::{
@@ -124,6 +125,8 @@ pub(crate) struct RustCodegenArtifacts {
     pub ast_rs: String,
     /// Grammar module (`grammar.rs`).
     pub grammar_rs: Option<String>,
+    /// Dialect accessor module (`dialect.rs`).
+    pub dialect_rs: Option<String>,
     /// Crate root module (`lib.rs`).
     pub lib_rs: String,
     /// Build script (`build.rs`).
@@ -578,6 +581,11 @@ pub(crate) fn generate_codegen_artifacts(
                 &request.dialect.grammar_struct_type(),
                 ast_model.root_node_name(),
                 &request.dialect.token_type_name(),
+                "crate",
+            )),
+            dialect_rs: Some(generate_dialect_module(
+                &request.dialect.dialect_symbol_fn_name(),
+                &request.dialect.grammar_struct_type(),
                 "crate",
             )),
             lib_rs: generate_rust_lib(

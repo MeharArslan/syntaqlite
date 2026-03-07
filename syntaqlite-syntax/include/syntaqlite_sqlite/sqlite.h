@@ -13,8 +13,11 @@
 extern "C" {
 #endif
 
+typedef struct SyntaqliteDialect SyntaqliteDialect;
+
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags);
+const SyntaqliteDialect *syntaqlite_sqlite_dialect(void);
 
 #ifdef __cplusplus
 }

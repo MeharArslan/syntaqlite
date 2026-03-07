@@ -65,7 +65,7 @@ impl LspHost {
     /// Create a host for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Self {
-        let dialect = crate::sqlite::dialect::dialect();
+        let dialect = crate::sqlite::dialect::any_dialect();
         LspHost {
             user_catalog: Catalog::new(dialect.clone()),
             analyzer: SemanticAnalyzer::new(),

@@ -285,9 +285,7 @@ impl SqliteFlag {
             Self::OmitView => Some(SqliteSyntaxFlag::OmitView),
             Self::OmitVirtualtable => Some(SqliteSyntaxFlag::OmitVirtualtable),
             Self::OmitWindowfunc => Some(SqliteSyntaxFlag::OmitWindowfunc),
-            Self::EnableOrderedSetAggregates => {
-                Some(SqliteSyntaxFlag::EnableOrderedSetAggregates)
-            }
+            Self::EnableOrderedSetAggregates => Some(SqliteSyntaxFlag::EnableOrderedSetAggregates),
             Self::EnableUpdateDeleteLimit => Some(SqliteSyntaxFlag::EnableUpdateDeleteLimit),
             _ => None,
         }

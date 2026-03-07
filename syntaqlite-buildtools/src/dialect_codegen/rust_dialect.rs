@@ -27,9 +27,9 @@ fn emit_section(w: &mut RustWriter, section: &str) {
 /// internal `SQLite` dialect (as `sqlite/grammar.rs`).
 ///
 /// - `dialect_fn`: the `extern "C"` symbol name, e.g. `syntaqlite_sqlite_grammar`
-/// - `grammar_struct`: the generated grammar struct name, e.g. `SqliteGrammar`
-/// - `root_node`: the root AST node type name, e.g. `Select`
-/// - `token_type`: the token enum type name, e.g. `SqliteTokenType`
+/// - `grammar_struct`: the generated grammar struct name, e.g. `Grammar`
+/// - `root_node`: the root AST node type name, e.g. `Stmt`
+/// - `token_type`: the token enum type name, e.g. `TokenType`
 /// - `syntax_crate`: crate providing `AnyGrammar` and `TypedGrammar`,
 ///   e.g. `crate` (internal) or `syntaqlite_syntax` (external)
 pub(crate) fn generate_grammar_module(
@@ -66,10 +66,6 @@ use {syntax_crate}::any::AnyGrammar;
 use {syntax_crate}::typed::TypedGrammar;
 use {syntax_crate}::util::{{SqliteSyntaxFlags, SqliteVersion}};
 
-unsafe extern "C" {{
-    fn {dialect_fn}() -> {syntax_crate}::typed::CGrammar;
-}}
-
 /// The dialect grammar handle.
 ///
 /// Wraps a [`AnyGrammar`] and implements [`TypedGrammar`]. Obtain via [`grammar()`];
@@ -83,6 +79,14 @@ impl {grammar_struct} {{
     /// Return the underlying [`AnyGrammar`] by value.
     pub fn into_raw(self) -> AnyGrammar {{
         self.raw
+    }}
+
+    /// Construct from a raw [`AnyGrammar`].
+    ///
+    /// Used by dialect loading infrastructure to build a typed grammar handle
+    /// from the grammar embedded in a `CDialectTemplate`.
+    pub fn from_raw(raw: AnyGrammar) -> Self {{
+        Self {{ raw }}
     }}
 
     /// Set the target `SQLite` version.
@@ -115,8 +119,146 @@ impl TypedGrammar for {grammar_struct} {{
 /// Returns the dialect grammar handle.
 pub fn grammar() -> {grammar_struct} {{
     // SAFETY: {dialect_fn}() returns a valid static C grammar.
-    let raw = unsafe {{ AnyGrammar::new({dialect_fn}()) }};
+    let raw = unsafe {{ AnyGrammar::new(ffi::{dialect_fn}()) }};
     {grammar_struct} {{ raw }}
+}}
+
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
+mod ffi {{
+    unsafe extern "C" {{
+        pub(super) fn {dialect_fn}() -> {syntax_crate}::typed::CGrammar;
+    }}
+}}
+"#
+    ));
+}
+
+/// Generate a self-contained dialect accessor module.
+///
+/// Used both for external dialect crates (as part of `lib.rs`) and for the
+/// internal `SQLite` dialect (as `sqlite/dialect.rs`).
+///
+/// - `dialect_fn`: the `extern "C"` symbol name, e.g. `syntaqlite_sqlite_dialect`
+/// - `grammar_struct`: the typed grammar struct name, e.g. `Grammar`
+/// - `dialect_crate`: crate providing `AnyDialect`, `TypedDialect`, `CDialectTemplate`,
+///   e.g. `crate` (internal) or `syntaqlite` (external)
+pub(crate) fn generate_dialect_module(
+    dialect_fn: &str,
+    grammar_struct: &str,
+    dialect_crate: &str,
+) -> String {
+    let mut w = RustWriter::new();
+    w.file_header();
+    emit_dialect_module(&mut w, dialect_fn, grammar_struct, dialect_crate);
+    w.finish()
+}
+
+fn emit_dialect_module(
+    w: &mut RustWriter,
+    dialect_fn: &str,
+    grammar_struct: &str,
+    dialect_crate: &str,
+) {
+    w.lines(&format!(
+        r#"
+use std::sync::LazyLock;
+
+use syntaqlite_syntax::typed::{grammar_struct};
+use syntaqlite_syntax::util::SqliteVersion;
+
+use {dialect_crate}::dialect::{{AnyDialect, TypedDialect}};
+use {dialect_crate}::util::SqliteFlags;
+
+/// The typed dialect handle.
+///
+/// Wraps an [`AnyDialect`] and implements [`TypedDialect`]. Obtain via [`dialect()`];
+/// configure with [`with_version`](Self::with_version) and [`with_cflags`](Self::with_cflags).
+#[derive(Clone)]
+pub struct Dialect {{
+    raw: AnyDialect,
+}}
+
+impl Dialect {{
+    /// Returns a new default dialect handle.
+    pub fn new() -> Self {{
+        dialect()
+    }}
+
+    /// Erase to an [`AnyDialect`].
+    pub fn erase(self) -> AnyDialect {{
+        self.raw
+    }}
+
+    /// Return the typed grammar handle for this dialect.
+    pub fn grammar(&self) -> {grammar_struct} {{
+        {grammar_struct}::from_raw(self.raw.grammar().clone())
+    }}
+
+    /// Return a copy targeting a specific `SQLite` version.
+    #[must_use]
+    pub fn with_version(self, version: SqliteVersion) -> Self {{
+        Dialect {{ raw: self.raw.with_version(version) }}
+    }}
+
+    /// Return a copy with the given compile-time flags.
+    #[must_use]
+    pub fn with_cflags(self, flags: SqliteFlags) -> Self {{
+        Dialect {{ raw: self.raw.with_cflags(flags) }}
+    }}
+}}
+
+impl Default for Dialect {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+
+impl TypedDialect for Dialect {{}}
+
+impl From<Dialect> for AnyDialect {{
+    fn from(d: Dialect) -> AnyDialect {{
+        d.raw
+    }}
+}}
+
+impl std::ops::Deref for Dialect {{
+    type Target = AnyDialect;
+    fn deref(&self) -> &AnyDialect {{
+        &self.raw
+    }}
+}}
+
+impl std::ops::DerefMut for Dialect {{
+    fn deref_mut(&mut self) -> &mut AnyDialect {{
+        &mut self.raw
+    }}
+}}
+
+static DIALECT: LazyLock<AnyDialect> = LazyLock::new(|| {{
+    // SAFETY: {dialect_fn}() returns a pointer to a valid static SyntaqliteDialect
+    // struct compiled into the binary. The data lives for the entire program lifetime.
+    unsafe {{ AnyDialect::from_data(ffi::{dialect_fn}()) }}
+}});
+
+/// Returns the type-erased dialect handle (cached).
+pub(crate) fn any_dialect() -> AnyDialect {{
+    DIALECT.clone()
+}}
+
+/// Returns the typed dialect handle.
+pub(crate) fn dialect() -> Dialect {{
+    Dialect {{ raw: any_dialect() }}
+}}
+
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
+mod ffi {{
+    use {dialect_crate}::dialect::CDialectTemplate;
+
+    unsafe extern "C" {{
+        pub(super) fn {dialect_fn}() -> *const CDialectTemplate;
+    }}
 }}
 "#
     ));

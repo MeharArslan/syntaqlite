@@ -7,10 +7,6 @@ use crate::any::AnyGrammar;
 use crate::typed::TypedGrammar;
 use crate::util::{SqliteSyntaxFlags, SqliteVersion};
 
-unsafe extern "C" {
-    fn syntaqlite_sqlite_grammar() -> crate::typed::CGrammar;
-}
-
 /// The dialect grammar handle.
 ///
 /// Wraps a [`AnyGrammar`] and implements [`TypedGrammar`]. Obtain via [`grammar()`];
@@ -24,6 +20,14 @@ impl Grammar {
     /// Return the underlying [`AnyGrammar`] by value.
     pub fn into_raw(self) -> AnyGrammar {
         self.raw
+    }
+
+    /// Construct from a raw [`AnyGrammar`].
+    ///
+    /// Used by dialect loading infrastructure to build a typed grammar handle
+    /// from the grammar embedded in a `CDialectTemplate`.
+    pub fn from_raw(raw: AnyGrammar) -> Self {
+        Self { raw }
     }
 
     /// Set the target `SQLite` version.
@@ -56,6 +60,14 @@ impl TypedGrammar for Grammar {
 /// Returns the dialect grammar handle.
 pub fn grammar() -> Grammar {
     // SAFETY: syntaqlite_sqlite_grammar() returns a valid static C grammar.
-    let raw = unsafe { AnyGrammar::new(syntaqlite_sqlite_grammar()) };
+    let raw = unsafe { AnyGrammar::new(ffi::syntaqlite_sqlite_grammar()) };
     Grammar { raw }
+}
+
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
+mod ffi {
+    unsafe extern "C" {
+        pub(super) fn syntaqlite_sqlite_grammar() -> crate::typed::CGrammar;
+    }
 }

@@ -411,6 +411,7 @@ fn run_set_dialect(ptr: u32) -> i32 {
         USING_BUILTIN_SQLITE.with(|b| b.set(false));
         let raw: syntaqlite::typed::CGrammar =
             unsafe { std::ptr::read(ptr as *const syntaqlite::typed::CGrammar) };
+        // SAFETY: raw was just read from a valid grammar pointer above.
         let grammar: AnyGrammar = unsafe { AnyGrammar::new(raw) };
         let version = grammar.version();
         let cflags: SqliteFlags = grammar.cflags().into();

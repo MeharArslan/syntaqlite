@@ -72,15 +72,36 @@ SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version, Syntaql
   return g;
 }
 
-const uint8_t * syntaqlite_sqlite_fmt_string_data(void) { return sqlite_fmt_string_data; }
-const uint32_t * syntaqlite_sqlite_fmt_string_offsets(void) { return sqlite_fmt_string_offsets; }
-uint32_t syntaqlite_sqlite_fmt_string_count(void) { return sqlite_fmt_string_count; }
-const uint16_t * syntaqlite_sqlite_fmt_enum_display(void) { return sqlite_fmt_enum_display; }
-uint32_t syntaqlite_sqlite_fmt_enum_display_count(void) { return sqlite_fmt_enum_display_count; }
-const uint8_t * syntaqlite_sqlite_fmt_ops(void) { return sqlite_fmt_ops; }
-uint32_t syntaqlite_sqlite_fmt_ops_count(void) { return sqlite_fmt_ops_count; }
-const uint32_t * syntaqlite_sqlite_fmt_dispatch(void) { return sqlite_fmt_dispatch; }
-uint32_t syntaqlite_sqlite_fmt_dispatch_count(void) { return sqlite_fmt_dispatch_count; }
+typedef struct {
+    SyntaqliteGrammar grammar;
+    const uint8_t *fmt_str_data;
+    const uint32_t *fmt_str_offsets;
+    uint32_t fmt_str_count;
+    const uint16_t *fmt_enum_display;
+    uint32_t fmt_enum_display_count;
+    const uint8_t *fmt_ops;
+    uint32_t fmt_ops_count;
+    const uint32_t *fmt_dispatch;
+    uint32_t fmt_dispatch_count;
+    const uint8_t *roles_data;
+    uint32_t roles_count;
+} SyntaqliteDialect;
 
-const uint8_t * syntaqlite_sqlite_roles_data(void) { return sqlite_roles_data; }
-uint32_t syntaqlite_sqlite_roles_count(void) { return sqlite_roles_count; }
+static const SyntaqliteDialect SQLITE_DIALECT = {
+    .grammar = SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR),
+    .fmt_str_data = sqlite_fmt_string_data,
+    .fmt_str_offsets = sqlite_fmt_string_offsets,
+    .fmt_str_count = sqlite_fmt_string_count,
+    .fmt_enum_display = sqlite_fmt_enum_display,
+    .fmt_enum_display_count = sqlite_fmt_enum_display_count,
+    .fmt_ops = sqlite_fmt_ops,
+    .fmt_ops_count = sqlite_fmt_ops_count,
+    .fmt_dispatch = sqlite_fmt_dispatch,
+    .fmt_dispatch_count = sqlite_fmt_dispatch_count,
+    .roles_data = sqlite_roles_data,
+    .roles_count = sqlite_roles_count,
+};
+
+const SyntaqliteDialect *syntaqlite_sqlite_dialect(void) {
+  return &SQLITE_DIALECT;
+}
