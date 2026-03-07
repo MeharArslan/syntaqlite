@@ -95,15 +95,15 @@ def _compile_full_binary(
     test_c: Path, amalg_dir: Path, dialect_name: str, output_binary: Path
 ) -> None:
     """Compile test_ast.c against a self-contained full amalgamation."""
-    header = f'"syntaqlite_{dialect_name}.h"'
-    dialect_fn = f"syntaqlite_{dialect_name}_dialect"
+    grammar_header = f'"syntaqlite_{dialect_name}.h"'
+    grammar_fn = f"syntaqlite_{dialect_name}_grammar"
     source = amalg_dir / f"syntaqlite_{dialect_name}.c"
     cmd = [
         "cc", "-o", str(output_binary),
         str(test_c), str(source),
         f"-I{amalg_dir}",
-        f"-DDIALECT_HEADER={header}",
-        f"-DDIALECT_FN={dialect_fn}",
+        f"-DGRAMMAR_HEADER={grammar_header}",
+        f"-DGRAMMAR_FN={grammar_fn}",
         "-Werror",
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -121,8 +121,8 @@ def _compile_dialect_only_binary(
     output_binary: Path,
 ) -> None:
     """Compile test_ast.c against dialect-only + separate runtime."""
-    header = f'"syntaqlite_{dialect_name}.h"'
-    dialect_fn = f"syntaqlite_{dialect_name}_dialect"
+    grammar_header = f'"syntaqlite_{dialect_name}.h"'
+    grammar_fn = f"syntaqlite_{dialect_name}_grammar"
     dialect_src = amalg_dir / f"syntaqlite_{dialect_name}.c"
     runtime_src = runtime_dir / "syntaqlite_runtime.c"
     cmd = [
@@ -130,10 +130,16 @@ def _compile_dialect_only_binary(
         str(test_c), str(dialect_src), str(runtime_src),
         f"-I{amalg_dir}",
         f"-I{runtime_dir}",
-        f"-DDIALECT_HEADER={header}",
-        f"-DDIALECT_FN={dialect_fn}",
+        f"-DGRAMMAR_HEADER={grammar_header}",
+        f"-DGRAMMAR_FN={grammar_fn}",
         "-Werror",
     ]
+    # runtime.c is a separate TU from dialect.c, so the #define in the
+    # dialect preamble doesn't apply to it.  Pass the flag explicitly for
+    # non-sqlite dialects so the sqlite-specific convenience wrappers
+    # (which call syntaqlite_sqlite_grammar) are omitted there too.
+    if dialect_name != "sqlite":
+        cmd.append("-DSYNTAQLITE_OMIT_SQLITE_API")
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(

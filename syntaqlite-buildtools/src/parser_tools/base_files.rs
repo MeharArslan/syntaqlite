@@ -224,23 +224,28 @@ pub const fn base_synq_files() -> &'static [(&'static str, &'static str)] {
 
 /// Merge base files with extension files.
 ///
-/// Extension files with the same name as a base file replace the base version.
-/// The result is sorted alphabetically by filename.
+/// Base files come first in their original order. Extension files are always
+/// appended after all base files, sorted alphabetically among themselves.
+/// Extensions cannot override base files — they are purely additive.
+///
+/// Ordering guarantee: all base file slots come before all extension slots.
+/// This ensures that Lemon assigns token IDs to extension-specific terminals
+/// only after all base SQLite terminals have been numbered.
 #[must_use]
 pub fn merge_file_sets(
     base: &[(&str, &str)],
     extensions: &[(String, String)],
 ) -> Vec<(String, String)> {
-    use std::collections::BTreeMap;
+    let mut result: Vec<(String, String)> = base
+        .iter()
+        .map(|(name, content)| (name.to_string(), content.to_string()))
+        .collect();
 
-    let mut merged = BTreeMap::new();
-    for (name, content) in base {
-        merged.insert(name.to_string(), content.to_string());
-    }
-    for (name, content) in extensions {
-        merged.insert(name.clone(), content.clone());
-    }
-    merged.into_iter().collect()
+    let mut ext_sorted = extensions.to_vec();
+    ext_sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
+    result.extend(ext_sorted);
+
+    result
 }
 
 #[cfg(test)]
@@ -252,6 +257,34 @@ mod tests {
             .iter()
             .find_map(|(n, content)| (*n == name).then_some(*content))
             .unwrap_or_else(|| panic!("missing embedded runtime header: {name}"))
+    }
+
+    #[test]
+    fn merge_file_sets_base_always_before_extensions() {
+        use super::merge_file_sets;
+        let base = &[("a.y", "base_a"), ("z.y", "base_z")];
+        let ext = vec![
+            ("b.y".to_string(), "ext_b".to_string()),
+            ("aaa.y".to_string(), "ext_aaa".to_string()),
+        ];
+        let merged = merge_file_sets(base, &ext);
+        // Base files come first in their original order, then extension files sorted.
+        assert_eq!(merged[0], ("a.y".to_string(), "base_a".to_string()));
+        assert_eq!(merged[1], ("z.y".to_string(), "base_z".to_string()));
+        assert_eq!(merged[2], ("aaa.y".to_string(), "ext_aaa".to_string()));
+        assert_eq!(merged[3], ("b.y".to_string(), "ext_b".to_string()));
+    }
+
+    #[test]
+    fn merge_file_sets_same_name_does_not_override_base() {
+        use super::merge_file_sets;
+        let base = &[("shared.y", "base_content"), ("ztokens.y", "sentinel")];
+        let ext = vec![("shared.y".to_string(), "ext_content".to_string())];
+        let merged = merge_file_sets(base, &ext);
+        // Base file is unchanged; extension file is appended as a separate entry.
+        assert_eq!(merged[0], ("shared.y".to_string(), "base_content".to_string()));
+        assert_eq!(merged[1], ("ztokens.y".to_string(), "sentinel".to_string()));
+        assert_eq!(merged[2], ("shared.y".to_string(), "ext_content".to_string()));
     }
 
     #[test]

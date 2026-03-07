@@ -482,14 +482,27 @@ fn emit(files: &FileMap, mode: EmitMode) -> AmalgamateOutput {
     header.push_str("*/\n");
     let _ = write!(header, "#ifndef {guard}\n#define {guard}\n\n");
 
-    if let EmitMode::DialectOnly { runtime_header, .. } = &mode {
-        header.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
-        let _ = writeln!(
-            header,
-            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\""
-        );
-        header.push_str("#endif\n");
-        header.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
+    match &mode {
+        EmitMode::DialectOnly { dialect, runtime_header, .. } => {
+            if *dialect != "sqlite" {
+                header.push_str("#ifndef SYNTAQLITE_OMIT_SQLITE_API\n");
+                header.push_str("#define SYNTAQLITE_OMIT_SQLITE_API\n");
+                header.push_str("#endif\n\n");
+            }
+            header.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
+            let _ = writeln!(
+                header,
+                "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\""
+            );
+            header.push_str("#endif\n");
+            header.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
+        }
+        EmitMode::Full(dialect) if *dialect != "sqlite" => {
+            header.push_str("#ifndef SYNTAQLITE_OMIT_SQLITE_API\n");
+            header.push_str("#define SYNTAQLITE_OMIT_SQLITE_API\n");
+            header.push_str("#endif\n\n");
+        }
+        _ => {}
     }
 
     let mut h_emitter = Emitter::new(files);
@@ -526,11 +539,16 @@ fn emit(files: &FileMap, mode: EmitMode) -> AmalgamateOutput {
     source.push_str("*/\n\n");
 
     if let EmitMode::DialectOnly {
+        dialect,
         runtime_header,
         ext_header,
-        ..
     } = &mode
     {
+        if *dialect != "sqlite" {
+            source.push_str("#ifndef SYNTAQLITE_OMIT_SQLITE_API\n");
+            source.push_str("#define SYNTAQLITE_OMIT_SQLITE_API\n");
+            source.push_str("#endif\n\n");
+        }
         source.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
         let _ = writeln!(
             source,
@@ -542,6 +560,12 @@ fn emit(files: &FileMap, mode: EmitMode) -> AmalgamateOutput {
         let _ = writeln!(source, "#define SYNTAQLITE_EXT_HEADER \"{ext_header}\"");
         source.push_str("#endif\n");
         source.push_str("#include SYNTAQLITE_EXT_HEADER\n\n");
+    } else if let EmitMode::Full(dialect) = &mode
+        && *dialect != "sqlite"
+    {
+        source.push_str("#ifndef SYNTAQLITE_OMIT_SQLITE_API\n");
+        source.push_str("#define SYNTAQLITE_OMIT_SQLITE_API\n");
+        source.push_str("#endif\n\n");
     }
     let _ = write!(source, "#include \"{header_filename}\"\n\n");
 

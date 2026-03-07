@@ -295,6 +295,7 @@ def _classify(changed: set[str] | None) -> dict[str, bool]:
         "has_rust": True, "has_c": True,
         "run_ast": True, "run_fmt": True, "run_amalg": True,
         "run_perfetto_fmt": True, "run_perfetto_val": True,
+        "run_grammar": True,
     }
     if changed is None:
         return all_true
@@ -310,6 +311,11 @@ def _classify(changed: set[str] | None) -> dict[str, bool]:
             f["has_rust"] = True
         if is_c:
             f["has_c"] = True
+
+        # .y grammar action files affect token IDs in all dialects.
+        if path.endswith(".y"):
+            f["run_grammar"] = True
+            continue
 
         # .synq definitions drive all C and Rust codegen; touch every domain.
         if is_synq:
@@ -353,10 +359,14 @@ def _classify(changed: set[str] | None) -> dict[str, bool]:
             elif path.startswith(_RUST_PERFETTO_PATHS):
                 f["run_perfetto_fmt"] = True
                 f["run_perfetto_val"] = True
+                f["run_grammar"] = True
             elif path.startswith(_RUST_AMALG_PATHS):
                 f["run_amalg"] = True
             elif path.startswith(_RUST_NO_DIFF_PATHS):
-                pass  # Rust change, but no diff test is affected.
+                # Grammar checks are relevant when the parser pipeline (which
+                # controls token ordering) changes in buildtools.
+                if path.startswith("syntaqlite-buildtools/src/parser_tools/"):
+                    f["run_grammar"] = True
             else:
                 # Core / shared Rust (cli, common, dialect, etc.) — conservative.
                 f["run_ast"] = f["run_fmt"] = True
@@ -391,7 +401,7 @@ def _run(fix: bool, verbosity: int, run_all: bool, cargo: Callable[..., list[str
     need_c = flags["has_c"]
     need_compilation = need_rust or need_c
     need_diff_tests = any(
-        flags[k] for k in ("run_ast", "run_fmt", "run_amalg", "run_perfetto_fmt", "run_perfetto_val")
+        flags[k] for k in ("run_ast", "run_fmt", "run_amalg", "run_perfetto_fmt", "run_perfetto_val", "run_grammar")
     )
 
     # If diff tests are needed but no Rust/C changed, verify the CLI binary
@@ -418,7 +428,7 @@ def _run(fix: bool, verbosity: int, run_all: bool, cargo: Callable[..., list[str
             domains.append("non-code")
         active_diffs = [
             k.replace("run_", "") for k in
-            ("run_ast", "run_fmt", "run_amalg", "run_perfetto_fmt", "run_perfetto_val")
+            ("run_ast", "run_fmt", "run_amalg", "run_perfetto_fmt", "run_perfetto_val", "run_grammar")
             if flags[k]
         ]
         diff_summary = ", ".join(active_diffs) if active_diffs else "none"
@@ -556,6 +566,7 @@ def _run(fix: bool, verbosity: int, run_all: bool, cargo: Callable[..., list[str
         ("run_amalg",         "run-amalg-tests"),
         ("run_perfetto_fmt",  "run-perfetto-fmt-diff-tests"),
         ("run_perfetto_val",  "run-perfetto-validation-diff-tests"),
+        ("run_grammar",       "run-grammar-checks"),
     ):
         if flags[key]:
             diff_lanes.append([(f"tools/{tool_name}", [_tool(tool_name)])])
