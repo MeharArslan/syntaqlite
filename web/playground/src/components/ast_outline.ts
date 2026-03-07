@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 import m from "mithril";
-import type {AstField, AstJsonNode, AstResult} from "../types";
+import type {AstFieldValue, AstJsonNode, AstListNode, AstResult} from "../types";
 import "./ast_outline.css";
 
 export interface AstOutlineAttrs {
@@ -27,25 +27,25 @@ export const AstOutline: m.Component<AstOutlineAttrs> = {
   },
 };
 
-// ── Render helpers ──
+// ── Helpers ──
 
-export function isFieldEmpty(f: AstField): boolean {
-  switch (f.kind) {
-    case "node":
-      return f.child === undefined;
-    case "span":
-      return f.value === undefined;
-    case "bool":
-      return f.value === false;
-    case "enum":
-      return f.value === undefined;
-    case "flags":
-      return f.value.length === 0;
-    default: {
-      const _exhaustive: never = f;
-      return _exhaustive;
-    }
-  }
+/** Returns true when a field value should be hidden in "hide empty" mode. */
+export function isFieldValueEmpty(value: AstFieldValue): boolean {
+  if (value === null || value === undefined) return true;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "boolean") return !value;
+  return false;
+}
+
+function isListNode(node: AstJsonNode): node is AstListNode {
+  return typeof (node as AstListNode).count === "number";
+}
+
+/** All field entries of a regular node, excluding the structural keys. */
+function nodeFields(node: AstJsonNode): [string, AstFieldValue][] {
+  return Object.entries(node).filter(
+    ([k]) => k !== "type" && k !== "count" && k !== "children",
+  ) as [string, AstFieldValue][];
 }
 
 function noneValue(): m.Vnode {
@@ -58,63 +58,60 @@ function leafRow(label: string, value: m.Children): m.Vnode {
   ]);
 }
 
-function renderField(showEmpty: boolean, f: AstField): m.Vnode | undefined {
-  if (!showEmpty && isFieldEmpty(f)) return undefined;
+function renderFieldValue(
+  showEmpty: boolean,
+  label: string,
+  value: AstFieldValue,
+): m.Vnode | undefined {
+  if (!showEmpty && isFieldValueEmpty(value)) return undefined;
 
-  if (f.kind === "node") {
-    if (f.child === undefined) {
-      return leafRow(f.label, noneValue());
-    }
+  // Child node — recurse.
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
     return m("div.sq-ast-tree__node", [
       m("details", {open: true}, [
-        m("summary", [m("span.sq-ast-tree__field-label", `${f.label}:`)]),
-        renderNodes(showEmpty, [f.child]),
+        m("summary", [m("span.sq-ast-tree__field-label", `${label}:`)]),
+        renderNodes(showEmpty, [value]),
       ]),
     ]);
   }
 
-  if (f.kind === "span") {
-    const val =
-      f.value === undefined
-        ? noneValue()
-        : m("span.sq-ast-tree__value.sq-ast-tree__value--string", `"${f.value}"`);
-    return leafRow(f.label, val);
+  // Null / absent.
+  if (value === null || value === undefined) {
+    return leafRow(label, noneValue());
   }
 
-  if (f.kind === "bool") {
+  // Flags — string[].
+  if (Array.isArray(value)) {
+    const display = value.length === 0 ? "(none)" : value.join(" | ");
+    const cls =
+      value.length === 0
+        ? "span.sq-ast-tree__value.sq-ast-tree__value--none"
+        : "span.sq-ast-tree__value";
+    return leafRow(label, m(cls, display));
+  }
+
+  // Boolean.
+  if (typeof value === "boolean") {
     return leafRow(
-      f.label,
-      m("span.sq-ast-tree__value.sq-ast-tree__value--bool", f.value ? "TRUE" : "FALSE"),
+      label,
+      m("span.sq-ast-tree__value.sq-ast-tree__value--bool", value ? "TRUE" : "FALSE"),
     );
   }
 
-  if (f.kind === "enum") {
-    const val = f.value === undefined ? noneValue() : m("span.sq-ast-tree__value", String(f.value));
-    return leafRow(f.label, val);
-  }
-
-  if (f.kind === "flags") {
-    const display = f.value.length === 0 ? "(none)" : f.value.join(" | ");
-    const cls =
-      f.value.length === 0
-        ? "span.sq-ast-tree__value.sq-ast-tree__value--none"
-        : "span.sq-ast-tree__value";
-    return leafRow(f.label, m(cls, display));
-  }
-
-  return undefined;
+  // Span / enum — string.
+  return leafRow(label, m("span.sq-ast-tree__value.sq-ast-tree__value--string", `"${value}"`));
 }
 
 function renderNodes(showEmpty: boolean, nodes: AstJsonNode[]): m.Vnode {
   return m(
     "div",
     nodes.map((node) => {
-      if (node.type === "list") {
+      if (isListNode(node)) {
         return m("div.sq-ast-tree__node", [
           m("details", {open: true}, [
             m("summary", [
-              m("span.sq-ast-tree__name", node.name),
-              m("span.sq-ast-tree__list-count", `[${node.count}]`),
+              m("span.sq-ast-tree__name", node.type),
+              m("span.sq-ast-tree__list-count", `[${node.count ?? 0}]`),
             ]),
             node.children && node.children.length > 0
               ? renderNodes(showEmpty, node.children)
@@ -122,11 +119,17 @@ function renderNodes(showEmpty: boolean, nodes: AstJsonNode[]): m.Vnode {
           ]),
         ]);
       }
+      const fields = nodeFields(node);
       return m("div.sq-ast-tree__node", [
         m("details", {open: true}, [
-          m("summary", [m("span.sq-ast-tree__name", node.name)]),
-          node.fields && node.fields.length > 0
-            ? m("div", node.fields.map((f) => renderField(showEmpty, f)).filter(Boolean))
+          m("summary", [m("span.sq-ast-tree__name", node.type)]),
+          fields.length > 0
+            ? m(
+                "div",
+                fields
+                  .map(([label, value]) => renderFieldValue(showEmpty, label, value ?? null))
+                  .filter(Boolean),
+              )
             : undefined,
         ]),
       ]);

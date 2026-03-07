@@ -201,6 +201,36 @@ pub extern "C" fn wasm_result_free() {
     result_free();
 }
 
+// ── AST JSON ─────────────────────────────────────────────────────────
+
+fn run_ast_json(ptr: u32, len: u32) -> i32 {
+    let source = try_wasm!(decode_input(ptr, len));
+    let grammar = (*get_dialect()).clone();
+    let parser = syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::ParserConfig::default());
+    let mut session = parser.parse(&source);
+    let mut nodes: Vec<serde_json::Value> = Vec::new();
+    loop {
+        match session.next() {
+            syntaqlite::any::ParseOutcome::Done => break,
+            syntaqlite::any::ParseOutcome::Ok(stmt) => {
+                let val = stmt.erase().root_node()
+                    .map(|n| serde_json::to_value(&n).unwrap_or(serde_json::Value::Null))
+                    .unwrap_or(serde_json::Value::Null);
+                nodes.push(val);
+            }
+            syntaqlite::any::ParseOutcome::Err(_) => {}
+        }
+    }
+    let count = nodes.len() as i32;
+    set_result(&serde_json::to_string(&nodes).expect("ast json serialization failed"));
+    count
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_ast_json(ptr: u32, len: u32) -> i32 {
+    catch_unwind(|| run_ast_json(ptr, len), "wasm_ast_json panicked")
+}
+
 // ── Formatter ────────────────────────────────────────────────────────
 
 fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u32) -> i32 {

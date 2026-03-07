@@ -360,7 +360,7 @@ impl Catalog {
     ///   "functions": [{ "name": "my_func",      "args": 2 }]
     /// }
     /// ```
-    #[cfg(feature = "json")]
+    #[cfg(feature = "serde-json")]
     pub(crate) fn from_json(dialect: impl Into<AnyDialect>, s: &str) -> Result<Self, String> {
         let dialect = dialect.into();
         #[derive(serde::Deserialize)]

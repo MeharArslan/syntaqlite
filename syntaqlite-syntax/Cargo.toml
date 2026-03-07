@@ -7,7 +7,8 @@ links = "syntaqlite_syntax"
 [features]
 default = ["sqlite"]
 sqlite = []
-json = ["dep:serde_json"]
+serde = ["dep:serde"]
+serde-json = ["serde", "dep:serde_json"]
 dynload = ["dep:libloading"]
 pin-version = ["sqlite"]
 pin-cflags = ["sqlite"]
@@ -18,6 +19,7 @@ no-bundled-parser = []
 workspace = true
 
 [dependencies]
+serde = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
 libloading = { version = "0.8", optional = true }
 

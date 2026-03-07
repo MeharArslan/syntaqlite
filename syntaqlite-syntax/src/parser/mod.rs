@@ -440,6 +440,19 @@ impl<'a> AnyParsedStatement<'a> {
         }
     }
 
+    /// Return the root node as an [`AnyNode`], or `None` if the parse result
+    /// has no root (e.g. empty input or fatal parse error).
+    ///
+    /// When the `serde` feature is enabled, the returned [`AnyNode`] implements
+    /// [`serde::Serialize`] using the same structure as [`Self::dump_node`].
+    pub fn root_node(&self) -> Option<crate::ast::AnyNode<'_>> {
+        let id = self.root_id();
+        if id.is_null() {
+            return None;
+        }
+        Some(crate::ast::AnyNode { id, stmt_result: self })
+    }
+
     /// Dump an AST node tree as indented text into `out`.
     pub(crate) fn dump_node(&self, id: AnyNodeId, out: &mut String, indent: usize) {
         unsafe extern "C" {
@@ -508,6 +521,16 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
     /// Dump the AST as indented text into `out`.
     pub fn dump(&self, out: &mut String, indent: usize) {
         self.any.dump_node(self.any.root_id(), out, indent);
+    }
+
+    /// Serialize the AST to a JSON string using the `serde-json` feature.
+    ///
+    /// The JSON structure mirrors the text dump format: nodes become
+    /// `{"type":"NodeName","field":value,...}` and lists become
+    /// `{"type":"ListName","count":N,"children":[...]}`.
+    #[cfg(feature = "serde-json")]
+    pub fn dump_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&self.any.root_node())
     }
 
     /// The source text bound to this result.

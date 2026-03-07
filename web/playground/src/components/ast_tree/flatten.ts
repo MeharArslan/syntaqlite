@@ -1,35 +1,27 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-import type {AstField, AstJsonNode} from "../../types";
+import type {AstFieldValue, AstJsonNode, AstListNode} from "../../types";
+import {isFieldValueEmpty} from "../ast_outline";
 import type {VisNode} from "./types";
 
-function isFieldEmpty(f: AstField): boolean {
-  switch (f.kind) {
-    case "node":
-      return f.child === undefined;
-    case "span":
-      return f.value === undefined;
-    case "bool":
-      return f.value === false;
-    case "enum":
-      return f.value === undefined;
-    case "flags":
-      return f.value.length === 0;
-    default: {
-      const _exhaustive: never = f;
-      return _exhaustive;
-    }
-  }
+function isListNode(node: AstJsonNode): node is AstListNode {
+  return typeof (node as AstListNode).count === "number";
+}
+
+function nodeFields(node: AstJsonNode): [string, AstFieldValue][] {
+  return Object.entries(node).filter(
+    ([k]) => k !== "type" && k !== "count" && k !== "children",
+  ) as [string, AstFieldValue][];
 }
 
 function flattenNode(node: AstJsonNode, showEmpty: boolean): VisNode {
-  if (node.type === "list") {
-    const children = (node.children || []).map((c) => flattenNode(c, showEmpty));
+  if (isListNode(node)) {
+    const children = (node.children ?? []).map((c) => flattenNode(c, showEmpty));
     return {
-      label: node.name,
+      label: node.type,
       kind: "list",
-      leafText: `[${node.count}]`,
+      leafText: `[${node.count ?? 0}]`,
       children,
       collapsed: false,
       x: 0,
@@ -42,30 +34,30 @@ function flattenNode(node: AstJsonNode, showEmpty: boolean): VisNode {
   const children: VisNode[] = [];
   const leafLines: string[] = [];
 
-  for (const f of node.fields || []) {
-    if (!showEmpty && isFieldEmpty(f)) continue;
-    if (f.kind === "node") {
-      if (f.child === undefined) {
-        leafLines.push(`${f.label}: (none)`);
-      } else {
-        const child = flattenNode(f.child, showEmpty);
-        child.fieldLabel = f.label;
-        children.push(child);
-      }
-    } else if (f.kind === "span") {
-      leafLines.push(f.value === undefined ? `${f.label}: (none)` : `${f.label}: "${f.value}"`);
-    } else if (f.kind === "bool") {
-      leafLines.push(`${f.label}: ${f.value ? "TRUE" : "FALSE"}`);
-    } else if (f.kind === "enum") {
-      leafLines.push(f.value === undefined ? `${f.label}: (none)` : `${f.label}: ${f.value}`);
-    } else if (f.kind === "flags") {
-      const display = f.value.length === 0 ? "(none)" : f.value.join(" | ");
-      leafLines.push(`${f.label}: ${display}`);
+  for (const [label, value] of nodeFields(node)) {
+    const v = value ?? null;
+    if (!showEmpty && isFieldValueEmpty(v)) continue;
+
+    // Child node — recurse.
+    if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+      const child = flattenNode(v, showEmpty);
+      child.fieldLabel = label;
+      children.push(child);
+    } else if (v === null) {
+      leafLines.push(`${label}: (none)`);
+    } else if (Array.isArray(v)) {
+      const display = v.length === 0 ? "(none)" : v.join(" | ");
+      leafLines.push(`${label}: ${display}`);
+    } else if (typeof v === "boolean") {
+      leafLines.push(`${label}: ${v ? "TRUE" : "FALSE"}`);
+    } else {
+      // string (span or enum display name)
+      leafLines.push(`${label}: "${v}"`);
     }
   }
 
   return {
-    label: node.name,
+    label: node.type,
     kind: "node",
     leafText: leafLines.join("\n"),
     children,

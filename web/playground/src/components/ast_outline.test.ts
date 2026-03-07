@@ -1,45 +1,32 @@
 import {describe, expect, it} from "vitest";
-import {isFieldEmpty} from "./ast_outline";
+import {isFieldValueEmpty} from "./ast_outline";
 
-describe("isFieldEmpty", () => {
-  it("node: empty when child is undefined", () => {
-    expect(isFieldEmpty({kind: "node", label: "x", child: undefined})).toBe(true);
+describe("isFieldValueEmpty", () => {
+  it("null is empty", () => {
+    expect(isFieldValueEmpty(null)).toBe(true);
   });
 
-  it("node: not empty when child exists", () => {
-    const child = {type: "node" as const, name: "N", fields: []};
-    expect(isFieldEmpty({kind: "node", label: "x", child})).toBe(false);
+  it("child node is not empty", () => {
+    expect(isFieldValueEmpty({type: "Literal", source: "1"})).toBe(false);
   });
 
-  it("span: empty when value is undefined", () => {
-    expect(isFieldEmpty({kind: "span", label: "x", value: undefined})).toBe(true);
+  it("non-empty string is not empty", () => {
+    expect(isFieldValueEmpty("hello")).toBe(false);
   });
 
-  it("span: not empty when value is a string", () => {
-    expect(isFieldEmpty({kind: "span", label: "x", value: "hello"})).toBe(false);
+  it("false bool is empty", () => {
+    expect(isFieldValueEmpty(false)).toBe(true);
   });
 
-  it("bool: empty when false", () => {
-    expect(isFieldEmpty({kind: "bool", label: "x", value: false})).toBe(true);
+  it("true bool is not empty", () => {
+    expect(isFieldValueEmpty(true)).toBe(false);
   });
 
-  it("bool: not empty when true", () => {
-    expect(isFieldEmpty({kind: "bool", label: "x", value: true})).toBe(false);
+  it("empty flags array is empty", () => {
+    expect(isFieldValueEmpty([])).toBe(true);
   });
 
-  it("enum: empty when value is undefined", () => {
-    expect(isFieldEmpty({kind: "enum", label: "x", value: undefined})).toBe(true);
-  });
-
-  it("enum: not empty when value is set", () => {
-    expect(isFieldEmpty({kind: "enum", label: "x", value: "ASC"})).toBe(false);
-  });
-
-  it("flags: empty when array is empty", () => {
-    expect(isFieldEmpty({kind: "flags", label: "x", value: []})).toBe(true);
-  });
-
-  it("flags: not empty when array has items", () => {
-    expect(isFieldEmpty({kind: "flags", label: "x", value: ["DISTINCT"]})).toBe(false);
+  it("non-empty flags array is not empty", () => {
+    expect(isFieldValueEmpty(["DISTINCT"])).toBe(false);
   });
 });

@@ -297,6 +297,124 @@ pub(crate) unsafe trait ArenaNode {
     const TAG: u32;
 }
 
+// ── serde::Serialize (feature = "serde") ─────────────────────────────────────
+
+#[cfg(feature = "serde")]
+mod serde_impl {
+    use super::{AnyNode, FieldValue, GrammarNodeType};
+    use crate::grammar::{FieldKind, FieldMeta};
+    use crate::parser::AnyParsedStatement;
+
+    /// Serializes an AST node to the JSON equivalent of the text dump format.
+    ///
+    /// Regular nodes become `{ "type": "NodeName", "field1": value, ... }`.
+    /// List nodes become `{ "type": "ListName", "count": N, "children": [...] }`.
+    /// Field values mirror the dump: spans as strings, bools as booleans,
+    /// enums as their display-name strings, flags as arrays of active names,
+    /// absent nodes/spans as `null`.
+    impl serde::Serialize for AnyNode<'_> {
+        fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            use serde::ser::SerializeMap;
+
+            let stmt = self.stmt_result;
+            let grammar = &stmt.grammar;
+            let id = self.id;
+
+            let Some((tag, fields)) = stmt.extract_fields(id) else {
+                return serializer.serialize_none();
+            };
+
+            let name = grammar.node_name(tag);
+
+            if grammar.is_list(tag) {
+                // { "type": "ListName", "count": N, "children": [...] }
+                let raw_children = stmt.list_children(id).unwrap_or(&[]);
+                let children: Vec<AnyNode<'_>> = raw_children
+                    .iter()
+                    .filter(|id| !id.is_null())
+                    .filter_map(|&id| AnyNode::from_result(stmt, id))
+                    .collect();
+                let mut map = serializer.serialize_map(Some(3))?;
+                map.serialize_entry("type", name)?;
+                map.serialize_entry("count", &children.len())?;
+                map.serialize_entry("children", &children)?;
+                map.end()
+            } else {
+                // { "type": "NodeName", "field1": value1, ... }
+                let metas: Vec<FieldMeta<'static>> = grammar.field_meta(tag).collect();
+                let field_count = metas.len().min(fields.len());
+                let mut map = serializer.serialize_map(Some(1 + field_count))?;
+                map.serialize_entry("type", name)?;
+                for i in 0..field_count {
+                    let meta = &metas[i];
+                    let value = &fields[i];
+                    map.serialize_entry(meta.name(), &FieldValueSerializer { meta, value, stmt })?;
+                }
+                map.end()
+            }
+        }
+    }
+
+    /// Serializes the value side of a single field — the right-hand side of
+    /// `"field_name": <this>`.
+    struct FieldValueSerializer<'a, 'b> {
+        meta: &'b FieldMeta<'static>,
+        value: &'b FieldValue<'a>,
+        stmt: &'b AnyParsedStatement<'a>,
+    }
+
+    impl serde::Serialize for FieldValueSerializer<'_, '_> {
+        fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            match (self.meta.kind(), self.value) {
+                // Node field: recurse, or null if absent.
+                (FieldKind::NodeId, FieldValue::NodeId(id)) => {
+                    if id.is_null() {
+                        serializer.serialize_none()
+                    } else {
+                        match AnyNode::from_result(self.stmt, *id) {
+                            Some(node) => node.serialize(serializer),
+                            None => serializer.serialize_none(),
+                        }
+                    }
+                }
+                // Span: text string, or null for an absent/empty span.
+                (FieldKind::Span, FieldValue::Span(text)) => {
+                    if text.is_empty() {
+                        serializer.serialize_none()
+                    } else {
+                        serializer.serialize_str(text)
+                    }
+                }
+                // Bool: plain boolean.
+                (FieldKind::Bool, FieldValue::Bool(b)) => serializer.serialize_bool(*b),
+                // Enum: display-name string, or null if no display name.
+                (FieldKind::Enum, FieldValue::Enum(discriminant)) => {
+                    match self.meta.display_name(*discriminant as usize) {
+                        Some(s) => serializer.serialize_str(s),
+                        None => serializer.serialize_none(),
+                    }
+                }
+                // Flags: array of active flag-name strings (empty array when none set).
+                (FieldKind::Flags, FieldValue::Flags(bits)) => {
+                    use serde::ser::SerializeSeq;
+                    let bits = *bits;
+                    let active: Vec<&'static str> = (0..self.meta.display_count())
+                        .filter(|&i| bits & (1u8 << i) != 0)
+                        .filter_map(|i| self.meta.display_name(i))
+                        .collect();
+                    let mut seq = serializer.serialize_seq(Some(active.len()))?;
+                    for s in &active {
+                        seq.serialize_element(s)?;
+                    }
+                    seq.end()
+                }
+                // Shouldn't occur (kind/value mismatch would be a codegen bug).
+                _ => serializer.serialize_none(),
+            }
+        }
+    }
+}
+
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
 pub(crate) use ffi::{CNodeList as RawNodeList, CSourceSpan as SourceSpan};

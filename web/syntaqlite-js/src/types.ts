@@ -36,52 +36,32 @@ declare global {
 }
 
 // ── AST JSON types ──
+//
+// The JSON mirrors the text dump format. Every node has a `type` key (the
+// node name). List nodes additionally have `count` and `children`. Regular
+// nodes carry their fields as direct keys whose values are:
+//   - null           → absent / "(none)" in the dump
+//   - string         → span or enum display name
+//   - boolean        → bool field
+//   - string[]       → flags (active flag names)
+//   - AstJsonNode    → child node
 
+export type AstFieldValue = AstJsonNode | string | boolean | string[] | null;
+
+/** A list node: `{ "type": "ResultColumnList", "count": 2, "children": [...] }` */
 export interface AstListNode {
-  type: "list";
-  name: string;
+  type: string;
   count: number;
   children: AstJsonNode[];
 }
 
-export interface AstFieldNode {
-  type: "node";
-  name: string;
-  fields: AstField[];
+/** A regular node: `{ "type": "SelectStmt", "flags": [], "columns": {...}, ... }` */
+export interface AstRegularNode {
+  type: string;
+  [field: string]: AstFieldValue | undefined;
 }
 
-export type AstJsonNode = AstListNode | AstFieldNode;
-
-export interface AstFieldBase {
-  label: string;
-}
-
-export interface AstNodeField extends AstFieldBase {
-  kind: "node";
-  child: AstJsonNode | undefined;
-}
-
-export interface AstSpanField extends AstFieldBase {
-  kind: "span";
-  value: string | undefined;
-}
-
-export interface AstBoolField extends AstFieldBase {
-  kind: "bool";
-  value: boolean;
-}
-
-export interface AstEnumField extends AstFieldBase {
-  kind: "enum";
-  value: string | undefined;
-}
-
-export interface AstFlagsField extends AstFieldBase {
-  kind: "flags";
-  value: string[];
-}
-
-export type AstField = AstNodeField | AstSpanField | AstBoolField | AstEnumField | AstFlagsField;
+export type AstJsonNode = AstListNode | AstRegularNode;
 
 // ── Format types ──
 
@@ -100,16 +80,8 @@ export interface FormatResult {
 
 // ── AST result types ──
 
-export interface AstResultOk {
-  ok: true;
-  statements: AstJsonNode[];
-}
-
-export interface AstResultError {
-  ok: false;
-  error: string;
-}
-
+export type AstResultOk = {ok: true; statements: AstJsonNode[]};
+export type AstResultError = {ok: false; error: string};
 export type AstResult = AstResultOk | AstResultError;
 
 // ── Dialect types ──

@@ -146,7 +146,7 @@ pub enum Severity {
 
 // ── JSON serialization (feature = "json") ────────────────────────────
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde")]
 impl serde::Serialize for DiagnosticMessage {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;
@@ -202,7 +202,7 @@ impl serde::Serialize for DiagnosticMessage {
     }
 }
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde")]
 impl serde::Serialize for Help {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;
@@ -218,7 +218,7 @@ impl serde::Serialize for Help {
 }
 
 /// Serializes as a lowercase string (e.g. `"error"`, `"warning"`).
-#[cfg(feature = "json")]
+#[cfg(feature = "serde")]
 impl serde::Serialize for Severity {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(match self {
@@ -232,7 +232,7 @@ impl serde::Serialize for Severity {
 
 /// Serializes with a distinct `"message"` (Display) and `"detail"` (structured)
 /// field, matching the shape expected by LSP and WASM consumers.
-#[cfg(feature = "json")]
+#[cfg(feature = "serde")]
 impl serde::Serialize for Diagnostic {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;

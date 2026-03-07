@@ -69,6 +69,10 @@
 //!
 //! - `sqlite` *(default)*: enables the built-in `SQLite` grammar
 //!   ([`Tokenizer`], [`Token`], and `sqlite::grammar`/`sqlite::ast`).
+//! - `serde`: implements [`serde::Serialize`] on [`any::AnyNode`], producing
+//!   JSON that mirrors the text dump format.
+//! - `serde-json`: adds [`typed::TypedParsedStatement::dump_json`], a
+//!   convenience wrapper that calls `serde_json::to_string` on the root node.
 //!
 //! # Choosing an API Layer
 //!

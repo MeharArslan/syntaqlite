@@ -290,7 +290,7 @@ impl LspHost {
     /// # Errors
     ///
     /// Returns an error string if `json` is not a valid schema JSON blob.
-    #[cfg(feature = "json")]
+    #[cfg(feature = "serde-json")]
     pub fn set_session_context_from_json(&mut self, json: &str) -> Result<(), String> {
         let catalog = Catalog::from_json(self.dialect.clone(), json)?;
         self.set_session_context(catalog);
