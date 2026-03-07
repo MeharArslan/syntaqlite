@@ -8,19 +8,33 @@ use std::slice;
 
 use serde::Serialize;
 
+use syntaqlite::any::AnyGrammar;
 use syntaqlite::lsp::LspHost;
-use syntaqlite::{FormatConfig, Formatter, KeywordCase, ValidationConfig};
+use syntaqlite::util::SqliteFlags;
+use syntaqlite::{AnyDialect, FormatConfig, Formatter, KeywordCase, ValidationConfig};
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
     /// Global LspHost reused across wasm calls. Invalidated when session context changes.
     static LSP_HOST: RefCell<Option<LspHost>> = const { RefCell::new(None) };
+    /// Active dialect. `None` means use the built-in SQLite dialect.
+    static DIALECT: RefCell<Option<AnyDialect>> = const { RefCell::new(None) };
+}
+
+/// Sentinel returned by [`syntaqlite_sqlite_dialect`] to mean "built-in SQLite".
+/// Any real WASM linear-memory pointer is always > 1.
+const BUILTIN_SQLITE_SENTINEL: u32 = 1;
+
+fn get_dialect() -> AnyDialect {
+    DIALECT
+        .with(|cell| cell.borrow().clone())
+        .unwrap_or_else(|| syntaqlite::sqlite_dialect().into())
 }
 
 fn take_or_create_lsp_host() -> LspHost {
     LSP_HOST
         .with(|cell| cell.borrow_mut().take())
-        .unwrap_or_else(LspHost::new)
+        .unwrap_or_else(|| LspHost::with_dialect(get_dialect()))
 }
 
 fn store_lsp_host(lsp: LspHost) {
@@ -176,7 +190,7 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
         semicolons: semicolons != 0,
         ..Default::default()
     };
-    let mut formatter = Formatter::with_config(&config);
+    let mut formatter = Formatter::with_dialect_config(get_dialect(), &config);
     let sql = try_wasm!(formatter.format(&source).map_err(|e| e.to_string()));
     set_result(&sql);
     0
@@ -318,6 +332,57 @@ pub extern "C" fn wasm_completions(ptr: u32, len: u32, offset: u32, version: u32
     )
 }
 
+// ── Dialect switching ────────────────────────────────────────────────
+
+/// Returns a sentinel pointer meaning "use the built-in SQLite dialect".
+///
+/// The TypeScript `DialectManager` calls this via `syntaqlite_sqlite_dialect()`
+/// to select the built-in grammar without loading a separate WASM side module.
+#[unsafe(no_mangle)]
+pub extern "C" fn syntaqlite_sqlite_dialect() -> u32 {
+    BUILTIN_SQLITE_SENTINEL
+}
+
+fn run_set_dialect(ptr: u32) -> i32 {
+    if ptr == 0 {
+        set_result("null grammar pointer");
+        return 1;
+    }
+    let dialect = if ptr == BUILTIN_SQLITE_SENTINEL {
+        // Built-in SQLite: use the full dialect (formatter statics, semantic roles).
+        syntaqlite::sqlite_dialect().into()
+    } else {
+        // External grammar side module: read the CGrammar struct from linear memory,
+        // extract version/cflags, and overlay them on the built-in SQLite dialect.
+        // TODO: support truly external (non-SQLite) grammars with their own formatter.
+        // SAFETY: ptr is a WASM linear-memory address returned by a grammar function
+        // in a side module loaded via Emscripten loadDynamicLibrary.
+        let raw: syntaqlite::typed::CGrammar =
+            unsafe { std::ptr::read(ptr as *const syntaqlite::typed::CGrammar) };
+        let grammar: AnyGrammar = unsafe { AnyGrammar::new(raw) };
+        let version = grammar.version();
+        let cflags: SqliteFlags = grammar.cflags().into();
+        syntaqlite::sqlite_dialect()
+            .with_version(version)
+            .with_cflags(cflags)
+            .into()
+    };
+    DIALECT.with(|cell| *cell.borrow_mut() = Some(dialect));
+    invalidate_lsp_host();
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_dialect(ptr: u32) -> i32 {
+    catch_unwind(|| run_set_dialect(ptr), "wasm_set_dialect panicked")
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_clear_dialect() {
+    DIALECT.with(|cell| *cell.borrow_mut() = None);
+    invalidate_lsp_host();
+}
+
 // ── Embedded SQL WASM exports ────────────────────────────────────────
 //
 // lang encoding: 0 = Python, 1 = TypeScript/JavaScript
@@ -333,7 +398,7 @@ fn embedded_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, 
 }
 
 fn make_embedded_analyzer() -> EmbeddedAnalyzer {
-    EmbeddedAnalyzer::new(syntaqlite::sqlite_dialect())
+    EmbeddedAnalyzer::new(get_dialect())
 }
 
 #[derive(Serialize)]

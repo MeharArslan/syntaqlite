@@ -11,10 +11,10 @@ export interface DialectPreset {
   symbol: string;
 }
 
-const SQLITE_WASM_URL = new URL("../wasm/syntaqlite-sqlite.wasm", import.meta.url).href;
-
 export const BUILTIN_PRESETS: DialectPreset[] = [
-  {id: "sqlite", label: "SQLite", wasmUrl: SQLITE_WASM_URL, symbol: "syntaqlite_sqlite_dialect"},
+  // Empty wasmUrl: the symbol is resolved directly from the runtime module
+  // via syntaqlite_sqlite_dialect() exported by syntaqlite-wasm.
+  {id: "sqlite", label: "SQLite", wasmUrl: "", symbol: "syntaqlite_sqlite_dialect"},
 ];
 
 export interface DialectManagerConfig {

@@ -154,17 +154,19 @@ export class Engine {
   }
 
   async loadDialectFromUrl(url: string, symbol: string): Promise<DialectBinding> {
-    if (typeof this.module!.loadDynamicLibrary !== "function") {
-      throw new Error("runtime module does not expose loadDynamicLibrary");
-    }
     const localScope: Record<string, unknown> = {};
-    const maybePromise = this.module!.loadDynamicLibrary(
-      url,
-      {loadAsync: true, global: false, nodelete: true},
-      localScope,
-    );
-    if (maybePromise && typeof (maybePromise as Promise<void>).then === "function") {
-      await maybePromise;
+    if (url) {
+      if (typeof this.module!.loadDynamicLibrary !== "function") {
+        throw new Error("runtime module does not expose loadDynamicLibrary");
+      }
+      const maybePromise = this.module!.loadDynamicLibrary(
+        url,
+        {loadAsync: true, global: false, nodelete: true},
+        localScope,
+      );
+      if (maybePromise && typeof (maybePromise as Promise<void>).then === "function") {
+        await maybePromise;
+      }
     }
     let ptr: number;
     try {
