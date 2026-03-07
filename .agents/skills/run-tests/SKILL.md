@@ -1,14 +1,12 @@
 ---
 name: run-tests
-description: Run tests to verify correctness after code changes. Use when the user asks to run tests, verify changes, or check that things still work. NOTE: Only run Rust unit tests (tools/run-unit-tests). The diff/integration test scripts are currently broken.
+description: Run tests to verify correctness after code changes. Use when the user asks to run tests, verify changes, or check that things still work. Runs Rust unit tests and integration tests.
 user_invocable: true
 ---
 
 # run-tests
 
 Run tests to verify correctness after code changes.
-
-> **WARNING**: The following diff/integration test scripts are currently broken — do NOT run them. `tools/run-unit-tests` is fine.
 
 ## Instructions
 
@@ -17,14 +15,19 @@ Run tests to verify correctness after code changes.
    tools/run-unit-tests
    ```
 
-2. **Report results** to the user, including any failures with relevant output.
+2. **Run integration tests**:
+   ```sh
+   tools/run-integration-tests
+   ```
+   You can also run a specific suite:
+   ```sh
+   tools/run-integration-tests --suite ast
+   tools/run-integration-tests --suite fmt
+   tools/run-integration-tests --suite perfetto-fmt
+   tools/run-integration-tests --suite perfetto-val
+   tools/run-integration-tests --suite amalg
+   tools/run-integration-tests --suite grammar
+   ```
+   Use `tools/run-integration-tests --list` to see all available suites.
 
-## Do NOT run (currently broken)
-
-The following test scripts are broken and must be skipped until further notice:
-
-- `tools/run-ast-diff-tests`
-- `tools/run-fmt-diff-tests`
-- `tools/run-perfetto-fmt-diff-tests`
-- `tools/run-perfetto-validation-diff-tests`
-- `tools/run-amalg-tests`
+3. **Report results** to the user, including any failures with relevant output.
