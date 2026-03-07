@@ -384,12 +384,22 @@ impl Catalog {
         let mut catalog = Catalog::new(dialect);
         let db = catalog.layer_mut(CatalogLayer::Database);
         for t in root.tables {
-            let cols = t.columns.iter().map(|c| c.to_ascii_lowercase()).collect();
-            db.insert_relation(t.name, Some(cols));
+            // Empty column list means "unknown columns — accept any ref conservatively".
+            // Only use Some(cols) when columns are explicitly specified.
+            let cols = if t.columns.is_empty() {
+                None
+            } else {
+                Some(t.columns.iter().map(|c| c.to_ascii_lowercase()).collect())
+            };
+            db.insert_relation(t.name, cols);
         }
         for v in root.views {
-            let cols = v.columns.iter().map(|c| c.to_ascii_lowercase()).collect();
-            db.insert_relation(v.name, Some(cols));
+            let cols = if v.columns.is_empty() {
+                None
+            } else {
+                Some(v.columns.iter().map(|c| c.to_ascii_lowercase()).collect())
+            };
+            db.insert_relation(v.name, cols);
         }
         for f in root.functions {
             let arity = match f.args {

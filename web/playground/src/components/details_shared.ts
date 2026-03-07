@@ -104,7 +104,8 @@ export function renderSchemaTab(app: {
     format: SchemaFormat;
     rawText: string;
     parseError?: string;
-    apply: (engine: Engine) => boolean;
+    parsedTableCount?: number;
+    apply: (engine: Engine, force?: boolean) => boolean;
     configKey: string;
   };
   runtime: Engine;
@@ -134,6 +135,9 @@ export function renderSchemaTab(app: {
     }),
     app.schemaContext.parseError
       ? m("span.sq-details-panel__error", app.schemaContext.parseError)
-      : m("span.sq-details-panel__help", FORMAT_HELP[app.schemaContext.format]),
+      : app.schemaContext.parsedTableCount !== undefined
+        ? m("span.sq-details-panel__help",
+            `${app.schemaContext.parsedTableCount} table(s) loaded`)
+        : m("span.sq-details-panel__help", FORMAT_HELP[app.schemaContext.format]),
   ]);
 }

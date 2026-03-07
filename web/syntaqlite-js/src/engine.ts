@@ -66,6 +66,8 @@ export class Engine {
   private setLanguageModeRaw: WasmFn | undefined = undefined;
   private extractRaw: WasmFn | undefined = undefined;
   private currentLangMode: "sql" | EmbeddedLanguage = "sql";
+  /** Last session context applied, so it can be re-applied after dialect switches. */
+  private sessionContext: {kind: "json"; json: string} | {kind: "ddl"; sql: string} | null = null;
 
   constructor(config: EngineConfig = {}) {
     this.config = config;
@@ -205,6 +207,18 @@ export class Engine {
     const detail = this.readAndClearResult();
     if (status !== 0) {
       throw new Error(detail || `wasm_set_dialect failed with status ${status}`);
+    }
+    // The WASM invalidates the LSP host on dialect switch, discarding any
+    // session context. Re-apply it so callers don't have to track this.
+    this.reapplySessionContext();
+  }
+
+  private reapplySessionContext(): void {
+    if (!this.sessionContext) return;
+    if (this.sessionContext.kind === "json") {
+      this.applySessionContextJson(this.sessionContext.json);
+    } else {
+      this.applySessionContextDdl(this.sessionContext.sql);
     }
   }
 
@@ -375,6 +389,23 @@ export class Engine {
   }
 
   setSessionContext(json: string): void {
+    this.sessionContext = {kind: "json", json};
+    this.applySessionContextJson(json);
+  }
+
+  clearSessionContext(): void {
+    this.sessionContext = null;
+    if (!this.clearSessionContextRaw) return;
+    this.clearSessionContextRaw();
+  }
+
+  setSessionContextDdl(sql: string): {ok: true} | {ok: false; error: string} {
+    const result = this.applySessionContextDdl(sql);
+    if (result.ok) this.sessionContext = {kind: "ddl", sql};
+    return result;
+  }
+
+  private applySessionContextJson(json: string): void {
     if (!this.setSessionContextRaw) return;
     const status = this.withInput(json, (ptr, len) => this.setSessionContextRaw!(ptr, len));
     const detail = this.readAndClearResult();
@@ -383,12 +414,7 @@ export class Engine {
     }
   }
 
-  clearSessionContext(): void {
-    if (!this.clearSessionContextRaw) return;
-    this.clearSessionContextRaw();
-  }
-
-  setSessionContextDdl(sql: string): {ok: true} | {ok: false; error: string} {
+  private applySessionContextDdl(sql: string): {ok: true} | {ok: false; error: string} {
     if (!this.setSessionContextDdlRaw) return {ok: false, error: "DDL context not supported"};
     const status = this.withInput(sql, (ptr, len) => this.setSessionContextDdlRaw!(ptr, len));
     const detail = this.readAndClearResult();

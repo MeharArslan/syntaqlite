@@ -51,6 +51,8 @@ export class SchemaContextManager {
   rawText = "";
   format: SchemaFormat = "simple";
   parseError: string | undefined = undefined;
+  /** Number of tables successfully loaded, or undefined when no schema is set. */
+  parsedTableCount: number | undefined = undefined;
   private lastAppliedKey = "";
 
   /** Stable key for change detection (like DialectConfigManager.configKey). */
@@ -58,14 +60,17 @@ export class SchemaContextManager {
     return `${this.format}:${this.rawText}`;
   }
 
-  /** Apply the current schema to the engine. Returns true if changed. */
-  apply(engine: Engine): boolean {
+  /** Apply the current schema to the engine. Returns true if changed.
+   *  Pass `force=true` to re-apply even if the schema text hasn't changed
+   *  (needed after dialect switches that reset the engine's LSP host). */
+  apply(engine: Engine, force = false): boolean {
     const key = this.configKey;
-    if (key === this.lastAppliedKey) return false;
+    if (!force && key === this.lastAppliedKey) return false;
     this.lastAppliedKey = key;
 
     if (this.rawText.trim() === "") {
       this.parseError = undefined;
+      this.parsedTableCount = undefined;
       engine.clearSessionContext();
     } else if (this.format === "ddl") {
       const result = engine.setSessionContextDdl(this.rawText);
@@ -77,6 +82,7 @@ export class SchemaContextManager {
     } else {
       this.parseError = undefined;
       const payload = parseSimple(this.rawText);
+      this.parsedTableCount = payload.tables.length;
       engine.setSessionContext(JSON.stringify(payload));
     }
     return true;
@@ -85,6 +91,7 @@ export class SchemaContextManager {
   reset(engine: Engine): void {
     this.rawText = "";
     this.parseError = undefined;
+    this.parsedTableCount = undefined;
     this.lastAppliedKey = "";
     engine.clearSessionContext();
   }
