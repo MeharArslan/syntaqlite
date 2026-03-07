@@ -207,11 +207,11 @@ mod cflag_tests {
     }
 
     #[test]
-    #[cfg(feature = "fmt")]
+    #[cfg(all(feature = "fmt", feature = "lsp"))]
     fn available_functions_latest_includes_builtins() {
-        let dialect = crate::sqlite::dialect::dialect();
-        let fns = available_functions(&dialect);
-        assert!(fns.iter().any(|f| f.name == "abs"));
-        assert!(fns.iter().any(|f| f.name == "count"));
+        let host = crate::lsp::LspHost::new();
+        let names = host.available_function_names();
+        assert!(names.iter().any(|n| n == "abs"));
+        assert!(names.iter().any(|n| n == "count"));
     }
 }
