@@ -1,0 +1,9 @@
+{
+  "total": 0,
+  "parse_ok": 0,
+  "parse_error": 0,
+  "both_accept": 0,
+  "both_reject": 0,
+  "false_positive": 0,
+  "gap": 0
+}

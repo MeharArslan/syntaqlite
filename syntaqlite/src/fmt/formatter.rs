@@ -166,6 +166,7 @@ impl Formatter {
         let mut session = self.parser.parse(source);
         let mut result = String::with_capacity(source.len());
         let mut stmt_num: usize = 0;
+        let mut last_has_root = false;
 
         loop {
             let stmt = match session.next() {
@@ -206,6 +207,8 @@ impl Formatter {
             self.macro_regions.extend(erased.macro_regions());
 
             let root_id = erased.root_id();
+            let prev_has_root = last_has_root;
+            last_has_root = !root_id.is_null();
             let semicolons = self.config.semicolons;
             let has_comments = !self.comment_entries.is_empty();
             let needs_token_ctx = has_comments;
@@ -228,7 +231,7 @@ impl Formatter {
             if stmt_num > 0 {
                 emit_stmt_separator(
                     comment_ctx.as_ref(),
-                    semicolons,
+                    semicolons && prev_has_root,
                     stmt_source,
                     &mut arena,
                     &mut self.parts,
@@ -287,7 +290,7 @@ impl Formatter {
             return Ok(String::new());
         }
 
-        if self.config.semicolons {
+        if self.config.semicolons && last_has_root {
             result.push(';');
         }
         result.push('\n');

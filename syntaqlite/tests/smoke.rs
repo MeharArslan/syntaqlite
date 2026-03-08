@@ -21,7 +21,7 @@ fn parse_select_1() {
     let ParseOutcome::Ok(stmt) = session.next() else {
         panic!("expected Ok")
     };
-    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt.root(), Some(Stmt::SelectStmt(_))));
 
     // No more statements.
     assert!(matches!(session.next(), ParseOutcome::Done));
@@ -35,12 +35,12 @@ fn parse_multiple_statements() {
     let ParseOutcome::Ok(stmt1) = session.next() else {
         panic!("expected Ok")
     };
-    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt1.root(), Some(Stmt::SelectStmt(_))));
 
     let ParseOutcome::Ok(stmt2) = session.next() else {
         panic!("expected Ok")
     };
-    assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt2.root(), Some(Stmt::SelectStmt(_))));
 
     assert!(matches!(session.next(), ParseOutcome::Done));
 }
@@ -102,7 +102,7 @@ fn parse_error_recovery() {
         panic!("expected SelectStmt after recovery");
     };
     assert!(
-        matches!(stmt.root(), Stmt::SelectStmt(_)),
+        matches!(stmt.root(), Some(Stmt::SelectStmt(_))),
         "expected SelectStmt after recovery"
     );
 
@@ -130,14 +130,14 @@ fn parse_error_mid_batch() {
     let ParseOutcome::Ok(stmt1) = session.next() else {
         panic!("expected Ok")
     };
-    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt1.root(), Some(Stmt::SelectStmt(_))));
 
     assert!(matches!(session.next(), ParseOutcome::Err(_)));
 
     let ParseOutcome::Ok(stmt3) = session.next() else {
         panic!("expected Ok")
     };
-    assert!(matches!(stmt3.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt3.root(), Some(Stmt::SelectStmt(_))));
 
     assert!(matches!(session.next(), ParseOutcome::Done));
 }
@@ -152,7 +152,7 @@ fn parser_reuse() {
         let ParseOutcome::Ok(stmt) = session.next() else {
             panic!("expected Ok")
         };
-        assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+        assert!(matches!(stmt.root(), Some(Stmt::SelectStmt(_))));
     }
 
     // Reuse with different input
@@ -161,7 +161,7 @@ fn parser_reuse() {
         let ParseOutcome::Ok(stmt) = session.next() else {
             panic!("expected Ok")
         };
-        assert!(matches!(stmt.root(), Stmt::DeleteStmt(_)));
+        assert!(matches!(stmt.root(), Some(Stmt::DeleteStmt(_))));
     }
 }
 
@@ -215,7 +215,7 @@ fn table_qualified_star_qualifier_in_expr_not_alias() {
     };
 
     // Verify via the typed API that flags=STAR and alias=None.
-    let root = stmt.root(); // returns Stmt<'a> directly (not Option)
+    let root = stmt.root().expect("expected root");
     let Stmt::SelectStmt(select) = root else {
         panic!("expected SelectStmt, got {root:?}");
     };

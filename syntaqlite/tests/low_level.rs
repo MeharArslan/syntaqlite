@@ -25,7 +25,7 @@ fn feed_tokens_select_1() {
         .finish()
         .expect("expected Some")
         .expect("expected a statement");
-    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt.root(), Some(Stmt::SelectStmt(_))));
 }
 
 /// Feed tokens with an explicit SEMI. SEMI immediately completes the statement —
@@ -44,7 +44,7 @@ fn feed_tokens_with_semicolon() {
         .feed_token(TokenType::Semi, 8..9)
         .expect("SEMI should complete the statement")
         .expect("expected Ok");
-    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt.root(), Some(Stmt::SelectStmt(_))));
 }
 
 /// Multiple statements: SEMI immediately completes the first statement,
@@ -91,7 +91,7 @@ fn feed_token_skips_space() {
         .finish()
         .expect("expected Some")
         .expect("expected a statement");
-    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt.root(), Some(Stmt::SelectStmt(_))));
 }
 
 /// `TK_COMMENT` should be recorded as a comment.
@@ -188,7 +188,7 @@ fn macro_well_aligned_complete_expression() {
         .finish()
         .expect("expected Some")
         .expect("expected a statement");
-    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt.root(), Some(Stmt::SelectStmt(_))));
 }
 
 /// A macro whose expanded tokens straddle a node boundary: the schema part of
@@ -243,7 +243,7 @@ fn feed_tokens_multi_statement_both_roots() {
         .feed_token(TokenType::Semi, 8..9)
         .expect("stmt 1 should complete")
         .expect("stmt 1 should be Ok");
-    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt1.root(), Some(Stmt::SelectStmt(_))));
 
     // Second statement.
     session.feed_token(TokenType::Select, 10..16);
@@ -252,7 +252,7 @@ fn feed_tokens_multi_statement_both_roots() {
         .finish()
         .expect("stmt 2 should complete")
         .expect("stmt 2 should be Ok");
-    assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt2.root(), Some(Stmt::SelectStmt(_))));
 }
 
 /// Three statements: the middle one has an explicit SEMI, the last uses finish().
@@ -279,7 +279,7 @@ fn feed_tokens_three_statements() {
         .finish()
         .expect("stmt 3 should complete")
         .expect("stmt 3 should be Ok");
-    assert!(matches!(stmt3.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt3.root(), Some(Stmt::SelectStmt(_))));
 }
 
 /// Bare semicolons between statements are silently skipped.
@@ -302,7 +302,7 @@ fn feed_tokens_bare_semicolons() {
         .feed_token(TokenType::Semi, 10..11)
         .expect("should complete")
         .expect("should be Ok");
-    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt.root(), Some(Stmt::SelectStmt(_))));
 
     // Trailing bare semicolon.
     assert!(
@@ -329,7 +329,7 @@ fn feed_tokens_explain_then_normal() {
         .expect("stmt 1 should complete")
         .expect("stmt 1 should be Ok");
     assert!(
-        matches!(stmt1.root(), Stmt::ExplainStmt(_)),
+        matches!(stmt1.root(), Some(Stmt::ExplainStmt(_))),
         "first statement should be EXPLAIN"
     );
 
@@ -341,7 +341,7 @@ fn feed_tokens_explain_then_normal() {
         .expect("stmt 2 should complete")
         .expect("stmt 2 should be Ok");
     assert!(
-        matches!(stmt2.root(), Stmt::SelectStmt(_)),
+        matches!(stmt2.root(), Some(Stmt::SelectStmt(_))),
         "second statement should be plain SELECT, not EXPLAIN"
     );
 }
@@ -360,7 +360,7 @@ fn feed_tokens_normal_then_explain() {
         .feed_token(TokenType::Semi, 8..9)
         .expect("stmt 1 should complete")
         .expect("stmt 1 should be Ok");
-    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt1.root(), Some(Stmt::SelectStmt(_))));
 
     // EXPLAIN SELECT 2
     session.feed_token(TokenType::Explain, 10..17);
@@ -371,7 +371,7 @@ fn feed_tokens_normal_then_explain() {
         .expect("stmt 2 should complete")
         .expect("stmt 2 should be Ok");
     assert!(
-        matches!(stmt2.root(), Stmt::ExplainStmt(_)),
+        matches!(stmt2.root(), Some(Stmt::ExplainStmt(_))),
         "second statement should be EXPLAIN"
     );
 }
@@ -443,12 +443,12 @@ fn high_level_api_still_works() {
     let ParseOutcome::Ok(stmt1) = session.next() else {
         panic!("expected Ok")
     };
-    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt1.root(), Some(Stmt::SelectStmt(_))));
 
     let ParseOutcome::Ok(stmt2) = session.next() else {
         panic!("expected Ok")
     };
-    assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt2.root(), Some(Stmt::SelectStmt(_))));
 
     assert!(matches!(session.next(), ParseOutcome::Done));
 }
@@ -462,12 +462,12 @@ fn batch_parse_bare_semicolons() {
     let ParseOutcome::Ok(stmt1) = session.next() else {
         panic!("expected Ok for stmt 1")
     };
-    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt1.root(), Some(Stmt::SelectStmt(_))));
 
     let ParseOutcome::Ok(stmt2) = session.next() else {
         panic!("expected Ok for stmt 2")
     };
-    assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
+    assert!(matches!(stmt2.root(), Some(Stmt::SelectStmt(_))));
 
     assert!(matches!(session.next(), ParseOutcome::Done));
 }
@@ -482,7 +482,7 @@ fn batch_parse_explain_then_normal() {
         panic!("expected Ok for stmt 1")
     };
     assert!(
-        matches!(stmt1.root(), Stmt::ExplainStmt(_)),
+        matches!(stmt1.root(), Some(Stmt::ExplainStmt(_))),
         "stmt 1 should be EXPLAIN"
     );
 
@@ -490,7 +490,7 @@ fn batch_parse_explain_then_normal() {
         panic!("expected Ok for stmt 2")
     };
     assert!(
-        matches!(stmt2.root(), Stmt::SelectStmt(_)),
+        matches!(stmt2.root(), Some(Stmt::SelectStmt(_))),
         "stmt 2 should be plain SELECT"
     );
 

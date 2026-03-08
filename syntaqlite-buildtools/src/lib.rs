@@ -32,9 +32,6 @@ pub mod version_analysis;
 /// Bootstrap command implementations.
 pub mod commands;
 
-/// Upstream SQLite test runner.
-pub mod upstream_tests;
-
 #[cfg(test)]
 mod grammar_verify;
 #[cfg(test)]

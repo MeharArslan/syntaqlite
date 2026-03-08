@@ -370,7 +370,7 @@ static int summary_cmd(ClientData data, Tcl_Interp* interp, int objc,
 // ---------------------------------------------------------------------------
 
 int Tclsyntaqlite_Init(Tcl_Interp* interp) {
-  if (Tcl_InitStubs(interp, "8.5", 0) == NULL) {
+  if (Tcl_InitStubs(interp, TCL_VERSION, 0) == NULL) {
     return TCL_ERROR;
   }
 

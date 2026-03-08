@@ -45,7 +45,7 @@ fn pure_sqlite_stmts_are_known_variants() {
         let ParseOutcome::Ok(stmt) = session.next() else {
             panic!("expected parse Ok for: {sql}");
         };
-        let root = stmt.root();
+        let root = stmt.root().expect("expected root");
         let name = match root {
             Stmt::SelectStmt(_) => "SelectStmt",
             Stmt::InsertStmt(_) => "InsertStmt",

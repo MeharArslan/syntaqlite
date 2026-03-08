@@ -264,16 +264,12 @@ pub struct ParsedStatement<'a>(
 impl<'a> ParsedStatement<'a> {
     /// Typed AST root for the statement.
     ///
+    /// Returns `None` for comment-only input (valid SQL with no actual
+    /// statement, e.g. `/* no-op */`).
+    ///
     /// Mirrors C `syntaqlite_result_root` for `PARSE_OK`.
-    ///
-    /// # Panics
-    ///
-    /// Panics only if parser/result invariants are violated (an `Ok` result
-    /// without a C `result_root`).
-    pub fn root(&'a self) -> crate::sqlite::ast::Stmt<'a> {
-        self.0
-            .root()
-            .expect("ParseSession::next returned Ok but result_root was null")
+    pub fn root(&'a self) -> Option<crate::sqlite::ast::Stmt<'a>> {
+        self.0.root()
     }
 
     /// The source text bound to this result.

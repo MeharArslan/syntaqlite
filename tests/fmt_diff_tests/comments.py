@@ -4,6 +4,23 @@
 from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
+# ── Comment-only input ─────────────────────────────────────────────────────────
+
+
+class CommentOnlyInput(TestSuite):
+    def test_block_comment_only(self):
+        return DiffTestBlueprint(
+            sql="/* select 1 */",
+            out="/* select 1 */",
+        )
+
+    def test_line_comment_only(self):
+        return DiffTestBlueprint(
+            sql="-- noop",
+            out="-- noop",
+        )
+
+
 # ── Trailing comments ──────────────────────────────────────────────────────────
 
 

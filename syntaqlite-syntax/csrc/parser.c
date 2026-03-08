@@ -271,9 +271,15 @@ static int check_macro_straddle(SyntaqliteParser* p) {
 // ---------------------------------------------------------------------------
 
 static int finish_input(SyntaqliteParser* p) {
-  // Nothing to do if no tokens were ever fed.
+  // No real tokens were fed (only whitespace/comments).
   if (p->last_token_type == 0) {
     p->finished = 1;
+    // If comments were collected, return PARSE_OK so callers can read them
+    // (root will be NULL_NODE).  This matches SQLite's sqlite3_prepare_v2
+    // which returns SQLITE_OK for comment-only input.
+    if (syntaqlite_vec_len(&p->comments) > 0) {
+      return set_result_status(p, SYNTAQLITE_PARSE_OK);
+    }
     return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
 

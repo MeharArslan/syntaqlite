@@ -161,6 +161,10 @@ SOURCE_DEPS = [
               f"https://sqlite.org/{SQLITE_YEAR}/sqlite-src-{SQLITE_VERSION}.zip",
               "e436bb919850445ce5168fb033d2d0d5c53a9d8c9602c7fa62b3e0025541d481",
               f"sqlite-src-{SQLITE_VERSION}"),
+    SourceDep("sqlite-amalgamation", SQLITE_VERSION,
+              f"https://sqlite.org/{SQLITE_YEAR}/sqlite-amalgamation-{SQLITE_VERSION}.zip",
+              "9a9dd4eef7a97809bfacd84a7db5080a5c0eff7aaf1fc1aca20a6dc9a0c26f96",
+              f"sqlite-amalgamation-{SQLITE_VERSION}"),
 ]
 # fmt: on
 

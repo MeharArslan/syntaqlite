@@ -5,6 +5,9 @@ name = "syntaqlite"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["rlib", "staticlib"]
+
 [features]
 default = ["sqlite", "fmt", "validation"]
 fmt = []                     # formatter (bytecode interpreter)

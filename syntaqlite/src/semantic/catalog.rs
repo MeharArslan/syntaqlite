@@ -350,7 +350,7 @@ impl Catalog {
                     continue;
                 }
             };
-            let root = stmt.root();
+            let Some(root) = stmt.root() else { continue };
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
             catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, &dialect);

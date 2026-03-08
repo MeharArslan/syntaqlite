@@ -36,6 +36,7 @@ _SUITE_MODULES = [
     "python.syntaqlite.integration_tests.suites.amalg",
     "python.syntaqlite.integration_tests.suites.grammar",
     "python.syntaqlite.integration_tests.suites.sql_idempotency",
+    "python.syntaqlite.integration_tests.suites.upstream_sqlite",
 ]
 
 _BLUE = "\033[1;34m"
@@ -113,13 +114,14 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             selected.append(by_name[name])
     else:
-        selected = all_suites
+        selected = [s for s in all_suites if getattr(s, "ENABLED_BY_DEFAULT", True)]
 
     binary = Path(args.binary)
     if not binary.is_absolute():
         binary = ROOT_DIR / binary
 
-    if not binary.exists():
+    needs_binary = any(getattr(s, "NEEDS_BINARY", True) for s in selected)
+    if needs_binary and not binary.exists():
         print(f"Error: binary not found: {binary}", file=sys.stderr)
         print("Build it with: cargo build -p syntaqlite-cli", file=sys.stderr)
         return 1

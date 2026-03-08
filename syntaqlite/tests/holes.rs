@@ -275,7 +275,7 @@ fn baseline_id_in_macro_region() {
         .finish()
         .expect("expected Some")
         .expect("expected a statement");
-    eprintln!("baseline: got root node {:?}", stmt.root());
+    eprintln!("baseline: got root node {:?}", stmt.root().expect("expected root"));
 
     // Format it to see the macro region preserved
     let mut fmt = syntaqlite::Formatter::new();
