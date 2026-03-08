@@ -49,21 +49,16 @@ extern "C" {
   } while (0)
 
 // Ensure capacity >= needed (capacity is always a power of two).
-// Growth uses malloc + memcpy + free (no realloc).
-#define syntaqlite_vec_ensure(v, needed, mem)                             \
-  do {                                                                    \
-    if ((needed) > (v)->capacity) {                                       \
-      uint32_t _cap = (v)->capacity ? (v)->capacity : 16;                 \
-      while (_cap < (needed))                                             \
-        _cap *= 2;                                                        \
-      void* _new = (mem).xMalloc((size_t)_cap * sizeof(*(v)->data));      \
-      if ((v)->data) {                                                    \
-        memcpy(_new, (v)->data, (size_t)(v)->count * sizeof(*(v)->data)); \
-        (mem).xFree((v)->data);                                           \
-      }                                                                   \
-      (v)->data = (__typeof__((v)->data))_new;                            \
-      (v)->capacity = _cap;                                               \
-    }                                                                     \
+#define syntaqlite_vec_ensure(v, needed, mem)             \
+  do {                                                    \
+    if ((needed) > (v)->capacity) {                       \
+      uint32_t _cap = (v)->capacity ? (v)->capacity : 16; \
+      while (_cap < (needed))                             \
+        _cap *= 2;                                        \
+      (v)->data = (__typeof__((v)->data))(mem).xRealloc(  \
+          (v)->data, (size_t)_cap * sizeof(*(v)->data));  \
+      (v)->capacity = _cap;                               \
+    }                                                     \
   } while (0)
 
 // Append one element, grow if needed

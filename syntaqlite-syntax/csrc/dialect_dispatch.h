@@ -15,11 +15,11 @@
 #include SYNTAQLITE_INLINE_DIALECT_DISPATCH
 #elif !defined(SYNQ_PARSER_ALLOC)
 // Default: function pointer dispatch through the grammar struct.
-#define SYNQ_PARSER_ALLOC(g, m) (g)->parser_alloc(m)
-#define SYNQ_PARSER_INIT(g, p) (g)->parser_init(p)
+#define SYNQ_PARSER_ALLOC(g, m, c) (g)->parser_alloc(m, c)
+#define SYNQ_PARSER_INIT(g, p, c) (g)->parser_init(p, c)
 #define SYNQ_PARSER_FINALIZE(g, p) (g)->parser_finalize(p)
 #define SYNQ_PARSER_FREE(g, p, f) (g)->parser_free(p, f)
-#define SYNQ_PARSER_FEED(g, p, t, m, c) (g)->parser_feed(p, t, m, c)
+#define SYNQ_PARSER_FEED(g, p, t, m) (g)->parser_feed(p, t, m)
 #define SYNQ_PARSER_TRACE(g, f, s) \
   do {                             \
     if ((g)->parser_trace)         \

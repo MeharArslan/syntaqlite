@@ -31,6 +31,13 @@
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
 
+// Parser stack realloc/free macros. These expand at the Lemon call site
+// where the parser struct is in scope, routing through pCtx->mem.
+// YYREALLOC is called in yyGrowStack (parser variable: p).
+// YYFREE is called in ParseFinalize (parser variable: pParser).
+#define synq_stack_realloc(ptr, sz) (p->pCtx->mem.xRealloc((ptr), (sz)))
+#define synq_stack_free(ptr) (pParser->pCtx->mem.xFree((ptr)))
+
 /* BEGIN GRAMMAR_TYPES */
 // Grammar-specific struct types for multi-valued grammar nonterminals.
 // These are used by Lemon-generated parser actions to bundle multiple
@@ -378,19 +385,19 @@ typedef union {
 #ifndef YYSTACKDEPTH
 #define YYSTACKDEPTH 100
 #endif
-#define SynqSqliteParseARG_SDECL SynqParseCtx* pCtx;
-#define SynqSqliteParseARG_PDECL , SynqParseCtx* pCtx
-#define SynqSqliteParseARG_PARAM , pCtx
-#define SynqSqliteParseARG_FETCH SynqParseCtx* pCtx = yypParser->pCtx;
-#define SynqSqliteParseARG_STORE yypParser->pCtx = pCtx;
-#define YYREALLOC realloc
-#define YYFREE free
-#define YYDYNSTACK 0
-#define SynqSqliteParseCTX_SDECL
-#define SynqSqliteParseCTX_PDECL
-#define SynqSqliteParseCTX_PARAM
-#define SynqSqliteParseCTX_FETCH
-#define SynqSqliteParseCTX_STORE
+#define SynqSqliteParseARG_SDECL
+#define SynqSqliteParseARG_PDECL
+#define SynqSqliteParseARG_PARAM
+#define SynqSqliteParseARG_FETCH
+#define SynqSqliteParseARG_STORE
+#define YYREALLOC synq_stack_realloc
+#define YYFREE synq_stack_free
+#define YYDYNSTACK 1
+#define SynqSqliteParseCTX_SDECL SynqParseCtx* pCtx;
+#define SynqSqliteParseCTX_PDECL , SynqParseCtx* pCtx
+#define SynqSqliteParseCTX_PARAM , pCtx
+#define SynqSqliteParseCTX_FETCH SynqParseCtx* pCtx = yypParser->pCtx;
+#define SynqSqliteParseCTX_STORE yypParser->pCtx = pCtx;
 #define YYERRORSYMBOL 192
 #define YYERRSYMDT yy651
 #define YYFALLBACK 1

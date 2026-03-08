@@ -86,14 +86,11 @@ typedef struct SyntaqliteGrammarTemplate {
   const uint8_t* list_tags;  // 1 = list node
 
   // Parser lifecycle (Lemon parser, provided by grammar)
-  void* (*parser_alloc)(void* (*mallocProc)(size_t));
-  void (*parser_init)(void* parser);
+  void* (*parser_alloc)(void* (*mallocProc)(size_t), SynqParseCtx* pCtx);
+  void (*parser_init)(void* parser, SynqParseCtx* pCtx);
   void (*parser_finalize)(void* parser);
   void (*parser_free)(void* parser, void (*freeProc)(void*));
-  void (*parser_feed)(void* parser,
-                      int token_type,
-                      SynqParseToken minor,
-                      SynqParseCtx* pCtx);
+  void (*parser_feed)(void* parser, int token_type, SynqParseToken minor);
   void (*parser_trace)(FILE* trace_file, char* prompt);
   uint32_t (*parser_expected_tokens)(void* parser,
                                      uint32_t* out_tokens,

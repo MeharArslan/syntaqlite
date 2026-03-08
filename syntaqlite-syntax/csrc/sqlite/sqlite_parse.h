@@ -16,14 +16,11 @@
 extern "C" {
 #endif
 
-void* SynqSqliteParseAlloc(void* (*mallocProc)(size_t));
-void SynqSqliteParseInit(void* parser);
+void* SynqSqliteParseAlloc(void* (*mallocProc)(size_t), SynqParseCtx* pCtx);
+void SynqSqliteParseInit(void* parser, SynqParseCtx* pCtx);
 void SynqSqliteParseFinalize(void* parser);
 void SynqSqliteParseFree(void* parser, void (*freeProc)(void*));
-void SynqSqliteParse(void* parser,
-                     int token_type,
-                     SynqParseToken minor,
-                     SynqParseCtx* pCtx);
+void SynqSqliteParse(void* parser, int token_type, SynqParseToken minor);
 uint32_t SynqSqliteParseExpectedTokens(void* parser,
                                        uint32_t* out_tokens,
                                        uint32_t out_cap);

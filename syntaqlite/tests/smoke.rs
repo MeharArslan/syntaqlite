@@ -259,3 +259,30 @@ fn dump_star_column_flags() {
         "expected 'flags: STAR' with no extra bits, got:\n{out}"
     );
 }
+
+#[test]
+fn comment_only_returns_ok_with_none_root() {
+    // Comment-only input should return ParseOutcome::Ok (matching SQLite's
+    // sqlite3_prepare_v2 behavior) but root() should be None.
+    let parser = new_parser();
+
+    for sql in ["/* block comment */", "-- line comment", "/* c1 */ -- c2"] {
+        let mut session = parser.parse(sql);
+        let ParseOutcome::Ok(stmt) = session.next() else {
+            panic!("expected Ok for comment-only input: {sql:?}");
+        };
+        assert!(
+            stmt.root().is_none(),
+            "root() should be None for comment-only input: {sql:?}"
+        );
+        assert!(matches!(session.next(), ParseOutcome::Done));
+    }
+}
+
+#[test]
+fn whitespace_only_returns_done() {
+    // Pure whitespace (no comments) should return Done, not Ok.
+    let parser = new_parser();
+    let mut session = parser.parse("   \n\t  ");
+    assert!(matches!(session.next(), ParseOutcome::Done));
+}

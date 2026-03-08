@@ -369,10 +369,10 @@ pub(crate) fn generate_dialect_dispatch_h(dialect: &str) -> String {
     w.header_guard_start(&guard);
     let pascal = pascal_case(dialect);
     w.line(&format!(
-        "#define SYNQ_PARSER_ALLOC(d, m)          Synq{pascal}ParseAlloc(m)"
+        "#define SYNQ_PARSER_ALLOC(d, m, c)       Synq{pascal}ParseAlloc(m, c)"
     ));
     w.line(&format!(
-        "#define SYNQ_PARSER_INIT(d, p)           Synq{pascal}ParseInit(p)"
+        "#define SYNQ_PARSER_INIT(d, p, c)        Synq{pascal}ParseInit(p, c)"
     ));
     w.line(&format!(
         "#define SYNQ_PARSER_FINALIZE(d, p)       Synq{pascal}ParseFinalize(p)"
@@ -381,7 +381,7 @@ pub(crate) fn generate_dialect_dispatch_h(dialect: &str) -> String {
         "#define SYNQ_PARSER_FREE(d, p, f)        Synq{pascal}ParseFree(p, f)"
     ));
     w.line(&format!(
-        "#define SYNQ_PARSER_FEED(d, p, t, m, c)  Synq{pascal}Parse(p, t, m, c)"
+        "#define SYNQ_PARSER_FEED(d, p, t, m)     Synq{pascal}Parse(p, t, m)"
     ));
     w.line(&format!(
         "#define SYNQ_PARSER_TRACE(d, f, s)       Synq{pascal}ParseTrace(f, s)"
@@ -417,19 +417,17 @@ pub(crate) fn generate_parse_h(dialect: &str) -> String {
     w.line("#endif");
     w.newline();
     w.line(&format!(
-        "void* Synq{pascal}ParseAlloc(void* (*mallocProc)(size_t));"
+        "void* Synq{pascal}ParseAlloc(void* (*mallocProc)(size_t), SynqParseCtx* pCtx);"
     ));
-    w.line(&format!("void Synq{pascal}ParseInit(void* parser);"));
+    w.line(&format!(
+        "void Synq{pascal}ParseInit(void* parser, SynqParseCtx* pCtx);"
+    ));
     w.line(&format!("void Synq{pascal}ParseFinalize(void* parser);"));
     w.line(&format!(
         "void Synq{pascal}ParseFree(void* parser, void (*freeProc)(void*));"
     ));
     w.line(&format!(
-        "void Synq{pascal}Parse(void* parser, int token_type, SynqParseToken minor,"
-    ));
-    w.line(&format!(
-        "{}SynqParseCtx* pCtx);",
-        " ".repeat(5 + 4 + pascal.len() + 5 + 1)
+        "void Synq{pascal}Parse(void* parser, int token_type, SynqParseToken minor);"
     ));
     w.line(&format!(
         "uint32_t Synq{pascal}ParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);"

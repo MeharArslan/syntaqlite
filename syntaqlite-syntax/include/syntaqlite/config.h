@@ -31,19 +31,22 @@ extern "C" {
 // Memory methods
 // ---------------------------------------------------------------------------
 
-// Allocator pair for all syntaqlite-internal allocations. Both function
+// Allocator for all syntaqlite-internal allocations. All function
 // pointers must be non-NULL. Pass a pointer to one of these to
-// syntaqlite_*_create() functions, or pass NULL for malloc/free.
+// syntaqlite_*_create() functions, or pass NULL for malloc/realloc/free.
 typedef struct SyntaqliteMemMethods {
   void* (*xMalloc)(size_t);  // Allocate size bytes. Must not return NULL.
-  void (*xFree)(void*);      // Free a pointer returned by xMalloc.
+  void* (*xRealloc)(void*,
+                    size_t);  // Resize allocation. May return new pointer.
+  void (*xFree)(void*);       // Free a pointer returned by xMalloc/xRealloc.
 } SyntaqliteMemMethods;
 
-// Default allocator (system malloc/free). Use this when you need an
-// explicit allocator but have no custom one:
+// Default allocator (system malloc/realloc/free). Use this when you need
+// an explicit allocator but have no custom one:
 //   SyntaqliteParser* p =
 //   syntaqlite_parser_create(&SYNTAQLITE_MEM_METHODS_DEFAULT);
-#define SYNTAQLITE_MEM_METHODS_DEFAULT ((SyntaqliteMemMethods){malloc, free})
+#define SYNTAQLITE_MEM_METHODS_DEFAULT \
+  ((SyntaqliteMemMethods){malloc, realloc, free})
 
 #ifdef __cplusplus
 }

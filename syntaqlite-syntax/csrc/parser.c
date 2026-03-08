@@ -29,6 +29,7 @@ struct SyntaqliteParser {
   uint32_t offset;           // Tokenizer cursor into source.
   uint32_t last_token_type;  // Last non-whitespace token fed to Lemon.
   uint32_t finished;         // 1 after EOF has been sent to Lemon.
+  uint32_t had_comment;      // 1 if any comment token was seen this stmt.
   uint32_t had_error;        // Sticky error flag for current result.
   int32_t last_status;       // Last SYNTAQLITE_PARSE_* status returned.
   char error_msg[256];       // Error message buffer.
@@ -64,7 +65,7 @@ static int check_macro_straddle(SyntaqliteParser* p);
 // token as the lookahead, so that token is already consumed by Lemon.
 static void lemon_reinit(SyntaqliteParser* p) {
   SYNQ_PARSER_FINALIZE(p->grammar.tmpl, p->lemon);
-  SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon);
+  SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon, &p->ctx);
   p->last_token_type = 0;
 }
 
@@ -83,6 +84,7 @@ static void reset_stmt(SyntaqliteParser* p) {
   p->ctx.error = 0;
   p->ctx.saw_subquery = 0;
   p->ctx.saw_update_delete_limit = 0;
+  p->had_comment = 0;
   p->had_error = 0;
   p->error_msg[0] = '\0';
   p->ctx.error_offset = 0xFFFFFFFF;
@@ -124,7 +126,7 @@ SyntaqliteParser* syntaqlite_parser_create_with_grammar(
   memset(p, 0, sizeof(*p));
   p->mem = m;
   p->grammar = grammar;
-  p->lemon = SYNQ_PARSER_ALLOC(grammar.tmpl, m.xMalloc);
+  p->lemon = SYNQ_PARSER_ALLOC(grammar.tmpl, m.xMalloc, &p->ctx);
   synq_parse_ctx_init(&p->ctx, m);
   syntaqlite_vec_init(&p->comments);
   syntaqlite_vec_init(&p->tokens);
@@ -172,7 +174,7 @@ static int feed_one_token(SyntaqliteParser* p,
                           uint32_t token_idx) {
   SynqParseToken minor = {
       .z = text, .n = len, .type = token_type, .token_idx = token_idx};
-  SYNQ_PARSER_FEED(p->grammar.tmpl, p->lemon, (int)token_type, minor, &p->ctx);
+  SYNQ_PARSER_FEED(p->grammar.tmpl, p->lemon, (int)token_type, minor);
   p->last_token_type = token_type;
 
   if (p->ctx.error) {
@@ -274,10 +276,10 @@ static int finish_input(SyntaqliteParser* p) {
   // No real tokens were fed (only whitespace/comments).
   if (p->last_token_type == 0) {
     p->finished = 1;
-    // If comments were collected, return PARSE_OK so callers can read them
-    // (root will be NULL_NODE).  This matches SQLite's sqlite3_prepare_v2
-    // which returns SQLITE_OK for comment-only input.
-    if (syntaqlite_vec_len(&p->comments) > 0) {
+    // If comments were seen, return PARSE_OK (root will be NULL_NODE).
+    // This matches SQLite's sqlite3_prepare_v2 which returns SQLITE_OK
+    // for comment-only input.
+    if (p->had_comment) {
       return set_result_status(p, SYNTAQLITE_PARSE_OK);
     }
     return set_result_status(p, SYNTAQLITE_PARSE_DONE);
@@ -298,7 +300,7 @@ static int finish_input(SyntaqliteParser* p) {
 
   // Send end-of-input (EOF) to flush the final reduction.
   SynqParseToken eof = {.z = NULL, .n = 0, .type = 0, .token_idx = 0xFFFFFFFF};
-  SYNQ_PARSER_FEED(p->grammar.tmpl, p->lemon, 0, eof, &p->ctx);
+  SYNQ_PARSER_FEED(p->grammar.tmpl, p->lemon, 0, eof);
   p->finished = 1;
 
   if (p->ctx.error) {
@@ -352,6 +354,7 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
     }
 
     if (token_type == SYNTAQLITE_TK_COMMENT) {
+      p->had_comment = 1;
       if (p->collect_tokens) {
         SyntaqliteComment t = {tok_offset, (uint32_t)token_len,
                                z[tok_offset] == '-' ? (uint8_t)0 : (uint8_t)1};

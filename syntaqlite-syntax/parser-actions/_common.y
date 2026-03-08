@@ -17,7 +17,9 @@
 
 %token_prefix SYNTAQLITE_TK_
 %start_symbol input
-%extra_argument {SynqParseCtx* pCtx}
+%extra_context {SynqParseCtx* pCtx}
+%realloc synq_stack_realloc
+%free    synq_stack_free
 
 %include {
 #include <string.h>
@@ -27,6 +29,13 @@
 #include "syntaqlite_dialect/dialect_macros.h"
 #include "syntaqlite/types.h"
 #include "@DIALECT_BUILDER_H@"
+
+// Parser stack realloc/free macros. These expand at the Lemon call site
+// where the parser struct is in scope, routing through pCtx->mem.
+// YYREALLOC is called in yyGrowStack (parser variable: p).
+// YYFREE is called in ParseFinalize (parser variable: pParser).
+#define synq_stack_realloc(ptr, sz) (p->pCtx->mem.xRealloc((ptr), (sz)))
+#define synq_stack_free(ptr)        (pParser->pCtx->mem.xFree((ptr)))
 
 /* BEGIN GRAMMAR_TYPES */
 // Grammar-specific struct types for multi-valued grammar nonterminals.
