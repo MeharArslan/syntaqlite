@@ -113,7 +113,7 @@ node InsertStmt {
       }
       " INTO " child(table)
       if_set(columns) { group { "(" nest { softline child(columns) } softline ")" } }
-      if_set(source) { line child(source) }
+      if_set(source) { line child(source) } else { " DEFAULT VALUES" }
       if_set(upsert) { line child(upsert) }
       if_set(returning) { line "RETURNING " child(returning) }
     }

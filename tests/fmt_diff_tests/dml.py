@@ -83,6 +83,12 @@ class DmlFormat(TestSuite):
             out="INSERT OR IGNORE INTO t VALUES (1);",
         )
 
+    def test_insert_default_values(self):
+        return DiffTestBlueprint(
+            sql="insert into t default values",
+            out="INSERT INTO t DEFAULT VALUES;",
+        )
+
 
 class ReturningFormat(TestSuite):
     def test_delete_returning_star(self):
@@ -118,7 +124,7 @@ class ReturningFormat(TestSuite):
     def test_insert_default_values_returning(self):
         return DiffTestBlueprint(
             sql="insert into t default values returning *",
-            out="INSERT INTO t RETURNING *;",
+            out="INSERT INTO t DEFAULT VALUES RETURNING *;",
         )
 
 
