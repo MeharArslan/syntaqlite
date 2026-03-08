@@ -44,3 +44,9 @@ third_party/.claude/
 sqlite-sources
 sqlite-amalgamations
 sqlite-amalgamations/.build-cache
+
+# Upstream SQLite test artifacts (created by TCL test scripts)
+/out.db
+/test*.db*
+/tf_main*.tcl
+/log
