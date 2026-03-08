@@ -163,13 +163,13 @@ class SubqueryFormat(TestSuite):
     def test_in_subquery(self):
         return DiffTestBlueprint(
             sql="select a from t where x in (select id from t2)",
-            out="SELECT a FROM t WHERE x IN ((SELECT id FROM t2));",
+            out="SELECT a FROM t WHERE x IN (SELECT id FROM t2);",
         )
 
     def test_not_in_subquery(self):
         return DiffTestBlueprint(
             sql="select a from t where x not in (select id from t2)",
-            out="SELECT a FROM t WHERE x NOT IN ((SELECT id FROM t2));",
+            out="SELECT a FROM t WHERE x NOT IN (SELECT id FROM t2);",
         )
 
 

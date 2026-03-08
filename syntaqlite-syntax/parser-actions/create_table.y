@@ -203,18 +203,21 @@ ccons(A) ::= DEFAULT MINUS scantok term(X). {
     A.pending_name = SYNQ_NO_SPAN;
 }
 
-// DEFAULT scantok id (TRUE/FALSE/identifier default)
+// DEFAULT scantok id (TRUE/FALSE/CURRENT_TIMESTAMP/identifier default)
+// Upstream SQLite creates TK_STRING here and later converts TRUE/FALSE
+// to TK_TRUEFALSE during name resolution. We create a ColumnRef to
+// match the expression path (DEFAULT LP expr RP), so that both forms
+// produce the same AST.
 ccons(A) ::= DEFAULT scantok id(X). {
-    // Treat the identifier as a literal expression
-    uint32_t lit = synq_parse_literal(pCtx,
-        SYNTAQLITE_LITERAL_TYPE_STRING, synq_span(pCtx, X));
+    uint32_t ref = synq_parse_column_ref(pCtx,
+        synq_span(pCtx, X), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
     A.node = synq_parse_column_constraint(pCtx,
         SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
         SYNTAQLITE_GENERATED_COLUMN_STORAGE_VIRTUAL,
-        lit, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+        ref, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     A.pending_name = SYNQ_NO_SPAN;
 }
 

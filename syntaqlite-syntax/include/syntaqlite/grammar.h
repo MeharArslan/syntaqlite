@@ -128,8 +128,7 @@ typedef struct SyntaqliteGrammar {
 } SyntaqliteGrammar;
 
 // Default env: latest version, no cflags.
-#define SYNQ_GRAMMAR_DEFAULT(g) \
-  { (g), INT32_MAX, SYNQ_CFLAGS_DEFAULT }
+#define SYNQ_GRAMMAR_DEFAULT(g) {(g), INT32_MAX, SYNQ_CFLAGS_DEFAULT}
 
 #ifdef __cplusplus
 }

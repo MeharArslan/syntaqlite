@@ -541,9 +541,10 @@ class ColumnConstraintDefault(TestSuite):
                           collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr:
-                            Literal
-                              literal_type: STRING
-                              source: "TRUE"
+                            ColumnRef
+                              column: "TRUE"
+                              table: (none)
+                              schema: (none)
                           check_expr: (none)
                           generated_expr: (none)
                           fk_clause: (none)

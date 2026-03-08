@@ -64,7 +64,7 @@ class AlterTableFormat(TestSuite):
     def test_add_column(self):
         return DiffTestBlueprint(
             sql="alter table t add column c1",
-            out="ALTER TABLE ADD COLUMN c1;",
+            out="ALTER TABLE t ADD COLUMN c1;",
         )
 
 

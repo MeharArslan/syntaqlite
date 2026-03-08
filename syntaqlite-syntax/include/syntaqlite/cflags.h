@@ -76,8 +76,7 @@ typedef struct SyntaqliteCflags {
   uint8_t _reserved : 2;
 } SyntaqliteCflags;
 
-#define SYNQ_CFLAGS_DEFAULT \
-  { 0 }
+#define SYNQ_CFLAGS_DEFAULT {0}
 
 // ── Indexed accessor ────────────────────────────────────────────────────
 //

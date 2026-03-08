@@ -65,7 +65,7 @@ class CreateTableFormat(TestSuite):
     def test_without_rowid_strict(self):
         return DiffTestBlueprint(
             sql="create table t(a int primary key) without rowid, strict",
-            out="CREATE TABLE t(a int PRIMARY KEY) WITHOUT ROWID STRICT;",
+            out="CREATE TABLE t(a int PRIMARY KEY) WITHOUT ROWID, STRICT;",
         )
 
 
@@ -103,13 +103,13 @@ class ColumnConstraintFormat(TestSuite):
     def test_default_integer(self):
         return DiffTestBlueprint(
             sql="create table t(a int default 42)",
-            out="CREATE TABLE t(a int DEFAULT 42);",
+            out="CREATE TABLE t(a int DEFAULT (42));",
         )
 
     def test_default_string(self):
         return DiffTestBlueprint(
             sql="create table t(a text default 'hello')",
-            out="CREATE TABLE t(a text DEFAULT 'hello');",
+            out="CREATE TABLE t(a text DEFAULT ('hello'));",
         )
 
     def test_check(self):

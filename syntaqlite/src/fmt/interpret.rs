@@ -245,13 +245,8 @@ impl Formatter {
                                 ctx.dialect.fmt_dispatch(ctag)
                         {
                             if return_action != ReturnAction::Discard {
-                                return_action = child_needs_parens(
-                                    ctx,
-                                    cur_node_id,
-                                    idx,
-                                    ctag,
-                                    &child_fields,
-                                );
+                                return_action =
+                                    child_needs_parens(ctx, cur_node_id, idx, ctag, &child_fields);
                             }
                             push_call_frame!(
                                 child_id,
@@ -704,14 +699,14 @@ fn binary_op_precedence(op_ordinal: u32) -> Option<u8> {
     //   AND=11, OR=12, BIT_AND=13, BIT_OR=14,
     //   LSHIFT=15, RSHIFT=16, CONCAT=17, PTR=18
     match op_ordinal {
-        12 => Some(1),              // OR
-        11 => Some(2),              // AND
-        9 | 10 => Some(3),          // EQ, NE
-        5..=8 => Some(4),           // LT, GT, LE, GE
-        13..=16 => Some(5),         // BIT_AND, BIT_OR, LSHIFT, RSHIFT
-        0 | 1 => Some(6),           // PLUS, MINUS
-        2..=4 => Some(7),           // STAR, SLASH, REM
-        17 | 18 => Some(8),         // CONCAT, PTR
+        12 => Some(1),      // OR
+        11 => Some(2),      // AND
+        9 | 10 => Some(3),  // EQ, NE
+        5..=8 => Some(4),   // LT, GT, LE, GE
+        13..=16 => Some(5), // BIT_AND, BIT_OR, LSHIFT, RSHIFT
+        0 | 1 => Some(6),   // PLUS, MINUS
+        2..=4 => Some(7),   // STAR, SLASH, REM
+        17 | 18 => Some(8), // CONCAT, PTR
         _ => None,
     }
 }
@@ -729,15 +724,15 @@ fn binary_op_precedence(op_ordinal: u32) -> Option<u8> {
 ///
 /// Groups (from `_common.y`):
 ///   0 = logical + comparison (OR, AND, EQ, NE, LT, GT, LE, GE)
-///   1 = bitwise  (BIT_AND, BIT_OR, LSHIFT, RSHIFT)
+///   1 = bitwise  (`BIT_AND`, `BIT_OR`, LSHIFT, RSHIFT)
 ///   2 = arithmetic (PLUS, MINUS, STAR, SLASH, REM)
 ///   3 = string   (CONCAT, PTR)
 fn binary_op_group(op_ordinal: u32) -> Option<u8> {
     match op_ordinal {
-        5..=12 => Some(0),          // LT, GT, LE, GE, EQ, NE, AND, OR
-        13..=16 => Some(1),         // BIT_AND, BIT_OR, LSHIFT, RSHIFT
-        0..=4 => Some(2),           // PLUS, MINUS, STAR, SLASH, REM
-        17 | 18 => Some(3),         // CONCAT, PTR
+        5..=12 => Some(0),  // LT, GT, LE, GE, EQ, NE, AND, OR
+        13..=16 => Some(1), // BIT_AND, BIT_OR, LSHIFT, RSHIFT
+        0..=4 => Some(2),   // PLUS, MINUS, STAR, SLASH, REM
+        17 | 18 => Some(3), // CONCAT, PTR
         _ => None,
     }
 }
@@ -772,27 +767,27 @@ fn child_needs_parens(
             if let Some((_, pf)) = parent_fields
                 && let (FieldValue::Enum(parent_op), FieldValue::Enum(child_op)) =
                     (pf[0], child_fields[0])
-                    && let (Some(parent_prec), Some(child_prec)) = (
-                        binary_op_precedence(parent_op),
-                        binary_op_precedence(child_op),
-                    ) {
-                        // child_field_idx: 1 = left child, 2 = right child
-                        let is_right_child = child_field_idx == 2;
+                && let (Some(parent_prec), Some(child_prec)) = (
+                    binary_op_precedence(parent_op),
+                    binary_op_precedence(child_op),
+                )
+            {
+                // child_field_idx: 1 = left child, 2 = right child
+                let is_right_child = child_field_idx == 2;
 
-                        // Correctness: parens required when child binds less tightly,
-                        // or same precedence on the right (left-associative).
-                        if child_prec < parent_prec || (is_right_child && child_prec == parent_prec)
-                        {
-                            return ReturnAction::WrapInParens;
-                        }
+                // Correctness: parens required when child binds less tightly,
+                // or same precedence on the right (left-associative).
+                if child_prec < parent_prec || (is_right_child && child_prec == parent_prec) {
+                    return ReturnAction::WrapInParens;
+                }
 
-                        // Readability: preserve parens when crossing operator groups
-                        // (e.g. arithmetic inside comparison) so readers don't need
-                        // to know the full precedence table.
-                        if binary_op_group(parent_op) != binary_op_group(child_op) {
-                            return ReturnAction::WrapInParens;
-                        }
-                    }
+                // Readability: preserve parens when crossing operator groups
+                // (e.g. arithmetic inside comparison) so readers don't need
+                // to know the full precedence table.
+                if binary_op_group(parent_op) != binary_op_group(child_op) {
+                    return ReturnAction::WrapInParens;
+                }
+            }
         }
 
         // Case 2: UnaryExpr wrapping BinaryExpr (e.g., NOT (a AND b))
@@ -802,12 +797,13 @@ fn child_needs_parens(
             // UnaryOp: MINUS=0, PLUS=1, BIT_NOT=2, NOT=3
             let parent_fields = ctx.reader.extract_fields(parent_id);
             if let Some((_, pf)) = parent_fields
-                && let FieldValue::Enum(unary_op) = pf[0] {
-                    // NOT has lower precedence than all binary operators
-                    if unary_op == 3 {
-                        return ReturnAction::WrapInParens;
-                    }
+                && let FieldValue::Enum(unary_op) = pf[0]
+            {
+                // NOT has lower precedence than all binary operators
+                if unary_op == 3 {
+                    return ReturnAction::WrapInParens;
                 }
+            }
         }
     }
 
@@ -817,21 +813,23 @@ fn child_needs_parens(
     // node/field name rather than scanning bytecode, because bytecode layout is
     // unreliable with conditional blocks.
     if let Some(ptag) = parent_tag
-        && grammar.is_list(child_tag) && grammar.node_name(child_tag) == "ExprList" {
-            let field_name = grammar
-                .field_meta(ptag)
-                .nth(child_field_idx as usize)
-                .map(|m| m.name());
-            // Fields typed as `index Expr` that may contain ExprList as a row value.
-            // Fields like `args`, `columns`, `groupby`, `ref_columns`, etc. are typed
-            // as `index ExprList` and the parent already provides any needed wrapping.
-            if matches!(
-                field_name,
-                Some("expr" | "value" | "left" | "right" | "operand")
-            ) {
-                return ReturnAction::WrapInParens;
-            }
+        && grammar.is_list(child_tag)
+        && grammar.node_name(child_tag) == "ExprList"
+    {
+        let field_name = grammar
+            .field_meta(ptag)
+            .nth(child_field_idx as usize)
+            .map(|m| m.name());
+        // Fields typed as `index Expr` that may contain ExprList as a row value.
+        // Fields like `args`, `columns`, `groupby`, `ref_columns`, etc. are typed
+        // as `index ExprList` and the parent already provides any needed wrapping.
+        if matches!(
+            field_name,
+            Some("expr" | "value" | "left" | "right" | "operand")
+        ) {
+            return ReturnAction::WrapInParens;
         }
+    }
 
     ReturnAction::CatOntoRunning
 }
