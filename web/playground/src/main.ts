@@ -7,7 +7,7 @@ import * as monaco from "monaco-editor";
 import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
 import "monaco-editor/esm/vs/basic-languages/python/python.contribution";
 import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
-import {INPUT_MODEL_URI} from "./app/editor_models";
+import {FORMATTED_MODEL_URI, INPUT_MODEL_URI} from "./app/editor_models";
 import type {Engine} from "@syntaqlite/js";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
@@ -72,7 +72,8 @@ function registerSemanticTokensProvider(engine: Engine): void {
       range: monaco.Range,
     ): monaco.languages.ProviderResult<monaco.languages.SemanticTokens> {
       if (!engine.ready) return {data: new Uint32Array(0)};
-      if (model.uri.toString() !== INPUT_MODEL_URI) {
+      const uri = model.uri.toString();
+      if (uri !== INPUT_MODEL_URI && uri !== FORMATTED_MODEL_URI) {
         return {data: new Uint32Array(0)};
       }
       const source = model.getValue();
