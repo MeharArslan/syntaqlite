@@ -81,10 +81,24 @@ static void json_write_string(FILE* f, const char* s) {
 }
 
 // ---------------------------------------------------------------------------
+// Dummy collation for registering custom collation names
+// ---------------------------------------------------------------------------
+
+static int dummy_collation(void* arg, int n1, const void* s1, int n2,
+                           const void* s2) {
+  (void)arg;
+  int n = n1 < n2 ? n1 : n2;
+  int rc = memcmp(s1, s2, (size_t)n);
+  if (rc == 0) rc = n1 - n2;
+  return rc;
+}
+
+// ---------------------------------------------------------------------------
 // Core eval: dual-path SQL execution
 // ---------------------------------------------------------------------------
 
-// Evaluate a single SQL statement through both SQLite and syntaqlite.
+// Evaluate a SQL string (possibly multi-statement) through both SQLite and
+// syntaqlite, comparing results per-statement.
 static void eval_sql(DbHandle* db, const char* sql, int sql_len) {
   if (!sql || sql_len == 0) return;
 
@@ -99,38 +113,57 @@ static void eval_sql(DbHandle* db, const char* sql, int sql_len) {
   }
   if (all_space) return;
 
-  db->total_stmts++;
+  // --- Path 1: Real SQLite — loop over all statements via tail pointer ---
+  const char* tail = sql;
+  int remaining = sql_len;
+  int sqlite_all_ok = 1;
+  const char* first_sqlite_err = NULL;
 
-  // --- Path 1: Real SQLite prepare ---
-  sqlite3_stmt* stmt = NULL;
-  int sqlite_rc = sqlite3_prepare_v2(db->real_db, sql, sql_len, &stmt, NULL);
-  const char* sqlite_err =
-      (sqlite_rc != SQLITE_OK) ? sqlite3_errmsg(db->real_db) : NULL;
+  while (remaining > 0) {
+    // Skip leading whitespace.
+    while (remaining > 0 &&
+           (*tail == ' ' || *tail == '\t' || *tail == '\n' || *tail == '\r')) {
+      tail++;
+      remaining--;
+    }
+    if (remaining <= 0) break;
 
-  int sqlite_ok = (sqlite_rc == SQLITE_OK);
-  if (sqlite_ok) {
+    sqlite3_stmt* stmt = NULL;
+    const char* next_tail = NULL;
+    int rc = sqlite3_prepare_v2(db->real_db, tail, remaining, &stmt, &next_tail);
+    if (rc != SQLITE_OK) {
+      sqlite_all_ok = 0;
+      if (!first_sqlite_err) {
+        first_sqlite_err = sqlite3_errmsg(db->real_db);
+      }
+      db->sqlite_prepare_error++;
+      break;  // Stop on first error — matches real sqlite3 behavior.
+    }
     db->sqlite_prepare_ok++;
-    // Step DDL so schema accumulates in real DB.
-    // We step all successfully-prepared statements to build schema.
     if (stmt) {
       sqlite3_step(stmt);
+      sqlite3_finalize(stmt);
     }
-  } else {
-    db->sqlite_prepare_error++;
-  }
-  if (stmt) {
-    sqlite3_finalize(stmt);
+    if (!next_tail || next_tail <= tail) break;
+    remaining -= (int)(next_tail - tail);
+    tail = next_tail;
   }
 
   // --- Path 2: syntaqlite parser ---
   syntaqlite_parser_reset(db->parser, sql, (uint32_t)sql_len);
-  int32_t parse_rc = syntaqlite_parser_next(db->parser);
-  int syntaqlite_parse_ok = (parse_rc == SYNTAQLITE_PARSE_OK);
+  int syntaqlite_parse_ok = 1;
   const char* parse_err = NULL;
-  if (!syntaqlite_parse_ok && parse_rc == SYNTAQLITE_PARSE_ERROR) {
+  int32_t parse_rc;
+  while ((parse_rc = syntaqlite_parser_next(db->parser)) == SYNTAQLITE_PARSE_OK) {
+    // Keep consuming statements.
+  }
+  if (parse_rc == SYNTAQLITE_PARSE_ERROR) {
+    syntaqlite_parse_ok = 0;
     parse_err = syntaqlite_result_error_msg(db->parser);
   }
+  // SYNTAQLITE_PARSE_EOF means all statements parsed successfully.
 
+  db->total_stmts++;
   if (syntaqlite_parse_ok) {
     db->parse_ok++;
   } else {
@@ -145,11 +178,11 @@ static void eval_sql(DbHandle* db, const char* sql, int sql_len) {
   int syntaqlite_ok = syntaqlite_parse_ok && diag_count == 0;
 
   // --- Comparison ---
-  if (sqlite_ok && syntaqlite_ok)
+  if (sqlite_all_ok && syntaqlite_ok)
     db->both_accept++;
-  else if (!sqlite_ok && !syntaqlite_ok)
+  else if (!sqlite_all_ok && !syntaqlite_ok)
     db->both_reject++;
-  else if (sqlite_ok && !syntaqlite_ok)
+  else if (sqlite_all_ok && !syntaqlite_ok)
     db->false_positive++;
   else
     db->gap++;
@@ -158,10 +191,11 @@ static void eval_sql(DbHandle* db, const char* sql, int sql_len) {
   if (db->log_file) {
     fprintf(db->log_file, "{\"sql\":");
     json_write_string(db->log_file, sql);
-    fprintf(db->log_file, ",\"sqlite_ok\":%s", sqlite_ok ? "true" : "false");
-    if (sqlite_err) {
+    fprintf(db->log_file, ",\"sqlite_ok\":%s",
+            sqlite_all_ok ? "true" : "false");
+    if (first_sqlite_err) {
       fprintf(db->log_file, ",\"sqlite_error\":");
-      json_write_string(db->log_file, sqlite_err);
+      json_write_string(db->log_file, first_sqlite_err);
     }
     fprintf(db->log_file, ",\"parse_ok\":%s",
             syntaqlite_parse_ok ? "true" : "false");
@@ -187,15 +221,9 @@ static void eval_sql(DbHandle* db, const char* sql, int sql_len) {
   }
 }
 
-// Split multi-statement SQL (separated by ;) and eval each.
+// Evaluate SQL through both paths. Handles multi-statement strings.
 static void eval_multi_sql(DbHandle* db, const char* sql) {
   if (!sql || !*sql) return;
-
-  // Use sqlite3_prepare_v2's tail pointer to split statements naturally.
-  // But we also need to parse each one via syntaqlite separately.
-  // Simple approach: feed the whole thing to syntaqlite parser which
-  // handles multi-statement splitting internally.
-
   int len = (int)strlen(sql);
   eval_sql(db, sql, len);
 }
@@ -259,8 +287,37 @@ static int db_handle_cmd(ClientData data, Tcl_Interp* interp, int objc,
     return TCL_OK;
   }
 
-  if (strcmp(sub, "function") == 0 || strcmp(sub, "collate") == 0 ||
-      strcmp(sub, "collation_needed") == 0 || strcmp(sub, "trace") == 0 ||
+  if (strcmp(sub, "collate") == 0) {
+    // Register a dummy collation so that sqlite3_prepare_v2 accepts SQL
+    // using this collation name. The upstream TCL tests register custom
+    // collations (hex, reverse, etc.) via `db collate <name> <proc>`.
+    if (objc >= 3) {
+      const char* collation_name = Tcl_GetString(objv[2]);
+      sqlite3_create_collation(db->real_db, collation_name, SQLITE_UTF8,
+                               NULL, dummy_collation);
+    }
+    return TCL_OK;
+  }
+
+  if (strcmp(sub, "function") == 0) {
+    // Register a dummy scalar function so prepare_v2 accepts SQL using it.
+    // Usage: db function <name> <script>
+    if (objc >= 3) {
+      const char* func_name = Tcl_GetString(objv[2]);
+      // -deterministic flag shifts the name to objv[3].
+      if (strcmp(func_name, "-deterministic") == 0 && objc >= 4) {
+        func_name = Tcl_GetString(objv[3]);
+      }
+      if (strcmp(func_name, "-argcount") == 0 && objc >= 5) {
+        func_name = Tcl_GetString(objv[4]);
+      }
+      sqlite3_create_function(db->real_db, func_name, -1, SQLITE_UTF8,
+                              NULL, NULL, NULL, NULL);
+    }
+    return TCL_OK;
+  }
+
+  if (strcmp(sub, "collation_needed") == 0 || strcmp(sub, "trace") == 0 ||
       strcmp(sub, "profile") == 0 || strcmp(sub, "busy") == 0 ||
       strcmp(sub, "timeout") == 0 || strcmp(sub, "progress") == 0 ||
       strcmp(sub, "authorizer") == 0 || strcmp(sub, "nullvalue") == 0 ||

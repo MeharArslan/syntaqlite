@@ -95,6 +95,10 @@ def main(argv: list[str] | None = None) -> int:
         "--analyze-only", action="store_true",
         help="Skip running tests; analyze existing logs from a previous run.",
     )
+    parser.add_argument(
+        "--validate", action="store_true",
+        help="Enable semantic validation (upstream-sqlite suite).",
+    )
     args = parser.parse_args(argv)
 
     all_suites = _load_suites()
@@ -138,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
         rebaseline=args.rebaseline,
         jobs=args.jobs,
         analyze_only=args.analyze_only,
+        validate=args.validate,
     )
 
     results: list[tuple[str, bool, float]] = []

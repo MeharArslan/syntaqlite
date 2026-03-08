@@ -172,6 +172,10 @@ def _build_extension(ctx: SuiteContext, verbose: bool) -> Path | None:
         *tcl_lib_flags,
         "-lpthread", "-ldl", "-lm",
         "-O2",
+        # Enable SQLite extensions so upstream tests can exercise them.
+        "-DSQLITE_ENABLE_FTS3",
+        "-DSQLITE_ENABLE_FTS4",
+        "-DSQLITE_ENABLE_FTS5",
     ]
 
     if platform.system() == "Darwin":
@@ -635,7 +639,7 @@ def run(ctx: SuiteContext) -> int:
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     # Run tests.
-    validate = os.environ.get("UPSTREAM_VALIDATE") == "1"
+    validate = ctx.validate
     file_results: list[FileResult] = []
     done = 0
     total = len(test_files)

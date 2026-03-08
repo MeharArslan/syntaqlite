@@ -20,6 +20,7 @@ class SuiteContext:
     rebaseline: bool
     jobs: int | None
     analyze_only: bool = False
+    validate: bool = False
 
 
 class Suite(Protocol):
