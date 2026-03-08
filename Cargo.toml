@@ -17,13 +17,13 @@ repository = "https://github.com/LalitMaganti/syntaqlite"
 
 [workspace.lints.rust]
 unused_must_use = "deny"
-missing_docs = "warn"
-unreachable_pub = "warn"
-unused_qualifications = "warn"
+missing_docs = "deny"
+unreachable_pub = "deny"
+unused_qualifications = "deny"
 
 [workspace.lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-unwrap_used = "warn"
+pedantic = { level = "deny", priority = -1 }
+unwrap_used = "deny"
 undocumented_unsafe_blocks = "deny"
 allow_attributes = "deny"
 redundant_pub_crate = "allow"

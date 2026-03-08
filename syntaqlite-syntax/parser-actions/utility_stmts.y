@@ -185,18 +185,18 @@ vinto(A) ::= . {
 // ============ EXPLAIN ============
 
 ecmd(A) ::= explain(E) cmdx(B) SEMI. {
-    A = synq_parse_explain_stmt(pCtx, (SyntaqliteExplainMode)(E - 1), B);
-    pCtx->root = A;
-    synq_parse_list_flush(pCtx);
-    pCtx->stmt_completed = 1;
+    (void)E;
+    A = B;
 }
 
 explain(A) ::= EXPLAIN. {
     A = 1;
+    pCtx->pending_explain_mode = 1;
 }
 
 explain(A) ::= EXPLAIN QUERY PLAN. {
     A = 2;
+    pCtx->pending_explain_mode = 2;
 }
 
 // ============ CREATE INDEX ============

@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+//! Smoke tests for the core syntaqlite API.
+
 use syntaqlite::any::AnyNodeTag;
 use syntaqlite::nodes::{NodeTag, Stmt};
 use syntaqlite::typed::{TypedParser, grammar};

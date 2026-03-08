@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+//! Low-level API integration tests.
+
 use syntaqlite::nodes::Stmt;
 use syntaqlite::{ParseOutcome, Parser, ParserConfig, TokenType};
 
@@ -19,12 +21,15 @@ fn feed_tokens_select_1() {
     assert!(session.feed_token(TokenType::Integer, 7..8).is_none());
 
     // finish() synthesizes SEMI + EOF, triggering the ecmd reduction.
-    let stmt = session.finish().unwrap().expect("expected a statement");
+    let stmt = session
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
     assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 }
 
-/// Feed tokens with an explicit SEMI. The LALR(1) parser needs one token of
-/// lookahead after SEMI — the statement completes on `finish()` (which sends EOF).
+/// Feed tokens with an explicit SEMI. SEMI immediately completes the statement —
+/// no lookahead from the next token is required.
 #[test]
 fn feed_tokens_with_semicolon() {
     let source = "SELECT 1;";
@@ -34,16 +39,16 @@ fn feed_tokens_with_semicolon() {
     session.feed_token(TokenType::Select, 0..6);
     session.feed_token(TokenType::Integer, 7..8);
 
-    // SEMI is shifted but the ecmd reduction hasn't fired yet (needs lookahead).
-    assert!(session.feed_token(TokenType::Semi, 8..9).is_none());
-
-    // finish() sends EOF which provides the lookahead.
-    let stmt = session.finish().unwrap().expect("expected a statement");
+    // SEMI completes the statement immediately.
+    let stmt = session
+        .feed_token(TokenType::Semi, 8..9)
+        .expect("SEMI should complete the statement")
+        .expect("expected Ok");
     assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 }
 
-/// Multiple statements: the second statement's first token triggers
-/// completion of the first statement.
+/// Multiple statements: SEMI immediately completes the first statement,
+/// so the second statement's tokens are entirely independent.
 #[test]
 fn feed_tokens_multi_statement() {
     let source = "SELECT 1; SELECT 2";
@@ -53,16 +58,13 @@ fn feed_tokens_multi_statement() {
     // First statement: SELECT 1 ;
     session.feed_token(TokenType::Select, 0..6);
     session.feed_token(TokenType::Integer, 7..8);
-    assert!(session.feed_token(TokenType::Semi, 8..9).is_none()); // SEMI shifted, not reduced yet.
 
-    // Second statement's first token provides the lookahead that completes stmt 1.
-    let stmt1 = session.feed_token(TokenType::Select, 10..16);
-    assert!(
-        stmt1.is_some(),
-        "first statement should complete on next SELECT"
-    );
+    // SEMI completes stmt 1 immediately.
+    let stmt1 = session.feed_token(TokenType::Semi, 8..9);
+    assert!(stmt1.is_some(), "first statement should complete on SEMI");
 
-    // Continue second statement.
+    // Second statement tokens belong entirely to stmt 2.
+    session.feed_token(TokenType::Select, 10..16);
     session.feed_token(TokenType::Integer, 17..18);
 
     assert!(
@@ -85,7 +87,10 @@ fn feed_token_skips_space() {
 
     session.feed_token(TokenType::Integer, 7..8);
 
-    let stmt = session.finish().unwrap().expect("expected a statement");
+    let stmt = session
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
     assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 }
 
@@ -100,7 +105,10 @@ fn feed_token_records_comment() {
     session.feed_token(TokenType::Comment, 7..15);
     session.feed_token(TokenType::Integer, 16..17);
 
-    let stmt = session.finish().unwrap().expect("expected a statement");
+    let stmt = session
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
 
     let comments: Vec<_> = stmt.comments().collect();
     assert_eq!(comments.len(), 1);
@@ -119,7 +127,10 @@ fn macro_regions_recorded() {
     session.feed_token(TokenType::Integer, 7..8);
     session.end_macro();
 
-    let stmt = session.finish().unwrap().expect("expected a statement");
+    let stmt = session
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
 
     let regions: Vec<_> = stmt.erase().macro_regions().collect();
     assert_eq!(regions.len(), 1);
@@ -141,7 +152,10 @@ fn nested_macro_regions() {
     session.end_macro();
     session.end_macro();
 
-    let stmt = session.finish().unwrap().expect("expected a statement");
+    let stmt = session
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
 
     let regions: Vec<_> = stmt.erase().macro_regions().collect();
     assert_eq!(regions.len(), 2);
@@ -170,7 +184,10 @@ fn macro_well_aligned_complete_expression() {
     session.feed_token(TokenType::Comma, 18..19);
     session.feed_token(TokenType::Integer, 20..21);
 
-    let stmt = session.finish().unwrap().expect("expected a statement");
+    let stmt = session
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
     assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 }
 

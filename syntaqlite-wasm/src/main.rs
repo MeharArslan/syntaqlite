@@ -469,7 +469,7 @@ fn cflag_list_json() -> String {
         .iter()
         .map(|&flag| CflagListEntry {
             name: flag.name(),
-            min_version: flag.min_version().as_int() as u32,
+            min_version: flag.min_version().as_int().cast_unsigned(),
             category: flag.categories().first().copied().unwrap_or("parser"),
         })
         .collect();

@@ -51,12 +51,14 @@ typedef struct SynqParseCtx {
 
   // Parser state
   const char* source;  // Source text base pointer (for offset computation).
-  const SyntaqliteGrammar* env;  // Dialect env (for cflag checks in actions).
-  uint32_t root;                 // Root node ID of the current statement.
-  uint32_t stmt_completed;       // Set by grammar actions when ecmd reduces.
-  uint32_t error;                // Set when a syntax error occurs.
-  uint32_t error_offset;         // Byte offset of the error token in source.
-  uint32_t error_length;         // Byte length of the error token.
+  const SyntaqliteGrammar* env;   // Dialect env (for cflag checks in actions).
+  uint32_t root;                  // Root node ID of the current statement.
+  uint32_t stmt_completed;        // Set by grammar actions when ecmd reduces.
+  uint32_t pending_explain_mode;  // 1=EXPLAIN, 2=EXPLAIN QUERY PLAN (set by
+                                  // explain rule, consumed by cmdx ::= cmd).
+  uint32_t error;                 // Set when a syntax error occurs.
+  uint32_t error_offset;          // Byte offset of the error token in source.
+  uint32_t error_length;          // Byte length of the error token.
   uint32_t saw_subquery;  // Set by grammar actions when a subquery is reduced.
   uint32_t saw_update_delete_limit;  // Set when ORDER BY / LIMIT used on DELETE
                                      // or UPDATE.

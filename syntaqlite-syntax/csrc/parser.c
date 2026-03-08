@@ -107,6 +107,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->ctx.env = &p->grammar;
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
+  p->ctx.pending_explain_mode = 0;
   p->ctx.error = 0;
   p->ctx.error_offset = 0xFFFFFFFF;
   p->ctx.error_length = 0;
@@ -296,6 +297,7 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   // Reset per-statement parse state.
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
+  p->ctx.pending_explain_mode = 0;
   p->ctx.error = 0;
   p->ctx.saw_subquery = 0;
   p->ctx.saw_update_delete_limit = 0;
@@ -341,11 +343,8 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
     int rc = feed_one_token(p, token_type, p->source + tok_offset,
                             (uint32_t)token_len, tidx);
 
-    // After a syntax error where SEMI is the triggering token, Lemon
-    // discards it during error recovery and then keeps consuming tokens from
-    // subsequent statements looking for a replacement SEMI.  Short-circuit
-    // by reinitialising Lemon so the next statement starts with a clean
-    // parser state.
+    // Safety net: if error recovery couldn't produce an ecmd ::= error SEMI .
+    // reduction (e.g. parse_failure), force completion on the next SEMI.
     if (p->had_error && rc == 0 && token_type == SYNTAQLITE_TK_SEMI) {
       SYNQ_PARSER_FINALIZE(p->grammar.tmpl, p->lemon);
       SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon);
@@ -354,8 +353,17 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
     }
 
     if (rc == 1) {
+      // stmt_completed now fires while Lemon is processing the SEMI token
+      // (cmdx ::= cmd . reduces on SEMI as its lookahead, then SEMI is
+      // shifted into the pending ecmd ::= cmdx SEMI . ).  Reinitialise Lemon
+      // so that half-reduced state does not carry over into the next call.
+      SYNQ_PARSER_FINALIZE(p->grammar.tmpl, p->lemon);
+      SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon);
+      p->last_token_type = 0;
+
       if (p->ctx.root == SYNTAQLITE_NULL_NODE && !p->had_error) {
-        continue;  // bare semicolon
+        // Bare semicolon — keep going.
+        continue;
       }
       if (p->had_error) {
         p->had_error = 0;  // consumed for this result
@@ -436,6 +444,7 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
     syntaqlite_vec_clear(&p->macros);
     p->ctx.root = SYNTAQLITE_NULL_NODE;
     p->ctx.stmt_completed = 0;
+    p->ctx.pending_explain_mode = 0;
     p->ctx.error = 0;
     p->ctx.saw_subquery = 0;
     p->ctx.saw_update_delete_limit = 0;

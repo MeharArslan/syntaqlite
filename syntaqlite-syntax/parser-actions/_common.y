@@ -190,11 +190,12 @@ ecmd(A) ::= SEMI. {
     pCtx->stmt_completed = 1;
 }
 
+// The action is on cmdx, not ecmd.  cmdx reduces when Lemon sees SEMI as its
+// lookahead token, so stmt_completed fires while the C loop is processing the
+// SEMI — the first token of the next statement is never consumed as a lookahead.
+// This mirrors SQLite's own approach (sqlite3FinishCoding fires in cmdx ::= cmd).
 ecmd(A) ::= cmdx(B) SEMI. {
     A = B;
-    pCtx->root = B;
-    synq_parse_list_flush(pCtx);
-    pCtx->stmt_completed = 1;
 }
 
 // Error recovery: discard tokens until SEMI, then complete the statement.
@@ -212,5 +213,14 @@ ecmd(A) ::= error SEMI. {
 }
 
 cmdx(A) ::= cmd(B). {
-    A = B;
+    if (pCtx->pending_explain_mode) {
+        A = synq_parse_explain_stmt(
+            pCtx, (SyntaqliteExplainMode)(pCtx->pending_explain_mode - 1), B);
+        pCtx->pending_explain_mode = 0;
+    } else {
+        A = B;
+    }
+    pCtx->root = A;
+    synq_parse_list_flush(pCtx);
+    pCtx->stmt_completed = 1;
 }

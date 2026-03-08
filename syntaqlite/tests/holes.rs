@@ -1,15 +1,15 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-/// Prototype tests: feeding `TK_ILLEGAL` inside macro regions to simulate
-/// interpolation holes in embedded SQL (e.g. Python f-strings).
-///
-/// The idea: a host language scanner extracts SQL from strings like
-///   f"SELECT * FROM {table} WHERE id = {`user_id`}"
-/// and feeds tokens to the parser. For each `{...}` interpolation,
-/// it calls `begin_macro/end_macro` around a `TK_ILLEGAL` token. The parser's
-/// error recovery should create an `ErrorNode`, and the rest of the statement
-/// should still parse correctly.
+//! Prototype tests: feeding `TK_ILLEGAL` inside macro regions to simulate
+//! interpolation holes in embedded SQL (e.g. Python f-strings).
+//!
+//! The idea: a host language scanner extracts SQL from strings like
+//!   f"SELECT * FROM {table} WHERE id = {`user_id`}"
+//! and feeds tokens to the parser. For each `{...}` interpolation,
+//! it calls `begin_macro/end_macro` around a `TK_ILLEGAL` token. The parser's
+//! error recovery should create an `ErrorNode`, and the rest of the statement
+//! should still parse correctly.
 use syntaqlite::Parser;
 
 mod tk {
@@ -271,7 +271,10 @@ fn baseline_id_in_macro_region() {
     cursor.feed_token(tk::EQ, 31..32);
     cursor.feed_token(tk::INTEGER, 33..34);
 
-    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    let stmt = cursor
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
     eprintln!("baseline: got root node {:?}", stmt.root());
 
     // Format it to see the macro region preserved

@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-/// Integration tests: macro regions are emitted verbatim by the formatter.
+//! Integration tests: macro regions are emitted verbatim by the formatter.
 use syntaqlite::{Parser, ParserConfig};
 
 fn formatter() -> syntaqlite::Formatter {
@@ -42,7 +42,10 @@ fn macro_call_emitted_verbatim() {
     cursor.feed_token(tk::COMMA, 18..19);
     cursor.feed_token(tk::INTEGER, 20..21);
 
-    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    let stmt = cursor
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
 
     assert_eq!(fmt.format_parsed(stmt.erase()), "SELECT foo!(1 + 2), 3");
 }
@@ -63,7 +66,10 @@ fn macro_multi_node_emitted_once() {
     cursor.feed_token(tk::ID, 17..18);
     cursor.end_macro();
 
-    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    let stmt = cursor
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
 
     assert_eq!(fmt.format_parsed(stmt.erase()), "SELECT macro!(a, b)");
 }
@@ -87,7 +93,10 @@ fn macro_multi_node_no_extra_separator() {
     cursor.feed_token(tk::COMMA, 17..18);
     cursor.feed_token(tk::ID, 19..20);
 
-    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    let stmt = cursor
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
 
     assert_eq!(fmt.format_parsed(stmt.erase()), "SELECT foo!(a, b), c");
 }
@@ -107,7 +116,10 @@ fn no_macro_regions_formats_normally() {
     cursor.feed_token(tk::COMMA, 11..12);
     cursor.feed_token(tk::INTEGER, 14..15);
 
-    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    let stmt = cursor
+        .finish()
+        .expect("expected Some")
+        .expect("expected a statement");
 
     assert_eq!(fmt.format_parsed(stmt.erase()), "SELECT 1 + 2, 3");
 }

@@ -88,7 +88,7 @@ fn parses_ok_default(sql: &str) -> bool {
 
 /// Helper to encode a `SQLite` version like 3.47.0 as a `SqliteVersion` enum.
 fn ver(major: u32, minor: u32, _patch: u32) -> SqliteVersion {
-    SqliteVersion::from_int((major as i32) * 1_000_000 + (minor as i32) * 1_000)
+    SqliteVersion::from_int(major.cast_signed() * 1_000_000 + minor.cast_signed() * 1_000)
 }
 
 // ===========================================================================

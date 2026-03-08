@@ -1,19 +1,28 @@
-// TODO: broken - needs migration to syntaqlite_syntax
-#![cfg(broken_needs_migration)]
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
 
-/// Integration tests exercising the generated dispatch table + ctx
-/// with the hand-written format_node and renderer.
-use syntaqlite::{FormatConfig, KeywordCase};
+//! Integration tests exercising the formatter with various SQL patterns.
+
+use syntaqlite::util::{SqliteFlag, SqliteFlags};
+use syntaqlite::{FormatConfig, Formatter, KeywordCase, sqlite_dialect};
 
 fn format_sql(sql: &str) -> String {
-    format_sql_with(sql, FormatConfig::default())
+    format_sql_with(sql, &FormatConfig::default())
 }
 
-fn format_sql_with(sql: &str, config: FormatConfig) -> String {
-    let dialect = syntaqlite::dialect::sqlite();
-    let mut f = syntaqlite::Formatter::with_config(dialect, &config);
-    let result = f.format(sql).unwrap();
-    // Strip the trailing semicolon + newline that Formatter appends
+fn format_sql_with(sql: &str, config: &FormatConfig) -> String {
+    let mut f = Formatter::with_config(config);
+    let result = f.format(sql).expect("format failed");
+    result
+        .trim_end_matches('\n')
+        .trim_end_matches(';')
+        .to_string()
+}
+
+fn format_sql_with_flags(sql: &str, config: &FormatConfig, flags: SqliteFlags) -> String {
+    let dialect = sqlite_dialect().with_cflags(flags);
+    let mut f = Formatter::with_dialect_config(dialect, config);
+    let result = f.format(sql).expect("format failed");
     result
         .trim_end_matches('\n')
         .trim_end_matches(';')
@@ -63,7 +72,10 @@ fn long_select_breaks() {
         line_width: 20,
         ..Default::default()
     };
-    let result = format_sql_with("SELECT column_one, column_two FROM very_long_table", config);
+    let result = format_sql_with(
+        "SELECT column_one, column_two FROM very_long_table",
+        &config,
+    );
     assert_eq!(
         result,
         "SELECT\n  column_one,\n  column_two\nFROM very_long_table"
@@ -72,26 +84,14 @@ fn long_select_breaks() {
 
 // -- Formatting transformations (input != output) --
 
-fn format_sql_with_cflags(sql: &str, config: FormatConfig, cflag_indices: &[u32]) -> String {
-    let mut env = syntaqlite::dialect::sqlite();
-    for &idx in cflag_indices {
-        env = env.with_cflag(idx);
-    }
-    let mut f = syntaqlite::Formatter::with_config(env, &config);
-    let result = f.format(sql).unwrap();
-    result
-        .trim_end_matches('\n')
-        .trim_end_matches(';')
-        .to_string()
-}
-
 #[test]
 fn delete_with_order_by_limit() {
+    let flags = SqliteFlags::default().with(SqliteFlag::EnableUpdateDeleteLimit);
     assert_eq!(
-        format_sql_with_cflags(
+        format_sql_with_flags(
             "delete from t where x > 0 order by id limit 10 offset 5",
-            FormatConfig::default(),
-            &[40], // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+            &FormatConfig::default(),
+            flags,
         ),
         "DELETE FROM t WHERE x > 0 ORDER BY id LIMIT 10 OFFSET 5"
     );
@@ -99,11 +99,12 @@ fn delete_with_order_by_limit() {
 
 #[test]
 fn update_with_order_by_limit() {
+    let flags = SqliteFlags::default().with(SqliteFlag::EnableUpdateDeleteLimit);
     assert_eq!(
-        format_sql_with_cflags(
+        format_sql_with_flags(
             "update t set a = 1 where x > 0 order by id limit 5",
-            FormatConfig::default(),
-            &[40], // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+            &FormatConfig::default(),
+            flags,
         ),
         "UPDATE t SET a = 1 WHERE x > 0 ORDER BY id LIMIT 5"
     );
@@ -125,7 +126,7 @@ fn insert_breaks_when_narrow() {
         line_width: 20,
         ..Default::default()
     };
-    let result = format_sql_with("INSERT INTO t(a, b) VALUES(1, 2)", config);
+    let result = format_sql_with("INSERT INTO t(a, b) VALUES(1, 2)", &config);
     assert_eq!(result, "INSERT INTO t(a, b)\nVALUES (1, 2)");
 }
 
@@ -139,7 +140,7 @@ fn insert_many_values_flat() {
     };
     let result = format_sql_with(
         "INSERT INTO t(a, b) VALUES(1, 2), (3, 4), (5, 6), (7, 8)",
-        config,
+        &config,
     );
     assert_eq!(
         result,
@@ -155,7 +156,7 @@ fn insert_many_values_breaks() {
     };
     let result = format_sql_with(
         "INSERT INTO t(a, b) VALUES(1, 2), (3, 4), (5, 6), (7, 8)",
-        config,
+        &config,
     );
     assert_eq!(
         result,
@@ -165,10 +166,8 @@ fn insert_many_values_breaks() {
 
 // -- Comments --
 
-// Bug 2: Leading line comment concatenates with next token (missing newline after comment)
 #[test]
 fn comment_trailing_on_select() {
-    // Trailing comment on same line as SELECT — should stay on that line
     assert_eq!(
         format_sql("SELECT -- pick cols\na FROM t"),
         "SELECT -- pick cols\n  a\nFROM t"
@@ -177,34 +176,30 @@ fn comment_trailing_on_select() {
 
 #[test]
 fn comment_leading_before_column() {
-    // Comment on its own line before a column — should not merge with the column
     let config = FormatConfig {
         line_width: 20,
         ..Default::default()
     };
     assert_eq!(
-        format_sql_with("SELECT\n  -- comment\n  a\nFROM t", config),
+        format_sql_with("SELECT\n  -- comment\n  a\nFROM t", &config),
         "SELECT\n  -- comment\n  a\nFROM t"
     );
 }
 
 #[test]
 fn comment_between_columns() {
-    // Comment between two columns in a broken select list
     let config = FormatConfig {
         line_width: 20,
         ..Default::default()
     };
     assert_eq!(
-        format_sql_with("SELECT\n  a,\n  -- about b\n  b\nFROM t", config),
+        format_sql_with("SELECT\n  a,\n  -- about b\n  b\nFROM t", &config),
         "SELECT\n  a,\n  -- about b\n  b\nFROM t"
     );
 }
 
 #[test]
 fn comment_before_join_does_not_move() {
-    // A comment between child(left) and JOIN should stay before JOIN,
-    // not get pulled to after JOIN by child(right)'s drain.
     assert_eq!(
         format_sql("SELECT a FROM slice\n-- before join\nJOIN track"),
         "SELECT a\nFROM slice\n-- before join\nJOIN track"
@@ -213,8 +208,6 @@ fn comment_before_join_does_not_move() {
 
 #[test]
 fn comment_after_star_column() {
-    // SELECT * produces a ResultColumn with no Span fields (just a keyword).
-    // Comments after * should not be orphaned.
     assert_eq!(
         format_sql("SELECT *\n-- about from\nFROM t"),
         "SELECT *\n-- about from\nFROM t"
@@ -223,9 +216,6 @@ fn comment_after_star_column() {
 
 #[test]
 fn comment_trailing_not_dropped_when_followed_by_line_comment() {
-    // A trailing comment (-- x) after a keyword's last token should not be
-    // dropped when there is another line comment (-- z) between it and the
-    // next keyword.  The gap check must skip over comment regions.
     assert_eq!(
         format_sql("select a, b\n-- y\nfrom t -- x\n-- z\nwhere c = 1"),
         "SELECT a, b\n-- y\nFROM t -- x\n-- z\nWHERE\n  c = 1"
@@ -235,13 +225,46 @@ fn comment_trailing_not_dropped_when_followed_by_line_comment() {
 // -- Multi-statement comments --
 
 #[test]
+fn debug_multi_stmt_comments() {
+    // Log exactly which comments each statement sees from the parser.
+    use syntaqlite::{ParseOutcome, Parser, ParserConfig};
+    for source in [
+        "SELECT 1;\n-- between\nSELECT 2",
+        "SELECT 1; -- after first\nSELECT 2",
+    ] {
+        eprintln!("\n=== source: {source:?} ===");
+        let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
+        let mut session = parser.parse(source);
+        let mut stmt_num = 0;
+        loop {
+            let stmt = match session.next() {
+                ParseOutcome::Done => break,
+                ParseOutcome::Ok(s) => s,
+                ParseOutcome::Err(e) => panic!("parse error: {e:?}"),
+            };
+            let comments: Vec<_> = stmt.comments().collect();
+            eprintln!("stmt {stmt_num}: source={:?}", stmt.source());
+            eprintln!("  {} comment(s):", comments.len());
+            for c in &comments {
+                let text = &source[c.offset() as usize..(c.offset() + c.length()) as usize];
+                eprintln!(
+                    "    offset={} kind={:?} text={text:?}",
+                    c.offset(),
+                    c.kind()
+                );
+            }
+            stmt_num += 1;
+        }
+    }
+}
+
+#[test]
 fn multi_stmt_basic() {
     assert_eq!(format_sql("SELECT 1;\nSELECT 2"), "SELECT 1;\n\nSELECT 2");
 }
 
 #[test]
 fn multi_stmt_comment_between() {
-    // A line comment between two statements should be preserved.
     assert_eq!(
         format_sql("SELECT 1;\n-- between\nSELECT 2"),
         "SELECT 1;\n\n-- between\nSELECT 2"
@@ -250,7 +273,6 @@ fn multi_stmt_comment_between() {
 
 #[test]
 fn multi_stmt_trailing_comment_after_first() {
-    // Trailing comment on the same line as the semicolon after stmt 1.
     assert_eq!(
         format_sql("SELECT 1; -- after first\nSELECT 2"),
         "SELECT 1; -- after first\n\nSELECT 2"
@@ -259,7 +281,6 @@ fn multi_stmt_trailing_comment_after_first() {
 
 #[test]
 fn comment_before_first_stmt() {
-    // A leading comment before the very first statement.
     assert_eq!(format_sql("-- header\nSELECT 1"), "-- header\nSELECT 1");
 }
 
@@ -272,7 +293,7 @@ fn keyword_case_lower() {
         ..Default::default()
     };
     assert_eq!(
-        format_sql_with("SELECT a FROM t", config),
+        format_sql_with("SELECT a FROM t", &config),
         "select a from t"
     );
 }
@@ -284,7 +305,7 @@ fn keyword_case_upper() {
         ..Default::default()
     };
     assert_eq!(
-        format_sql_with("select a from t", config),
+        format_sql_with("select a from t", &config),
         "SELECT a FROM t"
     );
 }

@@ -7158,9 +7158,7 @@ static YYACTIONTYPE yy_reduce(
       yymsp[-1].minor.yy141 =
           yymsp[0].minor.yy141;  // Just use the last command for now
     } break;
-    case 2: /* cmdlist ::= ecmd */
-    case 6: /* cmdx ::= cmd */
-      yytestcase(yyruleno == 6);
+    case 2:  /* cmdlist ::= ecmd */
     case 55: /* case_operand ::= expr */
       yytestcase(yyruleno == 55);
     case 176: /* expr ::= term */
@@ -7191,13 +7189,12 @@ static YYACTIONTYPE yy_reduce(
       yymsp[0].minor.yy141 = SYNTAQLITE_NULL_NODE;
       pCtx->stmt_completed = 1;
     } break;
-    case 4: /* ecmd ::= cmdx SEMI */
-    {
-      yylhsminor.yy141 = yymsp[-1].minor.yy141;
-      pCtx->root = yymsp[-1].minor.yy141;
-      synq_parse_list_flush(pCtx);
-      pCtx->stmt_completed = 1;
-    }
+    case 4:   /* ecmd ::= cmdx SEMI */
+    case 261: /* sclp ::= selcollist COMMA */
+      yytestcase(yyruleno == 261);
+      {
+        yylhsminor.yy141 = yymsp[-1].minor.yy141;
+      }
       yymsp[-1].minor.yy141 = yylhsminor.yy141;
       break;
     case 5: /* ecmd ::= error SEMI */
@@ -7206,6 +7203,22 @@ static YYACTIONTYPE yy_reduce(
       pCtx->root = SYNTAQLITE_NULL_NODE;
       pCtx->stmt_completed = 1;
     } break;
+    case 6: /* cmdx ::= cmd */
+    {
+      if (pCtx->pending_explain_mode) {
+        yylhsminor.yy141 = synq_parse_explain_stmt(
+            pCtx, (SyntaqliteExplainMode)(pCtx->pending_explain_mode - 1),
+            yymsp[0].minor.yy141);
+        pCtx->pending_explain_mode = 0;
+      } else {
+        yylhsminor.yy141 = yymsp[0].minor.yy141;
+      }
+      pCtx->root = yylhsminor.yy141;
+      synq_parse_list_flush(pCtx);
+      pCtx->stmt_completed = 1;
+    }
+      yymsp[0].minor.yy141 = yylhsminor.yy141;
+      break;
     case 7: /* expr ::= ID|INDEXED|JOIN_KW LP distinct exprlist ORDER BY
                sortlist RP */
     {
@@ -7984,8 +7997,6 @@ static YYACTIONTYPE yy_reduce(
     case 89:  /* autoinc ::= AUTOINCR */
     case 237: /* kwcolumn_opt ::= COLUMNKW */
       yytestcase(yyruleno == 237);
-    case 355: /* explain ::= EXPLAIN */
-      yytestcase(yyruleno == 355);
     case 358: /* uniqueflag ::= UNIQUE */
       yytestcase(yyruleno == 358);
     case 364: /* temp ::= TEMP */
@@ -9091,12 +9102,6 @@ static YYACTIONTYPE yy_reduce(
     }
       yymsp[-2].minor.yy141 = yylhsminor.yy141;
       break;
-    case 261: /* sclp ::= selcollist COMMA */
-    {
-      yylhsminor.yy141 = yymsp[-1].minor.yy141;
-    }
-      yymsp[-1].minor.yy141 = yylhsminor.yy141;
-      break;
     case 275: /* groupby_opt ::= GROUP BY nexprlist */
     case 279: /* orderby_opt ::= ORDER BY sortlist */
       yytestcase(yyruleno == 279);
@@ -9662,18 +9667,20 @@ static YYACTIONTYPE yy_reduce(
     } break;
     case 354: /* ecmd ::= explain cmdx SEMI */
     {
-      yylhsminor.yy141 = synq_parse_explain_stmt(
-          pCtx, (SyntaqliteExplainMode)(yymsp[-2].minor.yy592 - 1),
-          yymsp[-1].minor.yy141);
-      pCtx->root = yylhsminor.yy141;
-      synq_parse_list_flush(pCtx);
-      pCtx->stmt_completed = 1;
+      (void)yymsp[-2].minor.yy592;
+      yylhsminor.yy141 = yymsp[-1].minor.yy141;
     }
       yymsp[-2].minor.yy141 = yylhsminor.yy141;
       break;
+    case 355: /* explain ::= EXPLAIN */
+    {
+      yymsp[0].minor.yy592 = 1;
+      pCtx->pending_explain_mode = 1;
+    } break;
     case 356: /* explain ::= EXPLAIN QUERY PLAN */
     {
       yymsp[-2].minor.yy592 = 2;
+      pCtx->pending_explain_mode = 2;
     } break;
     case 357: /* cmd ::= createkw uniqueflag INDEX ifnotexists nm dbnm ON nm LP
                  sortlist RP where_opt */

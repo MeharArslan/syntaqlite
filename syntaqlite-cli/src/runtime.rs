@@ -60,16 +60,22 @@ fn require_dialect(dialect: Option<AnyDialect>) -> Result<AnyDialect, String> {
 
 pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), String> {
     let base = if let Some(path) = &cli.dialect_path {
-        Some(AnyDialect::load(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
-            eprintln!("error: {e}");
-            std::process::exit(1);
-        }))
+        Some(
+            AnyDialect::load(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }),
+        )
     } else {
         dialect
     };
 
     let configured = match base {
-        Some(d) => Some(apply_version_cflags(d, &cli.sqlite_version, &cli.sqlite_cflag)?),
+        Some(d) => Some(apply_version_cflags(
+            d,
+            &cli.sqlite_version,
+            &cli.sqlite_cflag,
+        )?),
         None => None,
     };
 
