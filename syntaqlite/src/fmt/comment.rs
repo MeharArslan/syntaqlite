@@ -79,6 +79,32 @@ impl CommentCtx {
         source: &'a str,
         arena: &mut DocArena<'a>,
     ) -> DrainResult {
+        self.drain_impl(before, source, arena, false)
+    }
+
+    /// Drain comments between the tokens of a multi-word keyword (e.g.,
+    /// between LEFT and JOIN in "LEFT JOIN"). Unlike `drain_before`, this
+    /// skips the `has_non_comment_text` guard because the intervening tokens
+    /// belong to the same keyword being output.
+    pub(crate) fn drain_keyword_interior<'a>(
+        &self,
+        word_count: usize,
+        source: &'a str,
+        arena: &mut DocArena<'a>,
+    ) -> DrainResult {
+        let first_idx = self.token_cursor.get();
+        let last_tok = &self.tokens[first_idx + word_count - 1];
+        let end = last_tok.offset + last_tok.length;
+        self.drain_impl(end, source, arena, true)
+    }
+
+    fn drain_impl<'a>(
+        &self,
+        before: u32,
+        source: &'a str,
+        arena: &mut DocArena<'a>,
+        skip_text_check: bool,
+    ) -> DrainResult {
         let mut trailing = NIL_DOC;
         let mut leading = NIL_DOC;
         let mut cursor = self.cursor.get();
@@ -87,17 +113,19 @@ impl CommentCtx {
             let t = &self.comments[cursor];
             let comment_end = (t.offset + t.length) as usize;
 
-            let before_usize = (before as usize).min(source.len());
-            if comment_end < before_usize
-                && has_non_comment_text(
-                    source,
-                    comment_end,
-                    before_usize,
-                    &self.comments,
-                    cursor + 1,
-                )
-            {
-                break;
+            if !skip_text_check {
+                let before_usize = (before as usize).min(source.len());
+                if comment_end < before_usize
+                    && has_non_comment_text(
+                        source,
+                        comment_end,
+                        before_usize,
+                        &self.comments,
+                        cursor + 1,
+                    )
+                {
+                    break;
+                }
             }
 
             let text = &source[t.offset as usize..comment_end];
@@ -166,13 +194,26 @@ impl CommentCtx {
     }
 
     /// Peek at the next N tokens without advancing the token cursor.
-    pub(crate) fn peek_keyword_tokens(&self, kw_text: &str) -> Option<(u32, usize)> {
-        let word_count = kw_text.split_whitespace().count();
-        if word_count == 0 {
-            return None;
-        }
+    /// Verifies each token's text matches the corresponding keyword word
+    /// (case-insensitive). Returns `None` if the keyword is not present in
+    /// the source (e.g., an inserted `AS`).
+    pub(crate) fn peek_keyword_tokens(&self, kw_text: &str, source: &str) -> Option<(u32, usize)> {
         let first_idx = self.token_cursor.get();
-        if first_idx + word_count > self.tokens.len() {
+        let mut word_count = 0usize;
+        for word in kw_text.split_whitespace() {
+            let tok_idx = first_idx + word_count;
+            if tok_idx >= self.tokens.len() {
+                return None;
+            }
+            let tok = &self.tokens[tok_idx];
+            let tok_text =
+                &source[tok.offset as usize..(tok.offset + tok.length) as usize];
+            if !tok_text.eq_ignore_ascii_case(word) {
+                return None;
+            }
+            word_count += 1;
+        }
+        if word_count == 0 {
             return None;
         }
         let first_offset = self.tokens[first_idx].offset;

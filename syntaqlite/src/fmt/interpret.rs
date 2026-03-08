@@ -181,9 +181,16 @@ impl Formatter {
                     let kw_text = ctx.dialect.fmt_string(sid);
 
                     if let Some(ref cctx) = ctx.comment_ctx {
-                        if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
+                        if let Some((tok_offset, word_count)) =
+                            cctx.peek_keyword_tokens(kw_text, source)
+                        {
                             let drain = cctx.drain_before(tok_offset, source, arena);
                             flush_drain(&drain, &mut pending, &mut running, arena);
+                            if word_count > 1 {
+                                let interior =
+                                    cctx.drain_keyword_interior(word_count, source, arena);
+                                flush_drain(&interior, &mut pending, &mut running, arena);
+                            }
                             cctx.advance_token_cursor(word_count);
                         } else {
                             running = arena.cat(running, pending);
@@ -410,7 +417,7 @@ impl Formatter {
                         state.sep_checkpoint = Some((running, pending));
                         let sep_text = ctx.dialect.fmt_string(sid);
                         if let Some(ref cctx) = ctx.comment_ctx
-                            && let Some((_, word_count)) = cctx.peek_keyword_tokens(sep_text)
+                            && let Some((_, word_count)) = cctx.peek_keyword_tokens(sep_text, source)
                         {
                             cctx.advance_token_cursor(word_count);
                         }
@@ -480,9 +487,16 @@ impl Formatter {
                         .fmt_enum_display_val(base as usize + ordinal as usize);
                     let kw_text = ctx.dialect.fmt_string(string_id);
                     if let Some(ref cctx) = ctx.comment_ctx {
-                        if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
+                        if let Some((tok_offset, word_count)) =
+                            cctx.peek_keyword_tokens(kw_text, source)
+                        {
                             let drain = cctx.drain_before(tok_offset, source, arena);
                             flush_drain(&drain, &mut pending, &mut running, arena);
+                            if word_count > 1 {
+                                let interior =
+                                    cctx.drain_keyword_interior(word_count, source, arena);
+                                flush_drain(&interior, &mut pending, &mut running, arena);
+                            }
                             cctx.advance_token_cursor(word_count);
                         } else {
                             running = arena.cat(running, pending);
