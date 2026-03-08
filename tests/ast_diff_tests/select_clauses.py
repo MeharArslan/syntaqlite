@@ -77,6 +77,63 @@ class SelectGroupBy(TestSuite):
 """,
         )
 
+    def test_groupby_multiple(self):
+        return DiffTestBlueprint(
+            sql="SELECT a, b, count(*) FROM t GROUP BY a, b",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [3 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      ColumnRef
+                        column: "a"
+                        table: (none)
+                        schema: (none)
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      ColumnRef
+                        column: "b"
+                        table: (none)
+                        schema: (none)
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "count"
+                        flags: STAR
+                        args: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby:
+                ExprList [2 items]
+                  ColumnRef
+                    column: "a"
+                    table: (none)
+                    schema: (none)
+                  ColumnRef
+                    column: "b"
+                    table: (none)
+                    schema: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
     def test_groupby_having(self):
         return DiffTestBlueprint(
             sql="SELECT 1 GROUP BY 1 HAVING 1 > 0",
@@ -396,6 +453,70 @@ class SelectLimit(TestSuite):
         )
 
 
+class SelectWindow(TestSuite):
+    """SELECT with WINDOW clause tests."""
+
+    def test_window_clause(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER w FROM t WINDOW w AS (ORDER BY x)",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: "w"
+                            partition_by: (none)
+                            orderby: (none)
+                            frame: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause:
+                NamedWindowDefList [1 items]
+                  NamedWindowDef
+                    window_name: "w"
+                    window_def:
+                      WindowDef
+                        base_window_name: (none)
+                        partition_by: (none)
+                        orderby:
+                          OrderByList [1 items]
+                            OrderingTerm
+                              expr:
+                                ColumnRef
+                                  column: "x"
+                                  table: (none)
+                                  schema: (none)
+                              sort_order: ASC
+                              nulls_order: NONE
+                        frame: (none)
+""",
+        )
+
+
 class SelectCombined(TestSuite):
     """SELECT with multiple clauses combined."""
 
@@ -444,6 +565,83 @@ class SelectCombined(TestSuite):
                       literal_type: INTEGER
                       source: "10"
                   offset: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_all_clauses(self):
+        return DiffTestBlueprint(
+            sql="SELECT a FROM t WHERE x > 0 GROUP BY a HAVING count(*) > 1 ORDER BY a LIMIT 10 OFFSET 5",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      ColumnRef
+                        column: "a"
+                        table: (none)
+                        schema: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause:
+                BinaryExpr
+                  op: GT
+                  left:
+                    ColumnRef
+                      column: "x"
+                      table: (none)
+                      schema: (none)
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "0"
+              groupby:
+                ExprList [1 items]
+                  ColumnRef
+                    column: "a"
+                    table: (none)
+                    schema: (none)
+              having:
+                BinaryExpr
+                  op: GT
+                  left:
+                    FunctionCall
+                      func_name: "count"
+                      flags: STAR
+                      args: (none)
+                      filter_clause: (none)
+                      over_clause: (none)
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "1"
+              orderby:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "a"
+                        table: (none)
+                        schema: (none)
+                    sort_order: ASC
+                    nulls_order: NONE
+              limit_clause:
+                LimitClause
+                  limit:
+                    Literal
+                      literal_type: INTEGER
+                      source: "10"
+                  offset:
+                    Literal
+                      literal_type: INTEGER
+                      source: "5"
               window_clause: (none)
 """,
         )

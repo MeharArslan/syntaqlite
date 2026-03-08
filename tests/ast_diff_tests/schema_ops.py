@@ -111,6 +111,54 @@ class DropOther(TestSuite):
 """,
         )
 
+    def test_drop_index_if_exists(self):
+        return DiffTestBlueprint(
+            sql="DROP INDEX IF EXISTS idx",
+            out="""\
+            DropStmt
+              object_type: INDEX
+              if_exists: TRUE
+              target:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "idx"
+                  schema: (none)
+""",
+        )
+
+    def test_drop_view_if_exists(self):
+        return DiffTestBlueprint(
+            sql="DROP VIEW IF EXISTS v",
+            out="""\
+            DropStmt
+              object_type: VIEW
+              if_exists: TRUE
+              target:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "v"
+                  schema: (none)
+""",
+        )
+
+    def test_drop_trigger_if_exists(self):
+        return DiffTestBlueprint(
+            sql="DROP TRIGGER IF EXISTS trg",
+            out="""\
+            DropStmt
+              object_type: TRIGGER
+              if_exists: TRUE
+              target:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "trg"
+                  schema: (none)
+""",
+        )
+
 
 class AlterTableRename(TestSuite):
     """ALTER TABLE RENAME tests."""
@@ -127,6 +175,27 @@ class AlterTableRename(TestSuite):
                     IdentName
                       source: "t"
                   schema: (none)
+              new_name:
+                IdentName
+                  source: "t2"
+              old_name: (none)
+""",
+        )
+
+    def test_rename_table_with_schema(self):
+        return DiffTestBlueprint(
+            sql="ALTER TABLE main.t RENAME TO t2",
+            out="""\
+            AlterTableStmt
+              op: RENAME_TABLE
+              target:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema:
+                    IdentName
+                      source: "main"
               new_name:
                 IdentName
                   source: "t2"
@@ -202,6 +271,20 @@ class AlterTableDropAdd(TestSuite):
     def test_add_column(self):
         return DiffTestBlueprint(
             sql="ALTER TABLE t ADD COLUMN c1",
+            out="""\
+            AlterTableStmt
+              op: ADD_COLUMN
+              target: (none)
+              new_name: (none)
+              old_name:
+                IdentName
+                  source: "c1"
+""",
+        )
+
+    def test_add_column_with_type_and_constraints(self):
+        return DiffTestBlueprint(
+            sql="ALTER TABLE t ADD COLUMN c1 INT NOT NULL DEFAULT 0",
             out="""\
             AlterTableStmt
               op: ADD_COLUMN

@@ -128,6 +128,17 @@ class AnalyzeReindexStmts(TestSuite):
 """,
         )
 
+    def test_reindex_schema_qualified(self):
+        return DiffTestBlueprint(
+            sql="REINDEX main.t",
+            out="""\
+            AnalyzeOrReindexStmt
+              target_name: "t"
+              schema: "main"
+              kind: REINDEX
+""",
+        )
+
 
 class AttachDetachStmts(TestSuite):
     """ATTACH and DETACH statement tests."""
@@ -231,6 +242,19 @@ class VacuumStmts(TestSuite):
 """,
         )
 
+    def test_vacuum_schema_into(self):
+        return DiffTestBlueprint(
+            sql="VACUUM main INTO 'backup.db'",
+            out="""\
+            VacuumStmt
+              schema: "main"
+              filename:
+                Literal
+                  literal_type: STRING
+                  source: "'backup.db'"
+""",
+        )
+
 
 class ExplainStmts(TestSuite):
     """EXPLAIN statement tests."""
@@ -260,6 +284,25 @@ class ExplainStmts(TestSuite):
                   orderby: (none)
                   limit_clause: (none)
                   window_clause: (none)
+""",
+        )
+
+    def test_explain_delete(self):
+        return DiffTestBlueprint(
+            sql="EXPLAIN DELETE FROM t",
+            out="""\
+            ExplainStmt
+              explain_mode: EXPLAIN
+              stmt:
+                DeleteStmt
+                  table:
+                    TableRef
+                      table_name: "t"
+                      schema: (none)
+                      alias: (none)
+                  where_clause: (none)
+                  orderby: (none)
+                  limit_clause: (none)
 """,
         )
 
@@ -422,6 +465,37 @@ class CreateIndexStmts(TestSuite):
                         column: "x"
                         table: (none)
                         schema: (none)
+                    sort_order: ASC
+                    nulls_order: NONE
+              where_clause: (none)
+""",
+        )
+
+    def test_create_index_expr_column(self):
+        return DiffTestBlueprint(
+            sql="CREATE INDEX idx ON t(lower(x))",
+            out="""\
+            CreateIndexStmt
+              index_name: "idx"
+              schema: (none)
+              table_name: "t"
+              is_unique: FALSE
+              if_not_exists: FALSE
+              columns:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      FunctionCall
+                        func_name: "lower"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
                     sort_order: ASC
                     nulls_order: NONE
               where_clause: (none)

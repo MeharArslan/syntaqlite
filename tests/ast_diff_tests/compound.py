@@ -198,6 +198,131 @@ class CompoundSelect(TestSuite):
         )
 
 
+    def test_chained_compound(self):
+        return DiffTestBlueprint(
+            sql="SELECT 1 UNION SELECT 2 UNION SELECT 3",
+            out="""\
+            CompoundSelect
+              op: UNION
+              left:
+                CompoundSelect
+                  op: UNION
+                  left:
+                    SelectStmt
+                      flags: (none)
+                      columns:
+                        ResultColumnList [1 items]
+                          ResultColumn
+                            flags: (none)
+                            alias: (none)
+                            expr:
+                              Literal
+                                literal_type: INTEGER
+                                source: "1"
+                      from_clause: (none)
+                      where_clause: (none)
+                      groupby: (none)
+                      having: (none)
+                      orderby: (none)
+                      limit_clause: (none)
+                      window_clause: (none)
+                  right:
+                    SelectStmt
+                      flags: (none)
+                      columns:
+                        ResultColumnList [1 items]
+                          ResultColumn
+                            flags: (none)
+                            alias: (none)
+                            expr:
+                              Literal
+                                literal_type: INTEGER
+                                source: "2"
+                      from_clause: (none)
+                      where_clause: (none)
+                      groupby: (none)
+                      having: (none)
+                      orderby: (none)
+                      limit_clause: (none)
+                      window_clause: (none)
+              right:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: (none)
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "3"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+""",
+        )
+
+    def test_compound_with_order_by(self):
+        return DiffTestBlueprint(
+            sql="SELECT 1 UNION SELECT 2 ORDER BY 1",
+            out="""\
+            CompoundSelect
+              op: UNION
+              left:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: (none)
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+              right:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: (none)
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "2"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby:
+                    OrderByList [1 items]
+                      OrderingTerm
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                        sort_order: ASC
+                        nulls_order: NONE
+                  limit_clause: (none)
+                  window_clause: (none)
+""",
+        )
+
+
 class SubqueryExpr(TestSuite):
     """Subquery expression tests."""
 
@@ -286,6 +411,60 @@ class SubqueryExpr(TestSuite):
         )
 
 
+    def test_not_exists(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM t WHERE NOT EXISTS (SELECT 1 FROM u)",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause:
+                UnaryExpr
+                  op: NOT
+                  operand:
+                    ExistsExpr
+                      select:
+                        SelectStmt
+                          flags: (none)
+                          columns:
+                            ResultColumnList [1 items]
+                              ResultColumn
+                                flags: (none)
+                                alias: (none)
+                                expr:
+                                  Literal
+                                    literal_type: INTEGER
+                                    source: "1"
+                          from_clause:
+                            TableRef
+                              table_name: "u"
+                              schema: (none)
+                              alias: (none)
+                          where_clause: (none)
+                          groupby: (none)
+                          having: (none)
+                          orderby: (none)
+                          limit_clause: (none)
+                          window_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+
 class InExpr(TestSuite):
     """IN expression tests."""
 
@@ -359,6 +538,65 @@ class InExpr(TestSuite):
                               source: "3"
               from_clause: (none)
               where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_not_in_subquery(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM t WHERE x NOT IN (SELECT id FROM u)",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause:
+                InExpr
+                  negated: TRUE
+                  operand:
+                    ColumnRef
+                      column: "x"
+                      table: (none)
+                      schema: (none)
+                  source:
+                    SubqueryExpr
+                      select:
+                        SelectStmt
+                          flags: (none)
+                          columns:
+                            ResultColumnList [1 items]
+                              ResultColumn
+                                flags: (none)
+                                alias: (none)
+                                expr:
+                                  ColumnRef
+                                    column: "id"
+                                    table: (none)
+                                    schema: (none)
+                          from_clause:
+                            TableRef
+                              table_name: "u"
+                              schema: (none)
+                              alias: (none)
+                          where_clause: (none)
+                          groupby: (none)
+                          having: (none)
+                          orderby: (none)
+                          limit_clause: (none)
+                          window_clause: (none)
               groupby: (none)
               having: (none)
               orderby: (none)

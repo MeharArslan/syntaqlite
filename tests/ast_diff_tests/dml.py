@@ -476,6 +476,256 @@ class UpdateBasic(TestSuite):
         )
 
 
+class UpdateFrom(TestSuite):
+    """UPDATE with FROM clause tests."""
+
+    def test_update_with_from(self):
+        return DiffTestBlueprint(
+            sql="UPDATE t SET a = o.a FROM other o WHERE t.id = o.id",
+            out="""\
+            UpdateStmt
+              conflict_action: DEFAULT
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: "a"
+                    columns: (none)
+                    value:
+                      ColumnRef
+                        column: "a"
+                        table: "o"
+                        schema: (none)
+              from_clause:
+                TableRef
+                  table_name: "other"
+                  schema: (none)
+                  alias:
+                    IdentName
+                      source: "o"
+              where_clause:
+                BinaryExpr
+                  op: EQ
+                  left:
+                    ColumnRef
+                      column: "id"
+                      table: "t"
+                      schema: (none)
+                  right:
+                    ColumnRef
+                      column: "id"
+                      table: "o"
+                      schema: (none)
+              orderby: (none)
+              limit_clause: (none)
+""",
+        )
+
+
+class UpdateConflict(TestSuite):
+    """UPDATE with conflict resolution tests."""
+
+    def test_update_or_rollback(self):
+        return DiffTestBlueprint(
+            sql="UPDATE OR ROLLBACK t SET a = 1",
+            out="""\
+            UpdateStmt
+              conflict_action: ROLLBACK
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: "a"
+                    columns: (none)
+                    value:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
+""",
+        )
+
+    def test_update_or_abort(self):
+        return DiffTestBlueprint(
+            sql="UPDATE OR ABORT t SET a = 1",
+            out="""\
+            UpdateStmt
+              conflict_action: ABORT
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: "a"
+                    columns: (none)
+                    value:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
+""",
+        )
+
+    def test_update_or_fail(self):
+        return DiffTestBlueprint(
+            sql="UPDATE OR FAIL t SET a = 1",
+            out="""\
+            UpdateStmt
+              conflict_action: FAIL
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: "a"
+                    columns: (none)
+                    value:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
+""",
+        )
+
+    def test_update_or_replace(self):
+        return DiffTestBlueprint(
+            sql="UPDATE OR REPLACE t SET a = 1",
+            out="""\
+            UpdateStmt
+              conflict_action: REPLACE
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: "a"
+                    columns: (none)
+                    value:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
+""",
+        )
+
+
+class UpdateSetClauseMultiColumn(TestSuite):
+    """UPDATE with multi-column SET clause tests."""
+
+    def test_set_clause_multi_column(self):
+        return DiffTestBlueprint(
+            sql="UPDATE t SET (a, b) = (1, 2)",
+            out="""\
+            UpdateStmt
+              conflict_action: DEFAULT
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: (none)
+                    columns:
+                      ExprList [2 items]
+                        ColumnRef
+                          column: "a"
+                          table: (none)
+                          schema: (none)
+                        ColumnRef
+                          column: "b"
+                          table: (none)
+                          schema: (none)
+                    value:
+                      ExprList [2 items]
+                        Literal
+                          literal_type: INTEGER
+                          source: "1"
+                        Literal
+                          literal_type: INTEGER
+                          source: "2"
+              from_clause: (none)
+              where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
+""",
+        )
+
+
+class InsertMultipleRows(TestSuite):
+    """INSERT with multiple value rows tests."""
+
+    def test_insert_multiple_value_rows(self):
+        return DiffTestBlueprint(
+            sql="INSERT INTO t VALUES (1, 2), (3, 4), (5, 6)",
+            out="""\
+            InsertStmt
+              conflict_action: DEFAULT
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              columns: (none)
+              source:
+                ValuesClause
+                  rows:
+                    ValuesRowList [3 items]
+                      ExprList [2 items]
+                        Literal
+                          literal_type: INTEGER
+                          source: "1"
+                        Literal
+                          literal_type: INTEGER
+                          source: "2"
+                      ExprList [2 items]
+                        Literal
+                          literal_type: INTEGER
+                          source: "3"
+                        Literal
+                          literal_type: INTEGER
+                          source: "4"
+                      ExprList [2 items]
+                        Literal
+                          literal_type: INTEGER
+                          source: "5"
+                        Literal
+                          literal_type: INTEGER
+                          source: "6"
+""",
+        )
+
+
 class DmlWithCte(TestSuite):
     """DML statements with CTEs."""
 

@@ -65,6 +65,34 @@ class TableRefBasic(TestSuite):
 """,
         )
 
+    def test_implicit_alias(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM t x",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias:
+                    IdentName
+                      source: "x"
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
     def test_schema_qualified(self):
         return DiffTestBlueprint(
             sql="SELECT * FROM main.t",
@@ -152,6 +180,52 @@ class JoinBasic(TestSuite):
                       schema: (none)
                       alias: (none)
                       args: (none)
+                  on_expr: (none)
+                  using_columns: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_three_way_comma_join(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM a, b, c",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                JoinClause
+                  join_type: COMMA
+                  left:
+                    JoinClause
+                      join_type: COMMA
+                      left:
+                        TableRef
+                          table_name: "a"
+                          schema: (none)
+                          alias: (none)
+                      right:
+                        TableRef
+                          table_name: "b"
+                          schema: (none)
+                          alias: (none)
+                      on_expr: (none)
+                      using_columns: (none)
+                  right:
+                    TableRef
+                      table_name: "c"
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -520,6 +594,78 @@ class JoinNatural(TestSuite):
                       schema: (none)
                       alias: (none)
                       args: (none)
+                  on_expr: (none)
+                  using_columns: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_natural_right_join(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM a NATURAL RIGHT JOIN b",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                JoinClause
+                  join_type: NATURAL_RIGHT
+                  left:
+                    TableRef
+                      table_name: "a"
+                      schema: (none)
+                      alias: (none)
+                  right:
+                    TableRef
+                      table_name: "b"
+                      schema: (none)
+                      alias: (none)
+                  on_expr: (none)
+                  using_columns: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_natural_full_join(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM a NATURAL FULL JOIN b",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                JoinClause
+                  join_type: NATURAL_FULL
+                  left:
+                    TableRef
+                      table_name: "a"
+                      schema: (none)
+                      alias: (none)
+                  right:
+                    TableRef
+                      table_name: "b"
+                      schema: (none)
+                      alias: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)

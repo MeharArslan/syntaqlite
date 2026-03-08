@@ -58,6 +58,11 @@ def execute_test(
         TestResult with pass/fail status and details.
     """
     cmd = [str(binary)]
+    if blueprint.version:
+        cmd.extend(["--sqlite-version", blueprint.version])
+    if blueprint.cflags:
+        for flag in blueprint.cflags:
+            cmd.extend(["--sqlite-cflag", flag])
     if subcommand:
         cmd.append(subcommand)
     t0 = time.monotonic()

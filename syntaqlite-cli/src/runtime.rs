@@ -59,15 +59,47 @@ fn require_dialect(dialect: Option<AnyDialect>) -> Result<AnyDialect, String> {
 }
 
 pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), String> {
-    if let Some(path) = &cli.dialect_path {
-        let dyn_dialect = AnyDialect::load(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
+    let base = if let Some(path) = &cli.dialect_path {
+        Some(AnyDialect::load(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
             eprintln!("error: {e}");
             std::process::exit(1);
-        });
-        dispatch_commands(cli.command, Some(dyn_dialect))
+        }))
     } else {
-        dispatch_commands(cli.command, dialect)
+        dialect
+    };
+
+    let configured = match base {
+        Some(d) => Some(apply_version_cflags(d, &cli.sqlite_version, &cli.sqlite_cflag)?),
+        None => None,
+    };
+
+    dispatch_commands(cli.command, configured)
+}
+
+fn apply_version_cflags(
+    mut dialect: AnyDialect,
+    version: &Option<String>,
+    cflags: &[String],
+) -> Result<AnyDialect, String> {
+    use syntaqlite::util::{SqliteFlags, SqliteVersion};
+
+    if let Some(v) = version {
+        let ver = SqliteVersion::parse_with_latest(v)
+            .map_err(|e| format!("invalid --sqlite-version: {e}"))?;
+        dialect = dialect.with_version(ver);
     }
+
+    if !cflags.is_empty() {
+        let mut flags = SqliteFlags::default();
+        for name in cflags {
+            let flag = syntaqlite::util::SqliteFlag::from_name(name)
+                .ok_or_else(|| format!("unknown --sqlite-cflag: {name}"))?;
+            flags = flags.with(flag);
+        }
+        dialect = dialect.with_cflags(flags);
+    }
+
+    Ok(dialect)
 }
 
 fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<(), String> {

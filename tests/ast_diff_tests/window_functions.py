@@ -161,6 +161,216 @@ class WindowFunctionBasic(TestSuite):
         )
 
 
+    def test_empty_over_clause(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER () FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by: (none)
+                            orderby: (none)
+                            frame: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_partition_by_order_by_combined(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER (PARTITION BY a ORDER BY b) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by:
+                              ExprList [1 items]
+                                ColumnRef
+                                  column: "a"
+                                  table: (none)
+                                  schema: (none)
+                            orderby:
+                              OrderByList [1 items]
+                                OrderingTerm
+                                  expr:
+                                    ColumnRef
+                                      column: "b"
+                                      table: (none)
+                                      schema: (none)
+                                  sort_order: ASC
+                                  nulls_order: NONE
+                            frame: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_multiple_partition_expressions(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER (PARTITION BY a, b ORDER BY c) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by:
+                              ExprList [2 items]
+                                ColumnRef
+                                  column: "a"
+                                  table: (none)
+                                  schema: (none)
+                                ColumnRef
+                                  column: "b"
+                                  table: (none)
+                                  schema: (none)
+                            orderby:
+                              OrderByList [1 items]
+                                OrderingTerm
+                                  expr:
+                                    ColumnRef
+                                      column: "c"
+                                      table: (none)
+                                      schema: (none)
+                                  sort_order: ASC
+                                  nulls_order: NONE
+                            frame: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_order_by_desc_nulls_last(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER (ORDER BY a DESC NULLS LAST) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by: (none)
+                            orderby:
+                              OrderByList [1 items]
+                                OrderingTerm
+                                  expr:
+                                    ColumnRef
+                                      column: "a"
+                                      table: (none)
+                                      schema: (none)
+                                  sort_order: DESC
+                                  nulls_order: LAST
+                            frame: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+
 class FilterClause(TestSuite):
     """FILTER clause tests."""
 
@@ -466,6 +676,165 @@ class FrameSpecification(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_frame_exclude_no_others(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE NO OTHERS) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by: (none)
+                            orderby: (none)
+                            frame:
+                              FrameSpec
+                                frame_type: ROWS
+                                exclude: NO_OTHERS
+                                start_bound:
+                                  FrameBound
+                                    bound_type: UNBOUNDED_PRECEDING
+                                    expr: (none)
+                                end_bound:
+                                  FrameBound
+                                    bound_type: CURRENT_ROW
+                                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_frame_exclude_current_row(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by: (none)
+                            orderby: (none)
+                            frame:
+                              FrameSpec
+                                frame_type: ROWS
+                                exclude: CURRENT_ROW
+                                start_bound:
+                                  FrameBound
+                                    bound_type: UNBOUNDED_PRECEDING
+                                    expr: (none)
+                                end_bound:
+                                  FrameBound
+                                    bound_type: CURRENT_ROW
+                                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_frame_exclude_group(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE GROUP) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "sum"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "x"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by: (none)
+                            orderby: (none)
+                            frame:
+                              FrameSpec
+                                frame_type: ROWS
+                                exclude: GROUP
+                                start_bound:
+                                  FrameBound
+                                    bound_type: UNBOUNDED_PRECEDING
+                                    expr: (none)
+                                end_bound:
+                                  FrameBound
+                                    bound_type: CURRENT_ROW
+                                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)

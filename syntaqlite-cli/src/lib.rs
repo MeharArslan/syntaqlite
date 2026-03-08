@@ -29,6 +29,17 @@ pub(crate) struct Cli {
     #[arg(long, requires = "dialect_path")]
     pub(crate) dialect_name: Option<String>,
 
+    /// SQLite version to emulate (e.g. "3.47.0", "latest").
+    #[cfg(feature = "builtin-sqlite")]
+    #[arg(long)]
+    pub(crate) sqlite_version: Option<String>,
+
+    /// Enable a SQLite compile-time flag (e.g. SQLITE_ENABLE_ORDERED_SET_AGGREGATES).
+    /// Can be specified multiple times.
+    #[cfg(feature = "builtin-sqlite")]
+    #[arg(long)]
+    pub(crate) sqlite_cflag: Vec<String>,
+
     #[command(subcommand)]
     pub(crate) command: Command,
 }

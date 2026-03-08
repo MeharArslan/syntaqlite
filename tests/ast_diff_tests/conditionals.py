@@ -328,6 +328,63 @@ class BetweenExprBasic(TestSuite):
 """,
         )
 
+    def test_between_expressions(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM t WHERE x BETWEEN y+1 AND z-1",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause:
+                BetweenExpr
+                  negated: FALSE
+                  operand:
+                    ColumnRef
+                      column: "x"
+                      table: (none)
+                      schema: (none)
+                  low:
+                    BinaryExpr
+                      op: PLUS
+                      left:
+                        ColumnRef
+                          column: "y"
+                          table: (none)
+                          schema: (none)
+                      right:
+                        Literal
+                          literal_type: INTEGER
+                          source: "1"
+                  high:
+                    BinaryExpr
+                      op: MINUS
+                      left:
+                        ColumnRef
+                          column: "z"
+                          table: (none)
+                          schema: (none)
+                      right:
+                        Literal
+                          literal_type: INTEGER
+                          source: "1"
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
     def test_not_between(self):
         return DiffTestBlueprint(
             sql="SELECT 1 NOT BETWEEN 0 AND 10",
@@ -426,6 +483,45 @@ class LikeExprBasic(TestSuite):
                         escape: (none)
               from_clause: (none)
               where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_like_column_operands(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM t WHERE a LIKE b",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause:
+                LikeExpr
+                  negated: FALSE
+                  operand:
+                    ColumnRef
+                      column: "a"
+                      table: (none)
+                      schema: (none)
+                  pattern:
+                    ColumnRef
+                      column: "b"
+                      table: (none)
+                      schema: (none)
+                  escape: (none)
               groupby: (none)
               having: (none)
               orderby: (none)
@@ -587,6 +683,156 @@ class CaseExprBasic(TestSuite):
                                 Literal
                                   literal_type: STRING
                                   source: "'a'"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_nested_case(self):
+        return DiffTestBlueprint(
+            sql="SELECT CASE WHEN x > 0 THEN CASE WHEN y > 0 THEN 1 ELSE 2 END ELSE 3 END",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      CaseExpr
+                        operand: (none)
+                        else_expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "3"
+                        whens:
+                          CaseWhenList [1 items]
+                            CaseWhen
+                              when_expr:
+                                BinaryExpr
+                                  op: GT
+                                  left:
+                                    ColumnRef
+                                      column: "x"
+                                      table: (none)
+                                      schema: (none)
+                                  right:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "0"
+                              then_expr:
+                                CaseExpr
+                                  operand: (none)
+                                  else_expr:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "2"
+                                  whens:
+                                    CaseWhenList [1 items]
+                                      CaseWhen
+                                        when_expr:
+                                          BinaryExpr
+                                            op: GT
+                                            left:
+                                              ColumnRef
+                                                column: "y"
+                                                table: (none)
+                                                schema: (none)
+                                            right:
+                                              Literal
+                                                literal_type: INTEGER
+                                                source: "0"
+                                        then_expr:
+                                          Literal
+                                            literal_type: INTEGER
+                                            source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_case_three_whens(self):
+        return DiffTestBlueprint(
+            sql="SELECT CASE WHEN x = 1 THEN 'a' WHEN x = 2 THEN 'b' WHEN x = 3 THEN 'c' ELSE 'd' END",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      CaseExpr
+                        operand: (none)
+                        else_expr:
+                          Literal
+                            literal_type: STRING
+                            source: "'d'"
+                        whens:
+                          CaseWhenList [3 items]
+                            CaseWhen
+                              when_expr:
+                                BinaryExpr
+                                  op: EQ
+                                  left:
+                                    ColumnRef
+                                      column: "x"
+                                      table: (none)
+                                      schema: (none)
+                                  right:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "1"
+                              then_expr:
+                                Literal
+                                  literal_type: STRING
+                                  source: "'a'"
+                            CaseWhen
+                              when_expr:
+                                BinaryExpr
+                                  op: EQ
+                                  left:
+                                    ColumnRef
+                                      column: "x"
+                                      table: (none)
+                                      schema: (none)
+                                  right:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "2"
+                              then_expr:
+                                Literal
+                                  literal_type: STRING
+                                  source: "'b'"
+                            CaseWhen
+                              when_expr:
+                                BinaryExpr
+                                  op: EQ
+                                  left:
+                                    ColumnRef
+                                      column: "x"
+                                      table: (none)
+                                      schema: (none)
+                                  right:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "3"
+                              then_expr:
+                                Literal
+                                  literal_type: STRING
+                                  source: "'c'"
               from_clause: (none)
               where_clause: (none)
               groupby: (none)

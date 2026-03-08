@@ -4,7 +4,7 @@
 """Core testing classes for AST diff tests."""
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -14,9 +14,14 @@ class DiffTestBlueprint:
     Attributes:
         sql: The SQL input to parse.
         out: The expected AST output (as formatted text).
+        cflags: Optional list of compile-time flags to enable (e.g.
+                ["SQLITE_ENABLE_ORDERED_SET_AGGREGATES"]).
+        version: Optional SQLite version to emulate (e.g. "3.47.0").
     """
     sql: str
     out: str
+    cflags: Optional[List[str]] = None
+    version: Optional[str] = None
 
 
 class TestSuite:

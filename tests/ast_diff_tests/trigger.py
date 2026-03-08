@@ -666,6 +666,147 @@ class CreateTriggerBody(TestSuite):
 """,
         )
 
+    def test_instead_of_update(self):
+        return DiffTestBlueprint(
+            sql="CREATE TRIGGER t INSTEAD OF UPDATE ON v BEGIN SELECT 1; END",
+            out="""\
+            CreateTriggerStmt
+              trigger_name: "t"
+              schema: (none)
+              is_temp: FALSE
+              if_not_exists: FALSE
+              timing: INSTEAD_OF
+              event:
+                TriggerEvent
+                  event_type: UPDATE
+                  columns: (none)
+              table:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "v"
+                  schema: (none)
+              when_expr: (none)
+              body:
+                TriggerCmdList [1 items]
+                  SelectStmt
+                    flags: (none)
+                    columns:
+                      ResultColumnList [1 items]
+                        ResultColumn
+                          flags: (none)
+                          alias: (none)
+                          expr:
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                    from_clause: (none)
+                    where_clause: (none)
+                    groupby: (none)
+                    having: (none)
+                    orderby: (none)
+                    limit_clause: (none)
+                    window_clause: (none)
+""",
+        )
+
+    def test_instead_of_delete(self):
+        return DiffTestBlueprint(
+            sql="CREATE TRIGGER t INSTEAD OF DELETE ON v BEGIN SELECT 1; END",
+            out="""\
+            CreateTriggerStmt
+              trigger_name: "t"
+              schema: (none)
+              is_temp: FALSE
+              if_not_exists: FALSE
+              timing: INSTEAD_OF
+              event:
+                TriggerEvent
+                  event_type: DELETE
+                  columns: (none)
+              table:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "v"
+                  schema: (none)
+              when_expr: (none)
+              body:
+                TriggerCmdList [1 items]
+                  SelectStmt
+                    flags: (none)
+                    columns:
+                      ResultColumnList [1 items]
+                        ResultColumn
+                          flags: (none)
+                          alias: (none)
+                          expr:
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                    from_clause: (none)
+                    where_clause: (none)
+                    groupby: (none)
+                    having: (none)
+                    orderby: (none)
+                    limit_clause: (none)
+                    window_clause: (none)
+""",
+        )
+
+    def test_after_update_of_columns(self):
+        return DiffTestBlueprint(
+            sql="CREATE TRIGGER t AFTER UPDATE OF c1, c2 ON t1 BEGIN SELECT 1; END",
+            out="""\
+            CreateTriggerStmt
+              trigger_name: "t"
+              schema: (none)
+              is_temp: FALSE
+              if_not_exists: FALSE
+              timing: AFTER
+              event:
+                TriggerEvent
+                  event_type: UPDATE
+                  columns:
+                    ExprList [2 items]
+                      ColumnRef
+                        column: "c1"
+                        table: (none)
+                        schema: (none)
+                      ColumnRef
+                        column: "c2"
+                        table: (none)
+                        schema: (none)
+              table:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "t1"
+                  schema: (none)
+              when_expr: (none)
+              body:
+                TriggerCmdList [1 items]
+                  SelectStmt
+                    flags: (none)
+                    columns:
+                      ResultColumnList [1 items]
+                        ResultColumn
+                          flags: (none)
+                          alias: (none)
+                          expr:
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                    from_clause: (none)
+                    where_clause: (none)
+                    groupby: (none)
+                    having: (none)
+                    orderby: (none)
+                    limit_clause: (none)
+                    window_clause: (none)
+""",
+        )
+
     def test_multiple_commands(self):
         return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE INSERT ON t BEGIN SELECT 1; SELECT 2; END",

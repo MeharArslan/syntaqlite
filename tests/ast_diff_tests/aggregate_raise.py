@@ -157,6 +157,99 @@ class AggregateFunctionOrderBy(TestSuite):
         )
 
 
+    def test_without_order_by(self):
+        return DiffTestBlueprint(
+            sql="SELECT group_concat(name) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "group_concat"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "name"
+                              table: (none)
+                              schema: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_multiple_ordering_terms(self):
+        return DiffTestBlueprint(
+            sql="SELECT group_concat(name ORDER BY last_name, first_name) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      AggregateFunctionCall
+                        func_name: "group_concat"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            ColumnRef
+                              column: "name"
+                              table: (none)
+                              schema: (none)
+                        orderby:
+                          OrderByList [2 items]
+                            OrderingTerm
+                              expr:
+                                ColumnRef
+                                  column: "last_name"
+                                  table: (none)
+                                  schema: (none)
+                              sort_order: ASC
+                              nulls_order: NONE
+                            OrderingTerm
+                              expr:
+                                ColumnRef
+                                  column: "first_name"
+                                  table: (none)
+                                  schema: (none)
+                              sort_order: ASC
+                              nulls_order: NONE
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+
 class RaiseExpression(TestSuite):
     """RAISE expression tests."""
 
@@ -260,6 +353,200 @@ class RaiseExpression(TestSuite):
                             literal_type: STRING
                             source: "'error'"
               from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+
+ORDERED_SET_CFLAGS = ["SQLITE_ENABLE_ORDERED_SET_AGGREGATES"]
+
+
+class OrderedSetFunctionCall(TestSuite):
+    """WITHIN GROUP ordered-set aggregate function tests.
+
+    Requires SQLITE_ENABLE_ORDERED_SET_AGGREGATES cflag.
+    """
+
+    def test_basic(self):
+        return DiffTestBlueprint(
+            sql="SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY x) FROM t",
+            cflags=ORDERED_SET_CFLAGS,
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      OrderedSetFunctionCall
+                        func_name: "percentile_cont"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            Literal
+                              literal_type: FLOAT
+                              source: "0.5"
+                        orderby_expr:
+                          ColumnRef
+                            column: "x"
+                            table: (none)
+                            schema: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_distinct(self):
+        return DiffTestBlueprint(
+            sql="SELECT percentile_cont(DISTINCT 0.5) WITHIN GROUP (ORDER BY x) FROM t",
+            cflags=ORDERED_SET_CFLAGS,
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      OrderedSetFunctionCall
+                        func_name: "percentile_cont"
+                        flags: DISTINCT
+                        args:
+                          ExprList [1 items]
+                            Literal
+                              literal_type: FLOAT
+                              source: "0.5"
+                        orderby_expr:
+                          ColumnRef
+                            column: "x"
+                            table: (none)
+                            schema: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_with_filter(self):
+        return DiffTestBlueprint(
+            sql="SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY x) FILTER (WHERE y > 0) FROM t",
+            cflags=ORDERED_SET_CFLAGS,
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      OrderedSetFunctionCall
+                        func_name: "percentile_cont"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            Literal
+                              literal_type: FLOAT
+                              source: "0.5"
+                        orderby_expr:
+                          ColumnRef
+                            column: "x"
+                            table: (none)
+                            schema: (none)
+                        filter_clause:
+                          BinaryExpr
+                            op: GT
+                            left:
+                              ColumnRef
+                                column: "y"
+                                table: (none)
+                                schema: (none)
+                            right:
+                              Literal
+                                literal_type: INTEGER
+                                source: "0"
+                        over_clause: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_with_over(self):
+        return DiffTestBlueprint(
+            sql="SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY x) OVER () FROM t",
+            cflags=ORDERED_SET_CFLAGS,
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      OrderedSetFunctionCall
+                        func_name: "percentile_cont"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            Literal
+                              literal_type: FLOAT
+                              source: "0.5"
+                        orderby_expr:
+                          ColumnRef
+                            column: "x"
+                            table: (none)
+                            schema: (none)
+                        filter_clause: (none)
+                        over_clause:
+                          WindowDef
+                            base_window_name: (none)
+                            partition_by: (none)
+                            orderby: (none)
+                            frame: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)

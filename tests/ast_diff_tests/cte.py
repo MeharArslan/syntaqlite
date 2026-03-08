@@ -421,3 +421,235 @@ class WithClause(TestSuite):
                   window_clause: (none)
 """,
         )
+
+    def test_cte_body_values(self):
+        return DiffTestBlueprint(
+            sql="WITH t AS (VALUES (1, 2)) SELECT * FROM t",
+            out="""\
+            WithClause
+              recursive: FALSE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "t"
+                    materialized: DEFAULT
+                    columns: (none)
+                    select:
+                      ValuesClause
+                        rows:
+                          ValuesRowList [1 items]
+                            ExprList [2 items]
+                              Literal
+                                literal_type: INTEGER
+                                source: "1"
+                              Literal
+                                literal_type: INTEGER
+                                source: "2"
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: (none)
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: (none)
+                      alias: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+""",
+        )
+
+    def test_outer_query_compound(self):
+        return DiffTestBlueprint(
+            sql="WITH t AS (SELECT 1 AS x) SELECT * FROM t UNION SELECT 2",
+            out="""\
+            WithClause
+              recursive: FALSE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "t"
+                    materialized: DEFAULT
+                    columns: (none)
+                    select:
+                      SelectStmt
+                        flags: (none)
+                        columns:
+                          ResultColumnList [1 items]
+                            ResultColumn
+                              flags: (none)
+                              alias:
+                                IdentName
+                                  source: "x"
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "1"
+                        from_clause: (none)
+                        where_clause: (none)
+                        groupby: (none)
+                        having: (none)
+                        orderby: (none)
+                        limit_clause: (none)
+                        window_clause: (none)
+              select:
+                CompoundSelect
+                  op: UNION
+                  left:
+                    SelectStmt
+                      flags: (none)
+                      columns:
+                        ResultColumnList [1 items]
+                          ResultColumn
+                            flags: STAR
+                            alias: (none)
+                            expr: (none)
+                      from_clause:
+                        TableRef
+                          table_name: "t"
+                          schema: (none)
+                          alias: (none)
+                      where_clause: (none)
+                      groupby: (none)
+                      having: (none)
+                      orderby: (none)
+                      limit_clause: (none)
+                      window_clause: (none)
+                  right:
+                    SelectStmt
+                      flags: (none)
+                      columns:
+                        ResultColumnList [1 items]
+                          ResultColumn
+                            flags: (none)
+                            alias: (none)
+                            expr:
+                              Literal
+                                literal_type: INTEGER
+                                source: "2"
+                      from_clause: (none)
+                      where_clause: (none)
+                      groupby: (none)
+                      having: (none)
+                      orderby: (none)
+                      limit_clause: (none)
+                      window_clause: (none)
+""",
+        )
+
+    def test_recursive_union(self):
+        return DiffTestBlueprint(
+            sql="WITH RECURSIVE cnt(x) AS (SELECT 1 UNION SELECT x+1 FROM cnt WHERE x < 10) SELECT x FROM cnt",
+            out="""\
+            WithClause
+              recursive: TRUE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "cnt"
+                    materialized: DEFAULT
+                    columns:
+                      ExprList [1 items]
+                        ColumnRef
+                          column: "x"
+                          table: (none)
+                          schema: (none)
+                    select:
+                      CompoundSelect
+                        op: UNION
+                        left:
+                          SelectStmt
+                            flags: (none)
+                            columns:
+                              ResultColumnList [1 items]
+                                ResultColumn
+                                  flags: (none)
+                                  alias: (none)
+                                  expr:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "1"
+                            from_clause: (none)
+                            where_clause: (none)
+                            groupby: (none)
+                            having: (none)
+                            orderby: (none)
+                            limit_clause: (none)
+                            window_clause: (none)
+                        right:
+                          SelectStmt
+                            flags: (none)
+                            columns:
+                              ResultColumnList [1 items]
+                                ResultColumn
+                                  flags: (none)
+                                  alias: (none)
+                                  expr:
+                                    BinaryExpr
+                                      op: PLUS
+                                      left:
+                                        ColumnRef
+                                          column: "x"
+                                          table: (none)
+                                          schema: (none)
+                                      right:
+                                        Literal
+                                          literal_type: INTEGER
+                                          source: "1"
+                            from_clause:
+                              TableRef
+                                table_name: "cnt"
+                                schema: (none)
+                                alias: (none)
+                            where_clause:
+                              BinaryExpr
+                                op: LT
+                                left:
+                                  ColumnRef
+                                    column: "x"
+                                    table: (none)
+                                    schema: (none)
+                                right:
+                                  Literal
+                                    literal_type: INTEGER
+                                    source: "10"
+                            groupby: (none)
+                            having: (none)
+                            orderby: (none)
+                            limit_clause: (none)
+                            window_clause: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: (none)
+                        expr:
+                          ColumnRef
+                            column: "x"
+                            table: (none)
+                            schema: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "cnt"
+                      schema: (none)
+                      alias: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+""",
+        )

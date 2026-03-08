@@ -167,6 +167,88 @@ class FunctionCallBasic(TestSuite):
 """,
         )
 
+    def test_filter_clause(self):
+        return DiffTestBlueprint(
+            sql="SELECT count(*) FILTER (WHERE x > 0) FROM t",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "count"
+                        flags: STAR
+                        args: (none)
+                        filter_clause:
+                          BinaryExpr
+                            op: GT
+                            left:
+                              ColumnRef
+                                column: "x"
+                                table: (none)
+                                schema: (none)
+                            right:
+                              Literal
+                                literal_type: INTEGER
+                                source: "0"
+                        over_clause: (none)
+              from_clause:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_complex_args(self):
+        return DiffTestBlueprint(
+            sql="SELECT abs(1 + 2)",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      FunctionCall
+                        func_name: "abs"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            BinaryExpr
+                              op: PLUS
+                              left:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "1"
+                              right:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "2"
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
     def test_nested(self):
         return DiffTestBlueprint(
             sql="SELECT abs(max(1, 2))",
