@@ -27,6 +27,7 @@ Available suites:
     perfetto-val      Perfetto dialect validation diff tests
     amalg             Amalgamation compilation + AST diff tests
     grammar           Grammar token-ID ordering invariants
+    sql-idempotency   Verify formatting preserves AST semantics
 """
 
 import os

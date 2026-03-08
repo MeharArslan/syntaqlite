@@ -35,6 +35,7 @@ _SUITE_MODULES = [
     "python.syntaqlite.integration_tests.suites.perfetto_val",
     "python.syntaqlite.integration_tests.suites.amalg",
     "python.syntaqlite.integration_tests.suites.grammar",
+    "python.syntaqlite.integration_tests.suites.sql_idempotency",
 ]
 
 _BLUE = "\033[1;34m"

@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+"""Verify formatting preserves SQL semantics (AST equivalence).
+
+Harvests SQL from all existing diff test suites (ast, fmt) and checks that
+parse(sql) produces the same AST as parse(format(sql)).
+
+Usage:
+    tools/run-sql-idempotency-tests                # run all checks
+    tools/run-sql-idempotency-tests --filter select # filter by name
+    tools/run-sql-idempotency-tests -v              # verbose output
+
+Options:
+    --binary PATH     Path to syntaqlite CLI binary.
+    --filter PATTERN  Regex filter for test names.
+    --jobs N          Parallel jobs.
+    -v, --verbose     Increase output verbosity.
+"""
+
+import os
+import sys
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT_DIR)
+
+if __name__ == "__main__":
+    from python.syntaqlite.diff_tests.idempotency_runner import main
+    sys.exit(main())
