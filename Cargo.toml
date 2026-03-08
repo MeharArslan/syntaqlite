@@ -8,7 +8,7 @@ members = [
     "syntaqlite-wasm",
     # temporarily excluded until semantic refactor is complete:
     "syntaqlite-cli",
-    "benches",
+    "test/benches",
 ]
 resolver = "3"
 

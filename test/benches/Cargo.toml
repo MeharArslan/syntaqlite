@@ -23,7 +23,7 @@ name = "main"
 harness = false
 
 [dependencies]
-syntaqlite = { path = "../syntaqlite", features = ["lsp"] }
+syntaqlite = { path = "../../syntaqlite", features = ["lsp"] }
 
 [dev-dependencies]
 criterion = "0.5"
