@@ -319,14 +319,18 @@ def _aggregate(results: list[FileResult]) -> tuple[Summary, list[FalsePositive]]
 
 
 def _print_summary(
-    summary: Summary, file_count: int, error_count: int, verbose: bool,
+    summary: Summary, file_count: int,
+    error_files: list[tuple[str, str]], verbose: bool,
     false_positives: list[FalsePositive],
 ) -> None:
     """Print the standard summary block."""
     print()
     print("  === Upstream Test Summary ===")
     print(f"  Files run:            {file_count}")
-    print(f"  Files with errors:    {error_count}")
+    print(f"  Files with errors:    {len(error_files)}")
+    if error_files:
+        for name, reason in error_files:
+            print(f"    - {name}: {reason}")
     print()
     print(f"  Total SQL statements: {summary.total}")
     print(f"    Parse OK:           {summary.parse_ok}")
@@ -592,7 +596,7 @@ def run(ctx: SuiteContext) -> int:
 
         print(f"  Loaded {len(file_results)} log files from {logs_dir}")
         summary, false_positives = _aggregate(file_results)
-        _print_summary(summary, len(file_results), 0, verbose, false_positives)
+        _print_summary(summary, len(file_results), [], verbose, false_positives)
         _analyze_detailed(file_results, verbose)
 
         baseline_path = root / "tests" / "upstream_baselines" / "parse_acceptance.json"
@@ -648,7 +652,8 @@ def run(ctx: SuiteContext) -> int:
     if jobs == 1:
         for test_file in test_files:
             done += 1
-            print(f"\r  [{done}/{total}] {test_file.name}...", end="", flush=True)
+            if verbose:
+                print(f"\r  [{done}/{total}] {test_file.name}...", end="", flush=True)
             log_file = logs_dir / f"{test_file.stem}.jsonl"
             file_results.append(
                 _run_single_test(extension_lib, tester_shim, validate, test_file, log_file),
@@ -665,16 +670,18 @@ def run(ctx: SuiteContext) -> int:
             for future in as_completed(futures):
                 done += 1
                 tf = futures[future]
-                print(f"\r  [{done}/{total}] {tf.name}...", end="", flush=True)
+                if verbose:
+                    print(f"\r  [{done}/{total}] {tf.name}...", end="", flush=True)
                 file_results.append(future.result())
 
-    print()  # Clear progress line.
+    if verbose:
+        print()  # Clear progress line.
 
     # Aggregate and print summary.
     summary, false_positives = _aggregate(file_results)
-    error_count = sum(1 for r in file_results if r.error)
+    error_files = [(r.file, r.error) for r in file_results if r.error]
 
-    _print_summary(summary, len(file_results), error_count, verbose, false_positives)
+    _print_summary(summary, len(file_results), error_files, verbose, false_positives)
     _analyze_detailed(file_results, verbose)
 
     # Baseline comparison.
