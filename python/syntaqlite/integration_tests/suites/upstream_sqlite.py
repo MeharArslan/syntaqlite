@@ -518,6 +518,19 @@ def _analyze_detailed(results: list[FileResult], verbose: bool) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _platform_baseline_path(base_path: Path) -> Path:
+    """Return the platform-specific baseline path.
+
+    Looks for parse_acceptance.<platform>.json first (e.g. linux, darwin),
+    falling back to the unsuffixed parse_acceptance.json.
+    """
+    system = platform.system().lower()  # "linux", "darwin", "windows"
+    platform_path = base_path.with_suffix(f".{system}.json")
+    if platform_path.exists():
+        return platform_path
+    return base_path
+
+
 def _check_baseline(
     baseline_path: Path, summary: Summary, rebaseline: bool,
 ) -> int:
@@ -532,19 +545,26 @@ def _check_baseline(
         "gap": summary.gap,
     }
 
+    # Use platform-specific baseline when available.
+    system = platform.system().lower()
+    platform_path = baseline_path.with_suffix(f".{system}.json")
+
     if rebaseline:
-        baseline_path.parent.mkdir(parents=True, exist_ok=True)
-        baseline_path.write_text(json.dumps(data, indent=2) + "\n")
-        print(f"\n  Baseline written to {baseline_path}")
+        target = platform_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(data, indent=2) + "\n")
+        print(f"\n  Baseline written to {target}")
         return 0
 
-    if not baseline_path.exists():
-        baseline_path.parent.mkdir(parents=True, exist_ok=True)
-        baseline_path.write_text(json.dumps(data, indent=2) + "\n")
-        print(f"\n  No baseline found. Created initial baseline at {baseline_path}")
+    effective_path = _platform_baseline_path(baseline_path)
+
+    if not effective_path.exists():
+        effective_path.parent.mkdir(parents=True, exist_ok=True)
+        effective_path.write_text(json.dumps(data, indent=2) + "\n")
+        print(f"\n  No baseline found. Created initial baseline at {effective_path}")
         return 0
 
-    old = json.loads(baseline_path.read_text())
+    old = json.loads(effective_path.read_text())
     regressions = 0
 
     if summary.false_positive > old.get("false_positive", 0):
