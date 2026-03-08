@@ -20,7 +20,7 @@
 //! ENABLE groups additionally test version interaction (the keyword must
 //! also meet its version requirement).
 //!
-//! The saw_subquery tests verify the OMIT_SUBQUERY detection mechanism,
+//! The `saw_subquery` tests verify the `OMIT_SUBQUERY` detection mechanism,
 //! which uses a parser flag rather than keyword suppression.
 
 use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
@@ -86,7 +86,7 @@ fn parses_ok_default(sql: &str) -> bool {
     parses_ok_with_cflags(sql, &[])
 }
 
-/// Helper to encode a SQLite version like 3.47.0 as a SqliteVersion enum.
+/// Helper to encode a `SQLite` version like 3.47.0 as a `SqliteVersion` enum.
 fn ver(major: u32, minor: u32, _patch: u32) -> SqliteVersion {
     SqliteVersion::from_int((major as i32) * 1_000_000 + (minor as i32) * 1_000)
 }

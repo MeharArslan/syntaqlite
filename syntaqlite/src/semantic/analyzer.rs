@@ -1647,7 +1647,7 @@ mod tests {
         let mut cat = sqlite_catalog();
         for (name, cols) in relations {
             cat.layer_mut(CatalogLayer::Database)
-                .insert_relation(*name, Some(cols.iter().map(|c| c.to_string()).collect()));
+                .insert_relation(*name, Some(cols.iter().map(ToString::to_string).collect()));
         }
         let model = az.analyze(src, &cat, &strict());
         let errs: Vec<_> = model
@@ -1791,7 +1791,7 @@ mod tests {
     /// Root cause investigated: `visit_query` never pushed a query scope, so
     /// `add_query_table("users", None)` was a silent no-op (no frame to write
     /// into). Column resolution then found zero tables with `None` columns →
-    /// `ColumnResolution::NotFound` → spurious UnknownColumn diagnostics.
+    /// `ColumnResolution::NotFound` → spurious `UnknownColumn` diagnostics.
     #[test]
     fn unknown_table_columns_not_flagged() {
         let mut az = sqlite_analyzer();
@@ -1890,9 +1890,9 @@ mod tests {
 
     /// `CREATE TABLE t AS SELECT 1` gives column named `1` (raw source text).
     /// Querying `SELECT t."1" FROM t` uses a double-quoted identifier `"1"` which
-    /// SQLite treats as a column reference to `1`.  The AST stores the span with
+    /// `SQLite` treats as a column reference to `1`.  The AST stores the span with
     /// quotes included, so without grammar-level dequoting this produces a
-    /// spurious UnknownColumn error.  This test is RED until Cycle 2 fix.
+    /// spurious `UnknownColumn` error.  This test is RED until Cycle 2 fix.
     #[test]
     fn quoted_col_ref_resolves_against_expression_span_name() {
         assert_no_unknown_col(r#"CREATE TABLE t AS SELECT 1; SELECT t."1" FROM t;"#);

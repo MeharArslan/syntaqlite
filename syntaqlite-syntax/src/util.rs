@@ -217,7 +217,7 @@ impl SqliteVersion {
     ///
     /// Uses the formula `major * 1_000_000 + minor * 1_000`, matching the
     /// `SQLITE_VERSION_NUMBER` C macro (e.g. `V3_35` → `3035000`).
-    pub(crate) fn as_int(self) -> i32 {
+    pub fn as_int(self) -> i32 {
         match self {
             Self::V3_12 => 3_012_000,
             Self::V3_13 => 3_013_000,

@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn c_parser_flags_round_trip_through_syntax_flags() {
         for &flag in SqliteFlag::all() {
-            if !flag.as_syntax_flag().is_some() {
+            if flag.as_syntax_flag().is_none() {
                 continue;
             }
             let bit_index = flag as u32;

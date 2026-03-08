@@ -534,9 +534,9 @@ mod tests {
     // ── Bug regression: Python f-string with unknown table (user's report) ─────
 
     /// Exact scenario from the bug report: embedded Python f-string where
-    /// `users` is not in the catalog.  The table should get one UnknownTable
+    /// `users` is not in the catalog.  The table should get one `UnknownTable`
     /// diagnostic, and the columns (id, name, email, age, name in ORDER BY)
-    /// should NOT produce any UnknownColumn diagnostics.
+    /// should NOT produce any `UnknownColumn` diagnostics.
     #[test]
     fn python_unknown_table_no_spurious_column_errors() {
         let source = concat!(

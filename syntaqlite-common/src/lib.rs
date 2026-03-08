@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-#![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
 
 //! Shared primitives with no generated-file dependencies.
 //!
@@ -230,7 +230,8 @@ pub mod roles {
         fn discriminants_are_correct() {
             // Verify byte-0 discriminants match the explicit `= N` values.
             let check = |role: SemanticRole, expected: u8| {
-                let byte0 = unsafe { *(&role as *const SemanticRole as *const u8) };
+                // SAFETY: `SemanticRole` is `#[repr(C, u8)]`; byte 0 is the discriminant.
+                let byte0 = unsafe { *std::ptr::addr_of!(role).cast::<u8>() };
                 assert_eq!(byte0, expected, "wrong discriminant for variant");
             };
             check(
@@ -256,8 +257,9 @@ pub mod roles {
                 orderby: 6,
                 limit_clause: 7,
             };
+            // SAFETY: `SemanticRole` is `#[repr(C, u8)]` with size 8; all 8 bytes are valid u8.
             let bytes =
-                unsafe { std::slice::from_raw_parts(&role as *const SemanticRole as *const u8, 8) };
+                unsafe { std::slice::from_raw_parts(std::ptr::addr_of!(role).cast::<u8>(), 8) };
             assert_eq!(bytes[0], 11); // discriminant
             assert_eq!(bytes[1], 1); // from
             assert_eq!(bytes[2], 2); // columns

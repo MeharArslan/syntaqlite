@@ -29,6 +29,10 @@
 ///
 /// `SYNQ_CFLAG_IDX_*` constant names are derived automatically via [`synq_const_name`];
 /// there is no need to store them here.
+///
+/// Note: `since` version data lives in `version_cflags.json` and is injected at codegen
+/// time via `--version-cflags-json`. See <https://github.com/LalitMaganti/syntaqlite/issues/6>
+/// for the planned refactor to move categories there too.
 pub(crate) const CFLAG_REGISTRY: &[(&str, u32, &[&str])] = &[
     // ── Parser flags (0–21, matching C compact SYNQ_CFLAG_IDX_* values) ────────
     ("SQLITE_OMIT_ALTERTABLE", 0, &["parser"]),
@@ -108,7 +112,8 @@ mod tests {
         indices.sort_unstable();
         for (pos, &idx) in indices.iter().enumerate() {
             assert_eq!(
-                idx, pos as u32,
+                idx,
+                u32::try_from(pos).expect("registry has fewer than u32::MAX entries"),
                 "CFLAG_REGISTRY indices must be 0-based and contiguous; gap at position {pos}"
             );
         }

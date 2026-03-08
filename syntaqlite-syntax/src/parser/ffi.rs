@@ -11,7 +11,7 @@ pub(crate) const PARSE_DONE: i32 = 0;
 /// Return code: statement parsed cleanly.
 pub(crate) const PARSE_OK: i32 = 1;
 /// Return code: statement has parse/runtime error.
-#[expect(dead_code)] // used in `#[cfg(all(test, feature = "sqlite"))]`
+#[cfg(test)]
 pub(crate) const PARSE_ERROR: i32 = -1;
 
 /// Mirrors C `SyntaqliteMemMethods`.

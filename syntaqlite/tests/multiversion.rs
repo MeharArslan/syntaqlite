@@ -4,12 +4,12 @@
 //! Oracle tests for version-gated tokenization and parsing.
 //!
 //! These tests verify that syntaqlite's tokenizer produces the same behavior as
-//! real SQLite at version boundaries. The expected behavior was verified against
+//! real `SQLite` at version boundaries. The expected behavior was verified against
 //! actual sqlite3 shells compiled from official amalgamations:
 //!
 //! - 3.37.2: `SELECT 1->2` → error near ">" (no -> operator)
 //! - 3.38.0: `SELECT 1->2` → success (-> operator added)
-//! - 3.45.3: `SELECT 1_000` → error "unrecognized token: 1_000"
+//! - 3.45.3: `SELECT 1_000` → error "unrecognized token: `1_000`"
 //! - 3.46.0: `SELECT 1_000` → success (digit separators added)
 //! - 3.34.1: `INSERT ... RETURNING` → error near "RETURNING"
 //! - 3.35.0: same query → success
@@ -26,7 +26,7 @@ use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
 use syntaqlite::util::SqliteVersion;
 use syntaqlite::{ParseOutcome, TokenType};
 
-/// Shorthand: convert a TokenType variant to its raw u32 value.
+/// Shorthand: convert a `TokenType` variant to its raw u32 value.
 const fn tk(t: TokenType) -> u32 {
     t as u32
 }
@@ -35,7 +35,7 @@ const fn tk(t: TokenType) -> u32 {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Tokenize SQL with a specific SQLite version and return (token_type, text) pairs,
+/// Tokenize SQL with a specific `SQLite` version and return (`token_type`, text) pairs,
 /// filtering out whitespace.
 fn tokenize_at_version(sql: &str, version: SqliteVersion) -> Vec<(u32, String)> {
     let tok = TypedTokenizer::new(grammar().with_version(version));
@@ -50,14 +50,14 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
     tokenize_at_version(sql, SqliteVersion::Latest)
 }
 
-/// Parse SQL with a specific SQLite version and return whether it succeeded.
+/// Parse SQL with a specific `SQLite` version and return whether it succeeded.
 fn parses_ok_at_version(sql: &str, version: SqliteVersion) -> bool {
     let parser = TypedParser::new(grammar().with_version(version));
     let mut session = parser.parse(sql);
     matches!(session.next(), ParseOutcome::Ok(_))
 }
 
-/// Helper to encode a SQLite version like 3.38.0 as a SqliteVersion enum.
+/// Helper to encode a `SQLite` version like 3.38.0 as a `SqliteVersion` enum.
 fn ver(major: u32, minor: u32, _patch: u32) -> SqliteVersion {
     SqliteVersion::from_int((major as i32) * 1_000_000 + (minor as i32) * 1_000)
 }
@@ -229,8 +229,7 @@ fn basic_tokens_unaffected_by_version() {
                 tk(TokenType::Plus),
                 tk(TokenType::Integer)
             ],
-            "Basic tokens should be stable at version {:?}",
-            version
+            "Basic tokens should be stable at version {version:?}"
         );
     }
 }

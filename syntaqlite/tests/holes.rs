@@ -1,14 +1,14 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-/// Prototype tests: feeding TK_ILLEGAL inside macro regions to simulate
+/// Prototype tests: feeding `TK_ILLEGAL` inside macro regions to simulate
 /// interpolation holes in embedded SQL (e.g. Python f-strings).
 ///
 /// The idea: a host language scanner extracts SQL from strings like
-///   f"SELECT * FROM {table} WHERE id = {user_id}"
+///   f"SELECT * FROM {table} WHERE id = {`user_id`}"
 /// and feeds tokens to the parser. For each `{...}` interpolation,
-/// it calls begin_macro/end_macro around a TK_ILLEGAL token. The parser's
-/// error recovery should create an ErrorNode, and the rest of the statement
+/// it calls `begin_macro/end_macro` around a `TK_ILLEGAL` token. The parser's
+/// error recovery should create an `ErrorNode`, and the rest of the statement
 /// should still parse correctly.
 use syntaqlite::Parser;
 
@@ -277,7 +277,7 @@ fn baseline_id_in_macro_region() {
     // Format it to see the macro region preserved
     let mut fmt = syntaqlite::Formatter::new();
     let formatted = fmt.format_parsed(stmt.erase());
-    eprintln!("baseline formatted: {}", formatted);
+    eprintln!("baseline formatted: {formatted}");
 
     assert_eq!(formatted, "SELECT * FROM {table} WHERE id = 1");
 }

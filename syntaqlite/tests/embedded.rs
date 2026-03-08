@@ -157,7 +157,7 @@ fn validate_offsets_mapped_to_host_file() {
 
 #[test]
 fn ts_simple_template_literal_with_valid_sql() {
-    let source = r#"const q = `SELECT * FROM users WHERE id = ${uid}`;"#;
+    let source = r"const q = `SELECT * FROM users WHERE id = ${uid}`;";
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 1);
     assert_eq!(fragments[0].holes.len(), 1);
@@ -166,22 +166,22 @@ fn ts_simple_template_literal_with_valid_sql() {
 
 #[test]
 fn ts_multiple_sql_template_literals_in_one_file() {
-    let source = r#"
+    let source = r"
 const q1 = `SELECT * FROM users WHERE id = ${uid}`;
 const msg = `Hello ${name}`;
 const q2 = `INSERT INTO logs (msg) VALUES (${log_msg})`;
-"#;
+";
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 2); // q1 and q2, not msg
 }
 
 #[test]
 fn ts_non_sql_templates_skipped() {
-    let source = r#"
+    let source = r"
 const greeting = `Hello ${name}, welcome!`;
 const path = `/api/${version}/users`;
 const count = `Total: ${n} items`;
-"#;
+";
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 0);
 }
@@ -201,7 +201,7 @@ fn ts_multiline_template_literal() {
 
 #[test]
 fn ts_template_with_multiple_holes() {
-    let source = r#"const q = `SELECT ${cols} FROM ${table} WHERE ${col} = ${val}`;"#;
+    let source = r"const q = `SELECT ${cols} FROM ${table} WHERE ${col} = ${val}`;";
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 1);
     let f = &fragments[0];
@@ -214,11 +214,11 @@ fn ts_template_with_multiple_holes() {
 
 #[test]
 fn ts_templates_inside_comments_skipped() {
-    let source = r#"
+    let source = r"
 // const q = `SELECT * FROM users`;
 /* const q = `SELECT * FROM users`; */
 const x = 1;
-"#;
+";
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 0);
 }
@@ -234,7 +234,7 @@ fn ts_templates_inside_strings_skipped() {
 
 #[test]
 fn ts_validate_simple_select_with_hole() {
-    let source = r#"const q = `SELECT * FROM users WHERE id = ${uid}`;"#;
+    let source = r"const q = `SELECT * FROM users WHERE id = ${uid}`;";
     let fragments = extract_typescript(source);
     let diags = analyzer().validate(&fragments);
 
@@ -249,7 +249,7 @@ fn ts_validate_simple_select_with_hole() {
 
 #[test]
 fn ts_validate_multiple_holes_no_placeholder_leaks() {
-    let source = r#"const q = `SELECT ${cols} FROM ${table} WHERE ${col} = ${val}`;"#;
+    let source = r"const q = `SELECT ${cols} FROM ${table} WHERE ${col} = ${val}`;";
     let fragments = extract_typescript(source);
     let diags = analyzer().validate(&fragments);
 
@@ -261,7 +261,7 @@ fn ts_validate_multiple_holes_no_placeholder_leaks() {
 
 #[test]
 fn ts_validate_offsets_mapped_to_host_file() {
-    let source = r#"const q = `SELECT * FROM nonexistent`;"#;
+    let source = r"const q = `SELECT * FROM nonexistent`;";
     let fragments = extract_typescript(source);
     let diags = analyzer().validate(&fragments);
 

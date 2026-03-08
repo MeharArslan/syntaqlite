@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Cflag tests for the standalone Formatter, TypedParser, and TypedTokenizer APIs.
+//! Cflag tests for the standalone Formatter, `TypedParser`, and `TypedTokenizer` APIs.
 //!
 //! Verifies that compile-time flags are respected by every public entry point:
 //!
@@ -168,6 +168,62 @@ fn typed_parser_rejects_returning_with_omit_returning_syntax_cflag() {
     assert!(
         matches!(session.next(), ParseOutcome::Err(_)),
         "RETURNING should fail to parse with OmitReturning syntax cflag"
+    );
+}
+
+// ── LspHost: cflags propagate to parser via diagnostics ──────────────────────
+//
+// Verifies the full path: LspHost::with_dialect (dialect carrying cflag) →
+// SemanticAnalyzer → AnyParser → C parser.
+//
+// This tests the same mechanism used by `wasm_diagnostics` in syntaqlite-wasm.
+
+#[cfg(feature = "lsp")]
+#[test]
+fn lsp_diagnostics_parse_error_with_omit_windowfunc() {
+    use syntaqlite::ValidationConfig;
+    use syntaqlite::lsp::LspHost;
+
+    let flags = SqliteFlags::default().with(SqliteFlag::OmitWindowfunc);
+    let dialect = sqlite_dialect().with_cflags(flags);
+
+    let mut host = LspHost::with_dialect(dialect);
+    host.update_document("test://x", 1, "SELECT sum(x) OVER () FROM t;".to_string());
+
+    let diags = host.all_diagnostics("test://x", &ValidationConfig::default());
+    assert!(
+        !diags.is_empty(),
+        "expected parse error when SQLITE_OMIT_WINDOWFUNC is set, got no diagnostics"
+    );
+}
+
+#[cfg(feature = "lsp")]
+#[test]
+fn lsp_diagnostics_no_parse_error_without_omit_windowfunc() {
+    use syntaqlite::ValidationConfig;
+    use syntaqlite::lsp::LspHost;
+
+    let mut host = LspHost::with_dialect(sqlite_dialect());
+    host.update_document("test://x", 1, "SELECT sum(x) OVER () FROM t;".to_string());
+
+    let diags = host.all_diagnostics("test://x", &ValidationConfig::default());
+    let parse_errors: Vec<_> = diags
+        .iter()
+        .filter(|d| {
+            matches!(d.severity, syntaqlite::Severity::Error)
+                && d.message.to_string().contains("syntax")
+        })
+        .collect();
+    // The query should parse without error; any diagnostics here would be semantic (unknown table).
+    // We only care that the parser doesn't reject window function syntax.
+    let has_parse_failures = diags.iter().any(|d| {
+        // Parse errors come from the C parser and typically say "near X: syntax error"
+        d.message.to_string().contains("syntax error") || d.message.to_string().contains("parse")
+    });
+    let _ = parse_errors;
+    assert!(
+        !has_parse_failures,
+        "window function should parse without SQLITE_OMIT_WINDOWFUNC; diagnostics: {diags:?}"
     );
 }
 

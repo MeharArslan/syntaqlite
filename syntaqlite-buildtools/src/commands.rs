@@ -116,6 +116,8 @@ impl SqliteCodegen {
 pub struct SqliteParserCodegen {
     /// Path to functions.json. When provided, generates `functions_catalog.rs`.
     pub functions_json: Option<String>,
+    /// Path to `version_cflags.json`. When provided, emits `MIN_VERSIONS` into cflags.rs.
+    pub version_cflags_json: Option<String>,
 }
 
 impl SqliteParserCodegen {
@@ -125,8 +127,18 @@ impl SqliteParserCodegen {
     ///
     /// Returns an error if codegen or file I/O fails.
     pub fn run(&self) -> Result<(), String> {
+        // Load version map from JSON if provided.
+        let version_map = self
+            .version_cflags_json
+            .as_deref()
+            .map(crate::util::cflag_entries_codegen::load_version_map)
+            .transpose()?;
+
         // Always regenerate both flag enums from the stable CFLAG_REGISTRY.
-        crate::util::cflag_entries_codegen::write_sqlite_flag_rs(SQLITE_CFLAGS_RS)?;
+        crate::util::cflag_entries_codegen::write_sqlite_flag_rs(
+            SQLITE_CFLAGS_RS,
+            version_map.as_ref(),
+        )?;
         crate::util::cflag_entries_codegen::write_syntax_flag_rs(SYNTAX_CFLAGS_RS)?;
 
         if let Some(json_path) = &self.functions_json {

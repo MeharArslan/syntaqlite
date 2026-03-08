@@ -61,7 +61,7 @@ export class DialectConfigManager {
     const visible = new Set(this.visibleCflags(version));
     for (const suffix of cflags) {
       if (visible.has(suffix)) {
-        engine.setCflag("SYNTAQLITE_CFLAG_" + suffix);
+        engine.setCflag(suffix);
       }
     }
   }

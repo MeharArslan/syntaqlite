@@ -6,7 +6,6 @@ use syntaqlite_syntax::{CommentKind, ParserConfig};
 
 use super::FormatConfig;
 use super::FormatError;
-use super::KeywordCase;
 use super::comment::{CommentCtx, CommentEntry, TokenEntry};
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch};
@@ -414,7 +413,7 @@ mod tests {
     use crate::fmt::KeywordCase;
 
     /// Verify that `Formatter` stores an `AnyParser` derived from the dialect,
-    /// not a hardcoded SQLite `Parser`.
+    /// not a hardcoded `SQLite` `Parser`.
     ///
     /// This test FAILS TO COMPILE before the fix because `fmt.parser` is of
     /// type `syntaqlite_syntax::Parser` (SQLite-only), not `AnyParser`.

@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 #![allow(missing_docs)] // ABI exports don't need rustdoc
-#![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
+#![cfg_attr(test, expect(clippy::unwrap_used))]
 
 use std::cell::{Cell, RefCell};
 use std::slice;
@@ -151,12 +151,12 @@ fn free(ptr: u32, len: u32) {
     if ptr == 0 || len == 0 {
         return;
     }
-    // SAFETY: pointer/capacity pair must come from alloc(). len == cap since alloc
-    // allocates exactly `len` bytes and we use it as both length and capacity here.
     #[expect(
         clippy::same_length_and_capacity,
         reason = "intentional: capacity equals length for dealloc"
     )]
+    // SAFETY: pointer/capacity pair must come from alloc(). len == cap since alloc
+    // allocates exactly `len` bytes and we use it as both length and capacity here.
     unsafe {
         let _ = Vec::<u8>::from_raw_parts(ptr as *mut u8, len as usize, len as usize);
     }
@@ -455,10 +455,6 @@ pub extern "C" fn wasm_clear_dialect() {
 }
 
 // ── Cflag list ───────────────────────────────────────────────────────
-//
-// Returns a JSON array of all known compile-time flags with their minimum
-// required SQLite version (0 = always available) and display category.
-// The `name` field matches what `wasm_set_cflag` / `wasm_clear_cflag` accept.
 
 #[derive(Serialize)]
 struct CflagListEntry {
@@ -469,223 +465,15 @@ struct CflagListEntry {
 }
 
 fn cflag_list_json() -> String {
-    // Ordered to match SqliteFlag discriminants so names round-trip through from_name().
-    // min_version is the integer-encoded SQLite version (major*1_000_000 + minor*1_000 + patch),
-    // or 0 meaning the flag has been available since before the oldest tracked version.
-    // category is the primary display group for the playground UI.
-    let entries: &[CflagListEntry] = &[
-        CflagListEntry {
-            name: "SQLITE_OMIT_ALTERTABLE",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_ANALYZE",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_ATTACH",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_AUTOINCREMENT",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_CAST",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_COMPOUND_SELECT",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_CTE",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_EXPLAIN",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_FOREIGN_KEY",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_GENERATED_COLUMNS",
-            min_version: 3_031_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_PRAGMA",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_REINDEX",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_RETURNING",
-            min_version: 0,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_SUBQUERY",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_TEMPDB",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_TRIGGER",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_VACUUM",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_VIEW",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_VIRTUALTABLE",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_WINDOWFUNC",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
-            min_version: 3_047_002,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",
-            min_version: 3_030_001,
-            category: "parser",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_COMPILEOPTION_DIAGS",
-            min_version: 3_030_001,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_DATETIME_FUNCS",
-            min_version: 3_030_001,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_FLOATING_POINT",
-            min_version: 3_030_001,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_JSON",
-            min_version: 3_038_005,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_OMIT_LOAD_EXTENSION",
-            min_version: 3_030_001,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_BYTECODE_VTAB",
-            min_version: 3_032_003,
-            category: "vtable",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_CARRAY",
-            min_version: 3_051_002,
-            category: "vtable",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_DBPAGE_VTAB",
-            min_version: 3_030_001,
-            category: "vtable",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_DBSTAT_VTAB",
-            min_version: 3_030_001,
-            category: "vtable",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_FTS3",
-            min_version: 3_030_001,
-            category: "extensions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_FTS4",
-            min_version: 3_030_001,
-            category: "extensions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_FTS5",
-            min_version: 3_030_001,
-            category: "extensions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_GEOPOLY",
-            min_version: 3_030_001,
-            category: "extensions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_JSON1",
-            min_version: 3_030_001,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_MATH_FUNCTIONS",
-            min_version: 3_035_005,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_OFFSET_SQL_FUNC",
-            min_version: 3_030_001,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_PERCENTILE",
-            min_version: 3_051_002,
-            category: "functions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_RTREE",
-            min_version: 3_030_001,
-            category: "extensions",
-        },
-        CflagListEntry {
-            name: "SQLITE_ENABLE_STMTVTAB",
-            min_version: 3_030_001,
-            category: "vtable",
-        },
-        CflagListEntry {
-            name: "SQLITE_SOUNDEX",
-            min_version: 3_030_001,
-            category: "functions",
-        },
-    ];
-    serde_json::to_string(entries).expect("cflag list serialization failed")
+    let entries: Vec<CflagListEntry> = SqliteFlag::all()
+        .iter()
+        .map(|&flag| CflagListEntry {
+            name: flag.name(),
+            min_version: flag.min_version().as_int() as u32,
+            category: flag.categories().first().copied().unwrap_or("parser"),
+        })
+        .collect();
+    serde_json::to_string(&entries).expect("cflag list serialization failed")
 }
 
 fn run_get_cflag_list() -> i32 {

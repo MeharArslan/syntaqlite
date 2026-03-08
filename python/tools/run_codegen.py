@@ -108,6 +108,7 @@ def main() -> int:
     # Stage 1b: Generate functions catalog and cflag Rust modules.
     # Output paths are hardcoded in the Rust binary.
     functions_json = vendored_dir / "data" / "functions.json"
+    version_cflags_json = vendored_dir / "data" / "version_cflags.json"
 
     log("Stage 1b: Generating functions catalog and cflag modules...")
     result = subprocess.run(
@@ -115,6 +116,7 @@ def main() -> int:
             str(tools_bin),
             "codegen-sqlite-parser",
             "--functions-json", str(functions_json),
+            "--version-cflags-json", str(version_cflags_json),
         ],
         cwd=project_root,
         capture_output=not args.verbose,

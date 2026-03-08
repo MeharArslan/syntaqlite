@@ -3,8 +3,8 @@
 
 //! Tests for child node enumeration via `AnyParsedStatement::child_node_ids`.
 //!
-//! `child_node_ids` auto-expands list nodes: for a SelectStmt with a
-//! ResultColumnList, the list's elements are returned directly rather than
+//! `child_node_ids` auto-expands list nodes: for a `SelectStmt` with a
+//! `ResultColumnList`, the list's elements are returned directly rather than
 //! the list node itself.
 
 use syntaqlite::any::{AnyNodeId, AnyNodeTag, AnyParsedStatement};

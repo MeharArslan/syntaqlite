@@ -36,4 +36,19 @@ describe("DialectConfigManager", () => {
     ];
     expect(mgr.visibleCflagEntries("3.24.0").map((e) => e.name)).toEqual(["ALWAYS"]);
   });
+
+  it("apply passes canonical flag name without SYNTAQLITE_CFLAG_ prefix", () => {
+    const mgr = new DialectConfigManager();
+    mgr.availableCflags = [{name: "SQLITE_OMIT_ALTERTABLE", minVersion: 0, category: "parser"}];
+    const setCflagCalls: string[] = [];
+    const fakeEngine = {
+      setSqliteVersion: () => {},
+      clearAllCflags: () => {},
+      setCflag: (name: string) => {
+        setCflagCalls.push(name);
+      },
+    } as unknown as import("@syntaqlite/js").Engine;
+    mgr.apply(fakeEngine, "latest", ["SQLITE_OMIT_ALTERTABLE"]);
+    expect(setCflagCalls).toEqual(["SQLITE_OMIT_ALTERTABLE"]);
+  });
 });

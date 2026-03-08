@@ -2,12 +2,10 @@ impl core::convert::From<syntaqlite_buildtools::version_analysis::SqliteVersion>
 impl core::fmt::Display for syntaqlite_buildtools::version_analysis::SqliteVersion
 impl syntaqlite_buildtools::codegen_api::DialectNaming
 impl syntaqlite_buildtools::commands::AnalyzeVersions
-impl syntaqlite_buildtools::commands::AuditCflags
-impl syntaqlite_buildtools::commands::ExtractFunctions
-impl syntaqlite_buildtools::commands::GenerateFunctionsCatalog
 impl syntaqlite_buildtools::commands::SqliteCodegen
 impl syntaqlite_buildtools::commands::SqliteExtract
 impl syntaqlite_buildtools::commands::SqliteParserCodegen
+impl syntaqlite_buildtools::commands::UpdateData
 impl syntaqlite_buildtools::output_resolver::OutputLayout
 impl<'a> syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>
 pub const fn syntaqlite_buildtools::base_files::base_synq_files() -> &'static [(&'static str, &'static str)]
@@ -38,12 +36,10 @@ pub fn syntaqlite_buildtools::codegen_api::DialectNaming::token_type_name(&self)
 pub fn syntaqlite_buildtools::codegen_api::DialectNaming::tokens_header_name(&self) -> alloc::string::String
 pub fn syntaqlite_buildtools::codegen_api::read_named_files_from_dir(dir: &str, ext: &str) -> core::result::Result<alloc::vec::Vec<(alloc::string::String, alloc::string::String)>, alloc::string::String>
 pub fn syntaqlite_buildtools::commands::AnalyzeVersions::run(&self) -> core::result::Result<(), alloc::string::String>
-pub fn syntaqlite_buildtools::commands::AuditCflags::run(&self) -> core::result::Result<(), alloc::string::String>
-pub fn syntaqlite_buildtools::commands::ExtractFunctions::run(&self) -> core::result::Result<(), alloc::string::String>
-pub fn syntaqlite_buildtools::commands::GenerateFunctionsCatalog::run(&self) -> core::result::Result<(), alloc::string::String>
 pub fn syntaqlite_buildtools::commands::SqliteCodegen::run(&self) -> core::result::Result<(), alloc::string::String>
 pub fn syntaqlite_buildtools::commands::SqliteExtract::run(&self) -> core::result::Result<(), alloc::string::String>
 pub fn syntaqlite_buildtools::commands::SqliteParserCodegen::run(&self) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::commands::UpdateData::run(&self) -> core::result::Result<(), alloc::string::String>
 pub fn syntaqlite_buildtools::output_resolver::OutputLayout::c_includes(&self) -> syntaqlite_buildtools::dialect_codegen::c_dialect::DialectCIncludes<'_>
 pub fn syntaqlite_buildtools::output_resolver::OutputLayout::for_amalg_temp(root: &std::path::Path, dialect_name: &str, include_dir_name: &str) -> Self
 pub fn syntaqlite_buildtools::output_resolver::OutputLayout::for_external(root: &std::path::Path, dialect_name: &str, include_dir_name: &str) -> Self
@@ -65,12 +61,10 @@ pub struct syntaqlite_buildtools::amalgamate::AmalgamateOutput
 pub struct syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>
 pub struct syntaqlite_buildtools::codegen_api::DialectNaming
 pub struct syntaqlite_buildtools::commands::AnalyzeVersions
-pub struct syntaqlite_buildtools::commands::AuditCflags
-pub struct syntaqlite_buildtools::commands::ExtractFunctions
-pub struct syntaqlite_buildtools::commands::GenerateFunctionsCatalog
 pub struct syntaqlite_buildtools::commands::SqliteCodegen
 pub struct syntaqlite_buildtools::commands::SqliteExtract
 pub struct syntaqlite_buildtools::commands::SqliteParserCodegen
+pub struct syntaqlite_buildtools::commands::UpdateData
 pub struct syntaqlite_buildtools::output_resolver::CHeader
 pub struct syntaqlite_buildtools::output_resolver::OutputLayout
 pub struct syntaqlite_buildtools::version_analysis::FragmentAnalysis
@@ -87,14 +81,6 @@ pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::header: alloc::string::
 pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::source: alloc::string::String
 pub syntaqlite_buildtools::commands::AnalyzeVersions::output_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::AnalyzeVersions::sqlite_source_dir: alloc::string::String
-pub syntaqlite_buildtools::commands::AuditCflags::amalgamation_dir: alloc::string::String
-pub syntaqlite_buildtools::commands::AuditCflags::output: alloc::string::String
-pub syntaqlite_buildtools::commands::AuditCflags::rust_output: alloc::string::String
-pub syntaqlite_buildtools::commands::ExtractFunctions::amalgamation_dir: alloc::string::String
-pub syntaqlite_buildtools::commands::ExtractFunctions::audit: alloc::string::String
-pub syntaqlite_buildtools::commands::ExtractFunctions::output: alloc::string::String
-pub syntaqlite_buildtools::commands::GenerateFunctionsCatalog::functions_json: alloc::string::String
-pub syntaqlite_buildtools::commands::GenerateFunctionsCatalog::output: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteCodegen::actions_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteCodegen::nodes_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteExtract::actions_dir: alloc::string::String
@@ -102,6 +88,10 @@ pub syntaqlite_buildtools::commands::SqliteExtract::nodes_dir: alloc::string::St
 pub syntaqlite_buildtools::commands::SqliteExtract::output_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteExtract::sqlite_src: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteParserCodegen::functions_json: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::commands::SqliteParserCodegen::version_cflags_json: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::commands::UpdateData::amalgamation_dir: alloc::string::String
+pub syntaqlite_buildtools::commands::UpdateData::functions_output: alloc::string::String
+pub syntaqlite_buildtools::commands::UpdateData::version_cflags_output: alloc::string::String
 pub syntaqlite_buildtools::output_resolver::CHeader::include: alloc::string::String
 pub syntaqlite_buildtools::output_resolver::CHeader::write: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::ast_builder_h: syntaqlite_buildtools::output_resolver::CHeader
@@ -109,14 +99,16 @@ pub syntaqlite_buildtools::output_resolver::OutputLayout::ast_nodes_h: syntaqlit
 pub syntaqlite_buildtools::output_resolver::OutputLayout::ast_rs: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::build_rs: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::cargo_toml: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::cflags_h: syntaqlite_buildtools::output_resolver::CHeader
 pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_c: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_dispatch_h: syntaqlite_buildtools::output_resolver::CHeader
 pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_fmt_h: syntaqlite_buildtools::output_resolver::CHeader
 pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_h: syntaqlite_buildtools::output_resolver::CHeader
 pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_meta_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_roles_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_rs: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_tokens_h: syntaqlite_buildtools::output_resolver::CHeader
 pub syntaqlite_buildtools::output_resolver::OutputLayout::ffi_rs: core::option::Option<alloc::string::String>
-pub syntaqlite_buildtools::output_resolver::OutputLayout::fmt_statics_rs: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::functions_catalog_rs: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::grammar_rs: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::keyword_c: core::option::Option<alloc::string::String>
@@ -126,7 +118,6 @@ pub syntaqlite_buildtools::output_resolver::OutputLayout::parse_api_h: syntaqlit
 pub syntaqlite_buildtools::output_resolver::OutputLayout::parse_c: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::root: std::path::PathBuf
 pub syntaqlite_buildtools::output_resolver::OutputLayout::runtime_tokens_h: syntaqlite_buildtools::output_resolver::CHeader
-pub syntaqlite_buildtools::output_resolver::OutputLayout::semantic_roles_rs: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::tokenize_c: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::output_resolver::OutputLayout::tokenize_h: syntaqlite_buildtools::output_resolver::CHeader
 pub syntaqlite_buildtools::output_resolver::OutputLayout::tokens_h: syntaqlite_buildtools::output_resolver::CHeader

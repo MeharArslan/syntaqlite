@@ -5,7 +5,6 @@
     missing_docs,
     reason = "bin crate; internal lib shim exists only to support integration tests"
 )]
-#![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
 
 use clap::{Parser, Subcommand};
 

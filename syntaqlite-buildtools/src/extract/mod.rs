@@ -228,8 +228,6 @@ mod tests {
     /// - The JSON being regenerated from a different flag set than the registry
     #[test]
     fn cflag_registry_matches_version_cflags_json() {
-        let json_content = include_str!("../../sqlite-vendored/data/version_cflags.json");
-
         #[derive(serde::Deserialize)]
         struct File {
             cflags: Vec<Entry>,
@@ -239,6 +237,7 @@ mod tests {
             name: String,
         }
 
+        let json_content = include_str!("../../sqlite-vendored/data/version_cflags.json");
         let file: File =
             serde_json::from_str(json_content).expect("version_cflags.json is valid JSON");
 

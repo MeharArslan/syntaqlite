@@ -1,8 +1,6 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-#![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
-
 //! Internal bootstrap and code generation tool.
 //!
 //! This binary has no dependency on any generated files, so it can be built
@@ -93,6 +91,10 @@ struct CodegenSqliteParserArgs {
     /// When provided, generates `functions_catalog.rs` at its hardcoded workspace path.
     #[arg(long)]
     functions_json: Option<String>,
+    /// Path to `version_cflags.json` (from sqlite-vendored/data/version_cflags.json).
+    /// When provided, emits `MIN_VERSIONS` and `min_version_int()` into cflags.rs.
+    #[arg(long)]
+    version_cflags_json: Option<String>,
 }
 
 // ── sqlite-extract ────────────────────────────────────────────────────────────
@@ -154,6 +156,7 @@ fn main() {
         .run(),
         Command::CodegenSqliteParser(args) => commands::SqliteParserCodegen {
             functions_json: args.functions_json.clone(),
+            version_cflags_json: args.version_cflags_json.clone(),
         }
         .run(),
         Command::SqliteExtract(args) => commands::SqliteExtract {

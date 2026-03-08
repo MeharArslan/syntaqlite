@@ -24,7 +24,7 @@ fn feed_tokens_select_1() {
 }
 
 /// Feed tokens with an explicit SEMI. The LALR(1) parser needs one token of
-/// lookahead after SEMI — the statement completes on finish() (which sends EOF).
+/// lookahead after SEMI — the statement completes on `finish()` (which sends EOF).
 #[test]
 fn feed_tokens_with_semicolon() {
     let source = "SELECT 1;";
@@ -71,7 +71,7 @@ fn feed_tokens_multi_statement() {
     );
 }
 
-/// TK_SPACE should be silently ignored.
+/// `TK_SPACE` should be silently ignored.
 #[test]
 fn feed_token_skips_space() {
     let source = "SELECT 1";
@@ -89,7 +89,7 @@ fn feed_token_skips_space() {
     assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 }
 
-/// TK_COMMENT should be recorded as a comment.
+/// `TK_COMMENT` should be recorded as a comment.
 #[test]
 fn feed_token_records_comment() {
     let source = "SELECT -- hello\n1";
@@ -107,7 +107,7 @@ fn feed_token_records_comment() {
     assert_eq!(comments[0].length(), 8);
 }
 
-/// begin_macro / end_macro records macro regions.
+/// `begin_macro` / `end_macro` records macro regions.
 #[test]
 fn macro_regions_recorded() {
     let source = "SELECT 1";
@@ -134,7 +134,7 @@ fn nested_macro_regions() {
     let parser = Parser::new();
     let mut session = parser.incremental_parse(source);
 
-    session.begin_macro(0..0 + 30);
+    session.begin_macro(0..30);
     session.begin_macro(10..10 + 5);
     session.feed_token(TokenType::Select, 0..6);
     session.feed_token(TokenType::Integer, 7..8);
@@ -212,7 +212,7 @@ fn macro_straddle_rejected_by_parser() {
     );
 }
 
-/// finish() without feeding any tokens returns None.
+/// `finish()` without feeding any tokens returns None.
 #[test]
 fn finish_with_no_tokens() {
     let source = "";
@@ -241,7 +241,7 @@ fn high_level_api_still_works() {
     assert!(matches!(session.next(), ParseOutcome::Done));
 }
 
-/// Type names in SQLite type contexts should be marked with AS_TYPE so
+/// Type names in `SQLite` type contexts should be marked with `AS_TYPE` so
 /// semantic highlighting can render them as `type`.
 #[test]
 fn sqlite_type_tokens_are_marked_as_type() {
