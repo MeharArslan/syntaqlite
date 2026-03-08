@@ -9,7 +9,7 @@ comparing results to detect regressions.
 
 Disabled by default — run explicitly with:
     tools/run-integration-tests --suite upstream-sqlite
-    tools/run-upstream-tests              # convenience wrapper
+    tools/run-tests/upstream              # convenience wrapper
 
 Prerequisites:
     - tclsh and tcl-dev installed (e.g., apt install tcl-dev)
@@ -112,7 +112,7 @@ def _find_tcl_lib_flags() -> list[str]:
 def _build_extension(ctx: SuiteContext, verbose: bool) -> Path | None:
     """Build the tclsyntaqlite TCL extension. Returns the .so/.dylib path."""
     root = ctx.root_dir
-    upstream_dir = root / "upstream-tests"
+    upstream_dir = root / "tests/upstream"
     csrc = upstream_dir / "csrc" / "tclsyntaqlite.c"
 
     if not csrc.exists():
@@ -365,7 +365,7 @@ def run(ctx: SuiteContext) -> int:
         print("Run tools/install-build-deps first.", file=sys.stderr)
         return 1
 
-    tester_shim = root / "upstream-tests" / "tcl" / "tester.tcl"
+    tester_shim = root / "tests/upstream" / "tcl" / "tester.tcl"
     if not tester_shim.exists():
         print(f"error: tester shim not found at {tester_shim}", file=sys.stderr)
         return 1

@@ -76,7 +76,7 @@ C shared library loaded by `tclsh` that implements the SQLite TCL API surface.
 {"sql":"SELECT * FROM t1","sqlite_ok":true,"parse_ok":true,"diagnostics":[]}
 ```
 
-**Location:** `upstream-tests/csrc/tclsyntaqlite.c`
+**Location:** `tests/upstream/csrc/tclsyntaqlite.c`
 
 ### 3. Tester Shim (`tester_shim.tcl`)
 
@@ -87,7 +87,7 @@ Minimal replacement for SQLite's `tester.tcl`. The C extension handles dual-path
 - `ifcapable` — capability check (all enabled by default)
 - `finish_test`, `reset_db`, memory debug stubs, etc. — no-ops
 
-**Location:** `upstream-tests/tcl/tester_shim.tcl`
+**Location:** `tests/upstream/tcl/tester_shim.tcl`
 
 ### 4. Rust Test Runner (syntaqlite-buildtools)
 
@@ -97,7 +97,7 @@ New `run-upstream-tests` command in the buildtools binary.
 syntaqlite-buildtools run-upstream-tests \
   --test-dir third_party/src/sqlite/test \
   --extension-lib target/tclsyntaqlite.so \
-  --tester-shim upstream-tests/tcl/tester_shim.tcl \
+  --tester-shim tests/upstream/tcl/tester_shim.tcl \
   --baseline tests/upstream_baselines/parse_acceptance.json \
   --filter select \
   --validate \
@@ -131,7 +131,7 @@ syntaqlite-syntax/include/syntaqlite/
 syntaqlite/src/semantic/
   ffi.rs                                # Validator FFI layer
 
-upstream-tests/
+tests/upstream/
   csrc/tclsyntaqlite.c                  # TCL extension
   tcl/tester_shim.tcl                   # tester.tcl replacement
 
