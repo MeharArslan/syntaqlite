@@ -682,24 +682,36 @@ enum GroupNestFrame {
 // ── Expression parenthesization helpers ─────────────────────────────────
 
 /// `SQLite` binary operator precedence (higher = binds tighter).
-/// Based on `SQLite`'s operator precedence from the grammar.
+///
+/// Must match the Lemon grammar precedence declarations in
+/// `syntaqlite-syntax/parser-actions/_common.y` (lines 149-161):
+///
+/// ```text
+/// %left OR.                                           // prec 1
+/// %left AND.                                          // prec 2
+/// %left IS MATCH LIKE_KW BETWEEN IN ... NE EQ.       // prec 3 (EQ, NE only for BinaryOp)
+/// %left GT LE LT GE.                                  // prec 4
+/// %right ESCAPE.                                       // (not a BinaryOp)
+/// %left BITAND BITOR LSHIFT RSHIFT.                   // prec 5
+/// %left PLUS MINUS.                                    // prec 6
+/// %left STAR SLASH REM.                                // prec 7
+/// %left CONCAT PTR.                                    // prec 8
+/// ```
 fn binary_op_precedence(op_ordinal: u32) -> Option<u8> {
-    // BinaryOp enum order in expressions.synq:
+    // BinaryOp enum order from common.synq:
     //   PLUS=0, MINUS=1, STAR=2, SLASH=3, REM=4,
     //   LT=5, GT=6, LE=7, GE=8, EQ=9, NE=10,
     //   AND=11, OR=12, BIT_AND=13, BIT_OR=14,
     //   LSHIFT=15, RSHIFT=16, CONCAT=17, PTR=18
     match op_ordinal {
-        12 => Some(1),            // OR
-        11 => Some(2),            // AND
-        9 | 10 => Some(3),        // EQ, NE
-        5..=8 => Some(4), // LT, GT, LE, GE
-        13 | 14 => Some(5),       // BIT_AND, BIT_OR
-        15 | 16 => Some(6),       // LSHIFT, RSHIFT
-        0 | 1 => Some(7),         // PLUS, MINUS
-        2..=4 => Some(8),     // STAR, SLASH, REM
-        17 => Some(9),            // CONCAT
-        18 => Some(10),           // PTR
+        12 => Some(1),              // OR
+        11 => Some(2),              // AND
+        9 | 10 => Some(3),          // EQ, NE
+        5..=8 => Some(4),           // LT, GT, LE, GE
+        13..=16 => Some(5),         // BIT_AND, BIT_OR, LSHIFT, RSHIFT
+        0 | 1 => Some(6),           // PLUS, MINUS
+        2..=4 => Some(7),           // STAR, SLASH, REM
+        17 | 18 => Some(8),         // CONCAT, PTR
         _ => None,
     }
 }
