@@ -9,7 +9,7 @@ comparing results to detect regressions.
 
 Disabled by default — run explicitly with:
     tools/run-integration-tests --suite upstream-sqlite
-    tools/run-tests/upstream              # convenience wrapper
+    tools/run-integration-tests --suite upstream-sqlite --analyze-only
 
 Prerequisites:
     - tclsh and tcl-dev installed (e.g., apt install tcl-dev)
@@ -21,10 +21,11 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
-import tempfile
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,6 +36,9 @@ NAME = "upstream-sqlite"
 DESCRIPTION = "Upstream SQLite test files through syntaqlite parser/validator"
 ENABLED_BY_DEFAULT = False
 NEEDS_BINARY = False
+
+# Persistent log directory (gitignored).
+_LOGS_DIR_REL = "tests/upstream_baselines/logs"
 
 
 @dataclass
@@ -53,6 +57,11 @@ class FileResult:
     file: str
     entries: list[dict] = field(default_factory=list)
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Build helpers
+# ---------------------------------------------------------------------------
 
 
 def _find_tcl_include() -> str | None:
@@ -184,6 +193,11 @@ def _build_extension(ctx: SuiteContext, verbose: bool) -> Path | None:
     return output
 
 
+# ---------------------------------------------------------------------------
+# Test execution
+# ---------------------------------------------------------------------------
+
+
 def _discover_test_files(test_dir: Path, filter_pat: str | None) -> list[Path]:
     """Find .test files, optionally filtered by substring."""
     files = sorted(p for p in test_dir.iterdir() if p.suffix == ".test")
@@ -197,18 +211,11 @@ def _run_single_test(
     tester_shim: Path,
     validate: bool,
     test_file: Path,
+    log_file: Path,
 ) -> FileResult:
-    """Run one .test file through tclsh and collect JSON log entries."""
+    """Run one .test file through tclsh and write JSONL log to log_file."""
     name = test_file.name
 
-    with tempfile.NamedTemporaryFile(
-        prefix=f"syntaqlite_test_{name}_", suffix=".jsonl", delete=False,
-    ) as tmp:
-        log_file = Path(tmp.name)
-
-    # Test files do `set testdir [file dirname $argv0]` then
-    # `source $testdir/tester.tcl`.  Set argv0 so dirname resolves to
-    # our shim directory, which contains our tester.tcl replacement.
     shim_dir = tester_shim.parent
     script = (
         f"load {extension_lib} Tclsyntaqlite\n"
@@ -235,27 +242,34 @@ def _run_single_test(
         log_file.unlink(missing_ok=True)
         return FileResult(file=name, error="tclsh not found")
 
-    entries = []
-    if log_file.exists():
-        try:
-            for line in log_file.read_text().splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entries.append(json.loads(line))
-                except json.JSONDecodeError:
-                    pass
-        finally:
-            log_file.unlink(missing_ok=True)
-    else:
-        log_file.unlink(missing_ok=True)
+    entries = _read_log_file(log_file)
 
     error = None
     if proc.returncode != 0:
         error = f"tclsh exited {proc.returncode}: {proc.stderr[:500]}"
 
     return FileResult(file=name, entries=entries, error=error)
+
+
+def _read_log_file(log_file: Path) -> list[dict]:
+    """Read JSONL entries from a log file."""
+    entries: list[dict] = []
+    if not log_file.exists():
+        return entries
+    for line in log_file.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass
+    return entries
+
+
+# ---------------------------------------------------------------------------
+# Aggregation
+# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -298,6 +312,183 @@ def _aggregate(results: list[FileResult]) -> tuple[Summary, list[FalsePositive]]
                 s.gap += 1
 
     return s, fps
+
+
+def _print_summary(
+    summary: Summary, file_count: int, error_count: int, verbose: bool,
+    false_positives: list[FalsePositive],
+) -> None:
+    """Print the standard summary block."""
+    print()
+    print("  === Upstream Test Summary ===")
+    print(f"  Files run:            {file_count}")
+    print(f"  Files with errors:    {error_count}")
+    print()
+    print(f"  Total SQL statements: {summary.total}")
+    print(f"    Parse OK:           {summary.parse_ok}")
+    print(f"    Parse error:        {summary.parse_error}")
+    print()
+    print(f"    Both accept:        {summary.both_accept} (agreement)")
+    print(f"    Both reject:        {summary.both_reject} (agreement)")
+    print(f"    False positives:    {summary.false_positive} (syntaqlite rejects valid SQL)")
+    print(f"    Gaps:               {summary.gap} (syntaqlite accepts, sqlite rejects)")
+
+    if false_positives and verbose:
+        print()
+        print("  === False Positives (syntaqlite rejects valid SQL) ===")
+        for fp in false_positives[:50]:
+            sql_display = fp.sql[:200]
+            if len(fp.sql) > 200:
+                sql_display += "..."
+            print(f"    {fp.file}: {fp.parse_error}")
+            print(f"      SQL: {sql_display}")
+            print()
+        if len(false_positives) > 50:
+            print(f"    ... and {len(false_positives) - 50} more")
+
+
+# ---------------------------------------------------------------------------
+# Detailed analysis (runs on persisted logs)
+# ---------------------------------------------------------------------------
+
+
+def _normalize_diagnostic(msg: str) -> str:
+    """Normalize a diagnostic message to a category key."""
+    if msg.startswith("unknown table"):
+        m = re.search(r"'([^']*)'", msg)
+        table = m.group(1) if m else "?"
+        # Group system tables together.
+        if table.startswith("sqlite_"):
+            return "unknown table (system): " + table
+        return "unknown table (user-defined)"
+    if msg.startswith("unknown column"):
+        return "unknown column"
+    if msg.startswith("unknown function"):
+        m = re.search(r"'([^']*)'", msg)
+        func = m.group(1) if m else "?"
+        return "unknown function: " + func
+    if "argument" in msg.lower() or "arity" in msg.lower():
+        return "wrong function arity"
+    if msg.startswith("CTE"):
+        return "CTE column count mismatch"
+    return msg[:80]
+
+
+def _normalize_sqlite_error(msg: str) -> str:
+    """Normalize a sqlite3_prepare_v2 error to a category key."""
+    msg = msg.strip()
+    # "no such table: X" → "no such table"
+    if msg.startswith("no such table"):
+        return "no such table"
+    if msg.startswith("no such column"):
+        return "no such column"
+    if msg.startswith("no such function"):
+        return "no such function"
+    if msg.startswith("near "):
+        return "syntax error (near ...)"
+    if "syntax error" in msg:
+        return "syntax error"
+    if msg.startswith("no such module"):
+        return "no such module"
+    if msg.startswith("table ") and "already exists" in msg:
+        return "table already exists"
+    if "ambiguous column" in msg:
+        return "ambiguous column name"
+    if "not authorized" in msg:
+        return "not authorized"
+    if "misuse of aggregate" in msg:
+        return "misuse of aggregate"
+    if "no tables specified" in msg:
+        return "no tables specified"
+    # Keep first 60 chars for anything else.
+    return msg[:60] if len(msg) > 60 else msg
+
+
+def _analyze_detailed(results: list[FileResult], verbose: bool) -> None:
+    """Print a detailed breakdown of false positives and gaps."""
+
+    fp_diagnostics: Counter[str] = Counter()
+    fp_by_file: Counter[str] = Counter()
+    gap_errors: Counter[str] = Counter()
+    gap_by_file: Counter[str] = Counter()
+    parse_error_categories: Counter[str] = Counter()
+
+    for fr in results:
+        for entry in fr.entries:
+            parse_ok = entry.get("parse_ok", False)
+            sqlite_ok = entry.get("sqlite_ok", False)
+            diagnostics = entry.get("diagnostics") or []
+            syntaqlite_ok = parse_ok and len(diagnostics) == 0
+
+            if sqlite_ok and not syntaqlite_ok:
+                # False positive.
+                fp_by_file[fr.file] += 1
+                if not parse_ok:
+                    pe = entry.get("parse_error", "")
+                    fp_diagnostics["PARSE ERROR: " + _normalize_sqlite_error(pe)] += 1
+                else:
+                    for d in diagnostics:
+                        fp_diagnostics[_normalize_diagnostic(d["message"])] += 1
+
+            elif not sqlite_ok and syntaqlite_ok:
+                # Gap.
+                gap_by_file[fr.file] += 1
+                se = entry.get("sqlite_error", "")
+                gap_errors[_normalize_sqlite_error(se)] += 1
+
+            elif not parse_ok:
+                pe = entry.get("parse_error", "")
+                parse_error_categories[_normalize_sqlite_error(pe)] += 1
+
+    # --- False positive breakdown ---
+    if fp_diagnostics:
+        print()
+        print("  === False Positive Breakdown ===")
+        print(f"  {'Count':>7}  Category")
+        print(f"  {'-----':>7}  {'--------'}")
+        for cat, count in fp_diagnostics.most_common(30):
+            print(f"  {count:>7}  {cat}")
+        if len(fp_diagnostics) > 30:
+            rest = sum(c for _, c in fp_diagnostics.most_common()[30:])
+            print(f"  {rest:>7}  ... ({len(fp_diagnostics) - 30} more categories)")
+
+        if verbose:
+            print()
+            print("  Top files with false positives:")
+            for f, count in fp_by_file.most_common(20):
+                print(f"    {count:>5}  {f}")
+
+    # --- Gap breakdown ---
+    if gap_errors:
+        print()
+        print("  === Gap Breakdown (syntaqlite accepts, sqlite rejects) ===")
+        print(f"  {'Count':>7}  SQLite error category")
+        print(f"  {'-----':>7}  {'--------------------'}")
+        for cat, count in gap_errors.most_common(30):
+            print(f"  {count:>7}  {cat}")
+        if len(gap_errors) > 30:
+            rest = sum(c for _, c in gap_errors.most_common()[30:])
+            print(f"  {rest:>7}  ... ({len(gap_errors) - 30} more categories)")
+
+        if verbose:
+            print()
+            print("  Top files with gaps:")
+            for f, count in gap_by_file.most_common(20):
+                print(f"    {count:>5}  {f}")
+
+    # --- Parse error breakdown ---
+    if parse_error_categories and verbose:
+        print()
+        print("  === Parse Error Breakdown (syntaqlite parse failures) ===")
+        print(f"  {'Count':>7}  Category")
+        print(f"  {'-----':>7}  {'--------'}")
+        for cat, count in parse_error_categories.most_common(20):
+            print(f"  {count:>7}  {cat}")
+
+
+# ---------------------------------------------------------------------------
+# Baseline comparison
+# ---------------------------------------------------------------------------
 
 
 def _check_baseline(
@@ -349,9 +540,64 @@ def _check_baseline(
     return regressions
 
 
+# ---------------------------------------------------------------------------
+# Load logs from disk (for --analyze-only)
+# ---------------------------------------------------------------------------
+
+
+def _load_logs(logs_dir: Path, filter_pat: str | None) -> list[FileResult]:
+    """Load persisted JSONL logs from disk."""
+    if not logs_dir.is_dir():
+        return []
+    log_files = sorted(logs_dir.glob("*.jsonl"))
+    if filter_pat:
+        log_files = [f for f in log_files if filter_pat in f.stem]
+    results: list[FileResult] = []
+    for lf in log_files:
+        name = lf.stem + ".test"
+        entries = _read_log_file(lf)
+        results.append(FileResult(file=name, entries=entries))
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
+
 def run(ctx: SuiteContext) -> int:
     verbose = ctx.verbose >= 1
     root = ctx.root_dir
+    logs_dir = root / _LOGS_DIR_REL
+
+    # --analyze-only: skip building/running, load from persisted logs.
+    if ctx.analyze_only:
+        if not logs_dir.is_dir():
+            print(
+                f"  error: No logs found at {logs_dir}. "
+                "Run without --analyze-only first.",
+                file=sys.stderr,
+            )
+            return 1
+
+        file_results = _load_logs(logs_dir, ctx.filter_pattern)
+        if not file_results:
+            print("  error: No log files found.", file=sys.stderr)
+            return 1
+
+        print(f"  Loaded {len(file_results)} log files from {logs_dir}")
+        summary, false_positives = _aggregate(file_results)
+        _print_summary(summary, len(file_results), 0, verbose, false_positives)
+        _analyze_detailed(file_results, verbose)
+
+        baseline_path = root / "tests" / "upstream_baselines" / "parse_acceptance.json"
+        regressions = _check_baseline(baseline_path, summary, ctx.rebaseline)
+        if regressions > 0:
+            print(f"\n  {regressions} regression(s) detected!")
+            return 1
+        return 0
+
+    # --- Normal mode: build, run, persist logs ---
 
     # Check for tclsh.
     if not shutil.which("tclsh"):
@@ -385,6 +631,9 @@ def run(ctx: SuiteContext) -> int:
     jobs = ctx.jobs or os.cpu_count() or 1
     print(f"  Found {len(test_files)} test files (jobs={jobs})")
 
+    # Prepare persistent log directory.
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
     # Run tests.
     validate = os.environ.get("UPSTREAM_VALIDATE") == "1"
     file_results: list[FileResult] = []
@@ -395,14 +644,16 @@ def run(ctx: SuiteContext) -> int:
         for test_file in test_files:
             done += 1
             print(f"\r  [{done}/{total}] {test_file.name}...", end="", flush=True)
+            log_file = logs_dir / f"{test_file.stem}.jsonl"
             file_results.append(
-                _run_single_test(extension_lib, tester_shim, validate, test_file),
+                _run_single_test(extension_lib, tester_shim, validate, test_file, log_file),
             )
     else:
         with ProcessPoolExecutor(max_workers=jobs) as pool:
             futures = {
                 pool.submit(
                     _run_single_test, extension_lib, tester_shim, validate, tf,
+                    logs_dir / f"{tf.stem}.jsonl",
                 ): tf
                 for tf in test_files
             }
@@ -418,31 +669,8 @@ def run(ctx: SuiteContext) -> int:
     summary, false_positives = _aggregate(file_results)
     error_count = sum(1 for r in file_results if r.error)
 
-    print()
-    print("  === Upstream Test Summary ===")
-    print(f"  Files run:            {len(file_results)}")
-    print(f"  Files with errors:    {error_count}")
-    print()
-    print(f"  Total SQL statements: {summary.total}")
-    print(f"    Parse OK:           {summary.parse_ok}")
-    print(f"    Parse error:        {summary.parse_error}")
-    print()
-    print(f"    Both accept:        {summary.both_accept} (agreement)")
-    print(f"    Both reject:        {summary.both_reject} (agreement)")
-    print(f"    False positives:    {summary.false_positive} (syntaqlite rejects valid SQL)")
-    print(f"    Gaps:               {summary.gap} (syntaqlite misses prepare-time error)")
-
-    # Print false positive details.
-    if false_positives:
-        print()
-        print("  === False Positives (syntaqlite rejects valid SQL) ===")
-        for fp in false_positives:
-            sql_display = fp.sql[:200]
-            if len(fp.sql) > 200:
-                sql_display += "..."
-            print(f"    {fp.file}: {fp.parse_error}")
-            print(f"      SQL: {sql_display}")
-            print()
+    _print_summary(summary, len(file_results), error_count, verbose, false_positives)
+    _analyze_detailed(file_results, verbose)
 
     # Baseline comparison.
     baseline_path = root / "tests" / "upstream_baselines" / "parse_acceptance.json"

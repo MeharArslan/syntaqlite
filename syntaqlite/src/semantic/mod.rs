@@ -30,6 +30,26 @@ pub use model::SemanticModel;
 #[cfg(feature = "validation")]
 pub use render::{DiagnosticRenderer, SourceContext};
 
+/// Whether statements are being analyzed (editing a file) or executed
+/// (running sequentially in a session).
+///
+/// In `Document` mode, DDL from previous [`SemanticAnalyzer::analyze`] calls
+/// is discarded — each call analyzes a fresh document.
+///
+/// In `Execute` mode, DDL accumulates across calls — a `CREATE TABLE` in one
+/// call makes the table visible to subsequent calls, matching the behaviour of
+/// an interactive database session.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AnalysisMode {
+    /// Statements are being analyzed (e.g. editing a SQL file).
+    /// DDL resets between `analyze()` calls.
+    #[default]
+    Document,
+    /// Statements are being executed sequentially.
+    /// DDL accumulates across `analyze()` calls.
+    Execute,
+}
+
 /// Configuration for semantic validation.
 #[derive(Clone, Copy)]
 pub struct ValidationConfig {

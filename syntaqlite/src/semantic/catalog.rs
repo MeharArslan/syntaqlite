@@ -108,6 +108,23 @@ impl CatalogLayerContents {
         self.table_functions = HashMap::default();
     }
 
+    /// Merge all entries from `other` into this layer (existing keys are
+    /// overwritten).
+    pub(crate) fn merge_from(&mut self, other: &Self) {
+        self.relations.extend(
+            other.relations.iter().map(|(k, v)| (k.clone(), v.clone())),
+        );
+        self.functions.extend(
+            other.functions.iter().map(|(k, v)| (k.clone(), v.clone())),
+        );
+        self.table_functions.extend(
+            other
+                .table_functions
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
+    }
+
     /// Insert a relation. `columns = None` means the table exists but its
     /// column list is not tracked (column refs against it are suppressed).
     pub fn insert_relation(&mut self, name: impl Into<String>, columns: Option<Vec<String>>) {
@@ -534,10 +551,29 @@ impl Catalog {
 
     /// Copy the Database and Connection layers from `src` into this catalog.
     ///
-    /// Called at the start of each analysis pass to apply the user-provided schema.
+    /// Called at the start of each Document-mode analysis pass.
     pub(crate) fn copy_schema_layers_from(&mut self, src: &Catalog) {
         self.layers[LAYER_DATABASE] = src.layers[LAYER_DATABASE].clone();
         self.layers[LAYER_CONNECTION] = src.layers[LAYER_CONNECTION].clone();
+    }
+
+    /// Copy only the Database layer from `src`, preserving this catalog's
+    /// Connection layer.
+    ///
+    /// Called at the start of each Execute-mode analysis pass — the Connection
+    /// layer accumulates executed DDL and must not be overwritten.
+    pub(crate) fn copy_database_from(&mut self, src: &Catalog) {
+        self.layers[LAYER_DATABASE] = src.layers[LAYER_DATABASE].clone();
+    }
+
+    /// Merge DDL discovered in the Document layer into the Connection layer.
+    ///
+    /// Called after each Execute-mode analysis pass so that DDL persists across
+    /// subsequent `analyze()` calls.
+    pub(crate) fn promote_document_to_connection(&mut self) {
+        // Clone first to satisfy the borrow checker.
+        let doc = self.layers[LAYER_DOCUMENT].clone();
+        self.layers[LAYER_CONNECTION].merge_from(&doc);
     }
 
     // ── Resolution ────────────────────────────────────────────────────────────

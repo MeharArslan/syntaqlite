@@ -19,6 +19,7 @@ class SuiteContext:
     filter_pattern: str | None
     rebaseline: bool
     jobs: int | None
+    analyze_only: bool = False
 
 
 class Suite(Protocol):

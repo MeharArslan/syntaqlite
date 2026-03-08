@@ -340,6 +340,9 @@ static int sqlite3_cmd(ClientData data, Tcl_Interp* interp, int objc,
   // Create syntaqlite validator (if enabled).
   if (g_enable_validation) {
     db->validator = syntaqlite_validator_create_sqlite();
+    // Execute mode: DDL accumulates across analyze() calls, matching the
+    // real SQLite database that also accumulates schema via sqlite3_step().
+    syntaqlite_validator_set_mode(db->validator, SYNTAQLITE_MODE_EXECUTE);
   }
 
   Tcl_CreateObjCommand(interp, dbname, db_handle_cmd, (ClientData)db,

@@ -11,7 +11,7 @@ use std::ffi::{CStr, CString, c_char};
 
 use crate::dialect::AnyDialect;
 
-use super::ValidationConfig;
+use super::{AnalysisMode, ValidationConfig};
 use super::analyzer::SemanticAnalyzer;
 use super::catalog::{Catalog, CatalogLayer};
 use super::diagnostics::Severity;
@@ -116,6 +116,27 @@ pub unsafe extern "C" fn syntaqlite_validator_destroy(v: *mut SyntaqliteValidato
         // SAFETY: `v` was created by `Box::into_raw` in `create_sqlite`.
         drop(unsafe { Box::from_raw(v.cast::<ValidatorState>()) });
     }
+}
+
+/// Set the analysis mode.
+///
+/// - `SYNTAQLITE_MODE_DOCUMENT` (0): DDL resets between `analyze()` calls.
+/// - `SYNTAQLITE_MODE_EXECUTE` (1): DDL accumulates across `analyze()` calls.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_validator_set_mode(
+    v: *mut SyntaqliteValidator,
+    mode: u32,
+) {
+    let v = unsafe { &mut *v };
+    let state = v.state_mut();
+    state.analyzer.set_mode(match mode {
+        1 => AnalysisMode::Execute,
+        _ => AnalysisMode::Document,
+    });
 }
 
 /// Analyze a SQL source string. Returns the number of diagnostics.

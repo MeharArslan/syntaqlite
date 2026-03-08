@@ -91,6 +91,10 @@ def main(argv: list[str] | None = None) -> int:
         "-v", "--verbose", action="count", default=0,
         help="Increase verbosity.",
     )
+    parser.add_argument(
+        "--analyze-only", action="store_true",
+        help="Skip running tests; analyze existing logs from a previous run.",
+    )
     args = parser.parse_args(argv)
 
     all_suites = _load_suites()
@@ -133,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
         filter_pattern=args.filter_pattern,
         rebaseline=args.rebaseline,
         jobs=args.jobs,
+        analyze_only=args.analyze_only,
     )
 
     results: list[tuple[str, bool, float]] = []

@@ -14,7 +14,7 @@ use syntaqlite_syntax::any::{
 use crate::dialect::AnyDialect;
 use crate::dialect::{FIELD_ABSENT, SemanticRole};
 
-use super::ValidationConfig;
+use super::{AnalysisMode, ValidationConfig};
 use super::catalog::{
     Catalog, CatalogLayer, ColumnResolution, FunctionCheckResult, columns_from_select,
 };
@@ -29,9 +29,13 @@ use super::model::{
 /// Create once for a dialect and reuse across inputs. The dialect layer is
 /// built at construction and never changes. The database and document layers
 /// are reset on each [`analyze`](Self::analyze) call.
+///
+/// Set [`AnalysisMode::Execute`] via [`with_mode`](Self::with_mode) to make
+/// DDL accumulate across calls (interactive session semantics).
 pub struct SemanticAnalyzer {
     dialect: AnyDialect,
     catalog: Catalog,
+    mode: AnalysisMode,
 }
 
 #[expect(dead_code)]
@@ -48,7 +52,20 @@ impl SemanticAnalyzer {
         SemanticAnalyzer {
             catalog: Catalog::new(dialect.clone()),
             dialect,
+            mode: AnalysisMode::default(),
         }
+    }
+
+    /// Set the analysis mode (builder pattern). See [`AnalysisMode`] for details.
+    #[must_use]
+    pub fn with_mode(mut self, mode: AnalysisMode) -> Self {
+        self.mode = mode;
+        self
+    }
+
+    /// Set the analysis mode on an existing analyzer.
+    pub fn set_mode(&mut self, mode: AnalysisMode) {
+        self.mode = mode;
     }
 
     /// Return the dialect this analyzer was constructed for.
@@ -62,6 +79,9 @@ impl SemanticAnalyzer {
     /// database layer is merged into the analyzer's catalog for this pass only.
     /// The document layer is cleared and rebuilt statement-by-statement so that
     /// DDL seen earlier in the file is visible to queries that follow it.
+    ///
+    /// In [`AnalysisMode::Execute`], DDL from this call is promoted to the
+    /// connection layer so it persists across subsequent calls.
     pub fn analyze(
         &mut self,
         source: &str,
@@ -69,8 +89,20 @@ impl SemanticAnalyzer {
         config: &ValidationConfig,
     ) -> SemanticModel {
         self.catalog.new_document();
-        self.catalog.copy_schema_layers_from(user_catalog);
-        self.analyze_inner(source, config)
+        match self.mode {
+            AnalysisMode::Document => {
+                self.catalog.copy_schema_layers_from(user_catalog);
+            }
+            AnalysisMode::Execute => {
+                // Only copy Database — Connection accumulates executed DDL.
+                self.catalog.copy_database_from(user_catalog);
+            }
+        }
+        let model = self.analyze_inner(source, config);
+        if self.mode == AnalysisMode::Execute {
+            self.catalog.promote_document_to_connection();
+        }
+        model
     }
 
     /// Semantic tokens for syntax highlighting, derived from a prior

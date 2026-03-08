@@ -57,15 +57,30 @@ typedef struct {
   uint32_t column_count;       // ignored when columns is NULL
 } SyntaqliteTableDef;
 
+// Analysis mode — controls whether DDL persists across analyze() calls.
+typedef enum {
+  // Statements are being analyzed (e.g. editing a SQL file).
+  // DDL resets between analyze() calls.
+  SYNTAQLITE_MODE_DOCUMENT = 0,
+  // Statements are being executed sequentially.
+  // DDL accumulates across analyze() calls.
+  SYNTAQLITE_MODE_EXECUTE = 1,
+} SyntaqliteAnalysisMode;
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
 // Create a validator for the built-in SQLite dialect.
+// The default analysis mode is SYNTAQLITE_MODE_DOCUMENT.
 SyntaqliteValidator* syntaqlite_validator_create_sqlite(void);
 
 // Free the validator and all associated resources. No-op if v is NULL.
 void syntaqlite_validator_destroy(SyntaqliteValidator* v);
+
+// Set the analysis mode. See SyntaqliteAnalysisMode for details.
+void syntaqlite_validator_set_mode(SyntaqliteValidator* v,
+                                   SyntaqliteAnalysisMode mode);
 
 // ---------------------------------------------------------------------------
 // Analysis
