@@ -169,3 +169,23 @@ class ExprFormat(TestSuite):
             sql="select a from t where x is null",
             out="SELECT a FROM t WHERE x IS null;",
         )
+
+
+class TableValuedFunctionFormat(TestSuite):
+    def test_tvf_basic(self):
+        return DiffTestBlueprint(
+            sql="select * from generate_series(1, 10)",
+            out="SELECT * FROM generate_series(1, 10);",
+        )
+
+    def test_tvf_with_alias(self):
+        return DiffTestBlueprint(
+            sql="select * from json_each('[]') as j",
+            out="SELECT * FROM json_each('[]') AS j;",
+        )
+
+    def test_tvf_in_join(self):
+        return DiffTestBlueprint(
+            sql="select * from t join json_each(t.col) as j on 1",
+            out="SELECT *\nFROM t\nJOIN json_each(t.col) AS j ON 1;",
+        )

@@ -82,3 +82,73 @@ class DmlFormat(TestSuite):
             sql="insert or ignore into t values (1)",
             out="INSERT OR IGNORE INTO t VALUES (1);",
         )
+
+
+class ReturningFormat(TestSuite):
+    def test_delete_returning_star(self):
+        return DiffTestBlueprint(
+            sql="delete from t returning *",
+            out="DELETE FROM t RETURNING *;",
+        )
+
+    def test_delete_where_returning(self):
+        return DiffTestBlueprint(
+            sql="delete from t where id = 1 returning id, name",
+            out="DELETE FROM t WHERE id = 1 RETURNING id, name;",
+        )
+
+    def test_update_returning(self):
+        return DiffTestBlueprint(
+            sql="update t set x = 1 returning *",
+            out="UPDATE t SET x = 1 RETURNING *;",
+        )
+
+    def test_update_where_returning(self):
+        return DiffTestBlueprint(
+            sql="update t set x = 1 where id = 1 returning id, x",
+            out="UPDATE t SET x = 1 WHERE id = 1 RETURNING id, x;",
+        )
+
+    def test_insert_returning(self):
+        return DiffTestBlueprint(
+            sql="insert into t values (1) returning id",
+            out="INSERT INTO t VALUES (1) RETURNING id;",
+        )
+
+    def test_insert_default_values_returning(self):
+        return DiffTestBlueprint(
+            sql="insert into t default values returning *",
+            out="INSERT INTO t RETURNING *;",
+        )
+
+
+class UpsertFormat(TestSuite):
+    def test_on_conflict_do_nothing(self):
+        return DiffTestBlueprint(
+            sql="insert into t values (1) on conflict do nothing",
+            out="INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING;",
+        )
+
+    def test_on_conflict_do_update(self):
+        return DiffTestBlueprint(
+            sql="insert into t values (1) on conflict do update set x = 1",
+            out="INSERT INTO t VALUES (1) ON CONFLICT DO UPDATE SET x = 1;",
+        )
+
+    def test_on_conflict_column_do_nothing(self):
+        return DiffTestBlueprint(
+            sql="insert into t values (1) on conflict(id) do nothing",
+            out="INSERT INTO t VALUES (1) ON CONFLICT (id) DO NOTHING;",
+        )
+
+    def test_on_conflict_column_do_update_where(self):
+        return DiffTestBlueprint(
+            sql="insert into t values (1) on conflict(id) do update set x = 1 where x != 1",
+            out="INSERT INTO t VALUES (1) ON CONFLICT (id) DO UPDATE SET x = 1 WHERE x != 1;",
+        )
+
+    def test_on_conflict_do_nothing_returning(self):
+        return DiffTestBlueprint(
+            sql="insert into t values (1) on conflict do nothing returning *",
+            out="INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING RETURNING *;",
+        )

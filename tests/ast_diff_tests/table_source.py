@@ -750,3 +750,159 @@ class SubqueryTableSource(TestSuite):
               window_clause: (none)
 """,
         )
+
+
+class TableValuedFunction(TestSuite):
+    """Table-valued function tests."""
+
+    def test_tvf_single_arg(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM generate_series(1, 10)",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "generate_series"
+                  schema: (none)
+                  alias: (none)
+                  args:
+                    ExprList [2 items]
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                      Literal
+                        literal_type: INTEGER
+                        source: "10"
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_tvf_with_alias(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM json_each('[]') AS j",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "json_each"
+                  schema: (none)
+                  alias:
+                    IdentName
+                      source: "j"
+                  args:
+                    ExprList [1 items]
+                      Literal
+                        literal_type: STRING
+                        source: "'[]'"
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_tvf_multiple_args(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM generate_series(1, 100, 5)",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                TableRef
+                  table_name: "generate_series"
+                  schema: (none)
+                  alias: (none)
+                  args:
+                    ExprList [3 items]
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                      Literal
+                        literal_type: INTEGER
+                        source: "100"
+                      Literal
+                        literal_type: INTEGER
+                        source: "5"
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_tvf_in_join(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM t JOIN json_each(t.col) AS j ON 1",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: STAR
+                    alias: (none)
+                    expr: (none)
+              from_clause:
+                JoinClause
+                  join_type: INNER
+                  left:
+                    TableRef
+                      table_name: "t"
+                      schema: (none)
+                      alias: (none)
+                      args: (none)
+                  right:
+                    TableRef
+                      table_name: "json_each"
+                      schema: (none)
+                      alias:
+                        IdentName
+                          source: "j"
+                      args:
+                        ExprList [1 items]
+                          ColumnRef
+                            column: "col"
+                            table: "t"
+                            schema: (none)
+                  on_expr:
+                    Literal
+                      literal_type: INTEGER
+                      source: "1"
+                  using_columns: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
