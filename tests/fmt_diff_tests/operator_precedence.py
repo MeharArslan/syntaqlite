@@ -13,30 +13,36 @@ from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 #   6: PLUS, MINUS
 #   7: STAR, SLASH, REM
 #   8: CONCAT, PTR
+#
+# Operator groups (cross-group always gets parens for readability):
+#   logical+comparison: OR, AND, EQ, NE, LT, GT, LE, GE
+#   bitwise:            BIT_AND, BIT_OR, LSHIFT, RSHIFT
+#   arithmetic:         PLUS, MINUS, STAR, SLASH, REM
+#   string:             CONCAT, PTR
 
 
 class OrAndPrecedence(TestSuite):
-    """OR (prec 1) vs AND (prec 2): AND binds tighter."""
+    """OR (prec 1) vs AND (prec 2): same group, AND binds tighter."""
 
-    def test_and_in_or_no_parens_needed(self):
+    def test_and_in_or_no_parens(self):
         return DiffTestBlueprint(
             sql="SELECT a AND b OR c AND d",
             out="SELECT a AND b OR c AND d;",
         )
 
-    def test_or_in_and_needs_parens_left(self):
+    def test_or_in_and_left(self):
         return DiffTestBlueprint(
             sql="SELECT (a OR b) AND c",
             out="SELECT (a OR b) AND c;",
         )
 
-    def test_or_in_and_needs_parens_right(self):
+    def test_or_in_and_right(self):
         return DiffTestBlueprint(
             sql="SELECT a AND (b OR c)",
             out="SELECT a AND (b OR c);",
         )
 
-    def test_or_in_and_needs_parens_both(self):
+    def test_or_in_and_both(self):
         return DiffTestBlueprint(
             sql="SELECT (a OR b) AND (c OR d)",
             out="SELECT (a OR b) AND (c OR d);",
@@ -56,7 +62,7 @@ class OrAndPrecedence(TestSuite):
 
 
 class EqualityComparisonPrecedence(TestSuite):
-    """EQ/NE (prec 3) vs LT/GT/LE/GE (prec 4): comparisons bind tighter."""
+    """EQ/NE (prec 3) vs LT/GT/LE/GE (prec 4): same group, comparisons bind tighter."""
 
     def test_comparison_in_equality_no_parens(self):
         return DiffTestBlueprint(
@@ -64,7 +70,7 @@ class EqualityComparisonPrecedence(TestSuite):
             out="SELECT a > b = c < d;",
         )
 
-    def test_eq_in_comparison_needs_parens(self):
+    def test_eq_in_comparison(self):
         return DiffTestBlueprint(
             sql="SELECT (a = b) > (c = d)",
             out="SELECT (a = b) > (c = d);",
@@ -90,7 +96,7 @@ class EqualityComparisonPrecedence(TestSuite):
 
 
 class AndEqualityPrecedence(TestSuite):
-    """AND (prec 2) vs EQ/NE (prec 3): EQ binds tighter."""
+    """AND (prec 2) vs EQ/NE (prec 3): same group, no readability parens."""
 
     def test_eq_in_and_no_parens(self):
         return DiffTestBlueprint(
@@ -98,7 +104,7 @@ class AndEqualityPrecedence(TestSuite):
             out="SELECT a = 1 AND b = 2;",
         )
 
-    def test_and_in_eq_needs_parens(self):
+    def test_and_in_eq(self):
         return DiffTestBlueprint(
             sql="SELECT (a AND b) = (c AND d)",
             out="SELECT (a AND b) = (c AND d);",
@@ -106,7 +112,7 @@ class AndEqualityPrecedence(TestSuite):
 
 
 class ArithmeticPrecedence(TestSuite):
-    """PLUS/MINUS (prec 6) vs STAR/SLASH/REM (prec 7)."""
+    """PLUS/MINUS (prec 6) vs STAR/SLASH/REM (prec 7): same group."""
 
     def test_mul_in_add_no_parens(self):
         return DiffTestBlueprint(
@@ -114,13 +120,13 @@ class ArithmeticPrecedence(TestSuite):
             out="SELECT a + b * c;",
         )
 
-    def test_add_in_mul_needs_parens(self):
+    def test_add_in_mul(self):
         return DiffTestBlueprint(
             sql="SELECT (a + b) * c",
             out="SELECT (a + b) * c;",
         )
 
-    def test_sub_in_div_needs_parens(self):
+    def test_sub_in_div(self):
         return DiffTestBlueprint(
             sql="SELECT (a - b) / c",
             out="SELECT (a - b) / c;",
@@ -138,7 +144,7 @@ class ArithmeticPrecedence(TestSuite):
             out="SELECT a + b % c;",
         )
 
-    def test_add_in_rem_needs_parens(self):
+    def test_add_in_rem(self):
         return DiffTestBlueprint(
             sql="SELECT (a + b) % c",
             out="SELECT (a + b) % c;",
@@ -186,7 +192,7 @@ class SamePrecAssociativity(TestSuite):
 
 
 class BitwiseOpsPrecedence(TestSuite):
-    """BIT_AND, BIT_OR, LSHIFT, RSHIFT all at prec 5."""
+    """BIT_AND, BIT_OR, LSHIFT, RSHIFT all at prec 5, same group."""
 
     def test_bitand_bitor_left_assoc(self):
         return DiffTestBlueprint(
@@ -226,27 +232,27 @@ class BitwiseOpsPrecedence(TestSuite):
 
 
 class BitwiseVsArithmeticPrecedence(TestSuite):
-    """Bitwise (prec 5) vs arithmetic (prec 6/7): arithmetic binds tighter."""
+    """Bitwise (prec 5) vs arithmetic (prec 6/7): cross-group, parens added."""
 
-    def test_add_in_bitand_no_parens(self):
+    def test_add_in_bitand_gets_parens(self):
         return DiffTestBlueprint(
             sql="SELECT a + b & c + d",
-            out="SELECT a + b & c + d;",
+            out="SELECT (a + b) & (c + d);",
         )
 
-    def test_bitand_in_add_needs_parens(self):
+    def test_bitand_in_add(self):
         return DiffTestBlueprint(
             sql="SELECT (a & b) + c",
             out="SELECT (a & b) + c;",
         )
 
-    def test_mul_in_bitor_no_parens(self):
+    def test_mul_in_bitor_gets_parens(self):
         return DiffTestBlueprint(
             sql="SELECT a * b | c * d",
-            out="SELECT a * b | c * d;",
+            out="SELECT (a * b) | (c * d);",
         )
 
-    def test_lshift_in_mul_needs_parens(self):
+    def test_lshift_in_mul(self):
         return DiffTestBlueprint(
             sql="SELECT (a << b) * c",
             out="SELECT (a << b) * c;",
@@ -254,7 +260,7 @@ class BitwiseVsArithmeticPrecedence(TestSuite):
 
 
 class ConcatPtrPrecedence(TestSuite):
-    """CONCAT/PTR (prec 8) — highest among binary ops."""
+    """CONCAT/PTR (prec 8) — highest among binary ops, own group."""
 
     def test_concat_chain(self):
         return DiffTestBlueprint(
@@ -268,16 +274,16 @@ class ConcatPtrPrecedence(TestSuite):
             out="SELECT a || (b || c);",
         )
 
-    def test_add_in_concat_needs_parens(self):
+    def test_add_in_concat(self):
         return DiffTestBlueprint(
             sql="SELECT (a + b) || c",
             out="SELECT (a + b) || c;",
         )
 
-    def test_concat_in_add_no_parens(self):
+    def test_concat_in_add_gets_parens(self):
         return DiffTestBlueprint(
             sql="SELECT a || b + c || d",
-            out="SELECT a || b + c || d;",
+            out="SELECT (a || b) + (c || d);",
         )
 
     def test_ptr_and_concat_same_prec(self):
@@ -294,15 +300,15 @@ class ConcatPtrPrecedence(TestSuite):
 
 
 class ComparisonVsArithmeticPrecedence(TestSuite):
-    """LT/GT/LE/GE (prec 4) vs PLUS/MINUS (prec 6)."""
+    """LT/GT/LE/GE (prec 4) vs PLUS/MINUS (prec 6): cross-group, parens added."""
 
-    def test_add_in_gt_no_parens(self):
+    def test_add_in_gt_gets_parens(self):
         return DiffTestBlueprint(
             sql="SELECT a + b > c - d",
-            out="SELECT a + b > c - d;",
+            out="SELECT (a + b) > (c - d);",
         )
 
-    def test_gt_in_add_needs_parens(self):
+    def test_gt_in_add(self):
         return DiffTestBlueprint(
             sql="SELECT (a > b) + c",
             out="SELECT (a > b) + c;",
@@ -310,15 +316,15 @@ class ComparisonVsArithmeticPrecedence(TestSuite):
 
 
 class ComparisonVsBitwisePrecedence(TestSuite):
-    """LT/GT/LE/GE (prec 4) vs bitwise (prec 5)."""
+    """LT/GT/LE/GE (prec 4) vs bitwise (prec 5): cross-group, parens added."""
 
-    def test_bitand_in_lt_no_parens(self):
+    def test_bitand_in_lt_gets_parens(self):
         return DiffTestBlueprint(
             sql="SELECT a & b < c & d",
-            out="SELECT a & b < c & d;",
+            out="SELECT (a & b) < (c & d);",
         )
 
-    def test_lt_in_bitor_needs_parens(self):
+    def test_lt_in_bitor(self):
         return DiffTestBlueprint(
             sql="SELECT (a < b) | c",
             out="SELECT (a < b) | c;",
@@ -371,31 +377,31 @@ class DeepNesting(TestSuite):
     def test_three_levels(self):
         return DiffTestBlueprint(
             sql="SELECT (a + b) * c > d AND e",
-            out="SELECT (a + b) * c > d AND e;",
+            out="SELECT ((a + b) * c) > d AND e;",
         )
 
     def test_or_and_eq_add_mul(self):
         return DiffTestBlueprint(
             sql="SELECT a * b + c = d AND e OR f",
-            out="SELECT a * b + c = d AND e OR f;",
+            out="SELECT (a * b + c) = d AND e OR f;",
         )
 
-    def test_complex_parens_simplified(self):
+    def test_complex_parens_preserved(self):
         return DiffTestBlueprint(
             sql="SELECT (a OR b) AND (c + d) > (e * f)",
-            out="SELECT (a OR b) AND c + d > e * f;",
+            out="SELECT (a OR b) AND (c + d) > (e * f);",
         )
 
     def test_bitwise_in_comparison_in_and(self):
         return DiffTestBlueprint(
             sql="SELECT a & b > 0 AND c | d < 10",
-            out="SELECT a & b > 0 AND c | d < 10;",
+            out="SELECT (a & b) > 0 AND (c | d) < 10;",
         )
 
     def test_all_levels(self):
         return DiffTestBlueprint(
             sql="SELECT a || b * c + d & e > f = g AND h OR i",
-            out="SELECT a || b * c + d & e > f = g AND h OR i;",
+            out="SELECT (((a || b) * c + d) & e) > f = g AND h OR i;",
         )
 
 
@@ -411,7 +417,7 @@ class InWhereClause(TestSuite):
     def test_where_arithmetic_comparison(self):
         return DiffTestBlueprint(
             sql="SELECT x FROM t WHERE a + b > c * d",
-            out="SELECT x FROM t WHERE a + b > c * d;",
+            out="SELECT x FROM t WHERE (a + b) > (c * d);",
         )
 
     def test_where_not_compound(self):

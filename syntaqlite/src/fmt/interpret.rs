@@ -716,6 +716,32 @@ fn binary_op_precedence(op_ordinal: u32) -> Option<u8> {
     }
 }
 
+/// Operator group for readability-based parenthesization.
+///
+/// When a child `BinaryExpr` is in a different group from its parent, we
+/// preserve parentheses even if precedence alone wouldn't require them.
+/// This keeps expressions like `(a + b) > (c * d)` readable for people
+/// who don't memorize operator precedence tables.
+///
+/// Logical and comparison operators share a group because `WHERE a = 1
+/// AND b = 2` is universally understood and adding parens there would
+/// be noise.
+///
+/// Groups (from `_common.y`):
+///   0 = logical + comparison (OR, AND, EQ, NE, LT, GT, LE, GE)
+///   1 = bitwise  (BIT_AND, BIT_OR, LSHIFT, RSHIFT)
+///   2 = arithmetic (PLUS, MINUS, STAR, SLASH, REM)
+///   3 = string   (CONCAT, PTR)
+fn binary_op_group(op_ordinal: u32) -> Option<u8> {
+    match op_ordinal {
+        5..=12 => Some(0),          // LT, GT, LE, GE, EQ, NE, AND, OR
+        13..=16 => Some(1),         // BIT_AND, BIT_OR, LSHIFT, RSHIFT
+        0..=4 => Some(2),           // PLUS, MINUS, STAR, SLASH, REM
+        17 | 18 => Some(3),         // CONCAT, PTR
+        _ => None,
+    }
+}
+
 /// Determine whether a child node needs to be wrapped in parentheses.
 ///
 /// This handles two cases:
@@ -752,8 +778,18 @@ fn child_needs_parens(
                     ) {
                         // child_field_idx: 1 = left child, 2 = right child
                         let is_right_child = child_field_idx == 2;
+
+                        // Correctness: parens required when child binds less tightly,
+                        // or same precedence on the right (left-associative).
                         if child_prec < parent_prec || (is_right_child && child_prec == parent_prec)
                         {
+                            return ReturnAction::WrapInParens;
+                        }
+
+                        // Readability: preserve parens when crossing operator groups
+                        // (e.g. arithmetic inside comparison) so readers don't need
+                        // to know the full precedence table.
+                        if binary_op_group(parent_op) != binary_op_group(child_op) {
                             return ReturnAction::WrapInParens;
                         }
                     }
