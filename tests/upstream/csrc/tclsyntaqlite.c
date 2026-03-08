@@ -170,16 +170,16 @@ static void eval_sql(DbHandle* db, const char* sql, int sql_len) {
       json_write_string(db->log_file, parse_err);
     }
     if (diag_count > 0) {
+      const SyntaqliteDiagnostic* diags =
+          syntaqlite_validator_diagnostics(db->validator);
       fprintf(db->log_file, ",\"diagnostics\":[");
       for (uint32_t i = 0; i < diag_count; i++) {
         if (i > 0) fputc(',', db->log_file);
         fprintf(db->log_file, "{\"severity\":%u,\"message\":",
-                syntaqlite_diagnostic_severity(db->validator, i));
-        json_write_string(db->log_file,
-                          syntaqlite_diagnostic_message(db->validator, i));
+                diags[i].severity);
+        json_write_string(db->log_file, diags[i].message);
         fprintf(db->log_file, ",\"start\":%u,\"end\":%u}",
-                syntaqlite_diagnostic_start_offset(db->validator, i),
-                syntaqlite_diagnostic_end_offset(db->validator, i));
+                diags[i].start_offset, diags[i].end_offset);
       }
       fputc(']', db->log_file);
     }

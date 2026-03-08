@@ -55,10 +55,8 @@ uint32_t syntaqlite_validator_analyze(
     const char* source, uint32_t len
 );
 
-uint32_t syntaqlite_diagnostic_severity(const SyntaqliteValidator*, uint32_t idx);
-const char* syntaqlite_diagnostic_message(const SyntaqliteValidator*, uint32_t idx);
-uint32_t syntaqlite_diagnostic_start_offset(const SyntaqliteValidator*, uint32_t idx);
-uint32_t syntaqlite_diagnostic_end_offset(const SyntaqliteValidator*, uint32_t idx);
+uint32_t syntaqlite_validator_diagnostic_count(const SyntaqliteValidator*);
+const SyntaqliteDiagnostic* syntaqlite_validator_diagnostics(const SyntaqliteValidator*);
 ```
 
 ### 2. TCL Extension (`tclsyntaqlite.c`)

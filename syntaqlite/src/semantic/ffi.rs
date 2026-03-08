@@ -14,7 +14,26 @@ use crate::dialect::AnyDialect;
 use super::ValidationConfig;
 use super::analyzer::SemanticAnalyzer;
 use super::catalog::{Catalog, CatalogLayer};
-use super::diagnostics::{Diagnostic, Severity};
+use super::diagnostics::Severity;
+
+// ── C-compatible diagnostic struct ──────────────────────────────────────────
+
+/// Mirrors `SyntaqliteDiagnostic` from the C header.
+#[repr(C)]
+pub struct SyntaqliteDiagnostic {
+    pub severity: u32,
+    pub message: *const c_char,
+    pub start_offset: u32,
+    pub end_offset: u32,
+}
+
+/// Mirrors `SyntaqliteTableDef` from the C header.
+#[repr(C)]
+pub struct SyntaqliteTableDef {
+    pub name: *const c_char,
+    pub columns: *const *const c_char,
+    pub column_count: u32,
+}
 
 /// Opaque validator handle exposed to C.
 ///
@@ -24,8 +43,8 @@ struct ValidatorState {
     analyzer: SemanticAnalyzer,
     user_catalog: Catalog,
     dialect: AnyDialect,
-    /// Diagnostics from the most recent `analyze()` call.
-    diagnostics: Vec<Diagnostic>,
+    /// C-compatible diagnostics from the most recent `analyze()` call.
+    c_diagnostics: Vec<SyntaqliteDiagnostic>,
     /// Rendered message strings, kept alive for the C pointers.
     rendered_messages: Vec<CString>,
 }
@@ -80,7 +99,7 @@ pub extern "C" fn syntaqlite_validator_create_sqlite() -> *mut SyntaqliteValidat
         analyzer,
         user_catalog,
         dialect,
-        diagnostics: Vec::new(),
+        c_diagnostics: Vec::new(),
         rendered_messages: Vec::new(),
     });
     Box::into_raw(state).cast::<SyntaqliteValidator>()
@@ -124,14 +143,30 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
     let config = ValidationConfig::default();
     let model = state.analyzer.analyze(src, &state.user_catalog, &config);
 
-    state.diagnostics = model.diagnostics().to_vec();
-    state.rendered_messages = state
-        .diagnostics
-        .iter()
-        .map(|d| CString::new(d.message.to_string()).unwrap_or_default())
-        .collect();
+    // Reuse existing Vec capacity — clear + push avoids reallocating
+    // on steady-state calls.
+    state.rendered_messages.clear();
+    state.c_diagnostics.clear();
 
-    state.diagnostics.len() as u32
+    // First pass: render messages (must be done before building
+    // SyntaqliteDiagnostic so the CString pointers are stable).
+    for d in model.diagnostics() {
+        state
+            .rendered_messages
+            .push(CString::new(d.message.to_string()).unwrap_or_default());
+    }
+
+    // Second pass: build C structs pointing into rendered_messages.
+    for (d, msg) in model.diagnostics().iter().zip(state.rendered_messages.iter()) {
+        state.c_diagnostics.push(SyntaqliteDiagnostic {
+            severity: severity_to_c(d.severity),
+            message: msg.as_ptr(),
+            start_offset: d.start_offset as u32,
+            end_offset: d.end_offset as u32,
+        });
+    }
+
+    state.c_diagnostics.len() as u32
 }
 
 /// Clear accumulated DDL from the catalog.
@@ -147,50 +182,55 @@ pub unsafe extern "C" fn syntaqlite_validator_reset_catalog(v: *mut SyntaqliteVa
     state.user_catalog = Catalog::new(state.dialect.clone());
 }
 
-/// Add a table to the database layer of the catalog.
+/// Add tables to the database layer of the catalog.
 ///
 /// # Safety
 ///
 /// - `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
-/// - `table_name` must be a valid NUL-terminated C string.
-/// - `column_names` may be NULL. If non-NULL, must point to `column_count`
+/// - `tables` must point to `count` valid `SyntaqliteTableDef` entries.
+/// - Each `name` must be a valid NUL-terminated C string.
+/// - Each `columns` may be NULL. If non-NULL, must point to `column_count`
 ///   valid NUL-terminated C string pointers.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn syntaqlite_validator_add_table(
+pub unsafe extern "C" fn syntaqlite_validator_add_tables(
     v: *mut SyntaqliteValidator,
-    table_name: *const c_char,
-    column_names: *const *const c_char,
-    column_count: u32,
+    tables: *const SyntaqliteTableDef,
+    count: u32,
 ) {
     // SAFETY: caller guarantees `v` is valid.
     let v = unsafe { &mut *v };
     let state = v.state_mut();
 
-    // SAFETY: caller guarantees `table_name` is a valid NUL-terminated C string.
-    let name = unsafe { CStr::from_ptr(table_name) }
-        .to_str()
-        .unwrap_or("")
-        .to_owned();
+    for i in 0..count as usize {
+        // SAFETY: caller guarantees `tables[i]` is valid.
+        let def = unsafe { &*tables.add(i) };
 
-    let columns = if column_names.is_null() {
-        None
-    } else {
-        let cols: Vec<String> = (0..column_count as usize)
-            .map(|i| {
-                // SAFETY: caller guarantees `column_names[i]` is valid.
-                unsafe { CStr::from_ptr(*column_names.add(i)) }
-                    .to_str()
-                    .unwrap_or("")
-                    .to_owned()
-            })
-            .collect();
-        Some(cols)
-    };
+        // SAFETY: caller guarantees `name` is a valid NUL-terminated C string.
+        let name = unsafe { CStr::from_ptr(def.name) }
+            .to_str()
+            .unwrap_or("")
+            .to_owned();
 
-    state
-        .user_catalog
-        .layer_mut(CatalogLayer::Database)
-        .insert_relation(name, columns);
+        let columns = if def.columns.is_null() {
+            None
+        } else {
+            let cols: Vec<String> = (0..def.column_count as usize)
+                .map(|j| {
+                    // SAFETY: caller guarantees `columns[j]` is valid.
+                    unsafe { CStr::from_ptr(*def.columns.add(j)) }
+                        .to_str()
+                        .unwrap_or("")
+                        .to_owned()
+                })
+                .collect();
+            Some(cols)
+        };
+
+        state
+            .user_catalog
+            .layer_mut(CatalogLayer::Database)
+            .insert_relation(name, columns);
+    }
 }
 
 /// Number of diagnostics from the last `analyze()` call.
@@ -205,88 +245,26 @@ pub unsafe extern "C" fn syntaqlite_validator_diagnostic_count(
 ) -> u32 {
     // SAFETY: caller guarantees `v` is valid.
     let v = unsafe { &*v };
-    v.state().diagnostics.len() as u32
+    v.state().c_diagnostics.len() as u32
 }
 
-/// Severity of the i-th diagnostic.
+/// Pointer to the diagnostic array from the last `analyze()` call.
+/// Returns NULL when diagnostic count is 0.
 ///
 /// # Safety
 ///
-/// `v` must be valid, `index` must be < `diagnostic_count`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn syntaqlite_diagnostic_severity(
-    v: *const SyntaqliteValidator,
-    index: u32,
-) -> u32 {
-    // SAFETY: caller guarantees `v` is valid.
-    let v = unsafe { &*v };
-    let state = v.state();
-    if (index as usize) < state.diagnostics.len() {
-        severity_to_c(state.diagnostics[index as usize].severity)
-    } else {
-        SEVERITY_ERROR
-    }
-}
-
-/// Human-readable message for the i-th diagnostic.
-///
-/// # Safety
-///
-/// `v` must be valid, `index` must be < `diagnostic_count`.
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
 /// The returned pointer is valid until the next `analyze()` or `destroy()`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn syntaqlite_diagnostic_message(
+pub unsafe extern "C" fn syntaqlite_validator_diagnostics(
     v: *const SyntaqliteValidator,
-    index: u32,
-) -> *const c_char {
+) -> *const SyntaqliteDiagnostic {
     // SAFETY: caller guarantees `v` is valid.
     let v = unsafe { &*v };
     let state = v.state();
-    if (index as usize) < state.rendered_messages.len() {
-        state.rendered_messages[index as usize].as_ptr()
+    if state.c_diagnostics.is_empty() {
+        std::ptr::null()
     } else {
-        c"(out of bounds)".as_ptr()
-    }
-}
-
-/// Byte offset of the start of the i-th diagnostic's source range.
-///
-/// # Safety
-///
-/// `v` must be valid, `index` must be < `diagnostic_count`.
-#[unsafe(no_mangle)]
-#[expect(clippy::cast_possible_truncation)]
-pub unsafe extern "C" fn syntaqlite_diagnostic_start_offset(
-    v: *const SyntaqliteValidator,
-    index: u32,
-) -> u32 {
-    // SAFETY: caller guarantees `v` is valid.
-    let v = unsafe { &*v };
-    let state = v.state();
-    if (index as usize) < state.diagnostics.len() {
-        state.diagnostics[index as usize].start_offset as u32
-    } else {
-        0
-    }
-}
-
-/// Byte offset of the end of the i-th diagnostic's source range.
-///
-/// # Safety
-///
-/// `v` must be valid, `index` must be < `diagnostic_count`.
-#[unsafe(no_mangle)]
-#[expect(clippy::cast_possible_truncation)]
-pub unsafe extern "C" fn syntaqlite_diagnostic_end_offset(
-    v: *const SyntaqliteValidator,
-    index: u32,
-) -> u32 {
-    // SAFETY: caller guarantees `v` is valid.
-    let v = unsafe { &*v };
-    let state = v.state();
-    if (index as usize) < state.diagnostics.len() {
-        state.diagnostics[index as usize].end_offset as u32
-    } else {
-        0
+        state.c_diagnostics.as_ptr()
     }
 }

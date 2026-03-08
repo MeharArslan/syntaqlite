@@ -9,13 +9,11 @@
 // reference earlier definitions.
 //
 // Lifecycle:
-//   SyntaqliteValidator* v = syntaqlite_validator_create(grammar);
-//   syntaqlite_validator_analyze(v, sql, len);
-//   uint32_t n = syntaqlite_validator_diagnostic_count(v);
+//   SyntaqliteValidator* v = syntaqlite_validator_create_sqlite();
+//   uint32_t n = syntaqlite_validator_analyze(v, sql, len);
+//   const SyntaqliteDiagnostic* d = syntaqlite_validator_diagnostics(v);
 //   for (uint32_t i = 0; i < n; i++) {
-//     SyntaqliteSeverity sev = syntaqlite_diagnostic_severity(v, i);
-//     const char* msg = syntaqlite_diagnostic_message(v, i);
-//     ...
+//     d[i].severity, d[i].message, d[i].start_offset, d[i].end_offset
 //   }
 //   syntaqlite_validator_destroy(v);
 //
@@ -42,6 +40,22 @@ typedef enum {
   SYNTAQLITE_SEVERITY_INFO = 2,
   SYNTAQLITE_SEVERITY_HINT = 3,
 } SyntaqliteSeverity;
+
+// A single diagnostic from validation. Pointers are valid until the next
+// analyze() or destroy() call.
+typedef struct {
+  SyntaqliteSeverity severity;
+  const char* message;
+  uint32_t start_offset;
+  uint32_t end_offset;
+} SyntaqliteDiagnostic;
+
+// Table definition for batch catalog registration.
+typedef struct {
+  const char* name;
+  const char* const* columns;  // NULL = columns unknown
+  uint32_t column_count;       // ignored when columns is NULL
+} SyntaqliteTableDef;
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -71,14 +85,11 @@ uint32_t syntaqlite_validator_analyze(SyntaqliteValidator* v,
 // The dialect layer (built-in functions, etc.) is preserved.
 void syntaqlite_validator_reset_catalog(SyntaqliteValidator* v);
 
-// Add a table to the database layer of the catalog. This table will be
+// Add tables to the database layer of the catalog. These tables will be
 // visible to all subsequent analyze() calls until reset_catalog() is called.
-// column_names may be NULL (table exists but columns are unknown).
-// column_count is ignored when column_names is NULL.
-void syntaqlite_validator_add_table(SyntaqliteValidator* v,
-                                    const char* table_name,
-                                    const char* const* column_names,
-                                    uint32_t column_count);
+void syntaqlite_validator_add_tables(SyntaqliteValidator* v,
+                                     const SyntaqliteTableDef* tables,
+                                     uint32_t count);
 
 // ---------------------------------------------------------------------------
 // Diagnostic access (valid until next analyze() or destroy())
@@ -87,22 +98,10 @@ void syntaqlite_validator_add_table(SyntaqliteValidator* v,
 // Number of diagnostics from the last analyze() call.
 uint32_t syntaqlite_validator_diagnostic_count(const SyntaqliteValidator* v);
 
-// Severity of the i-th diagnostic.
-SyntaqliteSeverity syntaqlite_diagnostic_severity(const SyntaqliteValidator* v,
-                                                  uint32_t index);
-
-// Human-readable message for the i-th diagnostic. The returned pointer is
-// valid until the next analyze() or destroy() call.
-const char* syntaqlite_diagnostic_message(const SyntaqliteValidator* v,
-                                          uint32_t index);
-
-// Byte offset of the start of the i-th diagnostic's source range.
-uint32_t syntaqlite_diagnostic_start_offset(const SyntaqliteValidator* v,
-                                            uint32_t index);
-
-// Byte offset of the end of the i-th diagnostic's source range.
-uint32_t syntaqlite_diagnostic_end_offset(const SyntaqliteValidator* v,
-                                          uint32_t index);
+// Pointer to the diagnostic array from the last analyze() call.
+// Returns NULL when diagnostic_count is 0.
+const SyntaqliteDiagnostic* syntaqlite_validator_diagnostics(
+    const SyntaqliteValidator* v);
 
 #ifdef __cplusplus
 }
