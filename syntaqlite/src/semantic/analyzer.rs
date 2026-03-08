@@ -605,6 +605,14 @@ impl<'a> ValidationPass<'a> {
                 });
             }
             ColumnResolution::NotFound => {
+                // SQLite resolves bare TRUE/FALSE identifiers to integer
+                // literals 1/0 (see sqlite3ExprIdToTrueFalse), so they are
+                // valid even when no column by that name exists.
+                if column.eq_ignore_ascii_case("true")
+                    || column.eq_ignore_ascii_case("false")
+                {
+                    return;
+                }
                 let candidates = self.catalog.all_column_names(None);
                 let suggestion =
                     best_suggestion(column, &candidates, self.config.suggestion_threshold);
@@ -1914,6 +1922,21 @@ mod tests {
     #[test]
     fn quoted_col_ref_resolves_aliased_column() {
         assert_no_unknown_col(r#"CREATE TABLE t AS SELECT 1 AS x; SELECT t."x" FROM t;"#);
+    }
+
+    #[test]
+    fn select_true_no_unknown_column() {
+        assert_no_unknown_col("SELECT TRUE;");
+    }
+
+    #[test]
+    fn select_false_no_unknown_column() {
+        assert_no_unknown_col("SELECT FALSE;");
+    }
+
+    #[test]
+    fn select_true_false_case_insensitive() {
+        assert_no_unknown_col("SELECT true, False, TRUE, false;");
     }
 
     #[test]
