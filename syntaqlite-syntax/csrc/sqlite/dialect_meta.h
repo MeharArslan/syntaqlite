@@ -75,6 +75,11 @@ static const char* const display_conflict_action[] = {
     "DEFAULT", "ROLLBACK", "ABORT", "FAIL", "IGNORE", "REPLACE",
 };
 
+static const char* const display_upsert_action[] = {
+    "NOTHING",
+    "UPDATE",
+};
+
 static const char* const display_raise_type[] = {
     "IGNORE",
     "ROLLBACK",
@@ -448,6 +453,20 @@ static const SyntaqliteFieldMeta field_meta_with_clause[] = {
      NULL, 0},
 };
 
+static const SyntaqliteFieldMeta field_meta_upsert_clause[] = {
+    {offsetof(SyntaqliteUpsertClause, columns), SYNTAQLITE_FIELD_NODE_ID,
+     "columns", NULL, 0},
+    {offsetof(SyntaqliteUpsertClause, target_where), SYNTAQLITE_FIELD_NODE_ID,
+     "target_where", NULL, 0},
+    {offsetof(SyntaqliteUpsertClause, action), SYNTAQLITE_FIELD_ENUM, "action",
+     display_upsert_action,
+     sizeof(display_upsert_action) / sizeof(display_upsert_action[0])},
+    {offsetof(SyntaqliteUpsertClause, setlist), SYNTAQLITE_FIELD_NODE_ID,
+     "setlist", NULL, 0},
+    {offsetof(SyntaqliteUpsertClause, update_where), SYNTAQLITE_FIELD_NODE_ID,
+     "update_where", NULL, 0},
+};
+
 static const SyntaqliteFieldMeta field_meta_delete_stmt[] = {
     {offsetof(SyntaqliteDeleteStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table",
      NULL, 0},
@@ -457,6 +476,8 @@ static const SyntaqliteFieldMeta field_meta_delete_stmt[] = {
      "orderby", NULL, 0},
     {offsetof(SyntaqliteDeleteStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID,
      "limit_clause", NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, returning), SYNTAQLITE_FIELD_NODE_ID,
+     "returning", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_set_clause[] = {
@@ -484,6 +505,8 @@ static const SyntaqliteFieldMeta field_meta_update_stmt[] = {
      "orderby", NULL, 0},
     {offsetof(SyntaqliteUpdateStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID,
      "limit_clause", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, returning), SYNTAQLITE_FIELD_NODE_ID,
+     "returning", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_insert_stmt[] = {
@@ -496,6 +519,10 @@ static const SyntaqliteFieldMeta field_meta_insert_stmt[] = {
      "columns", NULL, 0},
     {offsetof(SyntaqliteInsertStmt, source), SYNTAQLITE_FIELD_NODE_ID, "source",
      NULL, 0},
+    {offsetof(SyntaqliteInsertStmt, upsert), SYNTAQLITE_FIELD_NODE_ID, "upsert",
+     NULL, 0},
+    {offsetof(SyntaqliteInsertStmt, returning), SYNTAQLITE_FIELD_NODE_ID,
+     "returning", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_binary_expr[] = {
@@ -671,6 +698,8 @@ static const SyntaqliteFieldMeta field_meta_table_ref[] = {
      NULL, 0},
     {offsetof(SyntaqliteTableRef, alias), SYNTAQLITE_FIELD_NODE_ID, "alias",
      NULL, 0},
+    {offsetof(SyntaqliteTableRef, args), SYNTAQLITE_FIELD_NODE_ID, "args", NULL,
+     0},
 };
 
 static const SyntaqliteFieldMeta field_meta_subquery_table_source[] = {
@@ -1043,6 +1072,8 @@ static const char* const ast_meta_node_names[] = {
     "CteDefinition",
     "CteList",
     "WithClause",
+    "UpsertClause",
+    "UpsertClauseList",
     "DeleteStmt",
     "SetClause",
     "SetClauseList",
@@ -1125,6 +1156,8 @@ static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
     field_meta_cte_definition,            /* CteDefinition */
     NULL,                                 /* CteList */
     field_meta_with_clause,               /* WithClause */
+    field_meta_upsert_clause,             /* UpsertClause */
+    NULL,                                 /* UpsertClauseList */
     field_meta_delete_stmt,               /* DeleteStmt */
     field_meta_set_clause,                /* SetClause */
     NULL,                                 /* SetClauseList */
@@ -1205,11 +1238,13 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     4,  /* CteDefinition */
     0,  /* CteList */
     3,  /* WithClause */
-    4,  /* DeleteStmt */
+    5,  /* UpsertClause */
+    0,  /* UpsertClauseList */
+    5,  /* DeleteStmt */
     3,  /* SetClause */
     0,  /* SetClauseList */
-    7,  /* UpdateStmt */
-    4,  /* InsertStmt */
+    8,  /* UpdateStmt */
+    6,  /* InsertStmt */
     3,  /* BinaryExpr */
     2,  /* UnaryExpr */
     2,  /* Literal */
@@ -1231,7 +1266,7 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     3,  /* OrderingTerm */
     0,  /* OrderByList */
     2,  /* LimitClause */
-    3,  /* TableRef */
+    4,  /* TableRef */
     2,  /* SubqueryTableSource */
     5,  /* JoinClause */
     2,  /* JoinPrefix */
@@ -1287,6 +1322,8 @@ static const uint8_t ast_meta_list_tags[] = {
     0, /* CteDefinition */
     1, /* CteList */
     0, /* WithClause */
+    0, /* UpsertClause */
+    1, /* UpsertClauseList */
     0, /* DeleteStmt */
     0, /* SetClause */
     1, /* SetClauseList */
@@ -1369,6 +1406,8 @@ static const SyntaqliteRangeMetaEntry ast_meta_range_meta[] = {
     {range_meta_cte_definition, 1},            /* CteDefinition */
     {NULL, 0},                                 /* CteList */
     {NULL, 0},                                 /* WithClause */
+    {NULL, 0},                                 /* UpsertClause */
+    {NULL, 0},                                 /* UpsertClauseList */
     {NULL, 0},                                 /* DeleteStmt */
     {range_meta_set_clause, 1},                /* SetClause */
     {NULL, 0},                                 /* SetClauseList */

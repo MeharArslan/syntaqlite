@@ -1,10 +1,39 @@
 enum ConflictAction { DEFAULT ROLLBACK ABORT FAIL IGNORE REPLACE }
 
+enum UpsertAction { NOTHING UPDATE }
+
+node UpsertClause {
+  columns: index OrderByList
+  target_where: index Expr
+  action: inline UpsertAction
+  setlist: index SetClauseList
+  update_where: index Expr
+
+  fmt {
+    "ON CONFLICT"
+    if_set(columns) { " (" child(columns) ")" }
+    if_set(target_where) { " WHERE " child(target_where) }
+    if_enum(action, UPDATE) {
+      " DO UPDATE"
+      clause("SET", setlist)
+      clause("WHERE", update_where)
+    } else {
+      " DO NOTHING"
+    }
+  }
+}
+
+list UpsertClauseList {
+  UpsertClause
+  fmt { for_each(sep: hardline) { child(_item) } }
+}
+
 node DeleteStmt {
   table: index TableRef
   where_clause: index Expr
   orderby: index OrderByList
   limit_clause: index LimitClause
+  returning: index ResultColumnList
 
   fmt {
     group {
@@ -12,6 +41,7 @@ node DeleteStmt {
       clause("WHERE", where_clause)
       clause("ORDER BY", orderby)
       clause("LIMIT", limit_clause)
+      if_set(returning) { line "RETURNING " child(returning) }
     }
   }
 }
@@ -39,6 +69,7 @@ node UpdateStmt {
   where_clause: index Expr
   orderby: index OrderByList
   limit_clause: index LimitClause
+  returning: index ResultColumnList
 
   fmt {
     group {
@@ -56,6 +87,7 @@ node UpdateStmt {
       clause("WHERE", where_clause)
       clause("ORDER BY", orderby)
       clause("LIMIT", limit_clause)
+      if_set(returning) { line "RETURNING " child(returning) }
     }
   }
 }
@@ -65,6 +97,8 @@ node InsertStmt {
   table: index TableRef
   columns: index ExprList
   source: index Select
+  upsert: index UpsertClauseList
+  returning: index ResultColumnList
 
   fmt {
     group {
@@ -80,6 +114,8 @@ node InsertStmt {
       " INTO " child(table)
       if_set(columns) { group { "(" nest { softline child(columns) } softline ")" } }
       if_set(source) { line child(source) }
+      if_set(upsert) { line child(upsert) }
+      if_set(returning) { line "RETURNING " child(returning) }
     }
   }
 }

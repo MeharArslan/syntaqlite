@@ -41,7 +41,7 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) on_using(N). {
         table_name = synq_span(pCtx, Y);
         schema = SYNQ_NO_SPAN;
     }
-    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias);
+    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias, SYNTAQLITE_NULL_NODE);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = tref;
     } else {
@@ -66,7 +66,7 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) indexed_by(I) on_using(N). {
         table_name = synq_span(pCtx, Y);
         schema = SYNQ_NO_SPAN;
     }
-    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias);
+    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias, SYNTAQLITE_NULL_NODE);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = tref;
     } else {
@@ -80,7 +80,6 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) indexed_by(I) on_using(N). {
 
 // Table-valued function: FROM t(args)
 seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) LP exprlist(E) RP as(Z) on_using(N). {
-    (void)E;
     uint32_t alias = Z;
     SyntaqliteSourceSpan table_name;
     SyntaqliteSourceSpan schema;
@@ -91,7 +90,7 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) LP exprlist(E) RP as(Z) on_using(N
         table_name = synq_span(pCtx, Y);
         schema = SYNQ_NO_SPAN;
     }
-    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias);
+    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias, E);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = tref;
     } else {

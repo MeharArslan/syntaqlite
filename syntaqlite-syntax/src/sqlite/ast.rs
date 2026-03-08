@@ -41,57 +41,59 @@ pub enum NodeTag {
     CteDefinition = 23,
     CteList = 24,
     WithClause = 25,
-    DeleteStmt = 26,
-    SetClause = 27,
-    SetClauseList = 28,
-    UpdateStmt = 29,
-    InsertStmt = 30,
-    BinaryExpr = 31,
-    UnaryExpr = 32,
-    Literal = 33,
-    IdentName = 34,
-    Error = 35,
-    ExprList = 36,
-    FunctionCall = 37,
-    Variable = 38,
-    CollateExpr = 39,
-    RaiseExpr = 40,
-    QualifiedName = 41,
-    DropStmt = 42,
-    AlterTableStmt = 43,
-    TransactionStmt = 44,
-    SavepointStmt = 45,
-    ResultColumn = 46,
-    ResultColumnList = 47,
-    SelectStmt = 48,
-    OrderingTerm = 49,
-    OrderByList = 50,
-    LimitClause = 51,
-    TableRef = 52,
-    SubqueryTableSource = 53,
-    JoinClause = 54,
-    JoinPrefix = 55,
-    TriggerEvent = 56,
-    TriggerCmdList = 57,
-    CreateTriggerStmt = 58,
-    CreateVirtualTableStmt = 59,
-    PragmaStmt = 60,
-    AnalyzeOrReindexStmt = 61,
-    AttachStmt = 62,
-    DetachStmt = 63,
-    VacuumStmt = 64,
-    ExplainStmt = 65,
-    CreateIndexStmt = 66,
-    CreateViewStmt = 67,
-    ValuesRowList = 68,
-    ValuesClause = 69,
-    FrameBound = 70,
-    FrameSpec = 71,
-    WindowDef = 72,
-    WindowDefList = 73,
-    NamedWindowDef = 74,
-    NamedWindowDefList = 75,
-    FilterOver = 76,
+    UpsertClause = 26,
+    UpsertClauseList = 27,
+    DeleteStmt = 28,
+    SetClause = 29,
+    SetClauseList = 30,
+    UpdateStmt = 31,
+    InsertStmt = 32,
+    BinaryExpr = 33,
+    UnaryExpr = 34,
+    Literal = 35,
+    IdentName = 36,
+    Error = 37,
+    ExprList = 38,
+    FunctionCall = 39,
+    Variable = 40,
+    CollateExpr = 41,
+    RaiseExpr = 42,
+    QualifiedName = 43,
+    DropStmt = 44,
+    AlterTableStmt = 45,
+    TransactionStmt = 46,
+    SavepointStmt = 47,
+    ResultColumn = 48,
+    ResultColumnList = 49,
+    SelectStmt = 50,
+    OrderingTerm = 51,
+    OrderByList = 52,
+    LimitClause = 53,
+    TableRef = 54,
+    SubqueryTableSource = 55,
+    JoinClause = 56,
+    JoinPrefix = 57,
+    TriggerEvent = 58,
+    TriggerCmdList = 59,
+    CreateTriggerStmt = 60,
+    CreateVirtualTableStmt = 61,
+    PragmaStmt = 62,
+    AnalyzeOrReindexStmt = 63,
+    AttachStmt = 64,
+    DetachStmt = 65,
+    VacuumStmt = 66,
+    ExplainStmt = 67,
+    CreateIndexStmt = 68,
+    CreateViewStmt = 69,
+    ValuesRowList = 70,
+    ValuesClause = 71,
+    FrameBound = 72,
+    FrameSpec = 73,
+    WindowDef = 74,
+    WindowDefList = 75,
+    NamedWindowDef = 76,
+    NamedWindowDefList = 77,
+    FilterOver = 78,
 }
 
 impl From<NodeTag> for crate::any::AnyNodeTag {
@@ -129,57 +131,59 @@ impl NodeTag {
             23 => Some(NodeTag::CteDefinition),
             24 => Some(NodeTag::CteList),
             25 => Some(NodeTag::WithClause),
-            26 => Some(NodeTag::DeleteStmt),
-            27 => Some(NodeTag::SetClause),
-            28 => Some(NodeTag::SetClauseList),
-            29 => Some(NodeTag::UpdateStmt),
-            30 => Some(NodeTag::InsertStmt),
-            31 => Some(NodeTag::BinaryExpr),
-            32 => Some(NodeTag::UnaryExpr),
-            33 => Some(NodeTag::Literal),
-            34 => Some(NodeTag::IdentName),
-            35 => Some(NodeTag::Error),
-            36 => Some(NodeTag::ExprList),
-            37 => Some(NodeTag::FunctionCall),
-            38 => Some(NodeTag::Variable),
-            39 => Some(NodeTag::CollateExpr),
-            40 => Some(NodeTag::RaiseExpr),
-            41 => Some(NodeTag::QualifiedName),
-            42 => Some(NodeTag::DropStmt),
-            43 => Some(NodeTag::AlterTableStmt),
-            44 => Some(NodeTag::TransactionStmt),
-            45 => Some(NodeTag::SavepointStmt),
-            46 => Some(NodeTag::ResultColumn),
-            47 => Some(NodeTag::ResultColumnList),
-            48 => Some(NodeTag::SelectStmt),
-            49 => Some(NodeTag::OrderingTerm),
-            50 => Some(NodeTag::OrderByList),
-            51 => Some(NodeTag::LimitClause),
-            52 => Some(NodeTag::TableRef),
-            53 => Some(NodeTag::SubqueryTableSource),
-            54 => Some(NodeTag::JoinClause),
-            55 => Some(NodeTag::JoinPrefix),
-            56 => Some(NodeTag::TriggerEvent),
-            57 => Some(NodeTag::TriggerCmdList),
-            58 => Some(NodeTag::CreateTriggerStmt),
-            59 => Some(NodeTag::CreateVirtualTableStmt),
-            60 => Some(NodeTag::PragmaStmt),
-            61 => Some(NodeTag::AnalyzeOrReindexStmt),
-            62 => Some(NodeTag::AttachStmt),
-            63 => Some(NodeTag::DetachStmt),
-            64 => Some(NodeTag::VacuumStmt),
-            65 => Some(NodeTag::ExplainStmt),
-            66 => Some(NodeTag::CreateIndexStmt),
-            67 => Some(NodeTag::CreateViewStmt),
-            68 => Some(NodeTag::ValuesRowList),
-            69 => Some(NodeTag::ValuesClause),
-            70 => Some(NodeTag::FrameBound),
-            71 => Some(NodeTag::FrameSpec),
-            72 => Some(NodeTag::WindowDef),
-            73 => Some(NodeTag::WindowDefList),
-            74 => Some(NodeTag::NamedWindowDef),
-            75 => Some(NodeTag::NamedWindowDefList),
-            76 => Some(NodeTag::FilterOver),
+            26 => Some(NodeTag::UpsertClause),
+            27 => Some(NodeTag::UpsertClauseList),
+            28 => Some(NodeTag::DeleteStmt),
+            29 => Some(NodeTag::SetClause),
+            30 => Some(NodeTag::SetClauseList),
+            31 => Some(NodeTag::UpdateStmt),
+            32 => Some(NodeTag::InsertStmt),
+            33 => Some(NodeTag::BinaryExpr),
+            34 => Some(NodeTag::UnaryExpr),
+            35 => Some(NodeTag::Literal),
+            36 => Some(NodeTag::IdentName),
+            37 => Some(NodeTag::Error),
+            38 => Some(NodeTag::ExprList),
+            39 => Some(NodeTag::FunctionCall),
+            40 => Some(NodeTag::Variable),
+            41 => Some(NodeTag::CollateExpr),
+            42 => Some(NodeTag::RaiseExpr),
+            43 => Some(NodeTag::QualifiedName),
+            44 => Some(NodeTag::DropStmt),
+            45 => Some(NodeTag::AlterTableStmt),
+            46 => Some(NodeTag::TransactionStmt),
+            47 => Some(NodeTag::SavepointStmt),
+            48 => Some(NodeTag::ResultColumn),
+            49 => Some(NodeTag::ResultColumnList),
+            50 => Some(NodeTag::SelectStmt),
+            51 => Some(NodeTag::OrderingTerm),
+            52 => Some(NodeTag::OrderByList),
+            53 => Some(NodeTag::LimitClause),
+            54 => Some(NodeTag::TableRef),
+            55 => Some(NodeTag::SubqueryTableSource),
+            56 => Some(NodeTag::JoinClause),
+            57 => Some(NodeTag::JoinPrefix),
+            58 => Some(NodeTag::TriggerEvent),
+            59 => Some(NodeTag::TriggerCmdList),
+            60 => Some(NodeTag::CreateTriggerStmt),
+            61 => Some(NodeTag::CreateVirtualTableStmt),
+            62 => Some(NodeTag::PragmaStmt),
+            63 => Some(NodeTag::AnalyzeOrReindexStmt),
+            64 => Some(NodeTag::AttachStmt),
+            65 => Some(NodeTag::DetachStmt),
+            66 => Some(NodeTag::VacuumStmt),
+            67 => Some(NodeTag::ExplainStmt),
+            68 => Some(NodeTag::CreateIndexStmt),
+            69 => Some(NodeTag::CreateViewStmt),
+            70 => Some(NodeTag::ValuesRowList),
+            71 => Some(NodeTag::ValuesClause),
+            72 => Some(NodeTag::FrameBound),
+            73 => Some(NodeTag::FrameSpec),
+            74 => Some(NodeTag::WindowDef),
+            75 => Some(NodeTag::WindowDefList),
+            76 => Some(NodeTag::NamedWindowDef),
+            77 => Some(NodeTag::NamedWindowDefList),
+            78 => Some(NodeTag::FilterOver),
             _ => None,
         }
     }
@@ -451,6 +455,22 @@ impl ConflictAction {
             ConflictAction::Fail => "FAIL",
             ConflictAction::Ignore => "IGNORE",
             ConflictAction::Replace => "REPLACE",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum UpsertAction {
+    Nothing = 0,
+    Update = 1,
+}
+
+impl UpsertAction {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            UpsertAction::Nothing => "NOTHING",
+            UpsertAction::Update => "UPDATE",
         }
     }
 }
@@ -2867,6 +2887,87 @@ impl TypedNodeId for WithClauseId {
 }
 
 #[derive(Clone, Copy)]
+pub struct UpsertClause<'a> {
+    raw: &'a super::ffi::UpsertClause,
+    stmt_result: &'a AnyParsedStatement<'a>,
+    id: AnyNodeId,
+}
+
+impl std::fmt::Debug for UpsertClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for UpsertClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        AnyNode {
+            id: self.id,
+            stmt_result: self.stmt_result,
+        }
+        .fmt(f)
+    }
+}
+
+impl<'a> UpsertClause<'a> {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> UpsertClauseId {
+        UpsertClauseId(self.id)
+    }
+    pub fn columns(&self) -> Option<OrderByList<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
+    }
+    pub fn target_where(&self) -> Option<Expr<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.target_where)
+    }
+    pub fn action(&self) -> UpsertAction {
+        self.raw.action
+    }
+    pub fn setlist(&self) -> Option<SetClauseList<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.setlist)
+    }
+    pub fn update_where(&self) -> Option<Expr<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.update_where)
+    }
+}
+
+impl<'a> GrammarNodeType<'a> for UpsertClause<'a> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+        let raw = stmt_result.resolve_as::<super::ffi::UpsertClause>(id)?;
+        Some(UpsertClause {
+            raw,
+            stmt_result,
+            id,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct UpsertClauseId(AnyNodeId);
+
+impl UpsertClauseId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
+
+impl<'a> From<UpsertClause<'a>> for UpsertClauseId {
+    fn from(n: UpsertClause<'a>) -> Self {
+        n.node_id()
+    }
+}
+
+impl From<UpsertClauseId> for AnyNodeId {
+    fn from(id: UpsertClauseId) -> AnyNodeId {
+        id.0
+    }
+}
+
+impl TypedNodeId for UpsertClauseId {
+    type Node<'a> = UpsertClause<'a>;
+}
+
+#[derive(Clone, Copy)]
 pub struct DeleteStmt<'a> {
     raw: &'a super::ffi::DeleteStmt,
     stmt_result: &'a AnyParsedStatement<'a>,
@@ -2905,6 +3006,9 @@ impl<'a> DeleteStmt<'a> {
     }
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.limit_clause)
+    }
+    pub fn returning(&self) -> Option<ResultColumnList<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.returning)
     }
 }
 
@@ -3068,6 +3172,9 @@ impl<'a> UpdateStmt<'a> {
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.limit_clause)
     }
+    pub fn returning(&self) -> Option<ResultColumnList<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.returning)
+    }
 }
 
 impl<'a> GrammarNodeType<'a> for UpdateStmt<'a> {
@@ -3145,6 +3252,12 @@ impl<'a> InsertStmt<'a> {
     }
     pub fn source(&self) -> Option<Select<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.source)
+    }
+    pub fn upsert(&self) -> Option<UpsertClauseList<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.upsert)
+    }
+    pub fn returning(&self) -> Option<ResultColumnList<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.returning)
     }
 }
 
@@ -4555,6 +4668,9 @@ impl<'a> TableRef<'a> {
     }
     pub fn alias(&self) -> Option<Name<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.alias)
+    }
+    pub fn args(&self) -> Option<ExprList<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.args)
     }
 }
 
@@ -6262,6 +6378,34 @@ impl TypedNodeId for CteListId {
     type Node<'a> = CteList<'a>;
 }
 
+/// Typed list of `UpsertClause`.
+pub type UpsertClauseList<'a> = TypedNodeList<'a, super::grammar::Grammar, UpsertClause<'a>>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct UpsertClauseListId(AnyNodeId);
+
+impl UpsertClauseListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
+
+impl<'a> From<UpsertClauseList<'a>> for UpsertClauseListId {
+    fn from(n: UpsertClauseList<'a>) -> Self {
+        UpsertClauseListId(n.node_id().into())
+    }
+}
+
+impl From<UpsertClauseListId> for AnyNodeId {
+    fn from(id: UpsertClauseListId) -> AnyNodeId {
+        id.0
+    }
+}
+
+impl TypedNodeId for UpsertClauseListId {
+    type Node<'a> = UpsertClauseList<'a>;
+}
+
 /// Typed list of `SetClause`.
 pub type SetClauseList<'a> = TypedNodeList<'a, super::grammar::Grammar, SetClause<'a>>;
 
@@ -6519,6 +6663,9 @@ pub enum Node<'a> {
     /// List of [`CteDefinition`].
     CteList(CteList<'a>),
     WithClause(WithClause<'a>),
+    UpsertClause(UpsertClause<'a>),
+    /// List of [`UpsertClause`].
+    UpsertClauseList(UpsertClauseList<'a>),
     DeleteStmt(DeleteStmt<'a>),
     SetClause(SetClause<'a>),
     /// List of [`SetClause`].
@@ -6720,6 +6867,14 @@ impl<'a> Node<'a> {
                     stmt_result,
                     id,
                 }),
+                NodeTag::UpsertClause => Node::UpsertClause(UpsertClause {
+                    raw: &*ptr.cast::<super::ffi::UpsertClause>(),
+                    stmt_result,
+                    id,
+                }),
+                NodeTag::UpsertClauseList => Node::UpsertClauseList(
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
+                ),
                 NodeTag::DeleteStmt => Node::DeleteStmt(DeleteStmt {
                     raw: &*ptr.cast::<super::ffi::DeleteStmt>(),
                     stmt_result,
@@ -7009,6 +7164,8 @@ impl<'a> Node<'a> {
             Node::CteDefinition(..) => NodeTag::CteDefinition,
             Node::CteList(..) => NodeTag::CteList,
             Node::WithClause(..) => NodeTag::WithClause,
+            Node::UpsertClause(..) => NodeTag::UpsertClause,
+            Node::UpsertClauseList(..) => NodeTag::UpsertClauseList,
             Node::DeleteStmt(..) => NodeTag::DeleteStmt,
             Node::SetClause(..) => NodeTag::SetClause,
             Node::SetClauseList(..) => NodeTag::SetClauseList,
@@ -7092,6 +7249,8 @@ impl<'a> Node<'a> {
             Node::CteDefinition(n) => NodeId(n.node_id().into()),
             Node::CteList(n) => NodeId(n.node_id().into()),
             Node::WithClause(n) => NodeId(n.node_id().into()),
+            Node::UpsertClause(n) => NodeId(n.node_id().into()),
+            Node::UpsertClauseList(n) => NodeId(n.node_id().into()),
             Node::DeleteStmt(n) => NodeId(n.node_id().into()),
             Node::SetClause(n) => NodeId(n.node_id().into()),
             Node::SetClauseList(n) => NodeId(n.node_id().into()),

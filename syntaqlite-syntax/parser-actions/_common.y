@@ -62,6 +62,18 @@ typedef struct SynqWithValue {
   uint32_t cte_list;
   int is_recursive;
 } SynqWithValue;
+
+// where_opt_ret: WHERE expr + optional RETURNING column list.
+typedef struct SynqWhereRetValue {
+  uint32_t where_expr;
+  uint32_t returning;
+} SynqWhereRetValue;
+
+// upsert: accumulated ON CONFLICT clauses + optional RETURNING column list.
+typedef struct SynqUpsertValue {
+  uint32_t clauses;
+  uint32_t returning;
+} SynqUpsertValue;
 /* END GRAMMAR_TYPES */
 
 #define YYPARSEFREENEVERNULL 1

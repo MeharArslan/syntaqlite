@@ -130,6 +130,11 @@ typedef enum SyntaqliteConflictAction {
   SYNTAQLITE_CONFLICT_ACTION_REPLACE = 5
 } SyntaqliteConflictAction;
 
+typedef enum SyntaqliteUpsertAction {
+  SYNTAQLITE_UPSERT_ACTION_NOTHING = 0,
+  SYNTAQLITE_UPSERT_ACTION_UPDATE = 1
+} SyntaqliteUpsertAction;
+
 typedef enum SyntaqliteRaiseType {
   SYNTAQLITE_RAISE_TYPE_IGNORE = 0,
   SYNTAQLITE_RAISE_TYPE_ROLLBACK = 1,
@@ -312,57 +317,59 @@ typedef enum SyntaqliteNodeTag {
   SYNTAQLITE_NODE_CTE_DEFINITION = 23,
   SYNTAQLITE_NODE_CTE_LIST = 24,
   SYNTAQLITE_NODE_WITH_CLAUSE = 25,
-  SYNTAQLITE_NODE_DELETE_STMT = 26,
-  SYNTAQLITE_NODE_SET_CLAUSE = 27,
-  SYNTAQLITE_NODE_SET_CLAUSE_LIST = 28,
-  SYNTAQLITE_NODE_UPDATE_STMT = 29,
-  SYNTAQLITE_NODE_INSERT_STMT = 30,
-  SYNTAQLITE_NODE_BINARY_EXPR = 31,
-  SYNTAQLITE_NODE_UNARY_EXPR = 32,
-  SYNTAQLITE_NODE_LITERAL = 33,
-  SYNTAQLITE_NODE_IDENT_NAME = 34,
-  SYNTAQLITE_NODE_ERROR = 35,
-  SYNTAQLITE_NODE_EXPR_LIST = 36,
-  SYNTAQLITE_NODE_FUNCTION_CALL = 37,
-  SYNTAQLITE_NODE_VARIABLE = 38,
-  SYNTAQLITE_NODE_COLLATE_EXPR = 39,
-  SYNTAQLITE_NODE_RAISE_EXPR = 40,
-  SYNTAQLITE_NODE_QUALIFIED_NAME = 41,
-  SYNTAQLITE_NODE_DROP_STMT = 42,
-  SYNTAQLITE_NODE_ALTER_TABLE_STMT = 43,
-  SYNTAQLITE_NODE_TRANSACTION_STMT = 44,
-  SYNTAQLITE_NODE_SAVEPOINT_STMT = 45,
-  SYNTAQLITE_NODE_RESULT_COLUMN = 46,
-  SYNTAQLITE_NODE_RESULT_COLUMN_LIST = 47,
-  SYNTAQLITE_NODE_SELECT_STMT = 48,
-  SYNTAQLITE_NODE_ORDERING_TERM = 49,
-  SYNTAQLITE_NODE_ORDER_BY_LIST = 50,
-  SYNTAQLITE_NODE_LIMIT_CLAUSE = 51,
-  SYNTAQLITE_NODE_TABLE_REF = 52,
-  SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE = 53,
-  SYNTAQLITE_NODE_JOIN_CLAUSE = 54,
-  SYNTAQLITE_NODE_JOIN_PREFIX = 55,
-  SYNTAQLITE_NODE_TRIGGER_EVENT = 56,
-  SYNTAQLITE_NODE_TRIGGER_CMD_LIST = 57,
-  SYNTAQLITE_NODE_CREATE_TRIGGER_STMT = 58,
-  SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT = 59,
-  SYNTAQLITE_NODE_PRAGMA_STMT = 60,
-  SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT = 61,
-  SYNTAQLITE_NODE_ATTACH_STMT = 62,
-  SYNTAQLITE_NODE_DETACH_STMT = 63,
-  SYNTAQLITE_NODE_VACUUM_STMT = 64,
-  SYNTAQLITE_NODE_EXPLAIN_STMT = 65,
-  SYNTAQLITE_NODE_CREATE_INDEX_STMT = 66,
-  SYNTAQLITE_NODE_CREATE_VIEW_STMT = 67,
-  SYNTAQLITE_NODE_VALUES_ROW_LIST = 68,
-  SYNTAQLITE_NODE_VALUES_CLAUSE = 69,
-  SYNTAQLITE_NODE_FRAME_BOUND = 70,
-  SYNTAQLITE_NODE_FRAME_SPEC = 71,
-  SYNTAQLITE_NODE_WINDOW_DEF = 72,
-  SYNTAQLITE_NODE_WINDOW_DEF_LIST = 73,
-  SYNTAQLITE_NODE_NAMED_WINDOW_DEF = 74,
-  SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST = 75,
-  SYNTAQLITE_NODE_FILTER_OVER = 76,
+  SYNTAQLITE_NODE_UPSERT_CLAUSE = 26,
+  SYNTAQLITE_NODE_UPSERT_CLAUSE_LIST = 27,
+  SYNTAQLITE_NODE_DELETE_STMT = 28,
+  SYNTAQLITE_NODE_SET_CLAUSE = 29,
+  SYNTAQLITE_NODE_SET_CLAUSE_LIST = 30,
+  SYNTAQLITE_NODE_UPDATE_STMT = 31,
+  SYNTAQLITE_NODE_INSERT_STMT = 32,
+  SYNTAQLITE_NODE_BINARY_EXPR = 33,
+  SYNTAQLITE_NODE_UNARY_EXPR = 34,
+  SYNTAQLITE_NODE_LITERAL = 35,
+  SYNTAQLITE_NODE_IDENT_NAME = 36,
+  SYNTAQLITE_NODE_ERROR = 37,
+  SYNTAQLITE_NODE_EXPR_LIST = 38,
+  SYNTAQLITE_NODE_FUNCTION_CALL = 39,
+  SYNTAQLITE_NODE_VARIABLE = 40,
+  SYNTAQLITE_NODE_COLLATE_EXPR = 41,
+  SYNTAQLITE_NODE_RAISE_EXPR = 42,
+  SYNTAQLITE_NODE_QUALIFIED_NAME = 43,
+  SYNTAQLITE_NODE_DROP_STMT = 44,
+  SYNTAQLITE_NODE_ALTER_TABLE_STMT = 45,
+  SYNTAQLITE_NODE_TRANSACTION_STMT = 46,
+  SYNTAQLITE_NODE_SAVEPOINT_STMT = 47,
+  SYNTAQLITE_NODE_RESULT_COLUMN = 48,
+  SYNTAQLITE_NODE_RESULT_COLUMN_LIST = 49,
+  SYNTAQLITE_NODE_SELECT_STMT = 50,
+  SYNTAQLITE_NODE_ORDERING_TERM = 51,
+  SYNTAQLITE_NODE_ORDER_BY_LIST = 52,
+  SYNTAQLITE_NODE_LIMIT_CLAUSE = 53,
+  SYNTAQLITE_NODE_TABLE_REF = 54,
+  SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE = 55,
+  SYNTAQLITE_NODE_JOIN_CLAUSE = 56,
+  SYNTAQLITE_NODE_JOIN_PREFIX = 57,
+  SYNTAQLITE_NODE_TRIGGER_EVENT = 58,
+  SYNTAQLITE_NODE_TRIGGER_CMD_LIST = 59,
+  SYNTAQLITE_NODE_CREATE_TRIGGER_STMT = 60,
+  SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT = 61,
+  SYNTAQLITE_NODE_PRAGMA_STMT = 62,
+  SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT = 63,
+  SYNTAQLITE_NODE_ATTACH_STMT = 64,
+  SYNTAQLITE_NODE_DETACH_STMT = 65,
+  SYNTAQLITE_NODE_VACUUM_STMT = 66,
+  SYNTAQLITE_NODE_EXPLAIN_STMT = 67,
+  SYNTAQLITE_NODE_CREATE_INDEX_STMT = 68,
+  SYNTAQLITE_NODE_CREATE_VIEW_STMT = 69,
+  SYNTAQLITE_NODE_VALUES_ROW_LIST = 70,
+  SYNTAQLITE_NODE_VALUES_CLAUSE = 71,
+  SYNTAQLITE_NODE_FRAME_BOUND = 72,
+  SYNTAQLITE_NODE_FRAME_SPEC = 73,
+  SYNTAQLITE_NODE_WINDOW_DEF = 74,
+  SYNTAQLITE_NODE_WINDOW_DEF_LIST = 75,
+  SYNTAQLITE_NODE_NAMED_WINDOW_DEF = 76,
+  SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST = 77,
+  SYNTAQLITE_NODE_FILTER_OVER = 78,
   SYNTAQLITE_NODE_COUNT
 } SyntaqliteNodeTag;
 #ifdef __cplusplus
@@ -573,12 +580,29 @@ typedef struct SyntaqliteWithClause {
   uint32_t select;
 } SyntaqliteWithClause;
 
+typedef struct SyntaqliteUpsertClause {
+  SyntaqliteNodeTag tag;
+  uint32_t columns;
+  uint32_t target_where;
+  SyntaqliteUpsertAction action;
+  uint32_t setlist;
+  uint32_t update_where;
+} SyntaqliteUpsertClause;
+
+// List of UpsertClause
+typedef struct SyntaqliteUpsertClauseList {
+  uint32_t tag;
+  uint32_t count;
+  uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
+} SyntaqliteUpsertClauseList;
+
 typedef struct SyntaqliteDeleteStmt {
   SyntaqliteNodeTag tag;
   uint32_t table;
   uint32_t where_clause;
   uint32_t orderby;
   uint32_t limit_clause;
+  uint32_t returning;
 } SyntaqliteDeleteStmt;
 
 typedef struct SyntaqliteSetClause {
@@ -604,6 +628,7 @@ typedef struct SyntaqliteUpdateStmt {
   uint32_t where_clause;
   uint32_t orderby;
   uint32_t limit_clause;
+  uint32_t returning;
 } SyntaqliteUpdateStmt;
 
 typedef struct SyntaqliteInsertStmt {
@@ -612,6 +637,8 @@ typedef struct SyntaqliteInsertStmt {
   uint32_t table;
   uint32_t columns;
   uint32_t source;
+  uint32_t upsert;
+  uint32_t returning;
 } SyntaqliteInsertStmt;
 
 typedef struct SyntaqliteBinaryExpr {
@@ -761,6 +788,7 @@ typedef struct SyntaqliteTableRef {
   SyntaqliteSourceSpan table_name;
   SyntaqliteSourceSpan schema;
   uint32_t alias;
+  uint32_t args;
 } SyntaqliteTableRef;
 
 typedef struct SyntaqliteSubqueryTableSource {
@@ -969,6 +997,8 @@ typedef union SyntaqliteNode {
   SyntaqliteCteDefinition cte_definition;
   SyntaqliteCteList cte_list;
   SyntaqliteWithClause with_clause;
+  SyntaqliteUpsertClause upsert_clause;
+  SyntaqliteUpsertClauseList upsert_clause_list;
   SyntaqliteDeleteStmt delete_stmt;
   SyntaqliteSetClause set_clause;
   SyntaqliteSetClauseList set_clause_list;
@@ -1685,6 +1715,16 @@ template <>
 struct NodeTag<SyntaqliteWithClause> {
   static constexpr bool kHasTag = true;
   static constexpr uint32_t kValue = SYNTAQLITE_NODE_WITH_CLAUSE;
+};
+template <>
+struct NodeTag<SyntaqliteUpsertClause> {
+  static constexpr bool kHasTag = true;
+  static constexpr uint32_t kValue = SYNTAQLITE_NODE_UPSERT_CLAUSE;
+};
+template <>
+struct NodeTag<SyntaqliteUpsertClauseList> {
+  static constexpr bool kHasTag = true;
+  static constexpr uint32_t kValue = SYNTAQLITE_NODE_UPSERT_CLAUSE_LIST;
 };
 template <>
 struct NodeTag<SyntaqliteDeleteStmt> {

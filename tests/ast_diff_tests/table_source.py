@@ -26,6 +26,7 @@ class TableRefBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -54,6 +55,7 @@ class TableRefBasic(TestSuite):
                   alias:
                     IdentName
                       source: "x"
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -80,6 +82,7 @@ class TableRefBasic(TestSuite):
                   table_name: "t"
                   schema: "main"
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -108,6 +111,7 @@ class TableRefBasic(TestSuite):
                   alias:
                     IdentName
                       source: "x"
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -141,11 +145,13 @@ class JoinBasic(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -177,11 +183,13 @@ class JoinBasic(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -225,11 +233,13 @@ class JoinBasic(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -273,11 +283,13 @@ class JoinBasic(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -321,11 +333,13 @@ class JoinBasic(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -357,11 +371,13 @@ class JoinBasic(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -405,11 +421,13 @@ class JoinBasic(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ
@@ -457,11 +475,13 @@ class JoinNatural(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -493,11 +513,13 @@ class JoinNatural(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -533,11 +555,13 @@ class JoinUsing(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns:
                     ExprList [1 items]
@@ -574,11 +598,13 @@ class JoinUsing(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns:
                     ExprList [2 items]
@@ -626,11 +652,13 @@ class JoinMultiple(TestSuite):
                           table_name: "a"
                           schema: (none)
                           alias: (none)
+                          args: (none)
                       right:
                         TableRef
                           table_name: "b"
                           schema: (none)
                           alias: (none)
+                          args: (none)
                       on_expr:
                         BinaryExpr
                           op: EQ
@@ -650,6 +678,7 @@ class JoinMultiple(TestSuite):
                       table_name: "c"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr:
                     BinaryExpr
                       op: EQ

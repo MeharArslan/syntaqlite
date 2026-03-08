@@ -19,6 +19,9 @@
 %type orconf {int}
 %type resolvetype {int}
 %type indexed_opt {SynqParseToken}
+%type where_opt_ret {SynqWhereRetValue}
+%type upsert {SynqUpsertValue}
+%type returning {uint32_t}
 
 // ============ WITH for DML ============
 // The 'with' nonterminal is used by DML statements (DELETE/UPDATE/INSERT).
@@ -50,7 +53,7 @@ cmd(A) ::= with(W) DELETE FROM xfullname(X) indexed_opt(I) where_opt_ret(E) orde
             pCtx->error = 1;
         }
     }
-    uint32_t del = synq_parse_delete_stmt(pCtx, X, E, O, L);
+    uint32_t del = synq_parse_delete_stmt(pCtx, X, E.where_expr, O, L, E.returning);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
         A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, del);
     } else {
@@ -69,7 +72,7 @@ cmd(A) ::= with(W) UPDATE orconf(R) xfullname(X) indexed_opt(I) SET setlist(Y) f
             pCtx->error = 1;
         }
     }
-    uint32_t upd = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, X, Y, F, E, O, L);
+    uint32_t upd = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, X, Y, F, E.where_expr, O, L, E.returning);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
         A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, upd);
     } else {
@@ -80,8 +83,7 @@ cmd(A) ::= with(W) UPDATE orconf(R) xfullname(X) indexed_opt(I) SET setlist(Y) f
 // ============ INSERT ============
 
 cmd(A) ::= with(W) insert_cmd(R) INTO xfullname(X) idlist_opt(F) select(S) upsert(U). {
-    (void)U;
-    uint32_t ins = synq_parse_insert_stmt(pCtx, (SyntaqliteConflictAction)R, X, F, S);
+    uint32_t ins = synq_parse_insert_stmt(pCtx, (SyntaqliteConflictAction)R, X, F, S, U.clauses, U.returning);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
         A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, ins);
     } else {
@@ -89,8 +91,8 @@ cmd(A) ::= with(W) insert_cmd(R) INTO xfullname(X) idlist_opt(F) select(S) upser
     }
 }
 
-cmd(A) ::= with(W) insert_cmd(R) INTO xfullname(X) idlist_opt(F) DEFAULT VALUES returning. {
-    uint32_t ins = synq_parse_insert_stmt(pCtx, (SyntaqliteConflictAction)R, X, F, SYNTAQLITE_NULL_NODE);
+cmd(A) ::= with(W) insert_cmd(R) INTO xfullname(X) idlist_opt(F) DEFAULT VALUES returning(V). {
+    uint32_t ins = synq_parse_insert_stmt(pCtx, (SyntaqliteConflictAction)R, X, F, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, V);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
         A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, ins);
     } else {
@@ -136,24 +138,24 @@ resolvetype(A) ::= REPLACE. {
 
 xfullname(A) ::= nm(X). {
     A = synq_parse_table_ref(pCtx,
-        synq_span(pCtx, X), SYNQ_NO_SPAN, SYNTAQLITE_NULL_NODE);
+        synq_span(pCtx, X), SYNQ_NO_SPAN, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
 }
 
 xfullname(A) ::= nm(X) DOT nm(Y). {
     A = synq_parse_table_ref(pCtx,
-        synq_span(pCtx, Y), synq_span(pCtx, X), SYNTAQLITE_NULL_NODE);
+        synq_span(pCtx, Y), synq_span(pCtx, X), SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
 }
 
 xfullname(A) ::= nm(X) DOT nm(Y) AS nm(Z). {
     uint32_t alias = synq_parse_ident_name(pCtx, synq_span(pCtx, Z));
     A = synq_parse_table_ref(pCtx,
-        synq_span(pCtx, Y), synq_span(pCtx, X), alias);
+        synq_span(pCtx, Y), synq_span(pCtx, X), alias, SYNTAQLITE_NULL_NODE);
 }
 
 xfullname(A) ::= nm(X) AS nm(Z). {
     uint32_t alias = synq_parse_ident_name(pCtx, synq_span(pCtx, Z));
     A = synq_parse_table_ref(pCtx,
-        synq_span(pCtx, X), SYNQ_NO_SPAN, alias);
+        synq_span(pCtx, X), SYNQ_NO_SPAN, alias, SYNTAQLITE_NULL_NODE);
 }
 
 // ============ indexed_opt (ignore index hints in AST) ============
@@ -169,23 +171,23 @@ indexed_opt(A) ::= indexed_by(A). {
 // ============ where_opt_ret (WHERE with optional RETURNING) ============
 
 where_opt_ret(A) ::= . {
-    A = SYNTAQLITE_NULL_NODE;
+    A.where_expr = SYNTAQLITE_NULL_NODE;
+    A.returning = SYNTAQLITE_NULL_NODE;
 }
 
 where_opt_ret(A) ::= WHERE expr(X). {
-    A = X;
+    A.where_expr = X;
+    A.returning = SYNTAQLITE_NULL_NODE;
 }
 
 where_opt_ret(A) ::= RETURNING selcollist(X). {
-    // Ignore RETURNING clause for now (just discard the column list)
-    (void)X;
-    A = SYNTAQLITE_NULL_NODE;
+    A.where_expr = SYNTAQLITE_NULL_NODE;
+    A.returning = X;
 }
 
 where_opt_ret(A) ::= WHERE expr(X) RETURNING selcollist(Y). {
-    // Keep WHERE, ignore RETURNING
-    (void)Y;
-    A = X;
+    A.where_expr = X;
+    A.returning = Y;
 }
 
 // ============ SET list (UPDATE assignments) ============
@@ -224,42 +226,48 @@ idlist_opt(A) ::= LP idlist(X) RP. {
     A = X;
 }
 
-// ============ UPSERT (stub - ignore ON CONFLICT for now) ============
+// ============ UPSERT (ON CONFLICT clauses) ============
 
 upsert(A) ::= . {
-    A = SYNTAQLITE_NULL_NODE;
+    A.clauses = SYNTAQLITE_NULL_NODE;
+    A.returning = SYNTAQLITE_NULL_NODE;
 }
 
 upsert(A) ::= RETURNING selcollist(X). {
-    (void)X;
-    A = SYNTAQLITE_NULL_NODE;
+    A.clauses = SYNTAQLITE_NULL_NODE;
+    A.returning = X;
 }
 
 upsert(A) ::= ON CONFLICT LP sortlist(T) RP where_opt(TW) DO UPDATE SET setlist(Z) where_opt(W) upsert(N). {
-    (void)T; (void)TW; (void)Z; (void)W; (void)N;
-    A = SYNTAQLITE_NULL_NODE;
+    uint32_t clause = synq_parse_upsert_clause(pCtx, T, TW, (SyntaqliteUpsertAction)SYNTAQLITE_UPSERT_ACTION_UPDATE, Z, W);
+    A.clauses = synq_parse_upsert_clause_list(pCtx, N.clauses, clause);
+    A.returning = N.returning;
 }
 
 upsert(A) ::= ON CONFLICT LP sortlist(T) RP where_opt(TW) DO NOTHING upsert(N). {
-    (void)T; (void)TW; (void)N;
+    uint32_t clause = synq_parse_upsert_clause(pCtx, T, TW, (SyntaqliteUpsertAction)SYNTAQLITE_UPSERT_ACTION_NOTHING, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+    A.clauses = synq_parse_upsert_clause_list(pCtx, N.clauses, clause);
+    A.returning = N.returning;
+}
+
+upsert(A) ::= ON CONFLICT DO NOTHING returning(V). {
+    uint32_t clause = synq_parse_upsert_clause(pCtx, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, (SyntaqliteUpsertAction)SYNTAQLITE_UPSERT_ACTION_NOTHING, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+    A.clauses = synq_parse_upsert_clause_list(pCtx, SYNTAQLITE_NULL_NODE, clause);
+    A.returning = V;
+}
+
+upsert(A) ::= ON CONFLICT DO UPDATE SET setlist(Z) where_opt(W) returning(V). {
+    uint32_t clause = synq_parse_upsert_clause(pCtx, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, (SyntaqliteUpsertAction)SYNTAQLITE_UPSERT_ACTION_UPDATE, Z, W);
+    A.clauses = synq_parse_upsert_clause_list(pCtx, SYNTAQLITE_NULL_NODE, clause);
+    A.returning = V;
+}
+
+// ============ RETURNING ============
+
+returning(A) ::= RETURNING selcollist(X). {
+    A = X;
+}
+
+returning(A) ::= . {
     A = SYNTAQLITE_NULL_NODE;
-}
-
-upsert(A) ::= ON CONFLICT DO NOTHING returning. {
-    A = SYNTAQLITE_NULL_NODE;
-}
-
-upsert(A) ::= ON CONFLICT DO UPDATE SET setlist(Z) where_opt(W) returning. {
-    (void)Z; (void)W;
-    A = SYNTAQLITE_NULL_NODE;
-}
-
-// ============ RETURNING (stub) ============
-
-returning ::= RETURNING selcollist(X). {
-    (void)X;
-}
-
-returning ::= . {
-    // empty
 }

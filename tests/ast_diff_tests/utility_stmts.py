@@ -283,6 +283,7 @@ class ExplainStmts(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -487,6 +488,7 @@ class CreateViewStmts(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -520,6 +522,7 @@ class CreateViewStmts(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -553,6 +556,7 @@ class CreateViewStmts(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -607,6 +611,7 @@ class CreateViewStmts(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)

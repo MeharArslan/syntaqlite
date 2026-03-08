@@ -7,12 +7,14 @@ node TableRef {
   table_name: inline SyntaqliteSourceSpan
   schema: inline SyntaqliteSourceSpan
   alias: index Name
+  args: index ExprList
 
   semantic { source_ref(kind: table, name: table_name, alias: alias) }
 
   fmt {
     if_span(schema) { span(schema) "." }
     span(table_name)
+    if_set(args) { "(" child(args) ")" }
     if_set(alias) { " AS " child(alias) }
   }
 }

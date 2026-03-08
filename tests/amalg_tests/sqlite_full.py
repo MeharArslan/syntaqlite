@@ -59,6 +59,7 @@ class SqliteAmalgFull(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause:
                 BinaryExpr
                   op: EQ

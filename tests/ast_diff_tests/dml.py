@@ -19,9 +19,11 @@ class DeleteBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -35,6 +37,7 @@ class DeleteBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause:
                 BinaryExpr
                   op: EQ
@@ -49,6 +52,7 @@ class DeleteBasic(TestSuite):
                       source: "1"
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -62,9 +66,11 @@ class DeleteBasic(TestSuite):
                   table_name: "t"
                   schema: "main"
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -83,6 +89,7 @@ class InsertBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -98,6 +105,8 @@ class InsertBasic(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "3"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -112,6 +121,7 @@ class InsertBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns:
                 ExprList [2 items]
                   ColumnRef
@@ -133,6 +143,8 @@ class InsertBasic(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "2"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -147,6 +159,7 @@ class InsertBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 SelectStmt
@@ -162,12 +175,15 @@ class InsertBasic(TestSuite):
                       table_name: "s"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
                   orderby: (none)
                   limit_clause: (none)
                   window_clause: (none)
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -182,8 +198,11 @@ class InsertBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source: (none)
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -202,6 +221,7 @@ class InsertConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -211,6 +231,8 @@ class InsertConflict(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "1"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -225,6 +247,7 @@ class InsertConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -234,6 +257,8 @@ class InsertConflict(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "1"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -248,6 +273,7 @@ class InsertConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -257,6 +283,8 @@ class InsertConflict(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "1"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -271,6 +299,7 @@ class InsertConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -280,6 +309,8 @@ class InsertConflict(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "1"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -294,6 +325,7 @@ class InsertConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -303,6 +335,8 @@ class InsertConflict(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "1"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -317,6 +351,7 @@ class InsertConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -326,6 +361,8 @@ class InsertConflict(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "1"
+              upsert: (none)
+              returning: (none)
 """,
         )
 
@@ -344,6 +381,7 @@ class UpdateBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -357,6 +395,7 @@ class UpdateBasic(TestSuite):
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -371,6 +410,7 @@ class UpdateBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [2 items]
                   SetClause
@@ -402,6 +442,7 @@ class UpdateBasic(TestSuite):
                       source: "3"
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -416,6 +457,7 @@ class UpdateBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -429,6 +471,7 @@ class UpdateBasic(TestSuite):
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -475,6 +518,7 @@ class DmlWithCte(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   columns: (none)
                   source:
                     SelectStmt
@@ -490,11 +534,14 @@ class DmlWithCte(TestSuite):
                           table_name: "cte"
                           schema: (none)
                           alias: (none)
+                          args: (none)
                       where_clause: (none)
                       groupby: (none)
                       having: (none)
                       orderby: (none)
                       limit_clause: (none)
                       window_clause: (none)
+                  upsert: (none)
+                  returning: (none)
 """,
         )

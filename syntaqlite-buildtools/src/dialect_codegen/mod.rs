@@ -553,8 +553,8 @@ mod tests {
 
         // These values match the current generated NodeTag enum.
         assert_eq!(model.tag_for("AggregateFunctionCall"), 1);
-        assert_eq!(model.tag_for("SelectStmt"), 48);
-        assert_eq!(model.tag_for("FilterOver"), 76);
-        assert_eq!(model.base_tag_count(), 76);
+        assert_eq!(model.tag_for("SelectStmt"), 50);
+        assert_eq!(model.tag_for("FilterOver"), 78);
+        assert_eq!(model.base_tag_count(), 78);
     }
 }

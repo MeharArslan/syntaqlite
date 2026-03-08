@@ -333,6 +333,7 @@ class CreateTableAsSelect(TestSuite):
                       table_name: "t1"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)

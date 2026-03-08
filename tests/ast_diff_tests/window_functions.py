@@ -46,6 +46,7 @@ class WindowFunctionBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -88,6 +89,7 @@ class WindowFunctionBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -130,6 +132,7 @@ class WindowFunctionBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -200,6 +203,7 @@ class FilterClause(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -262,6 +266,7 @@ class FilterClause(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -334,6 +339,7 @@ class FrameSpecification(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -396,6 +402,7 @@ class FrameSpecification(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -458,6 +465,7 @@ class FrameSpecification(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -523,6 +531,7 @@ class FrameSpecification(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -553,6 +562,7 @@ class WindowClause(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -633,6 +643,7 @@ class WindowClause(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -748,6 +759,7 @@ class AggregateWithWindowFunction(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)

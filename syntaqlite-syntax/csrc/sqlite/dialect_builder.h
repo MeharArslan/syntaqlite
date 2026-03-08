@@ -327,18 +327,37 @@ static inline uint32_t synq_parse_with_clause(SynqParseCtx* ctx,
       (uint32_t)sizeof(SyntaqliteWithClause));
 }
 
+static inline uint32_t synq_parse_upsert_clause(SynqParseCtx* ctx,
+                                                uint32_t columns,
+                                                uint32_t target_where,
+                                                SyntaqliteUpsertAction action,
+                                                uint32_t setlist,
+                                                uint32_t update_where) {
+  return synq_parse_build(
+      ctx,
+      &(SyntaqliteUpsertClause){.tag = SYNTAQLITE_NODE_UPSERT_CLAUSE,
+                                .columns = columns,
+                                .target_where = target_where,
+                                .action = action,
+                                .setlist = setlist,
+                                .update_where = update_where},
+      (uint32_t)sizeof(SyntaqliteUpsertClause));
+}
+
 static inline uint32_t synq_parse_delete_stmt(SynqParseCtx* ctx,
                                               uint32_t table,
                                               uint32_t where_clause,
                                               uint32_t orderby,
-                                              uint32_t limit_clause) {
+                                              uint32_t limit_clause,
+                                              uint32_t returning) {
   return synq_parse_build(
       ctx,
       &(SyntaqliteDeleteStmt){.tag = SYNTAQLITE_NODE_DELETE_STMT,
                               .table = table,
                               .where_clause = where_clause,
                               .orderby = orderby,
-                              .limit_clause = limit_clause},
+                              .limit_clause = limit_clause,
+                              .returning = returning},
       (uint32_t)sizeof(SyntaqliteDeleteStmt));
 }
 
@@ -363,7 +382,8 @@ static inline uint32_t synq_parse_update_stmt(
     uint32_t from_clause,
     uint32_t where_clause,
     uint32_t orderby,
-    uint32_t limit_clause) {
+    uint32_t limit_clause,
+    uint32_t returning) {
   return synq_parse_build(
       ctx,
       &(SyntaqliteUpdateStmt){.tag = SYNTAQLITE_NODE_UPDATE_STMT,
@@ -373,7 +393,8 @@ static inline uint32_t synq_parse_update_stmt(
                               .from_clause = from_clause,
                               .where_clause = where_clause,
                               .orderby = orderby,
-                              .limit_clause = limit_clause},
+                              .limit_clause = limit_clause,
+                              .returning = returning},
       (uint32_t)sizeof(SyntaqliteUpdateStmt));
 }
 
@@ -382,14 +403,18 @@ static inline uint32_t synq_parse_insert_stmt(
     SyntaqliteConflictAction conflict_action,
     uint32_t table,
     uint32_t columns,
-    uint32_t source) {
+    uint32_t source,
+    uint32_t upsert,
+    uint32_t returning) {
   return synq_parse_build(
       ctx,
       &(SyntaqliteInsertStmt){.tag = SYNTAQLITE_NODE_INSERT_STMT,
                               .conflict_action = conflict_action,
                               .table = table,
                               .columns = columns,
-                              .source = source},
+                              .source = source,
+                              .upsert = upsert,
+                              .returning = returning},
       (uint32_t)sizeof(SyntaqliteInsertStmt));
 }
 
@@ -620,13 +645,15 @@ static inline uint32_t synq_parse_limit_clause(SynqParseCtx* ctx,
 static inline uint32_t synq_parse_table_ref(SynqParseCtx* ctx,
                                             SyntaqliteSourceSpan table_name,
                                             SyntaqliteSourceSpan schema,
-                                            uint32_t alias) {
+                                            uint32_t alias,
+                                            uint32_t args) {
   return synq_parse_build(
       ctx,
       &(SyntaqliteTableRef){.tag = SYNTAQLITE_NODE_TABLE_REF,
                             .table_name = table_name,
                             .schema = schema,
-                            .alias = alias},
+                            .alias = alias,
+                            .args = args},
       (uint32_t)sizeof(SyntaqliteTableRef));
 }
 
@@ -951,6 +978,13 @@ static inline uint32_t synq_parse_cte_list(SynqParseCtx* ctx,
                                            uint32_t list_id,
                                            uint32_t child) {
   return synq_parse_list_append(ctx, SYNTAQLITE_NODE_CTE_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_upsert_clause_list(SynqParseCtx* ctx,
+                                                     uint32_t list_id,
+                                                     uint32_t child) {
+  return synq_parse_list_append(ctx, SYNTAQLITE_NODE_UPSERT_CLAUSE_LIST,
+                                list_id, child);
 }
 
 static inline uint32_t synq_parse_set_clause_list(SynqParseCtx* ctx,

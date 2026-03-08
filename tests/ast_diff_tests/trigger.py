@@ -555,6 +555,7 @@ class CreateTriggerBody(TestSuite):
                         table_name: "t2"
                         schema: (none)
                         alias: (none)
+                        args: (none)
                     setlist:
                       SetClauseList [1 items]
                         SetClause
@@ -568,6 +569,7 @@ class CreateTriggerBody(TestSuite):
                     where_clause: (none)
                     orderby: (none)
                     limit_clause: (none)
+                    returning: (none)
 """,
         )
 
@@ -601,6 +603,7 @@ class CreateTriggerBody(TestSuite):
                         table_name: "t2"
                         schema: (none)
                         alias: (none)
+                        args: (none)
                     columns: (none)
                     source:
                       ValuesClause
@@ -610,6 +613,8 @@ class CreateTriggerBody(TestSuite):
                               Literal
                                 literal_type: INTEGER
                                 source: "1"
+                    upsert: (none)
+                    returning: (none)
 """,
         )
 
@@ -642,6 +647,7 @@ class CreateTriggerBody(TestSuite):
                         table_name: "t2"
                         schema: (none)
                         alias: (none)
+                        args: (none)
                     where_clause:
                       BinaryExpr
                         op: EQ
@@ -656,6 +662,7 @@ class CreateTriggerBody(TestSuite):
                             source: "1"
                     orderby: (none)
                     limit_clause: (none)
+                    returning: (none)
 """,
         )
 
