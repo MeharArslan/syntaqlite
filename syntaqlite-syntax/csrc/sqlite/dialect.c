@@ -84,6 +84,10 @@ struct SyntaqliteDialectTemplate {
   uint32_t fmt_dispatch_count;
   const uint8_t* roles_data;
   uint32_t roles_count;
+  const uint8_t* fmt_prec_table;
+  uint32_t fmt_prec_table_count;
+  const uint32_t* fmt_expr_meta;
+  uint32_t fmt_expr_meta_count;
 };
 
 static const struct SyntaqliteDialectTemplate SQLITE_DIALECT = {
@@ -99,6 +103,10 @@ static const struct SyntaqliteDialectTemplate SQLITE_DIALECT = {
     .fmt_dispatch_count = sqlite_fmt_dispatch_count,
     .roles_data = sqlite_roles_data,
     .roles_count = sqlite_roles_count,
+    .fmt_prec_table = sqlite_fmt_prec_table,
+    .fmt_prec_table_count = sqlite_fmt_prec_table_count,
+    .fmt_expr_meta = sqlite_fmt_expr_meta,
+    .fmt_expr_meta_count = sqlite_fmt_expr_meta_count,
 };
 
 const struct SyntaqliteDialectTemplate* syntaqlite_sqlite_dialect(void) {

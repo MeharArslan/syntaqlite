@@ -246,6 +246,10 @@ pub(crate) fn generate_dialect_c(
         w.line("    uint32_t fmt_dispatch_count;");
         w.line("    const uint8_t *roles_data;");
         w.line("    uint32_t roles_count;");
+        w.line("    const uint8_t *fmt_prec_table;");
+        w.line("    uint32_t fmt_prec_table_count;");
+        w.line("    const uint32_t *fmt_expr_meta;");
+        w.line("    uint32_t fmt_expr_meta_count;");
         w.line("};");
         w.newline();
         w.line(&format!(
@@ -283,6 +287,19 @@ pub(crate) fn generate_dialect_c(
         } else {
             w.line("    .roles_data = 0,");
             w.line("    .roles_count = 0,");
+        }
+        if has_fmt {
+            w.line(&format!("    .fmt_prec_table = {p}_prec_table,"));
+            w.line(&format!(
+                "    .fmt_prec_table_count = {p}_prec_table_count,"
+            ));
+            w.line(&format!("    .fmt_expr_meta = {p}_expr_meta,"));
+            w.line(&format!("    .fmt_expr_meta_count = {p}_expr_meta_count,"));
+        } else {
+            w.line("    .fmt_prec_table = 0,");
+            w.line("    .fmt_prec_table_count = 0,");
+            w.line("    .fmt_expr_meta = 0,");
+            w.line("    .fmt_expr_meta_count = 0,");
         }
         w.line("};");
         w.newline();

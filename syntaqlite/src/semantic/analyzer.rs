@@ -608,9 +608,7 @@ impl<'a> ValidationPass<'a> {
                 // SQLite resolves bare TRUE/FALSE identifiers to integer
                 // literals 1/0 (see sqlite3ExprIdToTrueFalse), so they are
                 // valid even when no column by that name exists.
-                if column.eq_ignore_ascii_case("true")
-                    || column.eq_ignore_ascii_case("false")
-                {
+                if column.eq_ignore_ascii_case("true") || column.eq_ignore_ascii_case("false") {
                     return;
                 }
                 let candidates = self.catalog.all_column_names(None);

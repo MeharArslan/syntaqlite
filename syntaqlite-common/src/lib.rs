@@ -324,6 +324,20 @@ pub mod fmt {
             pub const ENUM_DISPLAY: u8 = 21;
             /// Begin iteration over the node itself as a list (self-referential list node).
             pub const FOR_EACH_SELF_START: u8 = 22;
+            /// Recurse into a child node with precedence-aware parenthesization.
+            ///
+            /// `a` = child field index, `b` = prec table base (u16),
+            /// `c` = packed `(op_field_idx << 8) | is_right`.
+            /// At runtime, reads the parent's operator ordinal from `fields[op_field_idx]`,
+            /// looks up `(prec, group)` in the precedence table, then compares with the
+            /// child's precedence (if the child tag has expr-meta). Also wraps if the
+            /// child is a list node.
+            pub const CHILD_PREC: u8 = 23;
+            /// Recurse into a child node, wrapping in parens if the child is a list node.
+            ///
+            /// `a` = child field index. Handles the "ExprList-as-expression" case where
+            /// a list node appears in a single-expression context.
+            pub const CHILD_PAREN_LIST: u8 = 24;
         }
 
         /// A compiled op in its binary encoding: 6 bytes total.

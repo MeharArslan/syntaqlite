@@ -85,13 +85,11 @@ void syntaqlite_validator_add_table(SyntaqliteValidator* v,
 // ---------------------------------------------------------------------------
 
 // Number of diagnostics from the last analyze() call.
-uint32_t syntaqlite_validator_diagnostic_count(
-    const SyntaqliteValidator* v);
+uint32_t syntaqlite_validator_diagnostic_count(const SyntaqliteValidator* v);
 
 // Severity of the i-th diagnostic.
-SyntaqliteSeverity syntaqlite_diagnostic_severity(
-    const SyntaqliteValidator* v,
-    uint32_t index);
+SyntaqliteSeverity syntaqlite_diagnostic_severity(const SyntaqliteValidator* v,
+                                                  uint32_t index);
 
 // Human-readable message for the i-th diagnostic. The returned pointer is
 // valid until the next analyze() or destroy() call.

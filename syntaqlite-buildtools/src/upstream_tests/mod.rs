@@ -89,14 +89,8 @@ pub fn run(config: &RunConfig) -> Result<Summary, String> {
     eprintln!("  Parse OK:           {}", summary.parse_ok);
     eprintln!("  Parse error:        {}", summary.parse_error);
     eprintln!();
-    eprintln!(
-        "  Both accept:        {} (agreement)",
-        summary.both_accept
-    );
-    eprintln!(
-        "  Both reject:        {} (agreement)",
-        summary.both_reject
-    );
+    eprintln!("  Both accept:        {} (agreement)", summary.both_accept);
+    eprintln!("  Both reject:        {} (agreement)", summary.both_reject);
     eprintln!(
         "  False positives:    {} (syntaqlite rejects valid SQL)",
         summary.false_positive
@@ -259,8 +253,7 @@ fn write_baseline(path: &Path, summary: &Summary) -> Result<(), String> {
 
 /// Read baseline from a JSON file.
 fn read_baseline(path: &Path) -> Result<Summary, String> {
-    let content =
-        fs::read_to_string(path).map_err(|e| format!("Failed to read baseline: {e}"))?;
+    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read baseline: {e}"))?;
     serde_json::from_str(&content).map_err(|e| format!("Failed to parse baseline: {e}"))
 }
 

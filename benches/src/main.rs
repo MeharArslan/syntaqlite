@@ -47,8 +47,12 @@ fn profile_parser(sql: &str) {
         loop {
             match session.next() {
                 ParseOutcome::Done => break,
-                ParseOutcome::Ok(stmt) => { std::hint::black_box(stmt); }
-                ParseOutcome::Err(err) => { std::hint::black_box(err); }
+                ParseOutcome::Ok(stmt) => {
+                    std::hint::black_box(stmt);
+                }
+                ParseOutcome::Err(err) => {
+                    std::hint::black_box(err);
+                }
             }
         }
     }
@@ -63,7 +67,9 @@ fn profile_formatter(sql: &str) {
 
 fn main() {
     let sql = build_sql();
-    let mode = std::env::args().nth(1).unwrap_or_else(|| "formatter".into());
+    let mode = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "formatter".into());
     match mode.as_str() {
         "tokenizer" | "tok" => profile_tokenizer(&sql),
         "parser" | "parse" => profile_parser(&sql),

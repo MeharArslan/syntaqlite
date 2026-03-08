@@ -134,6 +134,10 @@ pub(crate) enum Item {
     Enum {
         name: String,
         variants: Vec<String>,
+        /// `fmt_precedence { VARIANT=N ... }` — per-variant precedence values.
+        fmt_precedence: Vec<(String, u8)>,
+        /// `fmt_group { VARIANT=N ... }` — per-variant operator group values.
+        fmt_group: Vec<(String, u8)>,
     },
     Flags {
         name: String,
@@ -212,6 +216,14 @@ pub(crate) enum Fmt {
         sep: Option<Vec<Self>>,
         body: Vec<Self>,
     },
+    /// `child_prec(child_field, op_field)` or `child_prec(child_field, op_field, right)`.
+    ChildPrec {
+        child_field: String,
+        op_field: String,
+        is_right: bool,
+    },
+    /// `child_paren_list(field)` — wrap if child is a list node.
+    ChildParenList(String),
 }
 
 // ── Tokens ───────────────────────────────────────────────────────────────
@@ -643,11 +655,40 @@ impl Parser {
         let name = self.ident()?;
         self.expect(&Token::LBrace)?;
         let mut variants = Vec::new();
+        let mut fmt_precedence = Vec::new();
+        let mut fmt_group = Vec::new();
         while !self.at_tok(&Token::RBrace) {
-            variants.push(self.ident()?);
+            if self.at("fmt_precedence") {
+                self.advance();
+                self.expect(&Token::LBrace)?;
+                while !self.at_tok(&Token::RBrace) {
+                    let v = self.ident()?;
+                    self.expect(&Token::Eq)?;
+                    let n = self.int()?;
+                    fmt_precedence.push((v, u8::try_from(n).map_err(|_| "prec must fit u8")?));
+                }
+                self.advance();
+            } else if self.at("fmt_group") {
+                self.advance();
+                self.expect(&Token::LBrace)?;
+                while !self.at_tok(&Token::RBrace) {
+                    let v = self.ident()?;
+                    self.expect(&Token::Eq)?;
+                    let n = self.int()?;
+                    fmt_group.push((v, u8::try_from(n).map_err(|_| "group must fit u8")?));
+                }
+                self.advance();
+            } else {
+                variants.push(self.ident()?);
+            }
         }
         self.advance();
-        Ok(Item::Enum { name, variants })
+        Ok(Item::Enum {
+            name,
+            variants,
+            fmt_precedence,
+            fmt_group,
+        })
     }
 
     fn parse_flags(&mut self) -> Result<Item, String> {
@@ -867,6 +908,38 @@ impl Parser {
                     self.advance();
                     self.expect(&Token::RParen)?;
                     Ok(Fmt::EnumDisplay { field, mappings })
+                }
+                "child_prec" => {
+                    self.advance();
+                    self.expect(&Token::LParen)?;
+                    let child_field = self.ident()?;
+                    self.expect(&Token::Comma)?;
+                    let op_field = self.ident()?;
+                    let is_right = if self.at_tok(&Token::Comma) {
+                        self.advance();
+                        let tag = self.ident()?;
+                        if tag != "right" {
+                            return Err(format!(
+                                "child_prec third arg must be 'right', got '{tag}'"
+                            ));
+                        }
+                        true
+                    } else {
+                        false
+                    };
+                    self.expect(&Token::RParen)?;
+                    Ok(Fmt::ChildPrec {
+                        child_field,
+                        op_field,
+                        is_right,
+                    })
+                }
+                "child_paren_list" => {
+                    self.advance();
+                    self.expect(&Token::LParen)?;
+                    let f = self.ident()?;
+                    self.expect(&Token::RParen)?;
+                    Ok(Fmt::ChildParenList(f))
                 }
                 "for_each" => {
                     self.advance();

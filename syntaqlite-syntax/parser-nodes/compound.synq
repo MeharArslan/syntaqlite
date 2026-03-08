@@ -41,7 +41,7 @@ node InExpr {
   source: index InExprSource
 
   fmt {
-    child(operand)
+    child_paren_list(operand)
     if_flag(negated) { " NOT IN " } else { " IN " }
     "(" child(source) ")"
   }

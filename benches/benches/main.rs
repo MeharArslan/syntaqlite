@@ -140,8 +140,12 @@ fn bench_parser(c: &mut Criterion) {
                 loop {
                     match session.next() {
                         ParseOutcome::Done => break,
-                        ParseOutcome::Ok(stmt) => { black_box(stmt); }
-                        ParseOutcome::Err(err) => { black_box(err); }
+                        ParseOutcome::Ok(stmt) => {
+                            black_box(stmt);
+                        }
+                        ParseOutcome::Err(err) => {
+                            black_box(err);
+                        }
                     }
                 }
             });

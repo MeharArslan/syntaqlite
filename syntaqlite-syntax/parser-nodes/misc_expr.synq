@@ -8,5 +8,5 @@ node CollateExpr {
   expr: index Expr
   collation: inline SyntaqliteSourceSpan
 
-  fmt { child(expr) " COLLATE " span(collation) }
+  fmt { child_paren_list(expr) " COLLATE " span(collation) }
 }

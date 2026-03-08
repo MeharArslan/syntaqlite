@@ -193,6 +193,58 @@ fn build_field_map(fields: &[Field]) -> (Vec<FieldInfo>, HashMap<String, usize>)
     (infos, name_to_idx)
 }
 
+// ── Precedence table builder ─────────────────────────────────────────────
+
+struct PrecTableBuilder {
+    /// Flat `(prec, group)` pairs, one per variant of annotated enums.
+    data: Vec<u8>,
+    /// Map: enum type name → base index into `data` (in variant units, not byte units).
+    bases: HashMap<String, u16>,
+}
+
+impl PrecTableBuilder {
+    fn new() -> Self {
+        Self {
+            data: Vec::new(),
+            bases: HashMap::new(),
+        }
+    }
+
+    /// Register an enum with `fmt_precedence` / `fmt_group` annotations.
+    fn add_enum(
+        &mut self,
+        name: &str,
+        variants: &[String],
+        fmt_precedence: &[(String, u8)],
+        fmt_group: &[(String, u8)],
+    ) {
+        if fmt_precedence.is_empty() {
+            return;
+        }
+        let base = u16::try_from(self.data.len() / 2).expect("prec table base fits in u16");
+        self.bases.insert(name.to_string(), base);
+
+        let prec_map: HashMap<&str, u8> = fmt_precedence
+            .iter()
+            .map(|(v, p)| (v.as_str(), *p))
+            .collect();
+        let group_map: HashMap<&str, u8> =
+            fmt_group.iter().map(|(v, g)| (v.as_str(), *g)).collect();
+
+        for variant in variants {
+            let prec = prec_map.get(variant.as_str()).copied().unwrap_or(0);
+            let group = group_map.get(variant.as_str()).copied().unwrap_or(0xFF);
+            self.data.push(prec);
+            self.data.push(group);
+        }
+    }
+
+    /// Get the prec table base for an enum type, or `None` if not annotated.
+    fn base_for(&self, enum_type: &str) -> Option<u16> {
+        self.bases.get(enum_type).copied()
+    }
+}
+
 // ── Fmt → RawOp compilation ─────────────────────────────────────────────
 
 struct CompileCtx<'a> {
@@ -202,6 +254,9 @@ struct CompileCtx<'a> {
     field_map: &'a HashMap<String, usize>,
     enum_items: &'a HashMap<String, Vec<String>>,
     flags_items: &'a HashMap<String, Vec<(String, u32)>>,
+    prec_table: &'a PrecTableBuilder,
+    /// If the current node uses `child_prec`, records `(op_field_idx, prec_table_base)`.
+    expr_meta: Option<(u8, u16)>,
 }
 
 impl CompileCtx<'_> {
@@ -402,6 +457,30 @@ fn compile_one(
             let base = ctx.enum_display.add(ctx.strings, &variants, mappings);
             ops.push(opab(opcodes::ENUM_DISPLAY, field_idx, base));
         }
+        Fmt::ChildPrec {
+            child_field,
+            op_field,
+            is_right,
+        } => {
+            let child_idx = idx_u8(ctx.field(child_field)?.idx)?;
+            let op_info = ctx.field(op_field)?;
+            let op_field_idx = idx_u8(op_info.idx)?;
+            let enum_type = op_info.type_name.clone();
+            let prec_base = ctx.prec_table.base_for(&enum_type).ok_or_else(|| {
+                FmtCompileError::UnknownField(format!(
+                    "child_prec: enum type '{enum_type}' has no fmt_precedence",
+                ))
+            })?;
+            let is_right_flag: u16 = u16::from(*is_right);
+            let c = (u16::from(op_field_idx) << 8) | is_right_flag;
+            // Record expr-meta for this node type.
+            ctx.expr_meta = Some((op_field_idx, prec_base));
+            ops.push(opabc(opcodes::CHILD_PREC, child_idx, prec_base, c));
+        }
+        Fmt::ChildParenList(field) => {
+            let info = ctx.field(field)?;
+            ops.push(opa(opcodes::CHILD_PAREN_LIST, idx_u8(info.idx)?));
+        }
         Fmt::ForEach { sep, body } => {
             ops.push(op0(opcodes::FOR_EACH_SELF_START));
             for item in body {
@@ -598,6 +677,8 @@ fn compile_switch(
 pub(crate) struct CompiledNode {
     pub name: String,
     pub ops: Vec<RawOp>,
+    /// If this node uses `child_prec`, records `(op_field_idx, prec_table_base)`.
+    pub expr_meta: Option<(u8, u16)>,
 }
 
 pub(crate) struct CompiledFmt {
@@ -605,6 +686,11 @@ pub(crate) struct CompiledFmt {
     pub enum_display: Vec<u16>,
     pub nodes: Vec<CompiledNode>,
     pub tag_count: usize,
+    /// Flat precedence table: pairs of `(prec, group)` bytes, one per enum variant.
+    pub prec_table: Vec<u8>,
+    /// Per-tag expr-meta: packed u32 per tag. `0xFFFF_FFFF` = no expr-meta,
+    /// otherwise `(prec_table_base << 8) | op_field_idx`.
+    pub expr_meta: Vec<u32>,
 }
 
 /// Compile all items into the intermediate representation shared by both emitters.
@@ -616,7 +702,7 @@ pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCo
     let enum_items: HashMap<String, Vec<String>> = items
         .iter()
         .filter_map(|item| match item {
-            Item::Enum { name, variants } => Some((name.clone(), variants.clone())),
+            Item::Enum { name, variants, .. } => Some((name.clone(), variants.clone())),
             _ => None,
         })
         .collect();
@@ -629,8 +715,27 @@ pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCo
         })
         .collect();
 
-    let mut strings = StringTable::new();
-    let mut enum_display = EnumDisplayTable::new();
+    // Build precedence table from enum annotations.
+    let mut prec_table_builder = PrecTableBuilder::new();
+    for item in &items {
+        if let Item::Enum {
+            name,
+            variants,
+            fmt_precedence,
+            fmt_group,
+        } = item
+        {
+            prec_table_builder.add_enum(name, variants, fmt_precedence, fmt_group);
+        }
+    }
+
+    let mut env = FmtCompileEnv {
+        strings: StringTable::new(),
+        enum_display: EnumDisplayTable::new(),
+        enum_items,
+        flags_items,
+        prec_table: prec_table_builder,
+    };
     let mut compiled: Vec<CompiledNode> = Vec::new();
 
     for item in &items {
@@ -640,32 +745,16 @@ pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCo
                 fields,
                 fmt: Some(fmt_body),
                 ..
-            } => compiled.push(compile_named_fmt(
-                name,
-                fields,
-                fmt_body,
-                &mut strings,
-                &mut enum_display,
-                &enum_items,
-                &flags_items,
-            )?),
+            } => compiled.push(env.compile_named_fmt(name, fields, fmt_body)?),
             Item::List {
                 name,
                 fmt: Some(fmt_body),
                 ..
-            } => compiled.push(compile_named_fmt(
-                name,
-                &[],
-                fmt_body,
-                &mut strings,
-                &mut enum_display,
-                &enum_items,
-                &flags_items,
-            )?),
+            } => compiled.push(env.compile_named_fmt(name, &[], fmt_body)?),
             Item::List {
                 name, fmt: None, ..
             } => {
-                let comma_sid = strings.intern(",");
+                let comma_sid = env.strings.intern(",");
                 let ops = vec![
                     op0(opcodes::FOR_EACH_SELF_START),
                     op0(opcodes::CHILD_ITEM),
@@ -676,6 +765,7 @@ pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCo
                 compiled.push(CompiledNode {
                     name: name.clone(),
                     ops,
+                    expr_meta: None,
                 });
             }
             _ => {}
@@ -685,38 +775,61 @@ pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCo
     // Use model.node_like_items() for the correct total count (base + extension).
     let tag_count = model.node_like_items().len() + 1;
 
+    // Build per-tag expr-meta array.
+    let mut expr_meta = vec![0xFFFF_FFFFu32; tag_count];
+    for cn in &compiled {
+        if let Some((op_field_idx, prec_base)) = cn.expr_meta
+            && let Some(&tag) = model.tag_map().get(&cn.name)
+        {
+            expr_meta[tag as usize] = (u32::from(prec_base) << 8) | u32::from(op_field_idx);
+        }
+    }
+
     Ok(CompiledFmt {
-        strings: strings.strings,
-        enum_display: enum_display.entries,
+        strings: env.strings.strings,
+        enum_display: env.enum_display.entries,
         nodes: compiled,
         tag_count,
+        prec_table: env.prec_table.data,
+        expr_meta,
     })
 }
 
-fn compile_named_fmt(
-    name: &str,
-    fields: &[Field],
-    fmt_body: &[Fmt],
-    strings: &mut StringTable,
-    enum_display: &mut EnumDisplayTable,
-    enum_items: &HashMap<String, Vec<String>>,
-    flags_items: &HashMap<String, Vec<(String, u32)>>,
-) -> Result<CompiledNode, FmtCompileError> {
-    let (field_infos, field_map) = build_field_map(fields);
-    let mut ops = Vec::new();
-    let mut cctx = CompileCtx {
-        strings,
-        enum_display,
-        field_infos: &field_infos,
-        field_map: &field_map,
-        enum_items,
-        flags_items,
-    };
-    compile_seq(fmt_body, &mut cctx, &mut ops)?;
-    Ok(CompiledNode {
-        name: name.to_string(),
-        ops,
-    })
+/// Shared compilation environment holding tables that persist across all nodes.
+struct FmtCompileEnv {
+    strings: StringTable,
+    enum_display: EnumDisplayTable,
+    enum_items: HashMap<String, Vec<String>>,
+    flags_items: HashMap<String, Vec<(String, u32)>>,
+    prec_table: PrecTableBuilder,
+}
+
+impl FmtCompileEnv {
+    fn compile_named_fmt(
+        &mut self,
+        name: &str,
+        fields: &[Field],
+        fmt_body: &[Fmt],
+    ) -> Result<CompiledNode, FmtCompileError> {
+        let (field_infos, field_map) = build_field_map(fields);
+        let mut ops = Vec::new();
+        let mut cctx = CompileCtx {
+            strings: &mut self.strings,
+            enum_display: &mut self.enum_display,
+            field_infos: &field_infos,
+            field_map: &field_map,
+            enum_items: &self.enum_items,
+            flags_items: &self.flags_items,
+            prec_table: &self.prec_table,
+            expr_meta: None,
+        };
+        compile_seq(fmt_body, &mut cctx, &mut ops)?;
+        Ok(CompiledNode {
+            name: name.to_string(),
+            ops,
+            expr_meta: cctx.expr_meta,
+        })
+    }
 }
 
 // ── Rust static generation ──────────────────────────────────────────────────
@@ -757,6 +870,8 @@ mod tests {
             opcodes::IF_SPAN => format!("FmtOp::IfSpan({}, {})", op.a, op.c),
             opcodes::ENUM_DISPLAY => format!("FmtOp::EnumDisplay({}, {})", op.a, op.b),
             opcodes::FOR_EACH_SELF_START => "FmtOp::ForEachSelfStart".to_string(),
+            opcodes::CHILD_PREC => format!("FmtOp::ChildPrec({}, {}, {})", op.a, op.b, op.c),
+            opcodes::CHILD_PAREN_LIST => format!("FmtOp::ChildParenList({})", op.a),
             _ => panic!("unknown opcode {}", op.opcode),
         }
     }
@@ -880,6 +995,8 @@ mod tests {
             Item::Enum {
                 name: "MyOp".into(),
                 variants: vec!["ADD".into(), "SUB".into()],
+                fmt_precedence: vec![],
+                fmt_group: vec![],
             },
             Item::Node {
                 name: "Test".into(),
@@ -911,6 +1028,8 @@ mod tests {
             Item::Enum {
                 name: "BinOp".into(),
                 variants: vec!["PLUS".into(), "MINUS".into()],
+                fmt_precedence: vec![],
+                fmt_group: vec![],
             },
             Item::Node {
                 name: "Test".into(),

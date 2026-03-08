@@ -55,7 +55,7 @@ node SetClause {
     if_span(column) { span(column) } else {
       if_set(columns) { "(" child(columns) ")" }
     }
-    " = " child(value)
+    " = " child_paren_list(value)
   }
 }
 

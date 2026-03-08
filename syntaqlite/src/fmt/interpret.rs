@@ -259,10 +259,6 @@ impl Formatter {
                             && let Some((child_ops_bytes, child_ops_len)) =
                                 ctx.dialect.fmt_dispatch(ctag)
                         {
-                            if return_action != ReturnAction::Discard {
-                                return_action =
-                                    child_needs_parens(ctx, cur_node_id, idx, ctag, &child_fields);
-                            }
                             push_call_frame!(
                                 child_id,
                                 child_ops_bytes,
@@ -425,7 +421,8 @@ impl Formatter {
                         state.sep_checkpoint = Some((running, pending));
                         let sep_text = ctx.dialect.fmt_string(sid);
                         if let Some(ref cctx) = ctx.comment_ctx
-                            && let Some((_, word_count)) = cctx.peek_keyword_tokens(sep_text, source)
+                            && let Some((_, word_count)) =
+                                cctx.peek_keyword_tokens(sep_text, source)
                         {
                             cctx.advance_token_cursor(word_count);
                         }
@@ -534,10 +531,167 @@ impl Formatter {
                         });
                     }
                 }
+                FmtOp::ChildPrec(child_idx, prec_base, packed_c) => {
+                    let op_field_idx = (packed_c >> 8) as usize;
+                    let is_right = (packed_c & 0xFF) != 0;
+
+                    // Read the parent's operator ordinal.
+                    let FieldValue::Enum(parent_op_ordinal) = fields[op_field_idx] else {
+                        panic!("ChildPrec: op field {op_field_idx} is not an Enum");
+                    };
+                    let (parent_prec, parent_group) =
+                        ctx.dialect.fmt_prec_lookup(prec_base, parent_op_ordinal);
+
+                    let FieldValue::NodeId(child_id) = fields[child_idx as usize] else {
+                        panic!("ChildPrec: child field {child_idx} is not a NodeId");
+                    };
+
+                    if !child_id.is_null() {
+                        drain_comments_before_child(
+                            ctx.comment_ctx.as_ref(),
+                            source,
+                            &mut pending,
+                            &mut running,
+                            arena,
+                        );
+
+                        let mut return_action = ReturnAction::CatOntoRunning;
+                        let macro_regions = &ctx.macro_regions;
+                        if !macro_regions.is_empty()
+                            && ctx.reader.list_children(child_id).is_none()
+                            && let Some(doc) = super::formatter::try_macro_verbatim(
+                                ctx,
+                                macro_regions,
+                                arena,
+                                consumed_regions,
+                            )
+                        {
+                            running = arena.cat(running, doc);
+                            return_action = ReturnAction::Discard;
+                        }
+
+                        if let Some((ctag, child_fields)) = ctx.reader.extract_fields(child_id)
+                            && let Some((child_ops_bytes, child_ops_len)) =
+                                ctx.dialect.fmt_dispatch(ctag)
+                        {
+                            if return_action != ReturnAction::Discard && parent_prec > 0 {
+                                return_action = child_prec_action(
+                                    ctx,
+                                    parent_prec,
+                                    parent_group,
+                                    is_right,
+                                    ctag,
+                                    &child_fields,
+                                );
+                            }
+                            push_call_frame!(
+                                child_id,
+                                child_ops_bytes,
+                                child_ops_len,
+                                child_fields,
+                                return_action
+                            );
+                        }
+                    }
+                }
+                FmtOp::ChildParenList(child_idx) => {
+                    let FieldValue::NodeId(child_id) = fields[child_idx as usize] else {
+                        panic!("ChildParenList: field {child_idx} is not a NodeId");
+                    };
+
+                    if !child_id.is_null() {
+                        drain_comments_before_child(
+                            ctx.comment_ctx.as_ref(),
+                            source,
+                            &mut pending,
+                            &mut running,
+                            arena,
+                        );
+
+                        let mut return_action = ReturnAction::CatOntoRunning;
+                        let macro_regions = &ctx.macro_regions;
+                        if !macro_regions.is_empty()
+                            && ctx.reader.list_children(child_id).is_none()
+                            && let Some(doc) = super::formatter::try_macro_verbatim(
+                                ctx,
+                                macro_regions,
+                                arena,
+                                consumed_regions,
+                            )
+                        {
+                            running = arena.cat(running, doc);
+                            return_action = ReturnAction::Discard;
+                        }
+
+                        if let Some((ctag, child_fields)) = ctx.reader.extract_fields(child_id)
+                            && let Some((child_ops_bytes, child_ops_len)) =
+                                ctx.dialect.fmt_dispatch(ctag)
+                        {
+                            if return_action != ReturnAction::Discard && ctx.dialect.is_list(ctag) {
+                                return_action = ReturnAction::WrapInParens;
+                            }
+                            push_call_frame!(
+                                child_id,
+                                child_ops_bytes,
+                                child_ops_len,
+                                child_fields,
+                                return_action
+                            );
+                        }
+                    }
+                }
             }
             ip += 1;
         }
     }
+}
+
+/// Determine the return action for a `CHILD_PREC` opcode.
+///
+/// Compares the parent's operator precedence/group with the child's (if the
+/// child tag has expr-meta). Also wraps list children (ExprList-as-expression).
+fn child_prec_action(
+    ctx: &FmtCtx,
+    parent_prec: u8,
+    parent_group: u8,
+    is_right: bool,
+    child_tag: syntaqlite_syntax::any::AnyNodeTag,
+    child_fields: &syntaqlite_syntax::any::NodeFields,
+) -> ReturnAction {
+    // Check if child carries operator precedence info.
+    if let Some((child_op_field_idx, child_prec_base)) = ctx.dialect.fmt_expr_meta(child_tag) {
+        let FieldValue::Enum(child_op_ordinal) = child_fields[child_op_field_idx as usize] else {
+            return ReturnAction::CatOntoRunning;
+        };
+        let (child_prec, child_group) = ctx
+            .dialect
+            .fmt_prec_lookup(child_prec_base, child_op_ordinal);
+        if child_prec == 0 {
+            // Child variant has no prec annotation — treat as plain child.
+            return ReturnAction::CatOntoRunning;
+        }
+
+        // Correctness: parens when child binds less tightly,
+        // or same precedence on the right (left-associative).
+        if child_prec < parent_prec || (is_right && child_prec == parent_prec) {
+            return ReturnAction::WrapInParens;
+        }
+
+        // Readability: preserve parens when crossing operator groups.
+        // 0xFF means "no group" — skip group comparison in that case.
+        if parent_group != 0xFF && child_group != 0xFF && parent_group != child_group {
+            return ReturnAction::WrapInParens;
+        }
+
+        return ReturnAction::CatOntoRunning;
+    }
+
+    // If child is a list node, wrap it (ExprList-as-expression).
+    if ctx.dialect.is_list(child_tag) {
+        return ReturnAction::WrapInParens;
+    }
+
+    ReturnAction::CatOntoRunning
 }
 
 // ── Comment drain helpers ───────────────────────────────────────────────
@@ -642,6 +796,10 @@ enum FmtOp {
     IfSpan(FieldIdx, SkipCount),
     EnumDisplay(FieldIdx, u16),
     ForEachSelfStart,
+    /// Precedence-aware child: `a`=`child_field`, `b`=`prec_table_base`, `c`=packed(`op_field`<<`8|is_right`).
+    ChildPrec(FieldIdx, u16, u16),
+    /// Paren-list child: `a`=`child_field`. Wraps if child is a list node.
+    ChildParenList(FieldIdx),
 }
 
 impl FmtOp {
@@ -675,6 +833,8 @@ impl FmtOp {
             opcodes::IF_SPAN => FmtOp::IfSpan(a.into(), c),
             opcodes::ENUM_DISPLAY => FmtOp::EnumDisplay(a.into(), b),
             opcodes::FOR_EACH_SELF_START => FmtOp::ForEachSelfStart,
+            opcodes::CHILD_PREC => FmtOp::ChildPrec(a.into(), b, c),
+            opcodes::CHILD_PAREN_LIST => FmtOp::ChildParenList(a.into()),
             _ => panic!("unknown opcode in fmt data"),
         }
     }
@@ -698,166 +858,6 @@ fn byte_offset_in(source: &str, ptr: *const u8) -> u32 {
 enum GroupNestFrame {
     Group(DocId),
     Nest(i16, DocId),
-}
-
-// ── Expression parenthesization helpers ─────────────────────────────────
-
-/// `SQLite` binary operator precedence (higher = binds tighter).
-///
-/// Must match the Lemon grammar precedence declarations in
-/// `syntaqlite-syntax/parser-actions/_common.y` (lines 149-161):
-///
-/// ```text
-/// %left OR.                                           // prec 1
-/// %left AND.                                          // prec 2
-/// %left IS MATCH LIKE_KW BETWEEN IN ... NE EQ.       // prec 3 (EQ, NE only for BinaryOp)
-/// %left GT LE LT GE.                                  // prec 4
-/// %right ESCAPE.                                       // (not a BinaryOp)
-/// %left BITAND BITOR LSHIFT RSHIFT.                   // prec 5
-/// %left PLUS MINUS.                                    // prec 6
-/// %left STAR SLASH REM.                                // prec 7
-/// %left CONCAT PTR.                                    // prec 8
-/// ```
-fn binary_op_precedence(op_ordinal: u32) -> Option<u8> {
-    // BinaryOp enum order from common.synq:
-    //   PLUS=0, MINUS=1, STAR=2, SLASH=3, REM=4,
-    //   LT=5, GT=6, LE=7, GE=8, EQ=9, NE=10,
-    //   AND=11, OR=12, BIT_AND=13, BIT_OR=14,
-    //   LSHIFT=15, RSHIFT=16, CONCAT=17, PTR=18
-    match op_ordinal {
-        12 => Some(1),      // OR
-        11 => Some(2),      // AND
-        9 | 10 => Some(3),  // EQ, NE
-        5..=8 => Some(4),   // LT, GT, LE, GE
-        13..=16 => Some(5), // BIT_AND, BIT_OR, LSHIFT, RSHIFT
-        0 | 1 => Some(6),   // PLUS, MINUS
-        2..=4 => Some(7),   // STAR, SLASH, REM
-        17 | 18 => Some(8), // CONCAT, PTR
-        _ => None,
-    }
-}
-
-/// Operator group for readability-based parenthesization.
-///
-/// When a child `BinaryExpr` is in a different group from its parent, we
-/// preserve parentheses even if precedence alone wouldn't require them.
-/// This keeps expressions like `(a + b) > (c * d)` readable for people
-/// who don't memorize operator precedence tables.
-///
-/// Logical and comparison operators share a group because `WHERE a = 1
-/// AND b = 2` is universally understood and adding parens there would
-/// be noise.
-///
-/// Groups (from `_common.y`):
-///   0 = logical + comparison (OR, AND, EQ, NE, LT, GT, LE, GE)
-///   1 = bitwise  (`BIT_AND`, `BIT_OR`, LSHIFT, RSHIFT)
-///   2 = arithmetic (PLUS, MINUS, STAR, SLASH, REM)
-///   3 = string   (CONCAT, PTR)
-fn binary_op_group(op_ordinal: u32) -> Option<u8> {
-    match op_ordinal {
-        5..=12 => Some(0),  // LT, GT, LE, GE, EQ, NE, AND, OR
-        13..=16 => Some(1), // BIT_AND, BIT_OR, LSHIFT, RSHIFT
-        0..=4 => Some(2),   // PLUS, MINUS, STAR, SLASH, REM
-        17 | 18 => Some(3), // CONCAT, PTR
-        _ => None,
-    }
-}
-
-/// Determine whether a child node needs to be wrapped in parentheses.
-///
-/// This handles two cases:
-/// 1. **`BinaryExpr` precedence**: when a `BinaryExpr` child of a `BinaryExpr` parent
-///    has lower (or equal, for right-child) precedence, parens are needed to
-///    preserve the original grouping.
-/// 2. **List-as-expression**: when a list node (`ExprList`) appears in a position
-///    where the parent doesn't already wrap it in explicit parens (e.g., as a
-///    row value in SELECT or as a SET clause value), parens are needed.
-fn child_needs_parens(
-    ctx: &FmtCtx,
-    parent_id: AnyNodeId,
-    child_field_idx: u16,
-    child_tag: syntaqlite_syntax::any::AnyNodeTag,
-    child_fields: &syntaqlite_syntax::any::NodeFields,
-) -> ReturnAction {
-    let grammar = &*ctx.dialect;
-
-    // Case 1: BinaryExpr precedence
-    let parent_tag = ctx.reader.extract_fields(parent_id).map(|(t, _)| t);
-    if let Some(ptag) = parent_tag {
-        let parent_name = grammar.node_name(ptag);
-        let child_name = grammar.node_name(child_tag);
-        if parent_name == "BinaryExpr" && child_name == "BinaryExpr" {
-            // BinaryExpr fields: [op, left, right]
-            // op is field 0 (Enum), left is field 1 (NodeId), right is field 2 (NodeId)
-            let parent_fields = ctx.reader.extract_fields(parent_id);
-            if let Some((_, pf)) = parent_fields
-                && let (FieldValue::Enum(parent_op), FieldValue::Enum(child_op)) =
-                    (pf[0], child_fields[0])
-                && let (Some(parent_prec), Some(child_prec)) = (
-                    binary_op_precedence(parent_op),
-                    binary_op_precedence(child_op),
-                )
-            {
-                // child_field_idx: 1 = left child, 2 = right child
-                let is_right_child = child_field_idx == 2;
-
-                // Correctness: parens required when child binds less tightly,
-                // or same precedence on the right (left-associative).
-                if child_prec < parent_prec || (is_right_child && child_prec == parent_prec) {
-                    return ReturnAction::WrapInParens;
-                }
-
-                // Readability: preserve parens when crossing operator groups
-                // (e.g. arithmetic inside comparison) so readers don't need
-                // to know the full precedence table.
-                if binary_op_group(parent_op) != binary_op_group(child_op) {
-                    return ReturnAction::WrapInParens;
-                }
-            }
-        }
-
-        // Case 2: UnaryExpr wrapping BinaryExpr (e.g., NOT (a AND b))
-        if parent_name == "UnaryExpr" && child_name == "BinaryExpr" {
-            // UnaryExpr fields: [op, operand]
-            // op is field 0 (Enum), operand is field 1 (NodeId)
-            // UnaryOp: MINUS=0, PLUS=1, BIT_NOT=2, NOT=3
-            let parent_fields = ctx.reader.extract_fields(parent_id);
-            if let Some((_, pf)) = parent_fields
-                && let FieldValue::Enum(unary_op) = pf[0]
-            {
-                // NOT has lower precedence than all binary operators
-                if unary_op == 3 {
-                    return ReturnAction::WrapInParens;
-                }
-            }
-        }
-    }
-
-    // Case 3: ExprList appearing as an expression (row value or multi-column SET value).
-    // ExprList needs parens when it appears in a field typed as Expr in .synq
-    // (i.e., a single-expression context). We detect this by checking the parent
-    // node/field name rather than scanning bytecode, because bytecode layout is
-    // unreliable with conditional blocks.
-    if let Some(ptag) = parent_tag
-        && grammar.is_list(child_tag)
-        && grammar.node_name(child_tag) == "ExprList"
-    {
-        let field_name = grammar
-            .field_meta(ptag)
-            .nth(child_field_idx as usize)
-            .map(|m| m.name());
-        // Fields typed as `index Expr` that may contain ExprList as a row value.
-        // Fields like `args`, `columns`, `groupby`, `ref_columns`, etc. are typed
-        // as `index ExprList` and the parent already provides any needed wrapping.
-        if matches!(
-            field_name,
-            Some("expr" | "value" | "left" | "right" | "operand")
-        ) {
-            return ReturnAction::WrapInParens;
-        }
-    }
-
-    ReturnAction::CatOntoRunning
 }
 
 struct ForEachState {

@@ -9,9 +9,9 @@ node FrameBound {
   fmt {
     switch(bound_type) {
       UNBOUNDED_PRECEDING { "UNBOUNDED PRECEDING" }
-      EXPR_PRECEDING      { child(expr) " PRECEDING" }
+      EXPR_PRECEDING      { child_paren_list(expr) " PRECEDING" }
       CURRENT_ROW         { "CURRENT ROW" }
-      EXPR_FOLLOWING      { child(expr) " FOLLOWING" }
+      EXPR_FOLLOWING      { child_paren_list(expr) " FOLLOWING" }
       UNBOUNDED_FOLLOWING { "UNBOUNDED FOLLOWING" }
     }
   }

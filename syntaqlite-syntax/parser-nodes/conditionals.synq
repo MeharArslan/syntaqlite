@@ -7,12 +7,12 @@ node IsExpr {
 
   fmt {
     switch(op) {
-      IS_NULL         { child(left) " ISNULL" }
-      NOT_NULL        { child(left) " NOTNULL" }
-      IS              { child(left) " IS " child(right) }
-      IS_NOT          { child(left) " IS NOT " child(right) }
-      IS_NOT_DISTINCT { child(left) " IS NOT DISTINCT FROM " child(right) }
-      IS_DISTINCT     { child(left) " IS DISTINCT FROM " child(right) }
+      IS_NULL         { child_paren_list(left) " ISNULL" }
+      NOT_NULL        { child_paren_list(left) " NOTNULL" }
+      IS              { child_paren_list(left) " IS " child_paren_list(right) }
+      IS_NOT          { child_paren_list(left) " IS NOT " child_paren_list(right) }
+      IS_NOT_DISTINCT { child_paren_list(left) " IS NOT DISTINCT FROM " child_paren_list(right) }
+      IS_DISTINCT     { child_paren_list(left) " IS DISTINCT FROM " child_paren_list(right) }
     }
   }
 }
@@ -24,7 +24,7 @@ node BetweenExpr {
   high: index Expr
 
   fmt {
-    child(operand)
+    child_paren_list(operand)
     if_flag(negated) { " NOT BETWEEN " } else { " BETWEEN " }
     child(low) " AND " child(high)
   }
@@ -37,7 +37,7 @@ node LikeExpr {
   escape: index Expr
 
   fmt {
-    child(operand)
+    child_paren_list(operand)
     if_flag(negated) { " NOT LIKE " } else { " LIKE " }
     child(pattern)
     if_set(escape) { " ESCAPE " child(escape) }
@@ -51,7 +51,7 @@ node CaseExpr {
 
   fmt {
     "CASE"
-    if_set(operand) { " " child(operand) }
+    if_set(operand) { " " child_paren_list(operand) }
     if_set(whens) { child(whens) }
     if_set(else_expr) { " ELSE " child(else_expr) }
     " END"

@@ -96,7 +96,7 @@ impl<'a> AstModel<'a> {
 
         for item in items {
             match item {
-                Item::Enum { name, variants } => {
+                Item::Enum { name, variants, .. } => {
                     let name = name.as_str();
                     enum_names.insert(name);
                     enums.push(EnumRef {
@@ -213,7 +213,7 @@ impl<'a> AstModel<'a> {
 
         for item in extension_items {
             match item {
-                Item::Enum { name, variants } => {
+                Item::Enum { name, variants, .. } => {
                     let name = name.as_str();
                     enum_names.insert(name);
                     enums.push(EnumRef {
@@ -393,6 +393,11 @@ impl<'a> AstModel<'a> {
     /// Return the pinned tag value for a node/list name.
     pub(crate) fn tag_for(&self, name: &str) -> u32 {
         self.tag_map[name]
+    }
+
+    /// Access the tag map (name → tag value).
+    pub(crate) fn tag_map(&self) -> &HashMap<String, u32> {
+        &self.tag_map
     }
 
     /// Number of base tags (before extension tags).

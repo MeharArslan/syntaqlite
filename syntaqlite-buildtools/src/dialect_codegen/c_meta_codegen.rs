@@ -49,6 +49,7 @@ impl AstModel<'_> {
     /// offsets array with N+1 entries (offsets[N] = total byte count).  All
     /// symbol names are prefixed with `{dialect}_fmt_` so that `dialect.c` can
     /// re-export them as non-static `syntaqlite_{dialect}_fmt_*()` functions.
+    #[expect(clippy::too_many_lines)]
     pub(crate) fn generate_c_fmt_tables(&self, dialect: &str) -> Result<String, CFmtCodegenError> {
         let compiled =
             super::fmt_compiler::try_compile_all(self).map_err(CFmtCodegenError::FmtCompile)?;
@@ -158,6 +159,38 @@ impl AstModel<'_> {
         w.newline();
         w.line(&format!(
             "static const uint32_t {p}_dispatch_count = {displen};"
+        ));
+        w.newline();
+
+        // ── Precedence table ────────────────────────────────────────────────
+        let ptlen = compiled.prec_table.len();
+        if ptlen > 0 {
+            w.line(&format!("static const uint8_t {p}_prec_table[] = {{"));
+            for chunk in compiled.prec_table.chunks(16) {
+                let vals: Vec<String> = chunk.iter().map(|b| format!("{b}")).collect();
+                w.line(&format!("    {},", vals.join(",")));
+            }
+            w.line("};");
+        } else {
+            w.line(&format!("static const uint8_t {p}_prec_table[] = {{0}};"));
+        }
+        w.newline();
+        w.line(&format!(
+            "static const uint32_t {p}_prec_table_count = {ptlen};"
+        ));
+        w.newline();
+
+        // ── Expr-meta per tag ───────────────────────────────────────────────
+        let expr_meta_len = compiled.expr_meta.len();
+        w.line(&format!("static const uint32_t {p}_expr_meta[] = {{"));
+        for chunk in compiled.expr_meta.chunks(8) {
+            let vals: Vec<String> = chunk.iter().map(|v| format!("0x{v:08x}")).collect();
+            w.line(&format!("    {},", vals.join(",")));
+        }
+        w.line("};");
+        w.newline();
+        w.line(&format!(
+            "static const uint32_t {p}_expr_meta_count = {expr_meta_len};"
         ));
         w.newline();
 

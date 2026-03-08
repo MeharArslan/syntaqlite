@@ -90,11 +90,8 @@ impl Summary {
                     summary.parse_error += 1;
                 }
 
-                let syntaqlite_ok = entry.parse_ok
-                    && entry
-                        .diagnostics
-                        .as_ref()
-                        .is_none_or(Vec::is_empty);
+                let syntaqlite_ok =
+                    entry.parse_ok && entry.diagnostics.as_ref().is_none_or(Vec::is_empty);
 
                 match (entry.sqlite_ok, syntaqlite_ok) {
                     (true, true) => summary.both_accept += 1,

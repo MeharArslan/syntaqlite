@@ -360,9 +360,7 @@ impl<'a> AnyParsedStatement<'a> {
     /// Lightweight comment descriptors without source text borrows.
     ///
     /// Returns an empty iterator if `collect_tokens` was not enabled.
-    pub fn comment_spans(
-        &self,
-    ) -> impl Iterator<Item = CommentSpan> + use<'_> {
+    pub fn comment_spans(&self) -> impl Iterator<Item = CommentSpan> + use<'_> {
         // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
         let raw: &[ffi::CComment] = unsafe { self.raw.as_ref().result_comments() };
         raw.iter().map(|c| {

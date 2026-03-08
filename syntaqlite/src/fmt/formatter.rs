@@ -196,11 +196,11 @@ impl Formatter {
                 }));
 
             self.token_entries.clear();
-            self.token_entries
-                .extend(erased.token_spans().map(|(offset, length)| TokenEntry {
-                    offset,
-                    length,
-                }));
+            self.token_entries.extend(
+                erased
+                    .token_spans()
+                    .map(|(offset, length)| TokenEntry { offset, length }),
+            );
             let stmt_source = erased.source();
 
             self.macro_regions.extend(erased.macro_regions());

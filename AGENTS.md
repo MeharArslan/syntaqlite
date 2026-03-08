@@ -110,11 +110,7 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 | `tools/run-bootstrap-test` | Delete all generated files and verify `syntaqlite-buildtools` can rebuild them from scratch |
 | `tools/generated-files.txt` | Canonical list of all generated files (used by bootstrap test and for auditing) |
 | `tools/run-unit-tests` | Run workspace unit tests (prefers nextest, falls back to cargo test) |
-| `tools/run-ast-diff-tests` | Run AST diff tests (`tests/ast_diff_tests/`) |
-| `tools/run-fmt-diff-tests` | Run formatter diff tests (`tests/fmt_diff_tests/`) |
-| `tools/run-amalg-tests` | Run amalgamation integration tests (`tests/amalg_tests/`) |
-| `tools/run-perfetto-fmt-diff-tests` | Run Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`) |
-| `tools/run-perfetto-validation-diff-tests` | Run Perfetto dialect validation tests (`tests/perfetto_validation_diff_tests/`) |
+| `tools/run-integration-tests` | Unified integration test runner — runs all suites or a subset (see below) |
 | `tools/format-c` | Run clang-format on C sources (`--check` to verify without modifying) |
 | `tools/check-c-deps` | Verify C header dependency boundaries between crates |
 | `tools/pre-push` | Run pre-push checks, skipping anything not affected by changed files. Use `--fix` to auto-fix formatting and clippy warnings. Use `--all` to run all checks unconditionally. |
@@ -164,17 +160,27 @@ tools/run-unit-tests
 
 This prefers `cargo nextest` if installed, falling back to `cargo test`.
 
-### Diff test suites
+### Integration tests
 
-Behavioral correctness of the CLI is verified with Python-based diff test suites that compare CLI output against expected baselines.
+Behavioral correctness of the CLI is verified with Python-based diff test suites that compare CLI output against expected baselines. All suites are run via a single unified runner:
 
-#### Suites
+```sh
+tools/run-integration-tests               # run all suites
+tools/run-integration-tests --suite fmt    # run a single suite
+tools/run-integration-tests --list         # list available suites
+```
 
-- `tools/run-ast-diff-tests` — AST output tests using `syntaqlite ast` (`tests/ast_diff_tests/`)
-- `tools/run-fmt-diff-tests` — formatter output tests using `syntaqlite fmt` (`tests/fmt_diff_tests/`)
-- `tools/run-amalg-tests` — amalgamation integration tests (`tests/amalg_tests/`)
-- `tools/run-perfetto-fmt-diff-tests` — Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`)
-- `tools/run-perfetto-validation-diff-tests` — Perfetto dialect validation tests using `syntaqlite validate` (`tests/perfetto_validation_diff_tests/`)
+#### Available suites
+
+| Suite | Purpose |
+|-------|---------|
+| `ast` | SQLite AST diff tests (`tests/ast_diff_tests/`) |
+| `fmt` | SQLite formatter diff tests (`tests/fmt_diff_tests/`) |
+| `perfetto-fmt` | Perfetto dialect formatter diff tests (`tests/perfetto_fmt_diff_tests/`) |
+| `perfetto-val` | Perfetto dialect validation diff tests (`tests/perfetto_validation_diff_tests/`) |
+| `amalg` | Amalgamation compilation + AST diff tests (`tests/amalg_tests/`) |
+| `grammar` | Grammar token-ID ordering invariants |
+| `sql-idempotency` | Verify formatting preserves AST semantics |
 
 #### Prerequisites
 
@@ -188,7 +194,9 @@ cargo build -p syntaqlite-cli
 
 | Flag | Purpose |
 |------|---------|
-| `--filter <pattern>` | Run only tests matching pattern |
+| `--suite <name>` | Run a specific suite (repeatable) |
+| `--filter <pattern>` | Run only tests matching pattern (diff suites only) |
 | `-v` / `-vv` | Verbose / extra-verbose output |
-| `--rebaseline` | Update expected outputs to match current output |
-| `-j <N>` / `--jobs <N>` | Parallel test execution |
+| `--rebaseline` | Update expected outputs to match current output (diff suites only) |
+| `--jobs <N>` | Parallel test execution (diff suites only) |
+| `--list` | List available suites and exit |

@@ -206,8 +206,7 @@ impl CommentCtx {
                 return None;
             }
             let tok = &self.tokens[tok_idx];
-            let tok_text =
-                &source[tok.offset as usize..(tok.offset + tok.length) as usize];
+            let tok_text = &source[tok.offset as usize..(tok.offset + tok.length) as usize];
             if !tok_text.eq_ignore_ascii_case(word) {
                 return None;
             }

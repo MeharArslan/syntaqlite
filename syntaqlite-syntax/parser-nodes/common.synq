@@ -7,6 +7,25 @@ enum BinaryOp {
   LT GT LE GE EQ NE
   AND OR BIT_AND BIT_OR LSHIFT RSHIFT
   CONCAT PTR
+
+  fmt_precedence {
+    OR=1 AND=2 EQ=3 NE=3
+    LT=4 GT=4 LE=4 GE=4
+    BIT_AND=5 BIT_OR=5 LSHIFT=5 RSHIFT=5
+    PLUS=6 MINUS=6
+    STAR=7 SLASH=7 REM=7
+    CONCAT=8 PTR=8
+  }
+  fmt_group {
+    OR=0 AND=0 EQ=0 NE=0 LT=0 GT=0 LE=0 GE=0
+    BIT_AND=1 BIT_OR=1 LSHIFT=1 RSHIFT=1
+    PLUS=2 MINUS=2 STAR=2 SLASH=2 REM=2
+    CONCAT=3 PTR=3
+  }
 }
 
-enum UnaryOp { MINUS PLUS BIT_NOT NOT }
+enum UnaryOp {
+  MINUS PLUS BIT_NOT NOT
+
+  fmt_precedence { NOT=255 }
+}

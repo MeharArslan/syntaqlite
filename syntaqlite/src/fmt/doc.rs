@@ -59,10 +59,10 @@ impl<'a> DocArena<'a> {
     /// memory but a fresh (possibly different) lifetime parameter.
     pub(crate) fn recycle(mut old: DocArena<'_>) -> Self {
         old.docs.clear();
+        let (ptr, _, cap) = old.docs.into_raw_parts();
         // SAFETY: Doc<'old> and Doc<'new> have identical layout (enum of
         // pointers/ids). Clearing removed all elements, so no stale
         // borrows exist. We reuse the raw allocation with a new lifetime.
-        let (ptr, _, cap) = old.docs.into_raw_parts();
         let docs = unsafe { Vec::from_raw_parts(ptr.cast::<Doc<'a>>(), 0, cap) };
         DocArena { docs }
     }

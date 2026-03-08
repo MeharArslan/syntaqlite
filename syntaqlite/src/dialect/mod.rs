@@ -223,6 +223,21 @@ impl AnyDialect {
         unsafe { self.template().fmt_enum_display_val(idx) }
     }
 
+    /// Look up `(prec, group)` from the precedence table at `base + ordinal`.
+    pub(crate) fn fmt_prec_lookup(&self, base: u16, ordinal: u32) -> (u8, u8) {
+        // SAFETY: template() is valid; indices are bounds-checked at codegen time.
+        unsafe { self.template().fmt_prec_lookup(base, ordinal) }
+    }
+
+    /// Look up the expr-meta for a node tag.
+    pub(crate) fn fmt_expr_meta(
+        &self,
+        tag: syntaqlite_syntax::any::AnyNodeTag,
+    ) -> Option<(u8, u16)> {
+        // SAFETY: template() is valid.
+        unsafe { self.template().fmt_expr_meta(u32::from(tag) as usize) }
+    }
+
     /// Return a copy of this dialect targeting a specific `SQLite` version.
     #[must_use]
     pub fn with_version(mut self, version: SqliteVersion) -> Self {
@@ -423,6 +438,10 @@ pub mod ffi {
         fmt_dispatch_count: u32,
         roles_data: *const u8,
         roles_count: u32,
+        fmt_prec_table: *const u8,
+        fmt_prec_table_count: u32,
+        fmt_expr_meta: *const u32,
+        fmt_expr_meta_count: u32,
     }
 
     // SAFETY: CDialectTemplate contains only pointers to immutable static C data.
@@ -513,6 +532,41 @@ pub mod ffi {
         pub(crate) unsafe fn fmt_enum_display_val(&self, idx: usize) -> u16 {
             // SAFETY: callers pass indices checked at codegen time.
             unsafe { *self.fmt_enum_display.add(idx) }
+        }
+
+        /// Look up `(prec, group)` from the precedence table at `base + ordinal`.
+        ///
+        /// # Safety
+        /// `self` must be valid and the index must be in bounds.
+        pub(crate) unsafe fn fmt_prec_lookup(&self, base: u16, ordinal: u32) -> (u8, u8) {
+            let idx = base as usize + ordinal as usize;
+            let byte_idx = idx * 2;
+            // SAFETY: indices are bounds-checked at codegen time.
+            let prec = unsafe { *self.fmt_prec_table.add(byte_idx) };
+            // SAFETY: byte_idx + 1 is in bounds (prec table has 2 bytes per variant).
+            let group = unsafe { *self.fmt_prec_table.add(byte_idx + 1) };
+            (prec, group)
+        }
+
+        /// Look up the expr-meta for a node tag.
+        ///
+        /// Returns `Some((op_field_idx, prec_table_base))` if the node carries
+        /// operator precedence info, or `None` if not.
+        ///
+        /// # Safety
+        /// `self` must be valid and `tag_idx` must be in bounds.
+        pub(crate) unsafe fn fmt_expr_meta(&self, tag_idx: usize) -> Option<(u8, u16)> {
+            if tag_idx >= self.fmt_expr_meta_count as usize {
+                return None;
+            }
+            // SAFETY: tag_idx < fmt_expr_meta_count.
+            let packed = unsafe { *self.fmt_expr_meta.add(tag_idx) };
+            if packed == 0xFFFF_FFFF {
+                return None;
+            }
+            let op_field_idx = (packed & 0xFF) as u8;
+            let prec_table_base = ((packed >> 8) & 0xFFFF) as u16;
+            Some((op_field_idx, prec_table_base))
         }
     }
 }
