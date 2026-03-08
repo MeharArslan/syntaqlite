@@ -40,6 +40,13 @@ NEEDS_BINARY = False
 # Persistent log directory (gitignored).
 _LOGS_DIR_REL = "tests/upstream_baselines/logs"
 
+# Tests that are known to timeout or hang in our harness (crash recovery,
+# heavy fault injection, etc.).  Skipped entirely — not relevant to SQL parsing.
+_SKIP_TESTS: set[str] = {
+    "crash.test",       # Deliberate crash/recovery — hangs under our shim.
+    "tkt2686.test",     # Heavy I/O regression test — exceeds 60s timeout.
+}
+
 
 @dataclass
 class Summary:
@@ -202,12 +209,19 @@ def _build_extension(ctx: SuiteContext, verbose: bool) -> Path | None:
 # ---------------------------------------------------------------------------
 
 
-def _discover_test_files(test_dir: Path, filter_pat: str | None) -> list[Path]:
-    """Find .test files, optionally filtered by substring."""
+def _discover_test_files(
+    test_dir: Path, filter_pat: str | None,
+) -> tuple[list[Path], list[str]]:
+    """Find .test files, optionally filtered by substring.
+
+    Returns (files_to_run, skipped_names).
+    """
     files = sorted(p for p in test_dir.iterdir() if p.suffix == ".test")
     if filter_pat:
         files = [f for f in files if filter_pat in f.stem]
-    return files
+    skipped = [f.name for f in files if f.name in _SKIP_TESTS]
+    files = [f for f in files if f.name not in _SKIP_TESTS]
+    return files, skipped
 
 
 def _run_single_test(
@@ -320,13 +334,17 @@ def _aggregate(results: list[FileResult]) -> tuple[Summary, list[FalsePositive]]
 
 def _print_summary(
     summary: Summary, file_count: int,
-    error_files: list[tuple[str, str]], verbose: bool,
+    error_files: list[tuple[str, str]],
+    skipped: list[str],
+    verbose: bool,
     false_positives: list[FalsePositive],
 ) -> None:
     """Print the standard summary block."""
     print()
     print("  === Upstream Test Summary ===")
     print(f"  Files run:            {file_count}")
+    if skipped:
+        print(f"  Files skipped:        {len(skipped)} ({', '.join(skipped)})")
     print(f"  Files with errors:    {len(error_files)}")
     if error_files:
         for name, reason in error_files:
@@ -596,7 +614,7 @@ def run(ctx: SuiteContext) -> int:
 
         print(f"  Loaded {len(file_results)} log files from {logs_dir}")
         summary, false_positives = _aggregate(file_results)
-        _print_summary(summary, len(file_results), [], verbose, false_positives)
+        _print_summary(summary, len(file_results), [], [], verbose, false_positives)
         _analyze_detailed(file_results, verbose)
 
         baseline_path = root / "tests" / "upstream_baselines" / "parse_acceptance.json"
@@ -632,7 +650,7 @@ def run(ctx: SuiteContext) -> int:
 
     # Discover test files.
     filter_pat = ctx.filter_pattern
-    test_files = _discover_test_files(test_dir, filter_pat)
+    test_files, skipped = _discover_test_files(test_dir, filter_pat)
     if not test_files:
         print(f"error: No .test files found in {test_dir}", file=sys.stderr)
         return 1
@@ -681,7 +699,7 @@ def run(ctx: SuiteContext) -> int:
     summary, false_positives = _aggregate(file_results)
     error_files = [(r.file, r.error) for r in file_results if r.error]
 
-    _print_summary(summary, len(file_results), error_files, verbose, false_positives)
+    _print_summary(summary, len(file_results), error_files, skipped, verbose, false_positives)
     _analyze_detailed(file_results, verbose)
 
     # Baseline comparison.
