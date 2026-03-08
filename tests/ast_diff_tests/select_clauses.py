@@ -116,6 +116,7 @@ class SelectGroupBy(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby:
                 ExprList [2 items]
@@ -489,6 +490,7 @@ class SelectWindow(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -590,6 +592,7 @@ class SelectCombined(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause:
                 BinaryExpr
                   op: GT

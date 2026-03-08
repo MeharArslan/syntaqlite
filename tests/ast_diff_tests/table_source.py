@@ -84,6 +84,7 @@ class TableRefBasic(TestSuite):
                   alias:
                     IdentName
                       source: "x"
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -214,11 +215,13 @@ class JoinBasic(TestSuite):
                           table_name: "a"
                           schema: (none)
                           alias: (none)
+                          args: (none)
                       right:
                         TableRef
                           table_name: "b"
                           schema: (none)
                           alias: (none)
+                          args: (none)
                       on_expr: (none)
                       using_columns: (none)
                   right:
@@ -226,6 +229,7 @@ class JoinBasic(TestSuite):
                       table_name: "c"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -625,11 +629,13 @@ class JoinNatural(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)
@@ -661,11 +667,13 @@ class JoinNatural(TestSuite):
                       table_name: "a"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   right:
                     TableRef
                       table_name: "b"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   on_expr: (none)
                   using_columns: (none)
               where_clause: (none)

@@ -185,6 +185,7 @@ class AggregateFunctionOrderBy(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -240,6 +241,7 @@ class AggregateFunctionOrderBy(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -405,6 +407,7 @@ class OrderedSetFunctionCall(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -447,6 +450,7 @@ class OrderedSetFunctionCall(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -500,6 +504,7 @@ class OrderedSetFunctionCall(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)
@@ -547,6 +552,7 @@ class OrderedSetFunctionCall(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause: (none)
               groupby: (none)
               having: (none)

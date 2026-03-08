@@ -459,6 +459,7 @@ class WithClause(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)
@@ -518,6 +519,7 @@ class WithClause(TestSuite):
                           table_name: "t"
                           schema: (none)
                           alias: (none)
+                          args: (none)
                       where_clause: (none)
                       groupby: (none)
                       having: (none)
@@ -610,6 +612,7 @@ class WithClause(TestSuite):
                                 table_name: "cnt"
                                 schema: (none)
                                 alias: (none)
+                                args: (none)
                             where_clause:
                               BinaryExpr
                                 op: LT
@@ -645,6 +648,7 @@ class WithClause(TestSuite):
                       table_name: "cnt"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   groupby: (none)
                   having: (none)

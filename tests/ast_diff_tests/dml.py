@@ -490,6 +490,7 @@ class UpdateFrom(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -507,6 +508,7 @@ class UpdateFrom(TestSuite):
                   alias:
                     IdentName
                       source: "o"
+                  args: (none)
               where_clause:
                 BinaryExpr
                   op: EQ
@@ -522,6 +524,7 @@ class UpdateFrom(TestSuite):
                       schema: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -540,6 +543,7 @@ class UpdateConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -553,6 +557,7 @@ class UpdateConflict(TestSuite):
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -567,6 +572,7 @@ class UpdateConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -580,6 +586,7 @@ class UpdateConflict(TestSuite):
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -594,6 +601,7 @@ class UpdateConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -607,6 +615,7 @@ class UpdateConflict(TestSuite):
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -621,6 +630,7 @@ class UpdateConflict(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -634,6 +644,7 @@ class UpdateConflict(TestSuite):
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -652,6 +663,7 @@ class UpdateSetClauseMultiColumn(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -678,6 +690,7 @@ class UpdateSetClauseMultiColumn(TestSuite):
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
+              returning: (none)
 """,
         )
 
@@ -696,6 +709,7 @@ class InsertMultipleRows(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               columns: (none)
               source:
                 ValuesClause
@@ -722,6 +736,8 @@ class InsertMultipleRows(TestSuite):
                         Literal
                           literal_type: INTEGER
                           source: "6"
+              upsert: (none)
+              returning: (none)
 """,
         )
 

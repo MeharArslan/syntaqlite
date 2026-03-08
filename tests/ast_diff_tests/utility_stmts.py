@@ -300,9 +300,11 @@ class ExplainStmts(TestSuite):
                       table_name: "t"
                       schema: (none)
                       alias: (none)
+                      args: (none)
                   where_clause: (none)
                   orderby: (none)
                   limit_clause: (none)
+                  returning: (none)
 """,
         )
 

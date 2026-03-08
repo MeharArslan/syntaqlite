@@ -428,6 +428,7 @@ class SubqueryExpr(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause:
                 UnaryExpr
                   op: NOT
@@ -450,6 +451,7 @@ class SubqueryExpr(TestSuite):
                               table_name: "u"
                               schema: (none)
                               alias: (none)
+                              args: (none)
                           where_clause: (none)
                           groupby: (none)
                           having: (none)
@@ -563,6 +565,7 @@ class InExpr(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause:
                 InExpr
                   negated: TRUE
@@ -591,6 +594,7 @@ class InExpr(TestSuite):
                               table_name: "u"
                               schema: (none)
                               alias: (none)
+                              args: (none)
                           where_clause: (none)
                           groupby: (none)
                           having: (none)

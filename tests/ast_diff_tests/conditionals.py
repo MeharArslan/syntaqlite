@@ -345,6 +345,7 @@ class BetweenExprBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause:
                 BetweenExpr
                   negated: FALSE
@@ -508,6 +509,7 @@ class LikeExprBasic(TestSuite):
                   table_name: "t"
                   schema: (none)
                   alias: (none)
+                  args: (none)
               where_clause:
                 LikeExpr
                   negated: FALSE
