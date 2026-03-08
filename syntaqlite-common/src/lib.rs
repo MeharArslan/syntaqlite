@@ -235,8 +235,14 @@ pub mod roles {
             body: FieldIdx,
         } = 14,
 
+        /// DML statement (INSERT/UPDATE/DELETE): push a query scope, then
+        /// recurse into children (field-declaration order ensures the target
+        /// table's `SourceRef` is visited first, registering it in scope
+        /// before column refs are resolved).
+        DmlScope = 15,
+
         /// No semantic role — recurse into children generically.
-        Transparent = 15,
+        Transparent = 16,
     }
 
     #[cfg(test)]
@@ -272,7 +278,7 @@ pub mod roles {
                 },
                 0,
             );
-            check(SemanticRole::Transparent, 15);
+            check(SemanticRole::Transparent, 16);
         }
 
         #[test]

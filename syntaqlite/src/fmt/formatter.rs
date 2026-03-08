@@ -93,10 +93,7 @@ impl Formatter {
     /// requires the token stream to determine which nodes fall within macro
     /// regions. If tokens were not collected and macro regions are present,
     /// macro calls will be expanded rather than preserved verbatim.
-    pub fn format_parsed(
-        &mut self,
-        erased: AnyParsedStatement<'_>,
-    ) -> String {
+    pub fn format_parsed(&mut self, erased: AnyParsedStatement<'_>) -> String {
         self.macro_regions.clear();
         self.macro_regions.extend(erased.macro_regions());
 

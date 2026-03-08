@@ -466,6 +466,11 @@ impl<'a> ValidationPass<'a> {
             } => {
                 self.visit_trigger_scope(stmt, &fields, when, body);
             }
+            SemanticRole::DmlScope => {
+                self.catalog.push_query_scope();
+                self.visit_children(stmt, node_id);
+                self.catalog.pop_query_scope();
+            }
         }
     }
 
@@ -1963,6 +1968,70 @@ mod tests {
         assert!(
             col_errs.is_empty(),
             "subquery with unknown table should suppress column errors, got: {col_errs:#?}"
+        );
+    }
+
+    // ── DML: unknown table should not produce column errors ─────────────────
+
+    /// INSERT INTO unknown_table(col) — column refs in the INSERT column list
+    /// must not be flagged when the target table is unknown.
+    #[test]
+    fn insert_unknown_table_columns_not_flagged() {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(
+            "INSERT INTO unknown_tbl(a, b, c) VALUES(1, 2, 3)",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "INSERT into unknown table should suppress column errors, got: {col_errs:#?}"
+        );
+    }
+
+    /// UPDATE unknown_table SET col=val WHERE other_col=1 — column refs in
+    /// SET and WHERE must not be flagged when the target table is unknown.
+    #[test]
+    fn update_unknown_table_columns_not_flagged() {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(
+            "UPDATE unknown_tbl SET stat='val' WHERE idx='t1a'",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "UPDATE on unknown table should suppress column errors, got: {col_errs:#?}"
+        );
+    }
+
+    /// DELETE FROM unknown_table WHERE col=1 — column refs in WHERE must not
+    /// be flagged when the target table is unknown.
+    #[test]
+    fn delete_unknown_table_columns_not_flagged() {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze("DELETE FROM unknown_tbl WHERE idx='t1a'", &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "DELETE from unknown table should suppress column errors, got: {col_errs:#?}"
         );
     }
 

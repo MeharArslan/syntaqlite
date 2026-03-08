@@ -285,6 +285,9 @@ fn role_to_bytes(
             bytes[2] = fi(when);
             bytes[3] = fi(body);
         }
+        SynqRole::DmlScope => {
+            bytes[0] = disc(SemanticRole::DmlScope);
+        }
     }
 
     bytes

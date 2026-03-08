@@ -35,6 +35,8 @@ node DeleteStmt {
   limit_clause: index LimitClause
   returning: index ResultColumnList
 
+  semantic { dml_scope() }
+
   fmt {
     group {
       "DELETE FROM " child(table)
@@ -71,6 +73,8 @@ node UpdateStmt {
   limit_clause: index LimitClause
   returning: index ResultColumnList
 
+  semantic { dml_scope() }
+
   fmt {
     group {
       "UPDATE"
@@ -99,6 +103,8 @@ node InsertStmt {
   source: index Select
   upsert: index UpsertClauseList
   returning: index ResultColumnList
+
+  semantic { dml_scope() }
 
   fmt {
     group {

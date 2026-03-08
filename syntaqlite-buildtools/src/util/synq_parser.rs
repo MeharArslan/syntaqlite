@@ -117,6 +117,7 @@ pub(crate) enum SemanticRole {
         when: String,
         body: String,
     },
+    DmlScope,
 }
 
 /// A `semantic { ... }` annotation on a node.
@@ -521,6 +522,7 @@ impl Parser {
     }
 
     /// Parse a `semantic { role(...) }` block (new syntax).
+    #[expect(clippy::too_many_lines)]
     fn parse_semantic(
         &mut self,
         node_name: &str,
@@ -539,8 +541,10 @@ impl Parser {
             "define_table" => {
                 let without_rowid = get_param(&params, "without_rowid").map(|v| {
                     let (field, bit) = v.split_once('.').unwrap_or_else(|| {
-                        panic!("define_table without_rowid must use dotted syntax \
-                                (e.g. flags.without_rowid), got '{v}'")
+                        panic!(
+                            "define_table without_rowid must use dotted syntax \
+                                (e.g. flags.without_rowid), got '{v}'"
+                        )
                     });
                     (field.to_string(), bit.to_string())
                 });
@@ -624,6 +628,7 @@ impl Parser {
                 when: require_param(&params, "when", node_name, "trigger_scope")?,
                 body: require_param(&params, "body", node_name, "trigger_scope")?,
             },
+            "dml_scope" => SemanticRole::DmlScope,
             _ => {
                 return Err(format!(
                     "unknown semantic role '{role_name}' in node '{node_name}'"
