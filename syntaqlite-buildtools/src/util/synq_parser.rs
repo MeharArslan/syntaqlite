@@ -46,6 +46,7 @@ pub(crate) enum SemanticRole {
         name: String,
         args: Option<String>,
         return_type: Option<String>,
+        select: Option<String>,
     },
     ReturnSpec {
         columns: Option<String>,
@@ -535,6 +536,7 @@ impl Parser {
                 name: require_param(&params, "name", node_name, "define_function")?,
                 args: get_param(&params, "args").map(str::to_string),
                 return_type: get_param(&params, "return_type").map(str::to_string),
+                select: get_param(&params, "select").map(str::to_string),
             },
             "return_spec" => SemanticRole::ReturnSpec {
                 columns: get_param(&params, "table_columns").map(str::to_string),

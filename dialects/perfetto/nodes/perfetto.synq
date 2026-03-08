@@ -125,7 +125,7 @@ node CreatePerfettoFunctionStmt {
   return_type: index PerfettoReturnType
   select: index Select
 
-  semantic { define_function(name: function_name, args: args, return_type: return_type) }
+  semantic { define_function(name: function_name, args: args, return_type: return_type, select: select) }
 
   fmt {
     group {

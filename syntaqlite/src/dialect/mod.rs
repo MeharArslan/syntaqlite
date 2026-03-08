@@ -373,6 +373,7 @@ mod tests {
             name: 0,
             args: FIELD_ABSENT,
             return_type: FIELD_ABSENT,
+            select: FIELD_ABSENT,
         };
         let _ = SemanticRole::ReturnSpec {
             columns: FIELD_ABSENT,

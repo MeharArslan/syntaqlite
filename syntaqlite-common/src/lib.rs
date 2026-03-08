@@ -90,6 +90,8 @@ pub mod roles {
             args: FieldIdx,
             /// Field index of a return-type child node (`FIELD_ABSENT` if absent).
             return_type: FieldIdx,
+            /// Field index of an AS-SELECT body (`FIELD_ABSENT` if absent).
+            select: FieldIdx,
         } = 2,
         /// Annotates a return-type descriptor node.
         ReturnSpec {

@@ -32,7 +32,7 @@ class PerfettoExtension(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -63,7 +63,7 @@ class PerfettoExtension(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -96,7 +96,7 @@ class PerfettoExtension(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -124,7 +124,9 @@ class PerfettoExtension(TestSuite):
               args:
                 PerfettoArgDefList [1 items]
                   PerfettoArgDef
-                    arg_name: "x"
+                    arg_name:
+                      IdentName
+                        source: "x"
                     arg_type: "INT"
                     is_variadic: FALSE
               return_type:
@@ -139,7 +141,7 @@ class PerfettoExtension(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -175,7 +177,7 @@ class PerfettoExtension(TestSuite):
                     ResultColumnList [1 items]
                       ResultColumn
                         flags: (none)
-                        alias: null
+                        alias: (none)
                         expr:
                           Literal
                             literal_type: INTEGER
@@ -295,7 +297,7 @@ class PerfettoExtension(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: INTEGER
@@ -317,14 +319,16 @@ class PerfettoExtension(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [1 items]
                   ColumnDef
-                    column_name: "id"
+                    column_name:
+                      IdentName
+                        source: "id"
                     type_name: "INTEGER"
                     constraints: (none)
               table_constraints: (none)

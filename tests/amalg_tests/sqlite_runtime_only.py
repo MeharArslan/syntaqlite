@@ -23,7 +23,7 @@ class SqliteAmalgRuntimeOnly(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: INTEGER
@@ -44,41 +44,45 @@ class SqliteAmalgRuntimeOnly(TestSuite):
             out="""\
             CreateTableStmt
               table_name: "t"
-              schema: null
+              schema: (none)
               is_temp: FALSE
               if_not_exists: FALSE
               flags: (none)
               columns:
                 ColumnDefList [2 items]
                   ColumnDef
-                    column_name: "id"
+                    column_name:
+                      IdentName
+                        source: "id"
                     type_name: "INTEGER"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: PRIMARY_KEY
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)
                           generated_expr: (none)
                           fk_clause: (none)
                   ColumnDef
-                    column_name: "name"
+                    column_name:
+                      IdentName
+                        source: "name"
                     type_name: "TEXT"
                     constraints:
                       ColumnConstraintList [1 items]
                         ColumnConstraint
                           kind: NOT_NULL
-                          constraint_name: null
+                          constraint_name: (none)
                           onconf: DEFAULT
                           sort_order: ASC
                           is_autoincrement: FALSE
-                          collation_name: null
+                          collation_name: (none)
                           generated_storage: VIRTUAL
                           default_expr: (none)
                           check_expr: (none)

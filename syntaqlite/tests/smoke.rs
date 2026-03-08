@@ -218,7 +218,10 @@ fn table_qualified_star_qualifier_in_expr_not_alias() {
         panic!("expected SelectStmt, got {root:?}");
     };
     let columns = select.columns().expect("expected result columns");
-    let col = columns.iter().next().expect("expected at least one result column");
+    let col = columns
+        .iter()
+        .next()
+        .expect("expected at least one result column");
     assert!(col.flags().star(), "STAR flag should be set for t.*");
     assert!(
         col.alias().is_none(),

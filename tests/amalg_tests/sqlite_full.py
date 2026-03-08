@@ -23,7 +23,7 @@ class SqliteAmalgFull(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: INTEGER
@@ -48,25 +48,25 @@ class SqliteAmalgFull(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       ColumnRef
                         column: "a"
-                        table: null
-                        schema: null
+                        table: (none)
+                        schema: (none)
               from_clause:
                 TableRef
                   table_name: "t"
-                  schema: null
-                  alias: null
+                  schema: (none)
+                  alias: (none)
               where_clause:
                 BinaryExpr
                   op: EQ
                   left:
                     ColumnRef
                       column: "x"
-                      table: null
-                      schema: null
+                      table: (none)
+                      schema: (none)
                   right:
                     Literal
                       literal_type: INTEGER
@@ -89,7 +89,7 @@ class SqliteAmalgFull(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: INTEGER
@@ -108,7 +108,7 @@ class SqliteAmalgFull(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: (none)
-                    alias: null
+                    alias: (none)
                     expr:
                       Literal
                         literal_type: INTEGER

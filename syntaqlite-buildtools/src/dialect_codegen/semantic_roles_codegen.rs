@@ -99,15 +99,18 @@ fn role_to_bytes(fields: &[Field], synq_role: Option<&SynqRole>) -> [u8; ROLE_SI
             name,
             args,
             return_type,
+            select,
         } => {
             bytes[0] = disc(SemanticRole::DefineFunction {
                 name: 0,
                 args: 0,
                 return_type: 0,
+                select: 0,
             });
             bytes[1] = fi(name);
             bytes[2] = opt(args);
             bytes[3] = opt(return_type);
+            bytes[4] = opt(select);
         }
         SynqRole::ReturnSpec { columns } => {
             bytes[0] = disc(SemanticRole::ReturnSpec { columns: 0 });

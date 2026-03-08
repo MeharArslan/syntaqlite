@@ -372,12 +372,16 @@ impl<'a> ValidationPass<'a> {
             .unwrap_or(SemanticRole::Transparent);
 
         match role {
-            // Catalog roles are handled in the accumulation pass; skip here.
-            SemanticRole::DefineTable { .. }
-            | SemanticRole::DefineView { .. }
-            | SemanticRole::DefineFunction { .. }
-            | SemanticRole::ReturnSpec { .. }
-            | SemanticRole::Import { .. } => {}
+            // Catalog roles are handled in the accumulation pass, but we
+            // still recurse into the SELECT body to validate table/column refs.
+            SemanticRole::DefineTable { select, .. }
+            | SemanticRole::DefineView { select, .. }
+            | SemanticRole::DefineFunction { select, .. } => {
+                if select != FIELD_ABSENT {
+                    self.visit_opt(stmt, Self::field_node_id(&fields, select));
+                }
+            }
+            SemanticRole::ReturnSpec { .. } | SemanticRole::Import { .. } => {}
 
             // Transparent: recurse into children without special handling.
             // ColumnDef and ResultColumn have no validation logic yet — child

@@ -489,6 +489,7 @@ impl Catalog {
                 name,
                 args,
                 return_type,
+                ..
             } => {
                 let name_val = match fields[name as usize] {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
