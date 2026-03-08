@@ -288,7 +288,7 @@ impl Catalog {
 
     /// Borrow a fixed layer mutably.
     ///
-    /// Use the returned [`CatalogLayerContents`] to insert relations, functions,
+    /// Use the returned `CatalogLayerContents` to insert relations, functions,
     /// or table-valued functions into the chosen layer.
     pub fn layer_mut(&mut self, which: CatalogLayer) -> &mut CatalogLayerContents {
         &mut self.layers[which.index()]

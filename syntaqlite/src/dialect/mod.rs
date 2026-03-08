@@ -133,7 +133,7 @@ pub trait TypedDialect: Into<AnyDialect> + Clone + 'static {}
 /// pointer to the static `CGrammarTemplate`.
 ///
 /// For the built-in `SQLite` dialect, obtain via `crate::sqlite_dialect()` or
-/// `Dialect::new().erase()`. For dynamically loaded dialects use [`AnyDialect::load`].
+/// `Dialect::new().erase()`. For dynamically loaded dialects use `AnyDialect::load`.
 #[derive(Clone)]
 pub struct AnyDialect {
     grammar: AnyGrammar,
@@ -264,7 +264,7 @@ impl AnyDialect {
     ///
     /// **This is only intended for external dialect implementations and WASM side-module
     /// loaders.** Normal application code should use [`crate::sqlite_dialect()`] or the
-    /// `dynload` feature's [`AnyDialect::load`] instead.
+    /// `dynload` feature's `AnyDialect::load` instead.
     ///
     /// # Safety
     ///
@@ -408,7 +408,7 @@ pub mod ffi {
     ///
     /// Field order and types must exactly match the C `SyntaqliteDialectTemplate` typedef
     /// emitted in the generated `dialect.c`. All fields are private; this type is opaque
-    /// to external callers — only pass it by pointer to [`AnyDialect::from_c_dialect_ptr`].
+    /// to external callers — only pass it by pointer to [`super::AnyDialect::from_c_dialect_ptr`].
     #[repr(C)]
     pub struct CDialectTemplate {
         grammar: syntaqlite_syntax::typed::CGrammar,

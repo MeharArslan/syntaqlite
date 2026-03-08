@@ -42,7 +42,7 @@ pub struct FormatConfig {
     pub semicolons: bool,
 }
 
-/// An error returned by [`Formatter::format`] when a statement fails to parse.
+/// An error returned by [`crate::Formatter::format`] when a statement fails to parse.
 #[derive(Debug, Clone)]
 pub struct FormatError {
     /// Human-readable error message.
