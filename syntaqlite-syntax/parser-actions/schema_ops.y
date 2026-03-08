@@ -86,18 +86,17 @@ cmd(A) ::= ALTER TABLE fullname(X) DROP kwcolumn_opt nmorerr(Y). {
         Y);
 }
 
-cmd(A) ::= ALTER TABLE add_column_fullname ADD kwcolumn_opt columnname(Y) carglist. {
+cmd(A) ::= ALTER TABLE add_column_fullname(F) ADD kwcolumn_opt columnname(Y) carglist. {
     A = synq_parse_alter_table_stmt(pCtx,
-        SYNTAQLITE_ALTER_OP_ADD_COLUMN, SYNTAQLITE_NULL_NODE,
+        SYNTAQLITE_ALTER_OP_ADD_COLUMN, F,
         SYNTAQLITE_NULL_NODE,
         Y.name);
 }
 
 // ============ ALTER TABLE support rules ============
 
-add_column_fullname ::= fullname. {
-    // Passthrough - fullname already produces a node ID but we don't need it
-    // for the ADD COLUMN action since add_column_fullname is consumed by cmd
+add_column_fullname(A) ::= fullname(X). {
+    A = X;
 }
 
 kwcolumn_opt(A) ::= . {

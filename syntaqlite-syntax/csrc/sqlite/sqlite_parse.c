@@ -7165,6 +7165,8 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 176);
     case 190: /* exprlist ::= nexprlist */
       yytestcase(yyruleno == 190);
+    case 235: /* add_column_fullname ::= fullname */
+      yytestcase(yyruleno == 235);
     case 254: /* cmd ::= select */
       yytestcase(yyruleno == 254);
     case 255: /* select ::= selectnowith */
@@ -7179,9 +7181,7 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 399);
     case 410: /* filter_over ::= over_clause */
       yytestcase(yyruleno == 410);
-      {
-        yylhsminor.yy141 = yymsp[0].minor.yy141;
-      }
+      { yylhsminor.yy141 = yymsp[0].minor.yy141; }
       yymsp[0].minor.yy141 = yylhsminor.yy141;
       break;
     case 3: /* ecmd ::= SEMI */
@@ -7369,9 +7369,7 @@ static YYACTIONTYPE yy_reduce(
     case 24: /* multiselect_op ::= UNION ALL */
     case 29: /* in_op ::= NOT IN */
       yytestcase(yyruleno == 29);
-      {
-        yymsp[-1].minor.yy592 = 1;
-      }
+      { yymsp[-1].minor.yy592 = 1; }
       break;
     case 25: /* multiselect_op ::= EXCEPT|INTERSECT */
     {
@@ -7405,10 +7403,11 @@ static YYACTIONTYPE yy_reduce(
     case 31: /* expr ::= expr in_op LP select RP */
     {
       pCtx->saw_subquery = 1;
-      uint32_t sub = synq_parse_subquery_expr(pCtx, yymsp[-1].minor.yy141);
+      // Pass the raw select node directly — InExpr's fmt block already adds
+      // the surrounding parens, so wrapping in SubqueryExpr would double them.
       yymsp[-4].minor.yy141 =
           synq_parse_in_expr(pCtx, (SyntaqliteBool)yymsp[-3].minor.yy592,
-                             yymsp[-4].minor.yy141, sub);
+                             yymsp[-4].minor.yy141, yymsp[-1].minor.yy141);
     } break;
     case 32: /* expr ::= expr in_op nm dbnm paren_exprlist */
     {
@@ -7492,16 +7491,12 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 212);
     case 268: /* distinct ::= ALL */
       yytestcase(yyruleno == 268);
-      {
-        yymsp[0].minor.yy141 = 0;
-      }
+      { yymsp[0].minor.yy141 = 0; }
       break;
     case 44:  /* between_op ::= NOT BETWEEN */
     case 215: /* nulls ::= NULLS FIRST */
       yytestcase(yyruleno == 215);
-      {
-        yymsp[-1].minor.yy141 = 1;
-      }
+      { yymsp[-1].minor.yy141 = 1; }
       break;
     case 45: /* expr ::= expr between_op expr AND expr */
     {
@@ -7514,9 +7509,7 @@ static YYACTIONTYPE yy_reduce(
     case 46:  /* likeop ::= LIKE_KW|MATCH */
     case 200: /* nm ::= STRING */
       yytestcase(yyruleno == 200);
-      {
-        yylhsminor.yy0 = yymsp[0].minor.yy0;
-      }
+      { yylhsminor.yy0 = yymsp[0].minor.yy0; }
       yymsp[0].minor.yy0 = yylhsminor.yy0;
       break;
     case 47: /* likeop ::= NOT LIKE_KW|MATCH */
@@ -7587,9 +7580,7 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 352);
     case 408: /* window_clause ::= WINDOW windowdefn_list */
       yytestcase(yyruleno == 408);
-      {
-        yymsp[-1].minor.yy141 = yymsp[0].minor.yy141;
-      }
+      { yymsp[-1].minor.yy141 = yymsp[0].minor.yy141; }
       break;
     case 54: /* case_else ::= */
     case 56: /* case_operand ::= */
@@ -7630,9 +7621,7 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 353);
     case 393: /* frame_opt ::= */
       yytestcase(yyruleno == 393);
-      {
-        yymsp[1].minor.yy141 = SYNTAQLITE_NULL_NODE;
-      }
+      { yymsp[1].minor.yy141 = SYNTAQLITE_NULL_NODE; }
       break;
     case 57: /* cmd ::= create_table create_table_args */
     {
@@ -7707,9 +7696,7 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 360);
     case 365: /* temp ::= */
       yytestcase(yyruleno == 365);
-      {
-        yymsp[1].minor.yy592 = 0;
-      }
+      { yymsp[1].minor.yy592 = 0; }
       break;
     case 62:  /* table_option_set ::= table_option */
     case 118: /* defer_subclause_opt ::= defer_subclause */
@@ -8001,9 +7988,7 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 358);
     case 364: /* temp ::= TEMP */
       yytestcase(yyruleno == 364);
-      {
-        yymsp[0].minor.yy592 = 1;
-      }
+      { yymsp[0].minor.yy592 = 1; }
       break;
     case 90: /* refargs ::= */
     {
@@ -8066,25 +8051,19 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 147);
     case 404: /* frame_exclude_opt ::= EXCLUDE frame_exclude */
       yytestcase(yyruleno == 404);
-      {
-        yymsp[-1].minor.yy592 = yymsp[0].minor.yy592;
-      }
+      { yymsp[-1].minor.yy592 = yymsp[0].minor.yy592; }
       break;
     case 104: /* init_deferred_pred_opt ::= INITIALLY DEFERRED */
     case 136: /* collate ::= COLLATE ID|STRING */
       yytestcase(yyruleno == 136);
     case 225: /* ifexists ::= IF EXISTS */
       yytestcase(yyruleno == 225);
-      {
-        yymsp[-1].minor.yy592 = 1;
-      }
+      { yymsp[-1].minor.yy592 = 1; }
       break;
     case 105: /* init_deferred_pred_opt ::= INITIALLY IMMEDIATE */
     case 248: /* trans_opt ::= TRANSACTION nm */
       yytestcase(yyruleno == 248);
-      {
-        yymsp[-1].minor.yy592 = 0;
-      }
+      { yymsp[-1].minor.yy592 = 0; }
       break;
     case 107: /* conslist_opt ::= COMMA conslist */
     {
@@ -8184,9 +8163,7 @@ static YYACTIONTYPE yy_reduce(
     case 119: /* onconf ::= */
     case 146: /* orconf ::= */
       yytestcase(yyruleno == 146);
-      {
-        yymsp[1].minor.yy592 = (int)SYNTAQLITE_CONFLICT_ACTION_DEFAULT;
-      }
+      { yymsp[1].minor.yy592 = (int)SYNTAQLITE_CONFLICT_ACTION_DEFAULT; }
       break;
     case 120: /* onconf ::= ON CONFLICT resolvetype */
     {
@@ -8256,9 +8233,7 @@ static YYACTIONTYPE yy_reduce(
       yytestcase(yyruleno == 177);
     case 324: /* trigger_cmd ::= scanpt select scanpt */
       yytestcase(yyruleno == 324);
-      {
-        yymsp[-2].minor.yy141 = yymsp[-1].minor.yy141;
-      }
+      { yymsp[-2].minor.yy141 = yymsp[-1].minor.yy141; }
       break;
     case 133: /* eidlist ::= nm collate sortorder */
     {
@@ -8386,9 +8361,7 @@ static YYACTIONTYPE yy_reduce(
     case 145: /* insert_cmd ::= REPLACE */
     case 150: /* resolvetype ::= REPLACE */
       yytestcase(yyruleno == 150);
-      {
-        yymsp[0].minor.yy592 = (int)SYNTAQLITE_CONFLICT_ACTION_REPLACE;
-      }
+      { yymsp[0].minor.yy592 = (int)SYNTAQLITE_CONFLICT_ACTION_REPLACE; }
       break;
     case 148: /* resolvetype ::= raisetype */
     {
@@ -8577,9 +8550,7 @@ static YYACTIONTYPE yy_reduce(
     case 175: /* expr ::= error */
     case 202: /* nmorerr ::= error */
       yytestcase(yyruleno == 202);
-      {
-        yymsp[0].minor.yy141 = synq_parse_error(pCtx, synq_error_span(pCtx));
-      }
+      { yymsp[0].minor.yy141 = synq_parse_error(pCtx, synq_error_span(pCtx)); }
       break;
     case 178: /* expr ::= expr PLUS|MINUS expr */
     {
@@ -8888,18 +8859,14 @@ static YYACTIONTYPE yy_reduce(
     case 213: /* sortorder ::= DESC */
     case 267: /* distinct ::= DISTINCT */
       yytestcase(yyruleno == 267);
-      {
-        yymsp[0].minor.yy141 = 1;
-      }
+      { yymsp[0].minor.yy141 = 1; }
       break;
     case 214: /* sortorder ::= */
     case 217: /* nulls ::= */
       yytestcase(yyruleno == 217);
     case 269: /* distinct ::= */
       yytestcase(yyruleno == 269);
-      {
-        yymsp[1].minor.yy141 = 0;
-      }
+      { yymsp[1].minor.yy141 = 0; }
       break;
     case 216: /* nulls ::= NULLS LAST */
     {
@@ -8989,13 +8956,8 @@ static YYACTIONTYPE yy_reduce(
                  columnname carglist */
     {
       yymsp[-6].minor.yy141 = synq_parse_alter_table_stmt(
-          pCtx, SYNTAQLITE_ALTER_OP_ADD_COLUMN, SYNTAQLITE_NULL_NODE,
+          pCtx, SYNTAQLITE_ALTER_OP_ADD_COLUMN, yymsp[-4].minor.yy141,
           SYNTAQLITE_NULL_NODE, yymsp[-1].minor.yy452.name);
-    } break;
-    case 235: /* add_column_fullname ::= fullname */
-    {
-      // Passthrough - fullname already produces a node ID but we don't need it
-      // for the ADD COLUMN action since add_column_fullname is consumed by cmd
     } break;
     case 238: /* columnname ::= nmorerr typetoken */
     {
@@ -9043,9 +9005,7 @@ static YYACTIONTYPE yy_reduce(
     case 247: /* trans_opt ::= TRANSACTION */
     case 249: /* savepoint_opt ::= SAVEPOINT */
       yytestcase(yyruleno == 249);
-      {
-        yymsp[0].minor.yy592 = 0;
-      }
+      { yymsp[0].minor.yy592 = 0; }
       break;
     case 251: /* cmd ::= SAVEPOINT nmorerr */
     {
@@ -9105,9 +9065,7 @@ static YYACTIONTYPE yy_reduce(
     case 275: /* groupby_opt ::= GROUP BY nexprlist */
     case 279: /* orderby_opt ::= ORDER BY sortlist */
       yytestcase(yyruleno == 279);
-      {
-        yymsp[-2].minor.yy141 = yymsp[0].minor.yy141;
-      }
+      { yymsp[-2].minor.yy141 = yymsp[0].minor.yy141; }
       break;
     case 281: /* limit_opt ::= LIMIT expr */
     {
@@ -10016,7 +9974,7 @@ static void yy_syntax_error(
   SynqSqliteParseARG_FETCH SynqSqliteParseCTX_FETCH
 #define TOKEN yyminor
       /************ Begin %syntax_error code
-         ****************************************/
+       ****************************************/
 
       (void) yymajor;
   (void)TOKEN;

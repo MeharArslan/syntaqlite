@@ -274,7 +274,12 @@ class AlterTableDropAdd(TestSuite):
             out="""\
             AlterTableStmt
               op: ADD_COLUMN
-              target: (none)
+              target:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               new_name: (none)
               old_name:
                 IdentName
@@ -288,7 +293,12 @@ class AlterTableDropAdd(TestSuite):
             out="""\
             AlterTableStmt
               op: ADD_COLUMN
-              target: (none)
+              target:
+                QualifiedName
+                  object_name:
+                    IdentName
+                      source: "t"
+                  schema: (none)
               new_name: (none)
               old_name:
                 IdentName

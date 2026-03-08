@@ -80,7 +80,7 @@ node ColumnConstraint {
         }
       }
       CHECK     { "CHECK(" child(check_expr) ")" }
-      DEFAULT   { "DEFAULT " child(default_expr) }
+      DEFAULT   { "DEFAULT (" child(default_expr) ")" }
       COLLATE   { "COLLATE " span(collation_name) }
       REFERENCES { child(fk_clause) }
       GENERATED {
@@ -191,7 +191,10 @@ node CreateTableStmt {
         softline ")"
       }
       if_set(as_select) { line "AS" }
-      if_flag(flags.without_rowid) { " WITHOUT ROWID" }
+      if_flag(flags.without_rowid) {
+        " WITHOUT ROWID"
+        if_flag(flags.strict) { "," }
+      }
       if_flag(flags.strict) { " STRICT" }
     }
     if_set(as_select) { hardline child(as_select) }

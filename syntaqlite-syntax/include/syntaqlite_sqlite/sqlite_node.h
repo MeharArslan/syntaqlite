@@ -1105,6 +1105,10 @@ typedef union SyntaqliteInExprSource {
   SyntaqliteNodeTag tag;
   SyntaqliteExprList expr_list;
   SyntaqliteSubqueryExpr subquery_expr;
+  SyntaqliteSelectStmt select_stmt;
+  SyntaqliteCompoundSelect compound_select;
+  SyntaqliteWithClause with_clause;
+  SyntaqliteValuesClause values_clause;
 } SyntaqliteInExprSource;
 
 static inline int syntaqlite_is_in_expr_source(SyntaqliteNodeTag tag) {
@@ -1112,6 +1116,14 @@ static inline int syntaqlite_is_in_expr_source(SyntaqliteNodeTag tag) {
     case SYNTAQLITE_NODE_EXPR_LIST:
       return 1;
     case SYNTAQLITE_NODE_SUBQUERY_EXPR:
+      return 1;
+    case SYNTAQLITE_NODE_SELECT_STMT:
+      return 1;
+    case SYNTAQLITE_NODE_COMPOUND_SELECT:
+      return 1;
+    case SYNTAQLITE_NODE_WITH_CLAUSE:
+      return 1;
+    case SYNTAQLITE_NODE_VALUES_CLAUSE:
       return 1;
     default:
       return 0;
@@ -1126,6 +1138,29 @@ static inline const SyntaqliteExprList* syntaqlite_in_expr_source_as_expr_list(
 static inline const SyntaqliteSubqueryExpr*
 syntaqlite_in_expr_source_as_subquery_expr(const SyntaqliteInExprSource* node) {
   return node->tag == SYNTAQLITE_NODE_SUBQUERY_EXPR ? &node->subquery_expr
+                                                    : NULL;
+}
+
+static inline const SyntaqliteSelectStmt*
+syntaqlite_in_expr_source_as_select_stmt(const SyntaqliteInExprSource* node) {
+  return node->tag == SYNTAQLITE_NODE_SELECT_STMT ? &node->select_stmt : NULL;
+}
+
+static inline const SyntaqliteCompoundSelect*
+syntaqlite_in_expr_source_as_compound_select(
+    const SyntaqliteInExprSource* node) {
+  return node->tag == SYNTAQLITE_NODE_COMPOUND_SELECT ? &node->compound_select
+                                                      : NULL;
+}
+
+static inline const SyntaqliteWithClause*
+syntaqlite_in_expr_source_as_with_clause(const SyntaqliteInExprSource* node) {
+  return node->tag == SYNTAQLITE_NODE_WITH_CLAUSE ? &node->with_clause : NULL;
+}
+
+static inline const SyntaqliteValuesClause*
+syntaqlite_in_expr_source_as_values_clause(const SyntaqliteInExprSource* node) {
+  return node->tag == SYNTAQLITE_NODE_VALUES_CLAUSE ? &node->values_clause
                                                     : NULL;
 }
 

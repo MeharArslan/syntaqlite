@@ -575,32 +575,30 @@ class InExpr(TestSuite):
                       table: (none)
                       schema: (none)
                   source:
-                    SubqueryExpr
-                      select:
-                        SelectStmt
-                          flags: (none)
-                          columns:
-                            ResultColumnList [1 items]
-                              ResultColumn
-                                flags: (none)
-                                alias: (none)
-                                expr:
-                                  ColumnRef
-                                    column: "id"
-                                    table: (none)
-                                    schema: (none)
-                          from_clause:
-                            TableRef
-                              table_name: "u"
-                              schema: (none)
-                              alias: (none)
-                              args: (none)
-                          where_clause: (none)
-                          groupby: (none)
-                          having: (none)
-                          orderby: (none)
-                          limit_clause: (none)
-                          window_clause: (none)
+                    SelectStmt
+                      flags: (none)
+                      columns:
+                        ResultColumnList [1 items]
+                          ResultColumn
+                            flags: (none)
+                            alias: (none)
+                            expr:
+                              ColumnRef
+                                column: "id"
+                                table: (none)
+                                schema: (none)
+                      from_clause:
+                        TableRef
+                          table_name: "u"
+                          schema: (none)
+                          alias: (none)
+                          args: (none)
+                      where_clause: (none)
+                      groupby: (none)
+                      having: (none)
+                      orderby: (none)
+                      limit_clause: (none)
+                      window_clause: (none)
               groupby: (none)
               having: (none)
               orderby: (none)
@@ -628,26 +626,24 @@ class InExpr(TestSuite):
                             literal_type: INTEGER
                             source: "1"
                         source:
-                          SubqueryExpr
-                            select:
-                              SelectStmt
-                                flags: (none)
-                                columns:
-                                  ResultColumnList [1 items]
-                                    ResultColumn
-                                      flags: (none)
-                                      alias: (none)
-                                      expr:
-                                        Literal
-                                          literal_type: INTEGER
-                                          source: "1"
-                                from_clause: (none)
-                                where_clause: (none)
-                                groupby: (none)
-                                having: (none)
-                                orderby: (none)
-                                limit_clause: (none)
-                                window_clause: (none)
+                          SelectStmt
+                            flags: (none)
+                            columns:
+                              ResultColumnList [1 items]
+                                ResultColumn
+                                  flags: (none)
+                                  alias: (none)
+                                  expr:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "1"
+                            from_clause: (none)
+                            where_clause: (none)
+                            groupby: (none)
+                            having: (none)
+                            orderby: (none)
+                            limit_clause: (none)
+                            window_clause: (none)
               from_clause: (none)
               where_clause: (none)
               groupby: (none)

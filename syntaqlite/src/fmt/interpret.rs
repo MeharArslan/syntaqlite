@@ -53,8 +53,11 @@ struct CallFrame {
     return_action: ReturnAction,
 }
 
+#[derive(PartialEq)]
 enum ReturnAction {
     CatOntoRunning,
+    /// Wrap child output in parentheses before appending to parent.
+    WrapInParens,
     Discard,
 }
 
@@ -160,6 +163,13 @@ impl Formatter {
                     ReturnAction::CatOntoRunning => {
                         running = arena.cat(running, result);
                     }
+                    ReturnAction::WrapInParens => {
+                        let lp = arena.text("(");
+                        let inner = arena.cat(lp, result);
+                        let rp = arena.text(")");
+                        let wrapped = arena.cat(inner, rp);
+                        running = arena.cat(running, wrapped);
+                    }
                     ReturnAction::Discard => {}
                 }
                 continue;
@@ -234,6 +244,15 @@ impl Formatter {
                             && let Some((child_ops_bytes, child_ops_len)) =
                                 ctx.dialect.fmt_dispatch(ctag)
                         {
+                            if return_action != ReturnAction::Discard {
+                                return_action = child_needs_parens(
+                                    ctx,
+                                    cur_node_id,
+                                    idx,
+                                    ctag,
+                                    &child_fields,
+                                );
+                            }
                             push_call_frame!(
                                 child_id,
                                 child_ops_bytes,
@@ -658,6 +677,115 @@ fn byte_offset_in(source: &str, ptr: *const u8) -> u32 {
 enum GroupNestFrame {
     Group(DocId),
     Nest(i16, DocId),
+}
+
+// ── Expression parenthesization helpers ─────────────────────────────────
+
+/// `SQLite` binary operator precedence (higher = binds tighter).
+/// Based on `SQLite`'s operator precedence from the grammar.
+fn binary_op_precedence(op_ordinal: u32) -> Option<u8> {
+    // BinaryOp enum order in expressions.synq:
+    //   PLUS=0, MINUS=1, STAR=2, SLASH=3, REM=4,
+    //   LT=5, GT=6, LE=7, GE=8, EQ=9, NE=10,
+    //   AND=11, OR=12, BIT_AND=13, BIT_OR=14,
+    //   LSHIFT=15, RSHIFT=16, CONCAT=17, PTR=18
+    match op_ordinal {
+        12 => Some(1),            // OR
+        11 => Some(2),            // AND
+        9 | 10 => Some(3),        // EQ, NE
+        5..=8 => Some(4), // LT, GT, LE, GE
+        13 | 14 => Some(5),       // BIT_AND, BIT_OR
+        15 | 16 => Some(6),       // LSHIFT, RSHIFT
+        0 | 1 => Some(7),         // PLUS, MINUS
+        2..=4 => Some(8),     // STAR, SLASH, REM
+        17 => Some(9),            // CONCAT
+        18 => Some(10),           // PTR
+        _ => None,
+    }
+}
+
+/// Determine whether a child node needs to be wrapped in parentheses.
+///
+/// This handles two cases:
+/// 1. **`BinaryExpr` precedence**: when a `BinaryExpr` child of a `BinaryExpr` parent
+///    has lower (or equal, for right-child) precedence, parens are needed to
+///    preserve the original grouping.
+/// 2. **List-as-expression**: when a list node (`ExprList`) appears in a position
+///    where the parent doesn't already wrap it in explicit parens (e.g., as a
+///    row value in SELECT or as a SET clause value), parens are needed.
+fn child_needs_parens(
+    ctx: &FmtCtx,
+    parent_id: AnyNodeId,
+    child_field_idx: u16,
+    child_tag: syntaqlite_syntax::any::AnyNodeTag,
+    child_fields: &syntaqlite_syntax::any::NodeFields,
+) -> ReturnAction {
+    let grammar = &*ctx.dialect;
+
+    // Case 1: BinaryExpr precedence
+    let parent_tag = ctx.reader.extract_fields(parent_id).map(|(t, _)| t);
+    if let Some(ptag) = parent_tag {
+        let parent_name = grammar.node_name(ptag);
+        let child_name = grammar.node_name(child_tag);
+        if parent_name == "BinaryExpr" && child_name == "BinaryExpr" {
+            // BinaryExpr fields: [op, left, right]
+            // op is field 0 (Enum), left is field 1 (NodeId), right is field 2 (NodeId)
+            let parent_fields = ctx.reader.extract_fields(parent_id);
+            if let Some((_, pf)) = parent_fields
+                && let (FieldValue::Enum(parent_op), FieldValue::Enum(child_op)) =
+                    (pf[0], child_fields[0])
+                    && let (Some(parent_prec), Some(child_prec)) = (
+                        binary_op_precedence(parent_op),
+                        binary_op_precedence(child_op),
+                    ) {
+                        // child_field_idx: 1 = left child, 2 = right child
+                        let is_right_child = child_field_idx == 2;
+                        if child_prec < parent_prec || (is_right_child && child_prec == parent_prec)
+                        {
+                            return ReturnAction::WrapInParens;
+                        }
+                    }
+        }
+
+        // Case 2: UnaryExpr wrapping BinaryExpr (e.g., NOT (a AND b))
+        if parent_name == "UnaryExpr" && child_name == "BinaryExpr" {
+            // UnaryExpr fields: [op, operand]
+            // op is field 0 (Enum), operand is field 1 (NodeId)
+            // UnaryOp: MINUS=0, PLUS=1, BIT_NOT=2, NOT=3
+            let parent_fields = ctx.reader.extract_fields(parent_id);
+            if let Some((_, pf)) = parent_fields
+                && let FieldValue::Enum(unary_op) = pf[0] {
+                    // NOT has lower precedence than all binary operators
+                    if unary_op == 3 {
+                        return ReturnAction::WrapInParens;
+                    }
+                }
+        }
+    }
+
+    // Case 3: ExprList appearing as an expression (row value or multi-column SET value).
+    // ExprList needs parens when it appears in a field typed as Expr in .synq
+    // (i.e., a single-expression context). We detect this by checking the parent
+    // node/field name rather than scanning bytecode, because bytecode layout is
+    // unreliable with conditional blocks.
+    if let Some(ptag) = parent_tag
+        && grammar.is_list(child_tag) && grammar.node_name(child_tag) == "ExprList" {
+            let field_name = grammar
+                .field_meta(ptag)
+                .nth(child_field_idx as usize)
+                .map(|m| m.name());
+            // Fields typed as `index Expr` that may contain ExprList as a row value.
+            // Fields like `args`, `columns`, `groupby`, `ref_columns`, etc. are typed
+            // as `index ExprList` and the parent already provides any needed wrapping.
+            if matches!(
+                field_name,
+                Some("expr" | "value" | "left" | "right" | "operand")
+            ) {
+                return ReturnAction::WrapInParens;
+            }
+        }
+
+    ReturnAction::CatOntoRunning
 }
 
 struct ForEachState {

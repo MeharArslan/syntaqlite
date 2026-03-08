@@ -32,7 +32,7 @@ node ExistsExpr {
 }
 
 abstract InExprSource {
-  ExprList SubqueryExpr
+  ExprList SubqueryExpr SelectStmt CompoundSelect WithClause ValuesClause
 }
 
 node InExpr {

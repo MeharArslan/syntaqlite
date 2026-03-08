@@ -940,6 +940,10 @@ impl TypedNodeId for SelectId {
 pub enum InExprSource<'a> {
     ExprList(ExprList<'a>),
     SubqueryExpr(SubqueryExpr<'a>),
+    SelectStmt(SelectStmt<'a>),
+    CompoundSelect(CompoundSelect<'a>),
+    WithClause(WithClause<'a>),
+    ValuesClause(ValuesClause<'a>),
 }
 
 impl<'a> InExprSource<'a> {
@@ -948,6 +952,10 @@ impl<'a> InExprSource<'a> {
         match self {
             InExprSource::ExprList(n) => InExprSourceId(n.node_id().into()),
             InExprSource::SubqueryExpr(n) => InExprSourceId(n.node_id().into()),
+            InExprSource::SelectStmt(n) => InExprSourceId(n.node_id().into()),
+            InExprSource::CompoundSelect(n) => InExprSourceId(n.node_id().into()),
+            InExprSource::WithClause(n) => InExprSourceId(n.node_id().into()),
+            InExprSource::ValuesClause(n) => InExprSourceId(n.node_id().into()),
         }
     }
 }
@@ -958,6 +966,10 @@ impl<'a> GrammarNodeType<'a> for InExprSource<'a> {
         match node {
             Node::ExprList(n) => Some(InExprSource::ExprList(n)),
             Node::SubqueryExpr(n) => Some(InExprSource::SubqueryExpr(n)),
+            Node::SelectStmt(n) => Some(InExprSource::SelectStmt(n)),
+            Node::CompoundSelect(n) => Some(InExprSource::CompoundSelect(n)),
+            Node::WithClause(n) => Some(InExprSource::WithClause(n)),
+            Node::ValuesClause(n) => Some(InExprSource::ValuesClause(n)),
             _ => None,
         }
     }
