@@ -413,7 +413,7 @@ def install_source_dep(dep: SourceDep, target_dir: str) -> bool:
     dest_dir = os.path.join(target_dir, dep.name)
     stamp_path = os.path.join(target_dir, f".{dep.name}.stamp")
 
-    if os.path.exists(stamp_path):
+    if os.path.exists(stamp_path) and os.path.isdir(dest_dir):
         with open(stamp_path) as f:
             if f.read().strip() == dep.version:
                 return True
