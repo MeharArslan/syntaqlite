@@ -2,8 +2,8 @@
   "total": 395692,
   "parse_ok": 290635,
   "parse_error": 105057,
-  "both_accept": 279889,
-  "both_reject": 105924,
-  "false_positive": 9309,
-  "gap": 570
+  "both_accept": 288507,
+  "both_reject": 105911,
+  "false_positive": 691,
+  "gap": 583
 }
