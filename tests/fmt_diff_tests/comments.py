@@ -419,7 +419,6 @@ class JoinComment(TestSuite):
             out="""\
                 SELECT 1
                 FROM t1 AS a
-
                 -- c
                 LEFT JOIN t2 AS b
                   ON a.id = b.id;
@@ -431,8 +430,8 @@ class JoinComment(TestSuite):
             sql="SELECT 1 FROM t1 a LEFT /* mid */ JOIN t2 b ON a.id = b.id",
             out="""\
                 SELECT 1
-                FROM t1 AS a
-                 /* mid */LEFT JOIN t2 AS b
+                FROM t1 AS a /* mid */
+                LEFT JOIN t2 AS b
                   ON a.id = b.id;
             """,
         )
@@ -447,7 +446,6 @@ class JoinComment(TestSuite):
             out="""\
                 SELECT 1
                 FROM t1 AS a
-
                 -- c
                 RIGHT JOIN t2 AS b
                   ON a.id = b.id;
@@ -464,7 +462,6 @@ class JoinComment(TestSuite):
             out="""\
                 SELECT 1
                 FROM t1 AS a
-
                 -- c
                 FULL JOIN t2 AS b
                   ON a.id = b.id;
@@ -481,7 +478,6 @@ class JoinComment(TestSuite):
             out="""\
                 SELECT 1
                 FROM t1 AS a
-
                 -- c
                 CROSS JOIN t2 AS b;
             """,
@@ -497,7 +493,6 @@ class JoinComment(TestSuite):
             out="""\
                 SELECT 1
                 FROM t1 AS a
-
                 -- c
                 NATURAL JOIN t2 AS b;
             """,
@@ -514,7 +509,6 @@ class JoinComment(TestSuite):
             out="""\
                 SELECT 1
                 FROM t1 AS a
-
                 -- c
                 NATURAL LEFT JOIN t2 AS b
                   ON a.id = b.id;
@@ -547,6 +541,36 @@ class JoinComment(TestSuite):
             """,
         )
 
+    def test_multi_join_with_interior_comments(self):
+        """Comments before ON and inside multi-word LEFT JOIN keyword."""
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT 1
+                FROM orders o
+                -- foo
+                JOIN order_line_items li
+                -- z
+                ON li.order_id = o.order_id
+                LEFT
+                -- foo
+                JOIN customers c
+                -- x
+                ON c.customer_id = o.customer_id
+            """,
+            out="""\
+                SELECT 1
+                FROM orders AS o
+                -- foo
+                JOIN order_line_items AS li
+                  -- z
+                  ON li.order_id = o.order_id
+                -- foo
+                LEFT JOIN customers AS c
+                  -- x
+                  ON c.customer_id = o.customer_id;
+            """,
+        )
+
     def test_original_bug_repro(self):
         """The original reported bug: comments between alias/JOIN and LEFT/JOIN."""
         return DiffTestBlueprint(
@@ -565,7 +589,6 @@ class JoinComment(TestSuite):
                 -- foo
                 JOIN order_line_items AS li
                   ON li.order_id = o.order_id
-
                 -- bar
                 LEFT JOIN customers AS c
                   ON c.customer_id = o.customer_id;
