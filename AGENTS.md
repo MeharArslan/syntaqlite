@@ -181,6 +181,7 @@ tools/run-integration-tests --list         # list available suites
 | `amalg` | Amalgamation compilation + AST diff tests (`tests/amalg_tests/`) |
 | `grammar` | Grammar token-ID ordering invariants |
 | `sql-idempotency` | Verify formatting preserves AST semantics |
+| `upstream-sqlite` | Upstream SQLite TCL test compatibility (parser + validator vs real SQLite) |
 
 #### Prerequisites
 
@@ -200,3 +201,26 @@ cargo build -p syntaqlite-cli
 | `--rebaseline` | Update expected outputs to match current output (diff suites only) |
 | `--jobs <N>` | Parallel test execution (diff suites only) |
 | `--list` | List available suites and exit |
+| `--analyze-only` | Skip running tests; analyze existing logs from a previous run |
+| `--validate` | Enable semantic validation (upstream-sqlite suite) |
+
+### Upstream SQLite tests
+
+The `upstream-sqlite` suite runs 1,174 SQLite TCL test files through our parser
+and validator, comparing results against real SQLite.
+
+```sh
+# Full run (~75s) — builds the TCL extension, runs all tests, writes JSONL logs
+tools/run-integration-tests --suite upstream-sqlite --validate
+
+# Fast re-analysis (~1s) — loads existing logs from disk, skips running tests
+tools/run-integration-tests --suite upstream-sqlite --analyze-only
+```
+
+Use `--analyze-only` when iterating on analysis/reporting code. A full run is
+only needed when the parser, validator, or TCL harness (`tclsyntaqlite.c`)
+changes.
+
+Logs are persisted per test file at `tests/upstream_baselines/logs/<testname>.jsonl`
+(gitignored). Pass `--validate` to enable the semantic validator; without it only the parser
+is tested.
