@@ -48,6 +48,70 @@ static int32_t set_result_status(SyntaqliteParser* p, int32_t rc) {
   return rc;
 }
 
+// Forward declaration — defined after feed_one_token.
+static int check_macro_straddle(SyntaqliteParser* p);
+
+// ---------------------------------------------------------------------------
+// Internal: reusable state-reset helpers
+// ---------------------------------------------------------------------------
+
+// Reinitialize the Lemon parser automaton to its initial state.
+// Called after real-statement completion (cmdx ::= cmd . reduces with SEMI
+// as the LALR(1) lookahead, leaving SEMI shifted but ecmd ::= cmdx SEMI .
+// pending).  Reinitializing discards that half-reduced state.
+// NOT called for bare semicolons or error-recovery completions — those
+// reduce via ecmd ::= SEMI . or ecmd ::= error SEMI . using the *next*
+// token as the lookahead, so that token is already consumed by Lemon.
+static void lemon_reinit(SyntaqliteParser* p) {
+  SYNQ_PARSER_FINALIZE(p->grammar.tmpl, p->lemon);
+  SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon);
+  p->last_token_type = 0;
+}
+
+// Reset all per-statement output state: arena, token/comment/macro vectors,
+// context flags, and error state.  Called at the *start* of the next
+// statement (not at completion) so that callers can read the previous
+// statement's results between calls.
+static void reset_stmt(SyntaqliteParser* p) {
+  synq_parse_ctx_clear(&p->ctx);
+  syntaqlite_vec_clear(&p->comments);
+  syntaqlite_vec_clear(&p->tokens);
+  syntaqlite_vec_clear(&p->macros);
+  p->ctx.root = SYNTAQLITE_NULL_NODE;
+  p->ctx.stmt_completed = 0;
+  p->ctx.pending_explain_mode = 0;
+  p->ctx.error = 0;
+  p->ctx.saw_subquery = 0;
+  p->ctx.saw_update_delete_limit = 0;
+  p->had_error = 0;
+  p->error_msg[0] = '\0';
+  p->ctx.error_offset = 0xFFFFFFFF;
+  p->ctx.error_length = 0;
+  p->ctx.tokens = p->collect_tokens ? &p->tokens : NULL;
+}
+
+// Handle a statement boundary after feed_one_token returns 1.
+// Reinitializes Lemon and classifies the completed statement:
+//   SYNTAQLITE_PARSE_OK    — successful statement (root is set)
+//   SYNTAQLITE_PARSE_ERROR — statement with syntax error(s)
+//   SYNTAQLITE_PARSE_DONE  — bare semicolon (no statement produced)
+static int32_t stmt_boundary(SyntaqliteParser* p) {
+  lemon_reinit(p);
+
+  // Bare semicolon — no statement produced.
+  if (p->ctx.root == SYNTAQLITE_NULL_NODE && !p->had_error)
+    return SYNTAQLITE_PARSE_DONE;
+
+  if (check_macro_straddle(p) < 0)
+    return SYNTAQLITE_PARSE_ERROR;
+
+  if (p->had_error) {
+    p->had_error = 0;  // consumed for this result
+    return SYNTAQLITE_PARSE_ERROR;
+  }
+  return SYNTAQLITE_PARSE_OK;
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -81,37 +145,19 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   // Seal the parser on first use — configuration is frozen after this.
   p->sealed = 1;
 
-  // Clear AST arena — keeps allocated memory for reuse.
-  synq_parse_ctx_clear(&p->ctx);
-
-  // Re-initialize lemon parser state (reuses allocation).
-  SYNQ_PARSER_FINALIZE(p->grammar.tmpl, p->lemon);
-  SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon);
+  lemon_reinit(p);
+  reset_stmt(p);
 
   p->source = source;
   p->source_len = len;
   p->offset = 0;
-  p->last_token_type = 0;
   p->finished = 0;
-  p->had_error = 0;
-  p->error_msg[0] = '\0';
   p->pending_reset = 0;
   p->last_status = SYNTAQLITE_PARSE_DONE;
-  syntaqlite_vec_clear(&p->comments);
-  syntaqlite_vec_clear(&p->tokens);
   p->macro_depth = 0;
-  syntaqlite_vec_clear(&p->macros);
 
-  // Reset parse context.
   p->ctx.source = source;
   p->ctx.env = &p->grammar;
-  p->ctx.root = SYNTAQLITE_NULL_NODE;
-  p->ctx.stmt_completed = 0;
-  p->ctx.pending_explain_mode = 0;
-  p->ctx.error = 0;
-  p->ctx.error_offset = 0xFFFFFFFF;
-  p->ctx.error_length = 0;
-  p->ctx.tokens = p->collect_tokens ? &p->tokens : NULL;
 }
 
 // ---------------------------------------------------------------------------
@@ -235,18 +281,12 @@ static int finish_input(SyntaqliteParser* p) {
   if (p->last_token_type != SYNTAQLITE_TK_SEMI) {
     int rc = feed_one_token(p, SYNTAQLITE_TK_SEMI, NULL, 0, 0xFFFFFFFF);
     if (rc == 1) {
-      if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+      int32_t status = stmt_boundary(p);
+      if (status != SYNTAQLITE_PARSE_DONE) {
         p->finished = 1;
-        if (check_macro_straddle(p) < 0)
-          return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
-        return set_result_status(
-            p, p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_OK);
+        return set_result_status(p, status);
       }
-      if (p->had_error) {
-        p->finished = 1;
-        return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
-      }
-      // null root, no error = bare semicolon, fall through to EOF
+      // bare semicolon — fall through to EOF
     }
   }
 
@@ -284,28 +324,10 @@ static int finish_input(SyntaqliteParser* p) {
 // ---------------------------------------------------------------------------
 
 int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
-  // Reset previous statement's arena and per-statement vectors.
-  synq_parse_ctx_clear(&p->ctx);
-  syntaqlite_vec_clear(&p->comments);
-  syntaqlite_vec_clear(&p->tokens);
-  syntaqlite_vec_clear(&p->macros);
+  reset_stmt(p);
 
-  if (p->finished) {
+  if (p->finished)
     return set_result_status(p, SYNTAQLITE_PARSE_DONE);
-  }
-
-  // Reset per-statement parse state.
-  p->ctx.root = SYNTAQLITE_NULL_NODE;
-  p->ctx.stmt_completed = 0;
-  p->ctx.pending_explain_mode = 0;
-  p->ctx.error = 0;
-  p->ctx.saw_subquery = 0;
-  p->ctx.saw_update_delete_limit = 0;
-  p->had_error = 0;
-  p->error_msg[0] = '\0';
-  p->ctx.error_offset = 0xFFFFFFFF;
-  p->ctx.error_length = 0;
-  p->ctx.tokens = p->collect_tokens ? &p->tokens : NULL;
 
   const unsigned char* z = (const unsigned char*)p->source;
 
@@ -345,33 +367,18 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 
     // Safety net: if error recovery couldn't produce an ecmd ::= error SEMI .
     // reduction (e.g. parse_failure), force completion on the next SEMI.
-    if (p->had_error && rc == 0 && token_type == SYNTAQLITE_TK_SEMI) {
-      SYNQ_PARSER_FINALIZE(p->grammar.tmpl, p->lemon);
-      SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon);
-      p->last_token_type = 0;
+    if (p->had_error && rc == 0 && token_type == SYNTAQLITE_TK_SEMI)
       rc = 1;
-    }
 
     if (rc == 1) {
-      // stmt_completed now fires while Lemon is processing the SEMI token
-      // (cmdx ::= cmd . reduces on SEMI as its lookahead, then SEMI is
-      // shifted into the pending ecmd ::= cmdx SEMI . ).  Reinitialise Lemon
-      // so that half-reduced state does not carry over into the next call.
-      SYNQ_PARSER_FINALIZE(p->grammar.tmpl, p->lemon);
-      SYNQ_PARSER_INIT(p->grammar.tmpl, p->lemon);
-      p->last_token_type = 0;
-
-      if (p->ctx.root == SYNTAQLITE_NULL_NODE && !p->had_error) {
-        // Bare semicolon — keep going.
-        continue;
-      }
-      if (p->had_error) {
-        p->had_error = 0;  // consumed for this result
-        if (check_macro_straddle(p) < 0)
-          return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
-        return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
-      }
-      return set_result_status(p, SYNTAQLITE_PARSE_OK);
+      // Bare semicolons (ecmd ::= SEMI.) and error-recovery completions
+      // (ecmd ::= error SEMI.) have root == NULL_NODE and reduce when the
+      // *next* token is the LALR(1) lookahead — that token has already been
+      // consumed by Lemon and must not be discarded by lemon_reinit.
+      if (p->ctx.root == SYNTAQLITE_NULL_NODE && !p->had_error)
+        continue;  // bare semicolon — Lemon state is clean enough
+      int32_t status = stmt_boundary(p);
+      return set_result_status(p, status);
     }
   }
 
@@ -435,24 +442,11 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
                                      uint32_t token_type,
                                      const char* text,
                                      uint32_t len) {
-  // Deferred arena reset: clear previous statement before processing the
-  // first token of the next one.
+  // Deferred reset: clear previous statement's data before processing the
+  // first token of the next one.  Lemon was already reinitialized eagerly
+  // by stmt_boundary() when the previous statement completed.
   if (p->pending_reset) {
-    synq_parse_ctx_clear(&p->ctx);
-    syntaqlite_vec_clear(&p->comments);
-    syntaqlite_vec_clear(&p->tokens);
-    syntaqlite_vec_clear(&p->macros);
-    p->ctx.root = SYNTAQLITE_NULL_NODE;
-    p->ctx.stmt_completed = 0;
-    p->ctx.pending_explain_mode = 0;
-    p->ctx.error = 0;
-    p->ctx.saw_subquery = 0;
-    p->ctx.saw_update_delete_limit = 0;
-    p->had_error = 0;
-    p->error_msg[0] = '\0';
-    p->ctx.error_offset = 0xFFFFFFFF;
-    p->ctx.error_length = 0;
-    p->ctx.tokens = p->collect_tokens ? &p->tokens : NULL;
+    reset_stmt(p);
     p->pending_reset = 0;
   }
 
@@ -485,17 +479,26 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
   if (rc < 0)
     return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
 
-  if (rc == 1 && p->ctx.root == SYNTAQLITE_NULL_NODE) {
-    // Bare semicolon — not a real statement.
-    return set_result_status(p, SYNTAQLITE_PARSE_DONE);
-  }
-
   if (rc == 1) {
-    if (check_macro_straddle(p) < 0)
-      return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
+    // Bare semicolons (ecmd ::= SEMI.) and error-recovery completions
+    // (ecmd ::= error SEMI.) have root == NULL_NODE and may have consumed
+    // the next token as an LALR(1) lookahead.  Do NOT reinitialize Lemon —
+    // the consumed token is already in Lemon's state and will be processed
+    // normally on the next feed_token call.
+    if (p->ctx.root == SYNTAQLITE_NULL_NODE) {
+      if (p->had_error) {
+        p->had_error = 0;
+        p->pending_reset = 1;
+        return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
+      }
+      return set_result_status(p, SYNTAQLITE_PARSE_DONE);
+    }
+
+    // Real statement — cmdx ::= cmd. fired with SEMI as the lookahead,
+    // leaving ecmd ::= cmdx SEMI. pending.  Reinitialize Lemon.
+    int32_t status = stmt_boundary(p);
     p->pending_reset = 1;
-    return set_result_status(
-        p, p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_OK);
+    return set_result_status(p, status);
   }
 
   return set_result_status(p, SYNTAQLITE_PARSE_DONE);

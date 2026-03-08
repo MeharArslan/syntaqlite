@@ -229,6 +229,201 @@ fn macro_straddle_rejected_by_parser() {
     );
 }
 
+/// Multi-statement via feed_token: both statements produce correct AST roots.
+#[test]
+fn feed_tokens_multi_statement_both_roots() {
+    let source = "SELECT 1; SELECT 2";
+    let parser = Parser::new();
+    let mut session = parser.incremental_parse(source);
+
+    // First statement.
+    session.feed_token(TokenType::Select, 0..6);
+    session.feed_token(TokenType::Integer, 7..8);
+    let stmt1 = session
+        .feed_token(TokenType::Semi, 8..9)
+        .expect("stmt 1 should complete")
+        .expect("stmt 1 should be Ok");
+    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+
+    // Second statement.
+    session.feed_token(TokenType::Select, 10..16);
+    session.feed_token(TokenType::Integer, 17..18);
+    let stmt2 = session
+        .finish()
+        .expect("stmt 2 should complete")
+        .expect("stmt 2 should be Ok");
+    assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
+}
+
+/// Three statements: the middle one has an explicit SEMI, the last uses finish().
+#[test]
+fn feed_tokens_three_statements() {
+    let source = "SELECT 1; SELECT 2; SELECT 3";
+    let parser = Parser::new();
+    let mut session = parser.incremental_parse(source);
+
+    // Statement 1.
+    session.feed_token(TokenType::Select, 0..6);
+    session.feed_token(TokenType::Integer, 7..8);
+    assert!(session.feed_token(TokenType::Semi, 8..9).is_some());
+
+    // Statement 2.
+    session.feed_token(TokenType::Select, 10..16);
+    session.feed_token(TokenType::Integer, 17..18);
+    assert!(session.feed_token(TokenType::Semi, 18..19).is_some());
+
+    // Statement 3 — completed by finish().
+    session.feed_token(TokenType::Select, 20..26);
+    session.feed_token(TokenType::Integer, 27..28);
+    let stmt3 = session
+        .finish()
+        .expect("stmt 3 should complete")
+        .expect("stmt 3 should be Ok");
+    assert!(matches!(stmt3.root(), Stmt::SelectStmt(_)));
+}
+
+/// Bare semicolons between statements are silently skipped.
+#[test]
+fn feed_tokens_bare_semicolons() {
+    let source = "; SELECT 1; ;";
+    let parser = Parser::new();
+    let mut session = parser.incremental_parse(source);
+
+    // Leading bare semicolon — should not produce a statement.
+    assert!(
+        session.feed_token(TokenType::Semi, 0..1).is_none(),
+        "bare semicolon should not produce a statement"
+    );
+
+    // Real statement.
+    session.feed_token(TokenType::Select, 2..8);
+    session.feed_token(TokenType::Integer, 9..10);
+    let stmt = session
+        .feed_token(TokenType::Semi, 10..11)
+        .expect("should complete")
+        .expect("should be Ok");
+    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
+
+    // Trailing bare semicolon.
+    assert!(
+        session.feed_token(TokenType::Semi, 12..13).is_none(),
+        "trailing bare semicolon should not produce a statement"
+    );
+
+    assert!(session.finish().is_none(), "nothing left");
+}
+
+/// EXPLAIN wrapping works correctly across statement boundaries.
+#[test]
+fn feed_tokens_explain_then_normal() {
+    let source = "EXPLAIN SELECT 1; SELECT 2";
+    let parser = Parser::new();
+    let mut session = parser.incremental_parse(source);
+
+    // EXPLAIN SELECT 1;
+    session.feed_token(TokenType::Explain, 0..7);
+    session.feed_token(TokenType::Select, 8..14);
+    session.feed_token(TokenType::Integer, 15..16);
+    let stmt1 = session
+        .feed_token(TokenType::Semi, 16..17)
+        .expect("stmt 1 should complete")
+        .expect("stmt 1 should be Ok");
+    assert!(
+        matches!(stmt1.root(), Stmt::ExplainStmt(_)),
+        "first statement should be EXPLAIN"
+    );
+
+    // SELECT 2 — should NOT be wrapped in EXPLAIN.
+    session.feed_token(TokenType::Select, 18..24);
+    session.feed_token(TokenType::Integer, 25..26);
+    let stmt2 = session
+        .finish()
+        .expect("stmt 2 should complete")
+        .expect("stmt 2 should be Ok");
+    assert!(
+        matches!(stmt2.root(), Stmt::SelectStmt(_)),
+        "second statement should be plain SELECT, not EXPLAIN"
+    );
+}
+
+/// Normal statement followed by EXPLAIN — EXPLAIN must not leak backwards.
+#[test]
+fn feed_tokens_normal_then_explain() {
+    let source = "SELECT 1; EXPLAIN SELECT 2";
+    let parser = Parser::new();
+    let mut session = parser.incremental_parse(source);
+
+    // SELECT 1;
+    session.feed_token(TokenType::Select, 0..6);
+    session.feed_token(TokenType::Integer, 7..8);
+    let stmt1 = session
+        .feed_token(TokenType::Semi, 8..9)
+        .expect("stmt 1 should complete")
+        .expect("stmt 1 should be Ok");
+    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+
+    // EXPLAIN SELECT 2
+    session.feed_token(TokenType::Explain, 10..17);
+    session.feed_token(TokenType::Select, 18..24);
+    session.feed_token(TokenType::Integer, 25..26);
+    let stmt2 = session
+        .finish()
+        .expect("stmt 2 should complete")
+        .expect("stmt 2 should be Ok");
+    assert!(
+        matches!(stmt2.root(), Stmt::ExplainStmt(_)),
+        "second statement should be EXPLAIN"
+    );
+}
+
+/// finish() on an incomplete statement reports a syntax error.
+#[test]
+fn feed_tokens_incomplete_statement_error() {
+    let source = "SELECT";
+    let parser = Parser::new();
+    let mut session = parser.incremental_parse(source);
+
+    session.feed_token(TokenType::Select, 0..6);
+    // finish() synthesizes SEMI + EOF; SELECT alone is incomplete.
+    let result = session.finish().expect("should return Some");
+    assert!(result.is_err(), "incomplete SELECT should be a parse error");
+}
+
+/// Comments between statements belong to the correct statement.
+#[test]
+fn feed_tokens_comments_between_statements() {
+    let source = "SELECT 1; -- between\nSELECT 2";
+    let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
+    let mut session = parser.incremental_parse(source);
+
+    // Statement 1.
+    session.feed_token(TokenType::Select, 0..6);
+    session.feed_token(TokenType::Integer, 7..8);
+    let stmt1 = session
+        .feed_token(TokenType::Semi, 8..9)
+        .expect("stmt 1 should complete")
+        .expect("stmt 1 should be Ok");
+    assert_eq!(
+        stmt1.comments().count(),
+        0,
+        "stmt 1 should have no comments"
+    );
+
+    // Inter-statement comment belongs to statement 2.
+    session.feed_token(TokenType::Comment, 10..20);
+    session.feed_token(TokenType::Select, 21..27);
+    session.feed_token(TokenType::Integer, 28..29);
+    let stmt2 = session
+        .finish()
+        .expect("stmt 2 should complete")
+        .expect("stmt 2 should be Ok");
+    assert_eq!(
+        stmt2.comments().count(),
+        1,
+        "stmt 2 should have the inter-statement comment"
+    );
+}
+
 /// `finish()` without feeding any tokens returns None.
 #[test]
 fn finish_with_no_tokens() {
@@ -254,6 +449,50 @@ fn high_level_api_still_works() {
         panic!("expected Ok")
     };
     assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
+
+    assert!(matches!(session.next(), ParseOutcome::Done));
+}
+
+/// Batch parser: bare semicolons are skipped, real statements are returned.
+#[test]
+fn batch_parse_bare_semicolons() {
+    let parser = Parser::new();
+    let mut session = parser.parse("; SELECT 1; ; SELECT 2; ;");
+
+    let ParseOutcome::Ok(stmt1) = session.next() else {
+        panic!("expected Ok for stmt 1")
+    };
+    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
+
+    let ParseOutcome::Ok(stmt2) = session.next() else {
+        panic!("expected Ok for stmt 2")
+    };
+    assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
+
+    assert!(matches!(session.next(), ParseOutcome::Done));
+}
+
+/// Batch parser: EXPLAIN followed by a normal statement.
+#[test]
+fn batch_parse_explain_then_normal() {
+    let parser = Parser::new();
+    let mut session = parser.parse("EXPLAIN SELECT 1; SELECT 2");
+
+    let ParseOutcome::Ok(stmt1) = session.next() else {
+        panic!("expected Ok for stmt 1")
+    };
+    assert!(
+        matches!(stmt1.root(), Stmt::ExplainStmt(_)),
+        "stmt 1 should be EXPLAIN"
+    );
+
+    let ParseOutcome::Ok(stmt2) = session.next() else {
+        panic!("expected Ok for stmt 2")
+    };
+    assert!(
+        matches!(stmt2.root(), Stmt::SelectStmt(_)),
+        "stmt 2 should be plain SELECT"
+    );
 
     assert!(matches!(session.next(), ParseOutcome::Done));
 }
