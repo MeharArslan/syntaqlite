@@ -53,14 +53,18 @@ impl<'a> DocArena<'a> {
         }
     }
 
-    /// Create a new arena, reusing the capacity from a previous arena.
+    /// Create a new arena, reusing the allocation from a previous arena.
     ///
-    /// The old arena is consumed. The new arena has the same capacity but
-    /// a fresh (possibly different) lifetime parameter.
-    pub(crate) fn recycle(old: DocArena<'_>) -> Self {
-        let cap = old.docs.capacity();
-        drop(old);
-        DocArena::with_capacity(cap)
+    /// The old arena is consumed. The new arena has the same backing
+    /// memory but a fresh (possibly different) lifetime parameter.
+    pub(crate) fn recycle(mut old: DocArena<'_>) -> Self {
+        old.docs.clear();
+        // SAFETY: Doc<'old> and Doc<'new> have identical layout (enum of
+        // pointers/ids). Clearing removed all elements, so no stale
+        // borrows exist. We reuse the raw allocation with a new lifetime.
+        let (ptr, _, cap) = old.docs.into_raw_parts();
+        let docs = unsafe { Vec::from_raw_parts(ptr.cast::<Doc<'a>>(), 0, cap) };
+        DocArena { docs }
     }
 
     fn push(&mut self, doc: Doc<'a>) -> DocId {

@@ -164,7 +164,7 @@ impl Formatter {
     /// Returns [`FormatError`] when parsing fails for any statement in `source`.
     pub fn format(&mut self, source: &str) -> Result<String, FormatError> {
         let mut session = self.parser.parse(source);
-        let mut result = String::new();
+        let mut result = String::with_capacity(source.len());
         let mut stmt_num: usize = 0;
 
         loop {
@@ -181,23 +181,26 @@ impl Formatter {
             };
 
             // Stage 1: Collect parser side-channels the interpreter needs.
+            // Erase early so we can use the lightweight span iterators that
+            // skip token-type conversion and source-text slicing.
+            let erased = stmt.erase();
+
             self.macro_regions.clear();
 
             self.comment_entries.clear();
             self.comment_entries
-                .extend(stmt.comments().map(|c| CommentEntry {
+                .extend(erased.comment_spans().map(|c| CommentEntry {
                     offset: c.offset(),
                     length: c.length(),
                     kind: c.kind(),
                 }));
 
             self.token_entries.clear();
-            self.token_entries.extend(stmt.tokens().map(|t| TokenEntry {
-                offset: t.offset(),
-                length: t.length(),
-            }));
-
-            let erased = stmt.erase();
+            self.token_entries
+                .extend(erased.token_spans().map(|(offset, length)| TokenEntry {
+                    offset,
+                    length,
+                }));
             let stmt_source = erased.source();
 
             self.macro_regions.extend(erased.macro_regions());

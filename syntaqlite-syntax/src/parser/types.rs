@@ -104,6 +104,42 @@ impl<'a> Comment<'a> {
     }
 }
 
+/// Lightweight comment descriptor without a source text borrow.
+///
+/// Returned by [`super::AnyParsedStatement::comment_spans`].
+/// Use this when you only need position and kind, not the text.
+#[derive(Debug, Clone, Copy)]
+pub struct CommentSpan {
+    offset: u32,
+    length: u32,
+    kind: CommentKind,
+}
+
+impl CommentSpan {
+    /// Byte offset of the comment start within the statement source.
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+
+    /// Byte length of the comment text.
+    pub fn length(&self) -> u32 {
+        self.length
+    }
+
+    /// Whether this is a line (`--`) or block (`/* */`) comment.
+    pub fn kind(&self) -> CommentKind {
+        self.kind
+    }
+
+    pub(super) fn new(offset: u32, length: u32, kind: CommentKind) -> Self {
+        CommentSpan {
+            offset,
+            length,
+            kind,
+        }
+    }
+}
+
 pub use crate::grammar::ParserTokenFlags;
 
 /// Token captured from a parsed statement, typed by grammar `G`.

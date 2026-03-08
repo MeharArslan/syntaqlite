@@ -4,8 +4,19 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
-[lints]
-workspace = true
+[lints.rust]
+unused_must_use = "deny"
+missing_docs = "allow"
+unreachable_pub = "allow"
+unused_qualifications = "deny"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+unwrap_used = "allow"
+undocumented_unsafe_blocks = "deny"
+allow_attributes = "deny"
+redundant_pub_crate = "allow"
+must_use_candidate = "allow"
 
 [[bench]]
 name = "main"
@@ -13,7 +24,6 @@ harness = false
 
 [dependencies]
 syntaqlite = { path = "../syntaqlite", features = ["lsp"] }
-syntaqlite-syntax = { path = "../syntaqlite-syntax", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5"

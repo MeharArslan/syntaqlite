@@ -25,8 +25,8 @@ pub use incremental::{AnyIncrementalParseSession, TypedIncrementalParseSession};
 #[cfg(feature = "sqlite")]
 pub use session::{ParseError, ParseSession, ParsedStatement, Parser, ParserToken};
 pub use types::{
-    AnyParserToken, Comment, CommentKind, CompletionContext, MacroRegion, ParseOutcome,
-    ParserTokenFlags, TypedParserToken,
+    AnyParserToken, Comment, CommentKind, CommentSpan, CompletionContext, MacroRegion,
+    ParseOutcome, ParserTokenFlags, TypedParserToken,
 };
 
 /// Indicates whether parsing can continue after an error.
@@ -355,6 +355,23 @@ impl<'a> AnyParsedStatement<'a> {
         // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
         let raw: &[ffi::CParserToken] = unsafe { self.raw.as_ref().result_tokens() };
         raw.iter().map(|t| (t.offset, t.length))
+    }
+
+    /// Lightweight comment descriptors without source text borrows.
+    ///
+    /// Returns an empty iterator if `collect_tokens` was not enabled.
+    pub fn comment_spans(
+        &self,
+    ) -> impl Iterator<Item = CommentSpan> + use<'_> {
+        // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
+        let raw: &[ffi::CComment] = unsafe { self.raw.as_ref().result_comments() };
+        raw.iter().map(|c| {
+            let kind = match c.kind {
+                ffi::CCommentKind::LineComment => CommentKind::Line,
+                ffi::CCommentKind::BlockComment => CommentKind::Block,
+            };
+            CommentSpan::new(c.offset, c.length, kind)
+        })
     }
 
     /// Extract reflective node data (`tag` + field values) for `id`.

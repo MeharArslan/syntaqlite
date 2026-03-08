@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use syntaqlite::ParseOutcome;
 
 // ── SQL fixtures ────────────────────────────────────────────────────────
 
@@ -49,6 +50,33 @@ fn large_sql() -> String {
     sql
 }
 
+/// ~60 KB — same as large_sql but every statement has a leading comment
+/// and inline block comments, exercising the comment-handling path.
+fn large_commented_sql() -> String {
+    let mut sql = String::with_capacity(80_000);
+    for i in 0..500 {
+        match i % 4 {
+            0 => sql.push_str(&format!(
+                "-- insert row {i}\nINSERT INTO metrics (ts, sensor_id, value, label) VALUES ('2024-01-{:02}', {}, {:.2}, 'sensor_{}'); -- done\n",
+                (i % 28) + 1, i, i as f64 * 1.5, i
+            )),
+            1 => sql.push_str(&format!(
+                "/* query {i} */ SELECT m.ts, m.value, s.name FROM metrics m JOIN sensors s ON s.id = m.sensor_id WHERE m.sensor_id = {} AND m.value > {:.1} ORDER BY m.ts;\n",
+                i, i as f64 * 0.5
+            )),
+            2 => sql.push_str(&format!(
+                "-- update {i}\nUPDATE metrics SET value = value + 1.0, label = 'updated_{}' WHERE sensor_id = {} AND ts > '2024-01-01';\n",
+                i, i
+            )),
+            _ => sql.push_str(&format!(
+                "/* cleanup {i} */ DELETE FROM metrics WHERE sensor_id = {} AND value < {:.1};\n",
+                i, i as f64 * 0.1
+            )),
+        }
+    }
+    sql
+}
+
 struct Fixture {
     name: &'static str,
     sql: String,
@@ -68,6 +96,10 @@ fn fixtures() -> Vec<Fixture> {
             name: "large",
             sql: large_sql(),
         },
+        Fixture {
+            name: "large_commented",
+            sql: large_commented_sql(),
+        },
     ]
 }
 
@@ -80,7 +112,7 @@ fn bench_tokenizer(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let tok = syntaqlite_parser::Tokenizer::new(syntaqlite::dialect::sqlite());
+            let tok = syntaqlite::Tokenizer::new();
             b.iter(|| {
                 let cursor = tok.tokenize(black_box(sql));
                 for item in cursor {
@@ -102,11 +134,15 @@ fn bench_parser(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let parser = syntaqlite_parser::Parser::new(syntaqlite::dialect::sqlite());
+            let parser = syntaqlite::Parser::new();
             b.iter(|| {
-                let mut cursor = parser.parse(black_box(sql));
-                while let Some(stmt) = cursor.next_statement() {
-                    black_box(stmt.ok());
+                let mut session = parser.parse(black_box(sql));
+                loop {
+                    match session.next() {
+                        ParseOutcome::Done => break,
+                        ParseOutcome::Ok(stmt) => { black_box(stmt); }
+                        ParseOutcome::Err(err) => { black_box(err); }
+                    }
                 }
             });
         });
@@ -148,8 +184,7 @@ fn bench_lsp_host(c: &mut Criterion) {
             |b, sql| {
                 b.iter(|| {
                     let mut host = syntaqlite::lsp::LspHost::new();
-                    host.open_document("test://file.sql", 1, sql.clone());
-                    black_box(host.diagnostics("test://file.sql"));
+                    host.update_document("test://file.sql", 1, sql.clone());
                     black_box(host.semantic_tokens_encoded("test://file.sql", None));
                 });
             },
@@ -163,13 +198,12 @@ fn bench_lsp_host(c: &mut Criterion) {
             &f.sql,
             |b, sql| {
                 let mut host = syntaqlite::lsp::LspHost::new();
-                host.open_document("test://file.sql", 1, sql.clone());
-                host.diagnostics("test://file.sql");
+                host.update_document("test://file.sql", 1, sql.clone());
+                host.semantic_tokens_encoded("test://file.sql", None);
                 let mut version = 2;
                 b.iter(|| {
                     host.update_document("test://file.sql", version, sql.clone());
                     version += 1;
-                    black_box(host.diagnostics("test://file.sql"));
                     black_box(host.semantic_tokens_encoded("test://file.sql", None));
                 });
             },

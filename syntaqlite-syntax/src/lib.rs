@@ -93,7 +93,7 @@ pub use parser::{
 
 // Token/comment data types shared across grammars.
 #[doc(inline)]
-pub use parser::{Comment, CommentKind, CompletionContext, ParserTokenFlags};
+pub use parser::{Comment, CommentKind, CommentSpan, CompletionContext, ParserTokenFlags};
 
 // Top-level tokenizer types.
 // TokenType is always available — ordinals are stable across all dialects.
