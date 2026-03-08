@@ -13,7 +13,7 @@ pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
 // ── Semantic role types (re-exported from syntaqlite-common) ─────────────────
 
-pub use syntaqlite_common::roles::{FIELD_ABSENT, FieldIdx, RelationKind, SemanticRole};
+pub use syntaqlite_common::roles::{FIELD_ABSENT, FieldIdx, FlagSpec, RelationKind, SemanticRole};
 
 // ── Function catalog types ────────────────────────────────────────────────────
 
@@ -378,6 +378,7 @@ mod tests {
             name: 0,
             columns: FIELD_ABSENT,
             select: FIELD_ABSENT,
+            without_rowid: FlagSpec::ABSENT,
         };
         let _ = SemanticRole::DefineView {
             name: 0,

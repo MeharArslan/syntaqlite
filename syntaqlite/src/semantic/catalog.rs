@@ -56,6 +56,8 @@ struct RelationEntry {
     /// `None` = table is known to exist but column list is not tracked.
     /// Column references against it are conservatively accepted.
     columns: Option<Vec<String>>,
+    /// `true` for WITHOUT ROWID tables — no implicit rowid/oid/_rowid_ columns.
+    without_rowid: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -111,12 +113,10 @@ impl CatalogLayerContents {
     /// Merge all entries from `other` into this layer (existing keys are
     /// overwritten).
     pub(crate) fn merge_from(&mut self, other: &Self) {
-        self.relations.extend(
-            other.relations.iter().map(|(k, v)| (k.clone(), v.clone())),
-        );
-        self.functions.extend(
-            other.functions.iter().map(|(k, v)| (k.clone(), v.clone())),
-        );
+        self.relations
+            .extend(other.relations.iter().map(|(k, v)| (k.clone(), v.clone())));
+        self.functions
+            .extend(other.functions.iter().map(|(k, v)| (k.clone(), v.clone())));
         self.table_functions.extend(
             other
                 .table_functions
@@ -125,12 +125,36 @@ impl CatalogLayerContents {
         );
     }
 
-    /// Insert a relation. `columns = None` means the table exists but its
-    /// column list is not tracked (column refs against it are suppressed).
-    pub fn insert_relation(&mut self, name: impl Into<String>, columns: Option<Vec<String>>) {
+    /// Insert a table. `columns = None` means columns are unknown (refs
+    /// against it are conservatively accepted).
+    pub fn insert_table(
+        &mut self,
+        name: impl Into<String>,
+        columns: Option<Vec<String>>,
+        without_rowid: bool,
+    ) {
         let name = name.into();
-        self.relations
-            .insert(canonical_name(&name), RelationEntry { name, columns });
+        self.relations.insert(
+            canonical_name(&name),
+            RelationEntry {
+                name,
+                columns,
+                without_rowid,
+            },
+        );
+    }
+
+    /// Insert a view. Views never have implicit rowid columns.
+    pub fn insert_view(&mut self, name: impl Into<String>, columns: Option<Vec<String>>) {
+        let name = name.into();
+        self.relations.insert(
+            canonical_name(&name),
+            RelationEntry {
+                name,
+                columns,
+                without_rowid: true, // views have no rowid
+            },
+        );
     }
 
     /// Insert a single function overload.
@@ -280,7 +304,7 @@ const FIXED_LAYER_COUNT: usize = 4;
 ///
 /// ```ignore
 /// catalog.layer_mut(CatalogLayer::Database)
-///        .insert_relation("users", Some(vec!["id".into(), "name".into()]));
+///        .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
 /// ```
 pub struct Catalog {
     layers: Vec<CatalogLayerContents>,
@@ -422,7 +446,7 @@ impl Catalog {
             } else {
                 Some(t.columns.iter().map(|c| c.to_ascii_lowercase()).collect())
             };
-            db.insert_relation(t.name, cols);
+            db.insert_table(t.name, cols, false);
         }
         for v in root.views {
             let cols = if v.columns.is_empty() {
@@ -430,7 +454,7 @@ impl Catalog {
             } else {
                 Some(v.columns.iter().map(|c| c.to_ascii_lowercase()).collect())
             };
-            db.insert_relation(v.name, cols);
+            db.insert_view(v.name, cols);
         }
         for f in root.functions {
             let arity = match f.args {
@@ -470,6 +494,7 @@ impl Catalog {
                 name,
                 columns,
                 select,
+                without_rowid,
             } => {
                 let name_val = match fields[name as usize] {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
@@ -482,7 +507,12 @@ impl Catalog {
                     opt_field(select),
                     dialect.roles(),
                 );
-                self.layers[target.index()].insert_relation(name_val, cols);
+                let is_without_rowid = without_rowid.field != FIELD_ABSENT
+                    && matches!(
+                        fields[without_rowid.field as usize],
+                        FieldValue::Flags(f) if without_rowid.is_set(f)
+                    );
+                self.layers[target.index()].insert_table(name_val, cols, is_without_rowid);
             }
             SemanticRole::DefineView {
                 name,
@@ -500,7 +530,7 @@ impl Catalog {
                     Some(select),
                     dialect.roles(),
                 );
-                self.layers[target.index()].insert_relation(name_val, cols);
+                self.layers[target.index()].insert_view(name_val, cols);
             }
             SemanticRole::DefineFunction {
                 name,
@@ -543,7 +573,7 @@ impl Catalog {
     /// column references against it are conservatively accepted.
     pub(crate) fn add_query_table(&mut self, name: &str, columns: Option<Vec<String>>) {
         if let Some(frame) = self.layers[FIXED_LAYER_COUNT..].last_mut() {
-            frame.insert_relation(name, columns);
+            frame.insert_table(name, columns, false);
         }
     }
 
@@ -709,6 +739,7 @@ impl Catalog {
                     Some(cols) if cols.iter().any(|c| c.eq_ignore_ascii_case(column)) => {
                         ColumnResolution::Found
                     }
+                    Some(_) if is_implicit_rowid(column, rel) => ColumnResolution::Found,
                     Some(_) => ColumnResolution::TableFoundColumnMissing,
                     None => ColumnResolution::Found, // unknown columns — accept conservatively
                 };
@@ -725,6 +756,9 @@ impl Catalog {
                     Some(cols) if cols.iter().any(|c| c.eq_ignore_ascii_case(column)) => {
                         return ColumnResolution::Found;
                     }
+                    Some(_) if is_implicit_rowid(column, rel) => {
+                        return ColumnResolution::Found;
+                    }
                     Some(_) => {}
                     None => has_unknown = true,
                 }
@@ -737,6 +771,21 @@ impl Catalog {
             ColumnResolution::NotFound
         }
     }
+}
+
+/// Check whether `column` is an implicit rowid alias (`rowid`, `oid`, `_rowid_`)
+/// that `SQLite` provides on every table unless it is declared WITHOUT ROWID.
+///
+/// A column by that name in the explicit column list shadows the implicit one,
+/// so this only returns `true` when the relation is NOT without-rowid and no
+/// explicit column matches.
+fn is_implicit_rowid(column: &str, rel: &RelationEntry) -> bool {
+    if rel.without_rowid {
+        return false;
+    }
+    column.eq_ignore_ascii_case("rowid")
+        || column.eq_ignore_ascii_case("oid")
+        || column.eq_ignore_ascii_case("_rowid_")
 }
 
 // ── DDL extraction helpers ────────────────────────────────────────────────────

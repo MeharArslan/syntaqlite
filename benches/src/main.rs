@@ -4,29 +4,35 @@
 //   samply record --save-only -o fmt.json.gz cargo run -p benches --release -- formatter
 #![expect(clippy::unwrap_used)]
 
+use std::fmt::Write;
+
 use syntaqlite::ParseOutcome;
 
 fn build_sql() -> String {
     let mut sql = String::with_capacity(60_000);
     for i in 0..500 {
+        let fi = f64::from(i);
         match i % 4 {
-            0 => sql.push_str(&format!(
-                "INSERT INTO metrics (ts, sensor_id, value, label) VALUES ('2024-01-{:02}', {}, {:.2}, 'sensor_{}');\n",
-                (i % 28) + 1, i, i as f64 * 1.5, i
-            )),
-            1 => sql.push_str(&format!(
-                "SELECT m.ts, m.value, s.name FROM metrics m JOIN sensors s ON s.id = m.sensor_id WHERE m.sensor_id = {} AND m.value > {:.1} ORDER BY m.ts;\n",
-                i, i as f64 * 0.5
-            )),
-            2 => sql.push_str(&format!(
-                "UPDATE metrics SET value = value + 1.0, label = 'updated_{}' WHERE sensor_id = {} AND ts > '2024-01-01';\n",
-                i, i
-            )),
-            _ => sql.push_str(&format!(
-                "DELETE FROM metrics WHERE sensor_id = {} AND value < {:.1};\n",
-                i, i as f64 * 0.1
-            )),
-        }
+            0 => writeln!(
+                sql,
+                "INSERT INTO metrics (ts, sensor_id, value, label) VALUES ('2024-01-{:02}', {i}, {:.2}, 'sensor_{i}');",
+                (i % 28) + 1, fi * 1.5
+            ),
+            1 => writeln!(
+                sql,
+                "SELECT m.ts, m.value, s.name FROM metrics m JOIN sensors s ON s.id = m.sensor_id WHERE m.sensor_id = {i} AND m.value > {:.1} ORDER BY m.ts;",
+                fi * 0.5
+            ),
+            2 => writeln!(
+                sql,
+                "UPDATE metrics SET value = value + 1.0, label = 'updated_{i}' WHERE sensor_id = {i} AND ts > '2024-01-01';",
+            ),
+            _ => writeln!(
+                sql,
+                "DELETE FROM metrics WHERE sensor_id = {i} AND value < {:.1};",
+                fi * 0.1
+            ),
+        }.unwrap();
     }
     sql
 }

@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_syntax::any::{AnyParser, MacroRegion, ParseOutcome};
+use syntaqlite_syntax::any::{AnyParsedStatement, AnyParser, MacroRegion, ParseOutcome};
 use syntaqlite_syntax::{CommentKind, ParserConfig};
 
 use super::FormatConfig;
@@ -95,7 +95,7 @@ impl Formatter {
     /// macro calls will be expanded rather than preserved verbatim.
     pub fn format_parsed(
         &mut self,
-        erased: syntaqlite_syntax::any::AnyParsedStatement<'_>,
+        erased: AnyParsedStatement<'_>,
     ) -> String {
         self.macro_regions.clear();
         self.macro_regions.extend(erased.macro_regions());
@@ -152,6 +152,25 @@ impl Formatter {
         result
     }
 
+    /// Populate side-channel buffers (comments, tokens, macro regions) from an erased statement.
+    fn collect_side_channels(&mut self, erased: &AnyParsedStatement<'_>) {
+        self.macro_regions.clear();
+        self.comment_entries.clear();
+        self.comment_entries
+            .extend(erased.comment_spans().map(|c| CommentEntry {
+                offset: c.offset(),
+                length: c.length(),
+                kind: c.kind(),
+            }));
+        self.token_entries.clear();
+        self.token_entries.extend(
+            erased
+                .token_spans()
+                .map(|(offset, length)| TokenEntry { offset, length }),
+        );
+        self.macro_regions.extend(erased.macro_regions());
+    }
+
     /// Format SQL source text. Handles multiple statements and preserves comments.
     ///
     /// Pipeline overview per statement:
@@ -181,30 +200,9 @@ impl Formatter {
                 }
             };
 
-            // Stage 1: Collect parser side-channels the interpreter needs.
-            // Erase early so we can use the lightweight span iterators that
-            // skip token-type conversion and source-text slicing.
             let erased = stmt.erase();
-
-            self.macro_regions.clear();
-
-            self.comment_entries.clear();
-            self.comment_entries
-                .extend(erased.comment_spans().map(|c| CommentEntry {
-                    offset: c.offset(),
-                    length: c.length(),
-                    kind: c.kind(),
-                }));
-
-            self.token_entries.clear();
-            self.token_entries.extend(
-                erased
-                    .token_spans()
-                    .map(|(offset, length)| TokenEntry { offset, length }),
-            );
+            self.collect_side_channels(&erased);
             let stmt_source = erased.source();
-
-            self.macro_regions.extend(erased.macro_regions());
 
             let root_id = erased.root_id();
             let prev_has_root = last_has_root;

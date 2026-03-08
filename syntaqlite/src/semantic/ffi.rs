@@ -11,10 +11,10 @@ use std::ffi::{CStr, CString, c_char};
 
 use crate::dialect::AnyDialect;
 
-use super::{AnalysisMode, ValidationConfig};
 use super::analyzer::SemanticAnalyzer;
 use super::catalog::{Catalog, CatalogLayer};
 use super::diagnostics::Severity;
+use super::{AnalysisMode, ValidationConfig};
 
 // ── C-compatible diagnostic struct ──────────────────────────────────────────
 
@@ -127,10 +127,8 @@ pub unsafe extern "C" fn syntaqlite_validator_destroy(v: *mut SyntaqliteValidato
 ///
 /// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn syntaqlite_validator_set_mode(
-    v: *mut SyntaqliteValidator,
-    mode: u32,
-) {
+pub unsafe extern "C" fn syntaqlite_validator_set_mode(v: *mut SyntaqliteValidator, mode: u32) {
+    // SAFETY: caller guarantees `v` is a valid pointer from `syntaqlite_validator_create_sqlite`.
     let v = unsafe { &mut *v };
     let state = v.state_mut();
     state.analyzer.set_mode(match mode {
@@ -178,7 +176,11 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
     }
 
     // Second pass: build C structs pointing into rendered_messages.
-    for (d, msg) in model.diagnostics().iter().zip(state.rendered_messages.iter()) {
+    for (d, msg) in model
+        .diagnostics()
+        .iter()
+        .zip(state.rendered_messages.iter())
+    {
         state.c_diagnostics.push(SyntaqliteDiagnostic {
             severity: severity_to_c(d.severity),
             message: msg.as_ptr(),
@@ -250,7 +252,7 @@ pub unsafe extern "C" fn syntaqlite_validator_add_tables(
         state
             .user_catalog
             .layer_mut(CatalogLayer::Database)
-            .insert_relation(name, columns);
+            .insert_table(name, columns, false);
     }
 }
 

@@ -73,7 +73,7 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
     let configured = match base {
         Some(d) => Some(apply_version_cflags(
             d,
-            &cli.sqlite_version,
+            cli.sqlite_version.as_ref(),
             &cli.sqlite_cflag,
         )?),
         None => None,
@@ -84,7 +84,7 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
 
 fn apply_version_cflags(
     mut dialect: AnyDialect,
-    version: &Option<String>,
+    version: Option<&String>,
     cflags: &[String],
 ) -> Result<AnyDialect, String> {
     use syntaqlite::util::{SqliteFlags, SqliteVersion};

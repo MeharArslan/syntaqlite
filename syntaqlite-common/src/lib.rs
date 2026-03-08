@@ -24,6 +24,33 @@ pub mod roles {
     /// Index into a node's field array (0-based).
     pub type FieldIdx = u8;
 
+    /// A resolved reference to a single bit within a flags field.
+    ///
+    /// At codegen time, `flags.without_rowid` is resolved to a `FlagSpec`
+    /// containing the field index and the specific bit mask, so the runtime
+    /// never needs to know the flag type's layout.
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct FlagSpec {
+        /// Field index of the flags field (or `FIELD_ABSENT` if not present).
+        pub field: FieldIdx,
+        /// Bit mask for the specific flag (e.g. `1` for WITHOUT ROWID).
+        pub mask: u8,
+    }
+
+    impl FlagSpec {
+        /// A flag spec that is absent (no flag to check).
+        pub const ABSENT: Self = Self {
+            field: FIELD_ABSENT,
+            mask: 0,
+        };
+
+        /// Check whether this flag is set in the given field value byte.
+        pub fn is_set(self, flags_byte: u8) -> bool {
+            self.field != FIELD_ABSENT && (flags_byte & self.mask) != 0
+        }
+    }
+
     /// The kind of relation a [`SemanticRole::SourceRef`] binding introduces.
     ///
     /// `#[repr(u8)]` so it fits in a single byte inside `SemanticRole`.
@@ -72,6 +99,8 @@ pub mod roles {
             columns: FieldIdx,
             /// Field index of an AS-SELECT body (`FIELD_ABSENT` if absent).
             select: FieldIdx,
+            /// Resolved flag: WITHOUT ROWID (`FlagSpec::ABSENT` if not present).
+            without_rowid: FlagSpec,
         } = 0,
         /// CREATE VIEW statement: registers a view in the catalog.
         DefineView {
@@ -239,6 +268,7 @@ pub mod roles {
                     name: 0,
                     columns: 0,
                     select: 0,
+                    without_rowid: FlagSpec::ABSENT,
                 },
                 0,
             );

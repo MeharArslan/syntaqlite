@@ -170,7 +170,7 @@ node CreateTableStmt {
   table_constraints: index TableConstraintList
   as_select: index Select
 
-  semantic { define_table(name: table_name, columns: columns, select: as_select) }
+  semantic { define_table(name: table_name, columns: columns, select: as_select, without_rowid: flags.without_rowid) }
 
   fmt {
     group {

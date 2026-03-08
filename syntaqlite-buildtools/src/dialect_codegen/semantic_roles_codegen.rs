@@ -21,7 +21,7 @@
 
 use std::mem::size_of;
 
-use syntaqlite_common::roles::{FIELD_ABSENT, RelationKind, SemanticRole};
+use syntaqlite_common::roles::{FIELD_ABSENT, FlagSpec, RelationKind, SemanticRole};
 
 use super::AstModel;
 use crate::util::c_writer::CWriter;
@@ -42,11 +42,43 @@ fn field_index(fields: &[Field], field_name: &str) -> u8 {
 /// byte 0 is the discriminant (read from a Rust-constructed value of that
 /// variant), bytes 1–N are the payload fields explicitly, and all remaining
 /// bytes are zero (no undefined padding sneaking in).
+/// Resolve a dotted flag reference `(field_name, bit_name)` to a `(field_index, bit_mask)` pair.
+///
+/// Uses the field list to find the field's type name, then looks up the bit
+/// mask from the flags type definitions in the model.
+fn resolve_flag_spec(
+    fields: &[Field],
+    flag_ref: Option<&(String, String)>,
+    model: &AstModel<'_>,
+) -> (u8, u8) {
+    let Some((field_name, bit_name)) = flag_ref else {
+        return (FIELD_ABSENT, 0);
+    };
+    let field_idx = field_index(fields, field_name);
+    let field = &fields[field_idx as usize];
+    let flags_type = model
+        .flags()
+        .iter()
+        .find(|f| f.name == field.type_name)
+        .unwrap_or_else(|| panic!("flags type '{}' not found", field.type_name));
+    let mask = flags_type
+        .flags
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case(bit_name))
+        .unwrap_or_else(|| panic!("flag bit '{bit_name}' not found in '{}'", field.type_name))
+        .1;
+    (field_idx, u8::try_from(mask).expect("flag mask fits u8"))
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "large match over all SemanticRole variants; not worth splitting"
 )]
-fn role_to_bytes(fields: &[Field], synq_role: Option<&SynqRole>) -> [u8; ROLE_SIZE] {
+fn role_to_bytes(
+    fields: &[Field],
+    synq_role: Option<&SynqRole>,
+    model: &AstModel<'_>,
+) -> [u8; ROLE_SIZE] {
     let fi = |name: &str| field_index(fields, name);
     let opt = |name: &Option<String>| name.as_ref().map_or(FIELD_ABSENT, |n| fi(n));
 
@@ -71,15 +103,20 @@ fn role_to_bytes(fields: &[Field], synq_role: Option<&SynqRole>) -> [u8; ROLE_SI
             name,
             columns,
             select,
+            without_rowid,
         } => {
             bytes[0] = disc(SemanticRole::DefineTable {
                 name: 0,
                 columns: 0,
                 select: 0,
+                without_rowid: FlagSpec::ABSENT,
             });
             bytes[1] = fi(name);
             bytes[2] = opt(columns);
             bytes[3] = opt(select);
+            let (flag_field, flag_mask) = resolve_flag_spec(fields, without_rowid.as_ref(), model);
+            bytes[4] = flag_field;
+            bytes[5] = flag_mask;
         }
         SynqRole::DefineView {
             name,
@@ -282,7 +319,7 @@ pub(crate) fn generate_c_roles_h(model: &AstModel, prefix: &str) -> String {
     let mut count: u32 = 0;
 
     // Entry 0 — unused sentinel (Transparent).
-    let transparent_bytes = role_to_bytes(&[], None);
+    let transparent_bytes = role_to_bytes(&[], None, model);
     all_bytes.extend_from_slice(&transparent_bytes);
     count += 1;
 
@@ -292,7 +329,7 @@ pub(crate) fn generate_c_roles_h(model: &AstModel, prefix: &str) -> String {
             NodeLikeRef::Node(n) => (n.fields, n.semantic.map(|s| &s.role)),
             NodeLikeRef::List(_) => (&[][..], None),
         };
-        let entry = role_to_bytes(fields, synq_role);
+        let entry = role_to_bytes(fields, synq_role, model);
         all_bytes.extend_from_slice(&entry);
         count += 1;
     }
@@ -391,7 +428,8 @@ mod tests {
             SemanticRole::DefineTable {
                 name: 0,
                 columns: 2,
-                select: 3
+                select: 3,
+                without_rowid: FlagSpec::ABSENT,
             }
         );
     }
@@ -413,7 +451,8 @@ mod tests {
             SemanticRole::DefineTable {
                 name: 0,
                 columns: FIELD_ABSENT,
-                select: FIELD_ABSENT
+                select: FIELD_ABSENT,
+                without_rowid: FlagSpec::ABSENT,
             }
         );
     }

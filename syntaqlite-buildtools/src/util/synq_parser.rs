@@ -36,6 +36,8 @@ pub(crate) enum SemanticRole {
         name: String,
         columns: Option<String>,
         select: Option<String>,
+        /// Resolved flag reference: `(field_name, bit_name)` from `flags.without_rowid`.
+        without_rowid: Option<(String, String)>,
     },
     DefineView {
         name: String,
@@ -534,11 +536,21 @@ impl Parser {
         let params = self.parse_semantic_params(node_name, fields, literal_keys)?;
         let role = match role_name.as_str() {
             // ── Catalog roles ────────────────────────────────────────────
-            "define_table" => SemanticRole::DefineTable {
-                name: require_param(&params, "name", node_name, "define_table")?,
-                columns: get_param(&params, "columns").map(str::to_string),
-                select: get_param(&params, "select").map(str::to_string),
-            },
+            "define_table" => {
+                let without_rowid = get_param(&params, "without_rowid").map(|v| {
+                    let (field, bit) = v.split_once('.').unwrap_or_else(|| {
+                        panic!("define_table without_rowid must use dotted syntax \
+                                (e.g. flags.without_rowid), got '{v}'")
+                    });
+                    (field.to_string(), bit.to_string())
+                });
+                SemanticRole::DefineTable {
+                    name: require_param(&params, "name", node_name, "define_table")?,
+                    columns: get_param(&params, "columns").map(str::to_string),
+                    select: get_param(&params, "select").map(str::to_string),
+                    without_rowid,
+                }
+            }
             "define_view" => SemanticRole::DefineView {
                 name: require_param(&params, "name", node_name, "define_view")?,
                 columns: get_param(&params, "columns").map(str::to_string),
@@ -640,12 +652,25 @@ impl Parser {
             let key = self.ident()?;
             self.expect(&Token::Colon)?;
             let value = self.ident()?;
-            if !literal_keys.contains(&key.as_str()) && !fields.iter().any(|f| f.name == value) {
-                return Err(format!(
-                    "semantic annotation in '{node_name}' references unknown field '{value}'"
-                ));
+            // Support dotted flag references: `key: field.bit_name`.
+            if self.at_tok(&Token::Dot) {
+                self.advance();
+                let bit = self.ident()?;
+                if !fields.iter().any(|f| f.name == value) {
+                    return Err(format!(
+                        "semantic annotation in '{node_name}' references unknown field '{value}'"
+                    ));
+                }
+                params.push((key, format!("{value}.{bit}")));
+            } else {
+                if !literal_keys.contains(&key.as_str()) && !fields.iter().any(|f| f.name == value)
+                {
+                    return Err(format!(
+                        "semantic annotation in '{node_name}' references unknown field '{value}'"
+                    ));
+                }
+                params.push((key, value));
             }
-            params.push((key, value));
         }
         self.advance(); // consume RParen
         Ok(params)
@@ -1002,10 +1027,12 @@ mod tests {
                 name,
                 columns,
                 select,
+                without_rowid,
             } => {
                 assert_eq!(name, "table_name");
                 assert_eq!(columns.as_deref(), Some("columns"));
                 assert_eq!(select.as_deref(), Some("as_select"));
+                assert!(without_rowid.is_none());
             }
             other => panic!("expected DefineTable, got {other:?}"),
         }
