@@ -425,14 +425,15 @@ def _analyze_detailed(results: list[FileResult], verbose: bool) -> None:
             syntaqlite_ok = parse_ok and len(diagnostics) == 0
 
             if sqlite_ok and not syntaqlite_ok:
-                # False positive.
+                # False positive.  Only count the *first* diagnostic —
+                # later ones are often cascading (e.g. unknown column
+                # after unknown table) and hide the real root cause.
                 fp_by_file[fr.file] += 1
                 if not parse_ok:
                     pe = entry.get("parse_error", "")
                     fp_diagnostics["PARSE ERROR: " + _normalize_sqlite_error(pe)] += 1
-                else:
-                    for d in diagnostics:
-                        fp_diagnostics[_normalize_diagnostic(d["message"])] += 1
+                elif diagnostics:
+                    fp_diagnostics[_normalize_diagnostic(diagnostics[0]["message"])] += 1
 
             elif not sqlite_ok and syntaqlite_ok:
                 # Gap.
