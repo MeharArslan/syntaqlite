@@ -124,7 +124,7 @@ jobs:
         run: chmod +x target/debug/syntaqlite
 
       - name: Run upstream SQLite validation tests
-        run: tools/run-integration-tests --suite upstream-sqlite
+        run: tools/run-integration-tests --suite upstream-sqlite --validate
 
   ui-tests:
     name: UI tests
