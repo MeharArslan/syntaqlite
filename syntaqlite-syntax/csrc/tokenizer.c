@@ -43,7 +43,8 @@ void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
   tok->offset = 0;
 }
 
-uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
+uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
+                                   SyntaqliteToken* out) {
   if (tok->offset >= tok->len) {
     return 0;
   }

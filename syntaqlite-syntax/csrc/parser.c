@@ -26,7 +26,7 @@ struct SyntaqliteParser {
   SynqParseCtx ctx;
   const char* source;
   uint32_t source_len;
-  uint32_t offset;      // Tokenizer cursor into source.
+  uint32_t offset;           // Tokenizer cursor into source.
   uint32_t last_token_type;  // Last non-whitespace token fed to Lemon.
   uint32_t finished;         // 1 after EOF has been sent to Lemon.
   uint32_t had_error;        // Sticky error flag for current result.
@@ -309,8 +309,8 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 
   while (p->offset < p->source_len && z[p->offset] != '\0') {
     uint32_t token_type = 0;
-    int64_t token_len =
-        SynqSqliteGetTokenVersionWrapped(&p->grammar, z + p->offset, &token_type);
+    int64_t token_len = SynqSqliteGetTokenVersionWrapped(
+        &p->grammar, z + p->offset, &token_type);
     if (token_len <= 0)
       break;
 
@@ -332,7 +332,8 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 
     uint32_t tidx = 0xFFFFFFFF;
     if (p->collect_tokens && token_type != SYNTAQLITE_TK_SEMI) {
-      SyntaqliteParserToken tp = {tok_offset, (uint32_t)token_len, token_type, 0};
+      SyntaqliteParserToken tp = {tok_offset, (uint32_t)token_len, token_type,
+                                  0};
       syntaqlite_vec_push(&p->tokens, tp, p->mem);
       tidx = syntaqlite_vec_len(&p->tokens) - 1;
     }
@@ -407,7 +408,7 @@ const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
 }
 
 const SyntaqliteParserToken* syntaqlite_result_tokens(SyntaqliteParser* p,
-                                                   uint32_t* count) {
+                                                      uint32_t* count) {
   *count = syntaqlite_vec_len(&p->tokens);
   return p->tokens.data;
 }
@@ -455,7 +456,8 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
   if (token_type == SYNTAQLITE_TK_COMMENT) {
     if (p->collect_tokens && text) {
       uint32_t tok_offset = (uint32_t)(text - p->source);
-      SyntaqliteComment t = {tok_offset, len, (uint8_t)(text[0] == '-' ? 0 : 1)};
+      SyntaqliteComment t = {tok_offset, len,
+                             (uint8_t)(text[0] == '-' ? 0 : 1)};
       syntaqlite_vec_push(&p->comments, t, p->mem);
     }
     return set_result_status(p, SYNTAQLITE_PARSE_DONE);

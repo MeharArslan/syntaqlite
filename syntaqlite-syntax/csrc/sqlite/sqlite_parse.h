@@ -20,9 +20,13 @@ void* SynqSqliteParseAlloc(void* (*mallocProc)(size_t));
 void SynqSqliteParseInit(void* parser);
 void SynqSqliteParseFinalize(void* parser);
 void SynqSqliteParseFree(void* parser, void (*freeProc)(void*));
-void SynqSqliteParse(void* parser, int token_type, SynqParseToken minor,
+void SynqSqliteParse(void* parser,
+                     int token_type,
+                     SynqParseToken minor,
                      SynqParseCtx* pCtx);
-uint32_t SynqSqliteParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);
+uint32_t SynqSqliteParseExpectedTokens(void* parser,
+                                       uint32_t* out_tokens,
+                                       uint32_t out_cap);
 uint32_t SynqSqliteParseCompletionContext(void* parser);
 #ifndef NDEBUG
 void SynqSqliteParseTrace(FILE* trace_file, char* prompt);

@@ -20,8 +20,7 @@ int main(void) {
   buf[n] = '\0';
 
   SyntaqliteGrammar env = GRAMMAR_FN();
-  SyntaqliteParser* p =
-      syntaqlite_parser_create_with_grammar(NULL, env);
+  SyntaqliteParser* p = syntaqlite_parser_create_with_grammar(NULL, env);
   syntaqlite_parser_reset(p, buf, (uint32_t)n);
 
   int32_t rc;

@@ -15,12 +15,10 @@ extern "C" {
 #define SYNTAQLITE_NULL_NODE 0xFFFFFFFFu
 
 typedef uint32_t SyntaqliteCompletionContext;
-#define SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN    \
-  ((SyntaqliteCompletionContext)0)
+#define SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN ((SyntaqliteCompletionContext)0)
 #define SYNTAQLITE_COMPLETION_CONTEXT_EXPRESSION \
   ((SyntaqliteCompletionContext)1)
-#define SYNTAQLITE_COMPLETION_CONTEXT_TABLE_REF  \
-  ((SyntaqliteCompletionContext)2)
+#define SYNTAQLITE_COMPLETION_CONTEXT_TABLE_REF ((SyntaqliteCompletionContext)2)
 
 typedef struct SyntaqliteSourceSpan {
   uint32_t offset;

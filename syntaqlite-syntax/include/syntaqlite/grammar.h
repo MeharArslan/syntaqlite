@@ -43,17 +43,17 @@ extern "C" {
 // Semantic category of a SQL token, used for syntax highlighting.
 // Stored as uint8_t in SyntaqliteGrammarTemplate::token_categories.
 typedef enum {
-  SYNQ_TOKEN_CATEGORY_OTHER       = 0,
-  SYNQ_TOKEN_CATEGORY_KEYWORD     = 1,
-  SYNQ_TOKEN_CATEGORY_IDENTIFIER  = 2,
-  SYNQ_TOKEN_CATEGORY_STRING      = 3,
-  SYNQ_TOKEN_CATEGORY_NUMBER      = 4,
-  SYNQ_TOKEN_CATEGORY_OPERATOR    = 5,
+  SYNQ_TOKEN_CATEGORY_OTHER = 0,
+  SYNQ_TOKEN_CATEGORY_KEYWORD = 1,
+  SYNQ_TOKEN_CATEGORY_IDENTIFIER = 2,
+  SYNQ_TOKEN_CATEGORY_STRING = 3,
+  SYNQ_TOKEN_CATEGORY_NUMBER = 4,
+  SYNQ_TOKEN_CATEGORY_OPERATOR = 5,
   SYNQ_TOKEN_CATEGORY_PUNCTUATION = 6,
-  SYNQ_TOKEN_CATEGORY_COMMENT     = 7,
-  SYNQ_TOKEN_CATEGORY_VARIABLE    = 8,
-  SYNQ_TOKEN_CATEGORY_FUNCTION    = 9,
-  SYNQ_TOKEN_CATEGORY_TYPE        = 10,
+  SYNQ_TOKEN_CATEGORY_COMMENT = 7,
+  SYNQ_TOKEN_CATEGORY_VARIABLE = 8,
+  SYNQ_TOKEN_CATEGORY_FUNCTION = 9,
+  SYNQ_TOKEN_CATEGORY_TYPE = 10,
 } SynqTokenCategory;
 
 // ── Types used by the parser vtable ─────────────────────────────────────
@@ -95,7 +95,9 @@ typedef struct SyntaqliteGrammarTemplate {
                       SynqParseToken minor,
                       SynqParseCtx* pCtx);
   void (*parser_trace)(FILE* trace_file, char* prompt);
-  uint32_t (*parser_expected_tokens)(void* parser, uint32_t* out_tokens, uint32_t out_cap);
+  uint32_t (*parser_expected_tokens)(void* parser,
+                                     uint32_t* out_tokens,
+                                     uint32_t out_cap);
   uint32_t (*parser_completion_context)(void* parser);
 
   // Tokenizer (provided by grammar)

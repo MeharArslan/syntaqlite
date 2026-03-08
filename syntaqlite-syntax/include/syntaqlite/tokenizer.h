@@ -70,7 +70,8 @@ void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
 // Advance to the next token. Returns 1 if a token was written to *out,
 // 0 at end-of-input. Every token is returned, including whitespace and
 // comments.
-uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out);
+uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
+                                   SyntaqliteToken* out);
 
 // Free the tokenizer and all its memory. No-op if tok is NULL.
 void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);

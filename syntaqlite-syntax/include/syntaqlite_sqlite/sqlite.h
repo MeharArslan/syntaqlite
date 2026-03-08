@@ -6,7 +6,6 @@
 #ifndef SYNTAQLITE_SQLITE_GRAMMAR_H
 #define SYNTAQLITE_SQLITE_GRAMMAR_H
 
-
 #include "syntaqlite/grammar.h"
 
 #ifdef __cplusplus
@@ -16,8 +15,9 @@ extern "C" {
 typedef struct SyntaqliteDialectTemplate SyntaqliteDialectTemplate;
 
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
-SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags);
-const SyntaqliteDialectTemplate *syntaqlite_sqlite_dialect(void);
+SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version,
+                                                 SyntaqliteCflags cflags);
+const SyntaqliteDialectTemplate* syntaqlite_sqlite_dialect(void);
 
 #ifdef __cplusplus
 }

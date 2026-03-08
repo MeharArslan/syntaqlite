@@ -76,9 +76,9 @@ typedef struct SyntaqliteParser SyntaqliteParser;
 //           - syntaqlite_result_root() is always SYNTAQLITE_NULL_NODE on ERROR
 //
 // The integer values are stable ABI (DONE=0, OK=1, ERROR=-1).
-#define SYNTAQLITE_PARSE_DONE      0
-#define SYNTAQLITE_PARSE_OK        1
-#define SYNTAQLITE_PARSE_ERROR     (-1)
+#define SYNTAQLITE_PARSE_DONE 0
+#define SYNTAQLITE_PARSE_OK 1
+#define SYNTAQLITE_PARSE_ERROR (-1)
 
 // A comment captured during parsing.
 typedef struct SyntaqliteComment {
@@ -91,15 +91,18 @@ typedef struct SyntaqliteComment {
 // each token was consumed.  Use SYNQ_TOKEN_FLAG_* as bitmasks on the flags
 // field of SyntaqliteParserToken.
 typedef uint32_t SyntaqliteParserTokenFlags;
-#define SYNQ_TOKEN_FLAG_AS_ID       ((SyntaqliteParserTokenFlags)1)  // Consumed as identifier (keyword fallback).
-#define SYNQ_TOKEN_FLAG_AS_FUNCTION ((SyntaqliteParserTokenFlags)2)  // Consumed as function name.
-#define SYNQ_TOKEN_FLAG_AS_TYPE     ((SyntaqliteParserTokenFlags)4)  // Consumed as type name.
+#define SYNQ_TOKEN_FLAG_AS_ID \
+  ((SyntaqliteParserTokenFlags)1)  // Consumed as identifier (keyword fallback).
+#define SYNQ_TOKEN_FLAG_AS_FUNCTION \
+  ((SyntaqliteParserTokenFlags)2)  // Consumed as function name.
+#define SYNQ_TOKEN_FLAG_AS_TYPE \
+  ((SyntaqliteParserTokenFlags)4)  // Consumed as type name.
 
 // A non-whitespace, non-comment token position captured during parsing.
 typedef struct SyntaqliteParserToken {
-  uint32_t offset;                // Byte offset in source.
-  uint32_t length;                // Byte length.
-  uint32_t type;                  // Original token type from tokenizer (pre-fallback).
+  uint32_t offset;  // Byte offset in source.
+  uint32_t length;  // Byte length.
+  uint32_t type;    // Original token type from tokenizer (pre-fallback).
   SyntaqliteParserTokenFlags flags;  // Bitmask of SYNQ_TOKEN_FLAG_* values.
 } SyntaqliteParserToken;
 
@@ -166,7 +169,7 @@ uint32_t syntaqlite_result_error_length(SyntaqliteParser* p);
 const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
                                                     uint32_t* count);
 const SyntaqliteParserToken* syntaqlite_result_tokens(SyntaqliteParser* p,
-                                                   uint32_t* count);
+                                                      uint32_t* count);
 const SyntaqliteMacroRegion* syntaqlite_result_macros(SyntaqliteParser* p,
                                                       uint32_t* count);
 
@@ -271,7 +274,8 @@ static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
 // Enable token/comment collection for result_tokens/result_comments.
 // Default: off (0), in which case those arrays are empty.
 // Returns 0 on success, -1 if the parser has already been used.
-int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, uint32_t enable);
+int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
+                                             uint32_t enable);
 
 // Enable parser trace output (debug builds only). Default: off (0).
 // Returns 0 on success, -1 if the parser has already been used.
@@ -282,7 +286,8 @@ int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable);
 // ============================================================================
 
 // Dump an AST node tree as indented text. Returns a malloc'd NUL-terminated
-// string. The caller must free() the result. Returns NULL on allocation failure.
+// string. The caller must free() the result. Returns NULL on allocation
+// failure.
 char* syntaqlite_dump_node(SyntaqliteParser* p,
                            uint32_t node_id,
                            uint32_t indent);
@@ -294,8 +299,7 @@ char* syntaqlite_dump_node(SyntaqliteParser* p,
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
 // Allocate a parser for the built-in SQLite grammar. The parser is inert
 // until reset() is called. Pass NULL for mem to use malloc/free.
-SyntaqliteParser* syntaqlite_parser_create(
-    const SyntaqliteMemMethods* mem);
+SyntaqliteParser* syntaqlite_parser_create(const SyntaqliteMemMethods* mem);
 
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 #endif
@@ -313,13 +317,16 @@ SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 
 namespace syntaqlite {
 
-inline std::string_view SpanText(SyntaqliteParser* p, SyntaqliteSourceSpan span) {
+inline std::string_view SpanText(SyntaqliteParser* p,
+                                 SyntaqliteSourceSpan span) {
   if (span.length == 0)
     return {};
   return {syntaqlite_parser_source(p) + span.offset, span.length};
 }
 
-inline bool IsPresent(SyntaqliteSourceSpan span) { return span.length != 0; }
+inline bool IsPresent(SyntaqliteSourceSpan span) {
+  return span.length != 0;
+}
 inline bool IsPresent(uint32_t node_id) {
   return node_id != SYNTAQLITE_NULL_NODE;
 }
@@ -359,10 +366,17 @@ class ListView {
     Iterator(SyntaqliteParser* parser, const void* list, uint32_t index)
         : parser_(parser), list_(list), index_(index) {}
     const T* operator*() const {
-      return static_cast<const T*>(syntaqlite_list_child(parser_, list_, index_));
+      return static_cast<const T*>(
+          syntaqlite_list_child(parser_, list_, index_));
     }
-    Iterator& operator++() { ++index_; return *this; }
-    bool operator!=(const Iterator& other) const { return index_ != other.index_; }
+    Iterator& operator++() {
+      ++index_;
+      return *this;
+    }
+    bool operator!=(const Iterator& other) const {
+      return index_ != other.index_;
+    }
+
    private:
     SyntaqliteParser* parser_;
     const void* list_;
@@ -426,25 +440,34 @@ class Parser {
     syntaqlite_parser_reset(raw_, sql, len);
   }
   void Reset(std::string_view sql) {
-    syntaqlite_parser_reset(raw_, sql.data(), static_cast<uint32_t>(sql.size()));
+    syntaqlite_parser_reset(raw_, sql.data(),
+                            static_cast<uint32_t>(sql.size()));
   }
 
   // Returns a SYNTAQLITE_PARSE_* code.
   int32_t Next() { return syntaqlite_parser_next(raw_); }
 
-  uint32_t    ResultRoot()     const { return syntaqlite_result_root(raw_); }
+  uint32_t ResultRoot() const { return syntaqlite_result_root(raw_); }
   uint32_t ResultRecoveryRoot() const {
     return syntaqlite_result_recovery_root(raw_);
   }
-  const char* ResultErrorMsg() const { return syntaqlite_result_error_msg(raw_); }
+  const char* ResultErrorMsg() const {
+    return syntaqlite_result_error_msg(raw_);
+  }
 
   template <typename T>
-  const T* Node(uint32_t node_id) const { return NodeCast<T>(raw_, node_id); }
+  const T* Node(uint32_t node_id) const {
+    return NodeCast<T>(raw_, node_id);
+  }
 
   template <typename T>
-  ListView<T> List(uint32_t list_id) const { return MakeListView<T>(raw_, list_id); }
+  ListView<T> List(uint32_t list_id) const {
+    return MakeListView<T>(raw_, list_id);
+  }
 
-  std::string_view Text(SyntaqliteSourceSpan span) const { return SpanText(raw_, span); }
+  std::string_view Text(SyntaqliteSourceSpan span) const {
+    return SpanText(raw_, span);
+  }
 
   char* DumpNode(uint32_t node_id, uint32_t indent = 0) const {
     return syntaqlite_dump_node(raw_, node_id, indent);

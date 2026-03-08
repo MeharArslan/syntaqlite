@@ -64,7 +64,8 @@ extern "C" {
 // Returns a SYNTAQLITE_PARSE_* code:
 //   DONE      = keep going (statement not yet complete)
 //   OK        = statement completed cleanly
-//   ERROR     = statement has parse/runtime error (may still have recovery root)
+//   ERROR     = statement has parse/runtime error (may still have recovery
+//   root)
 int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
                                      uint32_t token_type,
                                      const char* text,
