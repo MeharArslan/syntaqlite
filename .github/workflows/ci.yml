@@ -103,7 +103,7 @@ jobs:
           submodules: recursive
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y tcl
+        run: sudo apt-get update && sudo apt-get install -y tcl-dev
 
       - name: Cache third_party
         uses: actions/cache@v4
