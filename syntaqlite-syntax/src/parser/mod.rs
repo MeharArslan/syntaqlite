@@ -88,6 +88,8 @@ impl<G: TypedGrammar> TypedParser<G> {
             raw.as_mut().set_trace(u32::from(config.trace()));
             raw.as_mut()
                 .set_collect_tokens(u32::from(config.collect_tokens()));
+            raw.as_mut()
+                .set_macro_fallback(u32::from(config.macro_fallback()));
         }
 
         TypedParser {

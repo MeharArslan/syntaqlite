@@ -281,6 +281,15 @@ int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
 // Returns 0 on success, -1 if the parser has already been used.
 int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable);
 
+// Enable macro fallback: when the dialect uses SYNQ_MACRO_STYLE_RUST and a
+// name!(args) call is encountered but the name is NOT in the macro registry,
+// consume the entire name!(args) as a single TK_ID token instead of raising
+// a parse error. A MacroRegion is recorded so the formatter can emit the
+// call verbatim. Default: off (0).
+// Returns 0 on success, -1 if the parser has already been used.
+int32_t syntaqlite_parser_set_macro_fallback(SyntaqliteParser* p,
+                                             uint32_t enable);
+
 // ============================================================================
 // Debugging
 // ============================================================================

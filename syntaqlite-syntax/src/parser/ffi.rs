@@ -97,6 +97,11 @@ impl CParser {
         unsafe { syntaqlite_parser_set_collect_tokens(self, enable) }
     }
 
+    pub(crate) unsafe fn set_macro_fallback(&mut self, enable: u32) -> i32 {
+        // SAFETY: self is a valid, non-null CParser pointer owned by the caller.
+        unsafe { syntaqlite_parser_set_macro_fallback(self, enable) }
+    }
+
     pub(crate) unsafe fn reset(&mut self, source: *const c_char, len: u32) {
         // SAFETY: self is a valid, non-null CParser pointer; source is a
         // null-terminated C string of at least `len` bytes.
@@ -316,6 +321,7 @@ unsafe extern "C" {
     // Configuration
     fn syntaqlite_parser_set_trace(p: *mut CParser, enable: u32) -> i32;
     fn syntaqlite_parser_set_collect_tokens(p: *mut CParser, enable: u32) -> i32;
+    fn syntaqlite_parser_set_macro_fallback(p: *mut CParser, enable: u32) -> i32;
 
     // AST dump
     fn syntaqlite_dump_node(p: *mut CParser, node_id: u32, indent: u32) -> *mut c_char;
@@ -716,5 +722,137 @@ mod tests {
             let rc = unsafe { parser.deregister_macro(name.as_ptr().cast(), name.len() as u32) };
             assert_eq!(rc, -1, "deleted macro 'a{i}' should not be found");
         }
+    }
+
+    // ── Macro fallback tests ─────────────────────────────────────────────
+
+    /// Helper: enable macro fallback + token collection on a parser.
+    fn enable_fallback(parser: &mut CParser) {
+        let rc = unsafe { parser.set_macro_fallback(1) };
+        assert_eq!(rc, 0, "set_macro_fallback should succeed");
+        let rc = unsafe { parser.set_collect_tokens(1) };
+        assert_eq!(rc, 0, "set_collect_tokens should succeed");
+    }
+
+    #[test]
+    fn macro_fallback_unregistered_parses_as_id() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        enable_fallback(parser);
+
+        // Without any macros registered, foo!(1, 2) should parse OK as an identifier.
+        let (rc, _sql) = parse_one(parser, "SELECT foo!(1, 2);");
+        assert_eq!(
+            rc, PARSE_OK,
+            "unregistered macro call should parse OK with fallback enabled"
+        );
+        assert_ne!(unsafe { parser.result_root() }, NULL_NODE);
+    }
+
+    #[test]
+    fn macro_fallback_without_flag_still_errors() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        // Do NOT enable fallback.
+
+        let (rc, _sql) = parse_one(parser, "SELECT foo!(1, 2);");
+        assert_eq!(
+            rc, PARSE_ERROR,
+            "unregistered macro call should error without fallback"
+        );
+    }
+
+    #[test]
+    fn macro_fallback_records_macro_region() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        enable_fallback(parser);
+
+        let sql = "SELECT foo!(1, 2);";
+        let (rc, _sql) = parse_one(parser, sql);
+        assert_eq!(rc, PARSE_OK);
+
+        let regions = unsafe { parser.result_macros() };
+        assert_eq!(regions.len(), 1, "expected one macro region");
+        let r = &regions[0];
+        let call_start = sql.find("foo!").unwrap() as u32;
+        assert_eq!(r.call_offset, call_start);
+        // "foo!(1, 2)" is 10 bytes.
+        assert_eq!(r.call_length, 10);
+    }
+
+    #[test]
+    fn macro_fallback_registered_still_expands() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        enable_fallback(parser);
+        register_macro(parser, "double", &["x"], "($x + $x)");
+
+        // Registered macro should still expand normally even with fallback on.
+        let (rc, _sql) = parse_one(parser, "SELECT double!(3);");
+        assert_eq!(rc, PARSE_OK);
+    }
+
+    #[test]
+    fn macro_fallback_unbalanced_parens_errors() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        enable_fallback(parser);
+
+        // Unbalanced parens should still cause parse error.
+        let (rc, _sql) = parse_one(parser, "SELECT foo!(1, 2;");
+        assert_eq!(
+            rc, PARSE_ERROR,
+            "unbalanced parens should error even with fallback"
+        );
+    }
+
+    #[test]
+    fn macro_fallback_empty_args() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        enable_fallback(parser);
+
+        let (rc, _sql) = parse_one(parser, "SELECT foo!();");
+        assert_eq!(
+            rc, PARSE_OK,
+            "empty-args macro call should parse OK with fallback"
+        );
+    }
+
+    #[test]
+    fn macro_fallback_in_from_clause() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        enable_fallback(parser);
+
+        let (rc, _sql) = parse_one(parser, "SELECT * FROM my_table!(t1);");
+        assert_eq!(
+            rc, PARSE_OK,
+            "macro fallback should work in FROM clause"
+        );
+    }
+
+    #[test]
+    fn macro_fallback_nested_parens() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        enable_fallback(parser);
+
+        let sql = "SELECT * FROM graph!(( SELECT id FROM t ), ( SELECT id FROM s ));";
+        let (rc, _sql) = parse_one(parser, sql);
+        assert_eq!(
+            rc, PARSE_OK,
+            "nested parens in macro args should parse OK with fallback"
+        );
+
+        let regions = unsafe { parser.result_macros() };
+        assert_eq!(regions.len(), 1);
+        let r = &regions[0];
+        let call_text = &sql[r.call_offset as usize..(r.call_offset + r.call_length) as usize];
+        assert!(
+            call_text.starts_with("graph!(") && call_text.ends_with(")"),
+            "macro region should cover full call, got: '{call_text}'"
+        );
     }
 }

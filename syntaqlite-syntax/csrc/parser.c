@@ -78,6 +78,7 @@ struct SyntaqliteParser {
   char error_msg[256];       // Error message buffer.
   uint32_t trace;
   uint32_t collect_tokens;
+  uint32_t macro_fallback;  // 1 = unregistered name!(args) becomes TK_ID.
   uint32_t sealed;
   uint32_t pending_reset;  // 1 after feed_token signals completion; cleared on
                            // the next feed_token call (arena reset deferred).
@@ -118,6 +119,15 @@ static int try_expand_macro_in_buf(SyntaqliteParser* p,
                                    uint32_t id_len,
                                    uint32_t bang_offset,
                                    uint32_t depth);
+
+// Forward declaration — balanced-paren scanning for macro args (defined later).
+static uint32_t scan_macro_args(SyntaqliteParser* p,
+                                const char* source,
+                                uint32_t source_len,
+                                uint32_t bang_offset,
+                                SynqMacroArg* out_args,
+                                uint32_t max_args,
+                                uint32_t* out_end_offset);
 
 // Forward declaration — free macro entry strings (defined in Cleanup section).
 static void free_macro_entry(SyntaqliteParser* p, SyntaqliteMacroEntry* e);
@@ -441,8 +451,8 @@ static void record_comment(SyntaqliteParser* p, uint32_t offset, uint32_t len) {
 }
 
 // Try to expand a Rust-style macro call: ID!(args).
-// Requires macro_style == RUST and a matching registry entry.
-// Returns 0 if expanded, -1 if not a macro call.
+// Requires macro_style == RUST and a matching registry entry (or fallback mode).
+// Returns 0 if consumed, -1 if not a macro call, 1 if statement boundary.
 SYNQ_NOINLINE
 static int try_macro_call(SyntaqliteParser* p,
                           uint32_t id_offset,
@@ -453,27 +463,48 @@ static int try_macro_call(SyntaqliteParser* p,
     return -1;
   if (p->grammar.tmpl->macro_style != SYNQ_MACRO_STYLE_RUST)
     return -1;
-  if (p->macro_table_size == 0)
-    return -1;
 
   // Look up macro in registry.
   SyntaqliteMacroEntry* entry = NULL;
-  SYNQ_MAP_FIND(p->macro_table, p->macro_table_size, p->source + id_offset,
-                id_len, entry);
-  if (!entry)
+  if (p->macro_table_size > 0) {
+    SYNQ_MAP_FIND(p->macro_table, p->macro_table_size, p->source + id_offset,
+                  id_len, entry);
+  }
+
+  if (entry) {
+    // Registered macro — expand as before.
+    int rc = try_expand_macro_in_buf(p, p->source, p->source_len, id_offset,
+                                     id_len, bang_offset, 0);
+    if (rc < 0)
+      return -1;
+    uint32_t call_end = (uint32_t)rc;
+    syntaqlite_parser_begin_macro(p, id_offset, call_end - id_offset);
+    syntaqlite_parser_end_macro(p);
+    p->offset = call_end;
+    return 0;
+  }
+
+  // Unregistered macro — fallback to TK_ID if enabled.
+  if (!p->macro_fallback)
     return -1;
 
-  int rc = try_expand_macro_in_buf(p, p->source, p->source_len, id_offset,
-                                   id_len, bang_offset, 0);
-  if (rc < 0)
-    return -1;
+  // Scan balanced parens to find the end of name!(args).
+  uint32_t end_offset = 0;
+  scan_macro_args(p, p->source, p->source_len,
+                  bang_offset, NULL, 0, &end_offset);
+  if (end_offset == 0)
+    return -1;  // Unbalanced parens — still an error.
 
-  // Record macro region for the formatter.
-  uint32_t call_end = (uint32_t)rc;
-  syntaqlite_parser_begin_macro(p, id_offset, call_end - id_offset);
+  uint32_t call_length = end_offset - id_offset;
+
+  // Record macro region so formatter emits verbatim.
+  syntaqlite_parser_begin_macro(p, id_offset, call_length);
   syntaqlite_parser_end_macro(p);
-  p->offset = call_end;
-  return 0;
+
+  // Feed the whole name!(args) span as a single TK_ID to Lemon.
+  int rc = record_and_feed(p, SYNTAQLITE_TK_ID, id_offset, call_length);
+  p->offset = end_offset;
+  return rc;
 }
 
 // ---------------------------------------------------------------------------
@@ -1279,6 +1310,14 @@ int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
   if (p->sealed)
     return -1;
   p->collect_tokens = enable;
+  return 0;
+}
+
+int32_t syntaqlite_parser_set_macro_fallback(SyntaqliteParser* p,
+                                             uint32_t enable) {
+  if (p->sealed)
+    return -1;
+  p->macro_fallback = enable;
   return 0;
 }
 

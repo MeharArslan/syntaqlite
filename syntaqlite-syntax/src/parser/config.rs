@@ -9,6 +9,7 @@
 pub struct ParserConfig {
     trace: bool,
     collect_tokens: bool,
+    macro_fallback: bool,
 }
 
 impl ParserConfig {
@@ -38,6 +39,23 @@ impl ParserConfig {
     #[must_use]
     pub fn with_collect_tokens(mut self, collect_tokens: bool) -> Self {
         self.collect_tokens = collect_tokens;
+        self
+    }
+
+    /// Whether macro fallback is enabled. Default: `false`.
+    ///
+    /// When enabled and the dialect uses Rust-style macros, unregistered
+    /// `name!(args)` calls are consumed as a single `TK_ID` token instead
+    /// of causing a parse error. A `MacroRegion` is recorded so the
+    /// formatter can emit the call verbatim.
+    pub fn macro_fallback(&self) -> bool {
+        self.macro_fallback
+    }
+
+    /// Enable or disable macro fallback for unregistered macro calls.
+    #[must_use]
+    pub fn with_macro_fallback(mut self, macro_fallback: bool) -> Self {
+        self.macro_fallback = macro_fallback;
         self
     }
 }
