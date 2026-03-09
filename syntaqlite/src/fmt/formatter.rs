@@ -370,21 +370,26 @@ fn drain_gap_comments<'a>(
     arena: &mut DocArena<'a>,
     parts: &mut Vec<DocId>,
 ) {
+    let mut prev_was_comment = false;
     let mut last_end = ctx.prev_token_end();
     while let Some(c) = ctx.peek_comment() {
         if c.offset >= before {
             break;
         }
-        // Preserve blank lines between separate comment blocks.
-        let gap_start = (last_end as usize).min(source.len());
-        let gap_end = (c.offset as usize).min(source.len());
-        if gap_start < gap_end && source[gap_start..gap_end].contains("\n\n") {
-            parts.push(arena.hardline());
+        // Preserve blank lines between separate comment blocks
+        // (but not between code tokens and the first comment).
+        if prev_was_comment {
+            let gap_start = (last_end as usize).min(source.len());
+            let gap_end = (c.offset as usize).min(source.len());
+            if gap_start < gap_end && source[gap_start..gap_end].contains("\n\n") {
+                parts.push(arena.hardline());
+            }
         }
         let text = &source[c.offset as usize..(c.offset + c.length) as usize];
         parts.push(arena.text(text));
         parts.push(arena.hardline());
         last_end = c.offset + c.length;
+        prev_was_comment = true;
         ctx.advance_comment();
     }
 }

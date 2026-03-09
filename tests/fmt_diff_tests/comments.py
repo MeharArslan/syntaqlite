@@ -777,6 +777,133 @@ class CreateTableComment(TestSuite):
 # ── CTE comments ──────────────────────────────────────────────────────────────
 
 
+# ── Comment block spacing ─────────────────────────────────────────────────────
+
+
+class CommentBlockSpacing(TestSuite):
+    """Blank lines between separate comment blocks are preserved,
+    but NOT between code and comments or within a single block."""
+
+    def test_blank_line_between_comment_blocks_preserved(self):
+        return DiffTestBlueprint(
+            sql="""\
+                -- block one
+                -- block one cont
+
+                -- block two
+                -- block two cont
+                SELECT 1
+            """,
+            out="""\
+                -- block one
+                -- block one cont
+
+                -- block two
+                -- block two cont
+                SELECT 1;
+            """,
+        )
+
+    def test_no_blank_line_within_contiguous_block(self):
+        return DiffTestBlueprint(
+            sql="""\
+                -- line 1
+                -- line 2
+                -- line 3
+                SELECT 1
+            """,
+            out="""\
+                -- line 1
+                -- line 2
+                -- line 3
+                SELECT 1;
+            """,
+        )
+
+    def test_no_blank_line_between_code_and_comment(self):
+        """After UNION ALL, no blank line before comment."""
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT 1
+
+                UNION ALL
+
+                -- part two
+                SELECT 2
+            """,
+            out="""\
+                SELECT 1
+                UNION ALL
+                -- part two
+                SELECT 2;
+            """,
+        )
+
+    def test_multi_block_comments_between_statements(self):
+        return DiffTestBlueprint(
+            sql="""\
+                -- copyright header
+                -- license text
+
+                -- module docs
+                -- more docs
+                SELECT 1
+            """,
+            out="""\
+                -- copyright header
+                -- license text
+
+                -- module docs
+                -- more docs
+                SELECT 1;
+            """,
+        )
+
+
+class ListCommentSpacing(TestSuite):
+    """Multi-line comments inside list nodes (e.g., column defs)
+    should not get spurious blank lines between comment lines."""
+
+    def test_multiline_comment_before_column_def(self):
+        return DiffTestBlueprint(
+            sql="""\
+                CREATE TABLE t (
+                -- line 1
+                -- line 2
+                a int,
+                b text)
+            """,
+            out="""\
+                CREATE TABLE t(
+                  -- line 1
+                  -- line 2
+                  a int,
+                  b text
+                );
+            """,
+        )
+
+    def test_multiline_comment_between_columns(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT
+                  a,
+                  -- comment line 1
+                  -- comment line 2
+                  b
+                FROM t
+            """,
+            out="""\
+                SELECT
+                  a,
+                  -- comment line 1
+                  -- comment line 2
+                  b
+                FROM t;
+            """,
+        )
+
+
 class CteComment(TestSuite):
     def test_before_cte_body(self):
         return DiffTestBlueprint(

@@ -846,13 +846,6 @@ static int64_t next_token(SyntaqliteParser* p,
       pos += (uint32_t)len;
       continue;
     }
-    if (type == SYNTAQLITE_TK_COMMENT) {
-      p->had_comment = 1;
-      if (p->collect_tokens)
-        record_comment(p, pos, (uint32_t)len);
-      pos += (uint32_t)len;
-      continue;
-    }
     *out_offset = pos;
     *out_type = type;
     return len;
@@ -876,6 +869,18 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   int64_t cur_len = next_token(p, z, p->offset, &cur_offset, &cur_type);
 
   while (cur_len > 0) {
+    // Handle comments: record and advance without feeding to Lemon.
+    // This keeps comment recording in the main loop so that lookahead
+    // never eagerly consumes comments belonging to the next statement.
+    if (cur_type == SYNTAQLITE_TK_COMMENT) {
+      p->had_comment = 1;
+      if (p->collect_tokens)
+        record_comment(p, cur_offset, (uint32_t)cur_len);
+      cur_len =
+          next_token(p, z, cur_offset + (uint32_t)cur_len, &cur_offset, &cur_type);
+      continue;
+    }
+
     p->offset = cur_offset + (uint32_t)cur_len;
 
     // Tokenize the lookahead — always one token ahead.
