@@ -451,8 +451,9 @@ static void record_comment(SyntaqliteParser* p, uint32_t offset, uint32_t len) {
 }
 
 // Try to expand a Rust-style macro call: ID!(args).
-// Requires macro_style == RUST and a matching registry entry (or fallback mode).
-// Returns 0 if consumed, -1 if not a macro call, 1 if statement boundary.
+// Requires macro_style == RUST and a matching registry entry (or fallback
+// mode). Returns 0 if consumed, -1 if not a macro call, 1 if statement
+// boundary.
 SYNQ_NOINLINE
 static int try_macro_call(SyntaqliteParser* p,
                           uint32_t id_offset,
@@ -490,8 +491,8 @@ static int try_macro_call(SyntaqliteParser* p,
 
   // Scan balanced parens to find the end of name!(args).
   uint32_t end_offset = 0;
-  scan_macro_args(p, p->source, p->source_len,
-                  bang_offset, NULL, 0, &end_offset);
+  scan_macro_args(p, p->source, p->source_len, bang_offset, NULL, 0,
+                  &end_offset);
   if (end_offset == 0)
     return -1;  // Unbalanced parens — still an error.
 
@@ -828,6 +829,39 @@ static int try_expand_macro_in_buf(SyntaqliteParser* p,
 // High-level API
 // ---------------------------------------------------------------------------
 
+// Tokenize the next non-whitespace token, recording any comments along the
+// way.  Returns the token length (0 at end-of-input).  `*out_offset` and
+// `*out_type` are set to the position and type of the returned token.
+static int64_t next_token(SyntaqliteParser* p,
+                          const unsigned char* z,
+                          uint32_t pos,
+                          uint32_t* out_offset,
+                          uint32_t* out_type) {
+  while (pos < p->source_len && z[pos] != '\0') {
+    uint32_t type = 0;
+    int64_t len = SynqSqliteGetTokenVersionWrapped(&p->grammar, z + pos, &type);
+    if (len <= 0)
+      return 0;
+    if (type == SYNTAQLITE_TK_SPACE) {
+      pos += (uint32_t)len;
+      continue;
+    }
+    if (type == SYNTAQLITE_TK_COMMENT) {
+      p->had_comment = 1;
+      if (p->collect_tokens)
+        record_comment(p, pos, (uint32_t)len);
+      pos += (uint32_t)len;
+      continue;
+    }
+    *out_offset = pos;
+    *out_type = type;
+    return len;
+  }
+  *out_offset = pos;
+  *out_type = 0;
+  return 0;
+}
+
 int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   reset_stmt(p);
 
@@ -838,53 +872,32 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 
   // 1-token lookahead: tokenize the first token before entering the loop.
   uint32_t cur_type = 0;
-  uint32_t cur_offset = p->offset;
-  int64_t cur_len = 0;
-  if (p->offset < p->source_len && z[p->offset] != '\0') {
-    cur_len =
-        SynqSqliteGetTokenVersionWrapped(&p->grammar, z + p->offset, &cur_type);
-  }
+  uint32_t cur_offset = 0;
+  int64_t cur_len = next_token(p, z, p->offset, &cur_offset, &cur_type);
 
   while (cur_len > 0) {
     p->offset = cur_offset + (uint32_t)cur_len;
 
     // Tokenize the lookahead — always one token ahead.
-    uint32_t la_offset = p->offset;
-    int64_t la_len = 0;
+    uint32_t la_offset = 0;
     uint32_t la_type = 0;
-    if (p->offset < p->source_len && z[p->offset] != '\0') {
-      la_len = SynqSqliteGetTokenVersionWrapped(&p->grammar, z + p->offset,
-                                                &la_type);
+    int64_t la_len = next_token(p, z, p->offset, &la_offset, &la_type);
+
+    // Macro detection: ID followed by TK_ILLEGAL ('!').
+    if (cur_type == SYNTAQLITE_TK_ID && la_type == SYNTAQLITE_TK_ILLEGAL) {
+      int mrc = try_macro_call(p, cur_offset, (uint32_t)cur_len, la_offset);
+      if (mrc == 1)
+        return set_result_status(p, stmt_boundary(p));
+      if (mrc == 0) {
+        // Macro consumed tokens past the lookahead — re-tokenize.
+        cur_len = next_token(p, z, p->offset, &cur_offset, &cur_type);
+        continue;
+      }
     }
 
-    if (cur_type == SYNTAQLITE_TK_SPACE) {
-      // Fast-path: skip whitespace (most common token).
-    } else if (cur_type == SYNTAQLITE_TK_COMMENT) {
-      p->had_comment = 1;
-      if (p->collect_tokens)
-        record_comment(p, cur_offset, (uint32_t)cur_len);
-    } else {
-      // Macro detection: ID followed by TK_ILLEGAL ('!').
-      // TK_ILLEGAL is extremely rare so try_macro_call is almost never called.
-      if (cur_type == SYNTAQLITE_TK_ID && la_type == SYNTAQLITE_TK_ILLEGAL) {
-        int mrc = try_macro_call(p, cur_offset, (uint32_t)cur_len, la_offset);
-        if (mrc == 1)
-          return set_result_status(p, stmt_boundary(p));
-        if (mrc == 0) {
-          // Macro consumed tokens past the lookahead — re-tokenize.
-          cur_offset = p->offset;
-          cur_type = 0;
-          cur_len = 0;
-          if (p->offset < p->source_len && z[p->offset] != '\0')
-            cur_len = SynqSqliteGetTokenVersionWrapped(
-                &p->grammar, z + p->offset, &cur_type);
-          continue;
-        }
-      }
-      // Normal token (or macro fallthrough): record + feed to Lemon.
-      if (record_and_feed(p, cur_type, cur_offset, (uint32_t)cur_len))
-        return set_result_status(p, stmt_boundary(p));
-    }
+    // Normal token (or macro fallthrough): record + feed to Lemon.
+    if (record_and_feed(p, cur_type, cur_offset, (uint32_t)cur_len))
+      return set_result_status(p, stmt_boundary(p));
 
     // Shift: lookahead becomes current.
     cur_type = la_type;

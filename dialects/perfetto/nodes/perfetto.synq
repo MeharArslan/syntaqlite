@@ -148,6 +148,33 @@ node CreatePerfettoFunctionStmt {
   }
 }
 
+node CreatePerfettoDelegatingFunctionStmt {
+  function_name: inline SyntaqliteSourceSpan
+  or_replace: inline Bool
+  args: index PerfettoArgDefList
+  return_type: index PerfettoReturnType
+  delegate_to: inline SyntaqliteSourceSpan
+
+  fmt {
+    group {
+      "CREATE"
+      if_flag(or_replace) { " OR REPLACE" }
+      " PERFETTO FUNCTION " span(function_name)
+      "("
+      if_set(args) {
+        nest {
+          softline
+          child(args)
+        }
+        softline
+      }
+      ")"
+    }
+    hardline "RETURNS " child(return_type)
+    hardline "DELEGATES TO " span(delegate_to)
+  }
+}
+
 node CreatePerfettoIndexStmt {
   index_name: inline SyntaqliteSourceSpan
   or_replace: inline Bool

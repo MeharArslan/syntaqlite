@@ -827,10 +827,7 @@ mod tests {
         enable_fallback(parser);
 
         let (rc, _sql) = parse_one(parser, "SELECT * FROM my_table!(t1);");
-        assert_eq!(
-            rc, PARSE_OK,
-            "macro fallback should work in FROM clause"
-        );
+        assert_eq!(rc, PARSE_OK, "macro fallback should work in FROM clause");
     }
 
     #[test]

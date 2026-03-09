@@ -13,36 +13,43 @@
 perfetto_or_replace(A) ::= .            { A = 0; }
 perfetto_or_replace(A) ::= OR REPLACE.  { A = 1; }
 
+// Argument type: plain ID or JOINID(table.col) form.
+%type perfetto_arg_type {SynqParseToken}
+perfetto_arg_type(A) ::= ID(B). {
+    synq_mark_as_type(pCtx, B);
+    A = B;
+}
+perfetto_arg_type(A) ::= ID(B) LP ID DOT ID RP(E). {
+    synq_mark_as_type(pCtx, B);
+    A = (SynqParseToken){B.z, (uint32_t)(E.z + E.n - B.z), B.type};
+}
+
 // Argument definition list for functions and table schemas.
 %type perfetto_arg_def_list {uint32_t}
 perfetto_arg_def_list(A) ::= . { A = SYNTAQLITE_NULL_NODE; }
 perfetto_arg_def_list(A) ::= perfetto_arg_def_list_ne(X). { A = X; }
 
 %type perfetto_arg_def_list_ne {uint32_t}
-perfetto_arg_def_list_ne(A) ::= ID(N) ID(T). {
-    synq_mark_as_type(pCtx, T);
+perfetto_arg_def_list_ne(A) ::= ID(N) perfetto_arg_type(T). {
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
         synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_FALSE);
     A = synq_parse_perfetto_arg_def_list(pCtx, SYNTAQLITE_NULL_NODE, arg);
 }
-perfetto_arg_def_list_ne(A) ::= perfetto_arg_def_list_ne(L) COMMA ID(N) ID(T). {
-    synq_mark_as_type(pCtx, T);
+perfetto_arg_def_list_ne(A) ::= perfetto_arg_def_list_ne(L) COMMA ID(N) perfetto_arg_type(T). {
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
         synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_FALSE);
     A = synq_parse_perfetto_arg_def_list(pCtx, L, arg);
 }
 // Variadic argument: name TYPE...
-perfetto_arg_def_list_ne(A) ::= ID(N) ID(T) DOT DOT DOT. {
-    synq_mark_as_type(pCtx, T);
+perfetto_arg_def_list_ne(A) ::= ID(N) perfetto_arg_type(T) DOT DOT DOT. {
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
         synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_TRUE);
     A = synq_parse_perfetto_arg_def_list(pCtx, SYNTAQLITE_NULL_NODE, arg);
 }
-perfetto_arg_def_list_ne(A) ::= perfetto_arg_def_list_ne(L) COMMA ID(N) ID(T) DOT DOT DOT. {
-    synq_mark_as_type(pCtx, T);
+perfetto_arg_def_list_ne(A) ::= perfetto_arg_def_list_ne(L) COMMA ID(N) perfetto_arg_type(T) DOT DOT DOT. {
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
         synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_TRUE);
@@ -102,8 +109,8 @@ perfetto_macro_arg_list_ne(A) ::= perfetto_macro_arg_list_ne(L) COMMA ID(N) ID(T
 
 // Module name: dotted path like foo.bar.baz
 %type perfetto_module_name {SynqParseToken}
-perfetto_module_name(A) ::= ID(B). { A = B; }
-perfetto_module_name(A) ::= perfetto_module_name(B) DOT ID(C). {
+perfetto_module_name(A) ::= ID|STAR|INTERSECT(B). { A = B; }
+perfetto_module_name(A) ::= perfetto_module_name(B) DOT ID|STAR|INTERSECT(C). {
     A = (SynqParseToken){B.z, (uint32_t)(C.z + C.n - B.z), B.type};
 }
 
@@ -132,6 +139,15 @@ cmd(A) ::= CREATE perfetto_or_replace(R) PERFETTO FUNCTION nm(N) LP perfetto_arg
         synq_span(pCtx, N),
         R ? SYNTAQLITE_BOOL_TRUE : SYNTAQLITE_BOOL_FALSE,
         ARGS, RT, E);
+}
+
+// ---------- CREATE PERFETTO FUNCTION (delegating) ----------
+
+cmd(A) ::= CREATE perfetto_or_replace(R) PERFETTO FUNCTION nm(N) LP perfetto_arg_def_list(ARGS) RP RETURNS perfetto_return_type(RT) DELEGATES TO ID(I). {
+    A = synq_parse_create_perfetto_delegating_function_stmt(pCtx,
+        synq_span(pCtx, N),
+        R ? SYNTAQLITE_BOOL_TRUE : SYNTAQLITE_BOOL_FALSE,
+        ARGS, RT, synq_span(pCtx, I));
 }
 
 // ---------- CREATE PERFETTO INDEX ----------

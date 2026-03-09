@@ -21,6 +21,7 @@ pub(crate) struct LemonGrammar<'a> {
     pub(crate) token_classes: Vec<TokenClass<'a>>,
     pub(crate) fallbacks: Vec<FallbackDecl<'a>>,
     pub(crate) precedences: Vec<PrecedenceDecl<'a>>,
+    pub(crate) wildcard: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -246,6 +247,7 @@ impl<'a, 'b> Parser<'a, 'b> {
         let mut token_classes = Vec::new();
         let mut fallbacks = Vec::new();
         let mut precedences = Vec::new();
+        let mut wildcard = None;
         while parser.peek().is_some() {
             parser.skip_ws();
             match parser.peek() {
@@ -264,6 +266,13 @@ impl<'a, 'b> Parser<'a, 'b> {
                         }
                         "left" | "right" | "nonassoc" => {
                             parser.parse_precedence(directive, &mut precedences)?;
+                        }
+                        "wildcard" => {
+                            parser.skip_ws();
+                            if let Ok(name) = parser.parse_identifier() {
+                                wildcard = Some(name);
+                            }
+                            parser.skip_to_eol();
                         }
                         "ifdef" => {
                             if parser.ifdef_is_defined() {
@@ -329,6 +338,7 @@ impl<'a, 'b> Parser<'a, 'b> {
             token_classes,
             fallbacks,
             precedences,
+            wildcard,
         })
     }
 

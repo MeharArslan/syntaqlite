@@ -338,7 +338,8 @@ impl<'a> DialectCodegenJob<'a> {
             })
             .map(|(_, content)| content.as_str())
             .collect();
-        let extra_keywords = extract_terminals_from_y(&ext_y_contents);
+        let all_y_contents: Vec<&str> = y_files.iter().map(|(_, c)| c.as_str()).collect();
+        let extra_keywords = extract_terminals_from_y(&ext_y_contents, &all_y_contents);
         Self {
             dialect,
             y_files,
@@ -417,7 +418,10 @@ pub(crate) fn base_keyword_token_names() -> std::collections::HashSet<String> {
 }
 
 /// Extract terminal symbols (potential keywords) from extension `.y` grammar files.
-pub(crate) fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<String> {
+pub(crate) fn extract_terminals_from_y(
+    extension_y_contents: &[&str],
+    all_y_contents: &[&str],
+) -> Vec<String> {
     use std::collections::HashSet;
 
     let mut terminals: HashSet<String> = HashSet::new();
@@ -446,6 +450,17 @@ pub(crate) fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<Str
                 if is_keyword_like(sym.name) && sym.name != "ID" {
                     terminals.insert(sym.name.to_string());
                 }
+            }
+        }
+    }
+
+    // The %wildcard token must not be added to the keyword table — it is a
+    // grammar-internal catch-all, not a real keyword.  Scan all .y files
+    // (including base) since %wildcard is typically declared in the base grammar.
+    for content in all_y_contents {
+        if let Ok(grammar) = util::grammar_parser::LemonGrammar::parse(content) {
+            if let Some(wc) = grammar.wildcard {
+                terminals.remove(wc);
             }
         }
     }
@@ -708,7 +723,9 @@ mod tests {
 cmd ::= INCLUDE PERFETTO MODULE ID DOT ID.
 cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
 ";
-        let got: BTreeSet<String> = super::extract_terminals_from_y(&[y]).into_iter().collect();
+        let got: BTreeSet<String> = super::extract_terminals_from_y(&[y], &[y])
+            .into_iter()
+            .collect();
         let want: BTreeSet<String> = [
             "ANY", "AS", "CREATE", "DOT", "INCLUDE", "LP", "MACRO", "MODULE", "PERFETTO", "RP",
         ]
@@ -717,5 +734,26 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
         .collect();
         assert_eq!(got, want);
         assert!(!got.contains("ID"));
+    }
+
+    #[test]
+    fn extract_terminals_excludes_wildcard_token() {
+        let base = r"
+%wildcard ANY.
+";
+        let ext = r"
+macro_body ::= ANY.
+macro_body ::= macro_body ANY.
+cmd ::= CREATE MACRO ID LP RP AS macro_body.
+";
+        let got: BTreeSet<String> = super::extract_terminals_from_y(&[ext], &[base, ext])
+            .into_iter()
+            .collect();
+        assert!(
+            !got.contains("ANY"),
+            "wildcard token ANY should be excluded"
+        );
+        assert!(got.contains("CREATE"));
+        assert!(got.contains("MACRO"));
     }
 }

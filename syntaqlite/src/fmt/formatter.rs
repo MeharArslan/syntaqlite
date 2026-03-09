@@ -1,9 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_syntax::any::{
-    AnyNodeId, AnyParsedStatement, AnyParser, FieldValue, MacroRegion, ParseOutcome,
-};
+use syntaqlite_syntax::any::{AnyParsedStatement, AnyParser, MacroRegion, ParseOutcome};
 use syntaqlite_syntax::{CommentKind, ParserConfig};
 
 use super::FormatConfig;
@@ -11,7 +9,7 @@ use super::FormatError;
 use super::comment::{CommentCtx, CommentEntry, TokenEntry};
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch};
-use crate::dialect::{AnyDialect, FIELD_ABSENT};
+use crate::dialect::AnyDialect;
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter {
@@ -66,8 +64,12 @@ impl Formatter {
         // Use the grammar embedded in the dialect — do NOT hardcode the SQLite
         // grammar here, as this method is called with external dialects too.
         let grammar = (*dialect).clone();
-        let parser =
-            AnyParser::with_config(grammar, &ParserConfig::default().with_collect_tokens(true).with_macro_fallback(true));
+        let parser = AnyParser::with_config(
+            grammar,
+            &ParserConfig::default()
+                .with_collect_tokens(true)
+                .with_macro_fallback(true),
+        );
         Formatter {
             dialect,
             parser,
@@ -180,7 +182,7 @@ impl Formatter {
     ///
     /// # Errors
     /// Returns [`FormatError`] when parsing fails for any statement in `source`.
-    #[expect(clippy::too_many_lines)]
+
     pub fn format(&mut self, source: &str) -> Result<String, FormatError> {
         let mut session = self.parser.parse(source);
         let mut result = String::with_capacity(source.len());
@@ -270,33 +272,16 @@ impl Formatter {
             result.push_str(&bufs.out);
             self.render_bufs = bufs;
 
-            // Check if this statement defines a macro (save info before dropping borrows).
-            let pending_macro = self.try_extract_macro_def(&ctx.reader, root_id);
-
             // Stage 4: Recover and recycle statement-scoped buffers.
-            // Destructure `ctx` to fully release the session borrow (ctx.reader).
-            let FmtCtx {
-                dialect: _,
-                reader: _,
-                comment_ctx: cctx,
-                macro_regions: mr,
-            } = ctx;
-            if let Some(cctx) = cctx {
+            if let Some(cctx) = ctx.comment_ctx {
                 let (comments, tokens) = cctx.into_parts();
                 self.comment_entries = comments;
                 self.token_entries = tokens;
             }
-            self.macro_regions = mr;
+            self.macro_regions = ctx.macro_regions;
 
             // Recycle the arena, releasing all Doc borrows from this iteration.
             self.arena = DocArena::recycle(arena);
-
-            // Register any pending macro definition with the parser session
-            // (session borrow is now released after ctx destructure above).
-            if let Some(m) = pending_macro {
-                let param_refs: Vec<&str> = m.params.iter().map(String::as_str).collect();
-                session.register_macro(&m.name, &param_refs, &m.body);
-            }
 
             stmt_num += 1;
         }
@@ -311,62 +296,6 @@ impl Formatter {
         result.push('\n');
 
         Ok(result)
-    }
-}
-
-/// Extracted macro definition info (owned strings, session-independent).
-struct PendingMacroDef {
-    name: String,
-    params: Vec<String>,
-    body: String,
-}
-
-impl Formatter {
-    /// Check if a parsed statement defines a macro (per the dialect's `macro_def`
-    /// annotations) and extract the registration info as owned strings.
-    fn try_extract_macro_def(
-        &self,
-        reader: &AnyParsedStatement<'_>,
-        root_id: AnyNodeId,
-    ) -> Option<PendingMacroDef> {
-        let macro_defs = self.dialect.macro_defs();
-        if macro_defs.is_empty() || root_id.is_null() {
-            return None;
-        }
-
-        let (tag, fields) = reader.extract_fields(root_id)?;
-        let tag_u32 = u32::from(tag);
-
-        let mdef = macro_defs.iter().find(|m| m.node_tag() == tag_u32)?;
-
-        // Extract macro name from the name_field span.
-        let name = match &fields[mdef.name_field as usize] {
-            FieldValue::Span(s) => (*s).to_owned(),
-            _ => return None,
-        };
-
-        // Extract macro body from the body_field span.
-        let body = match &fields[mdef.body_field as usize] {
-            FieldValue::Span(s) => (*s).to_owned(),
-            _ => return None,
-        };
-
-        // Extract param names from the args list.
-        let mut params = Vec::new();
-        if mdef.args_field != FIELD_ABSENT
-            && let FieldValue::NodeId(args_id) = &fields[mdef.args_field as usize]
-            && !args_id.is_null()
-        {
-            for child_id in reader.child_node_ids(*args_id) {
-                if let Some((_, child_fields)) = reader.extract_fields(child_id)
-                    && let FieldValue::Span(s) = &child_fields[mdef.arg_name_field as usize]
-                {
-                    params.push((*s).to_owned());
-                }
-            }
-        }
-
-        Some(PendingMacroDef { name, params, body })
     }
 }
 
