@@ -56,6 +56,18 @@ typedef enum {
   SYNQ_TOKEN_CATEGORY_TYPE = 10,
 } SynqTokenCategory;
 
+// ── Macro invocation style ───────────────────────────────────────────────
+
+// How the batch parsing loop (`syntaqlite_parser_next`) auto-detects macro
+// invocations in the token stream.  In incremental/embedded mode, callers
+// handle macros via `begin_macro`/`end_macro` directly and this is ignored.
+typedef enum {
+  // No macro detection.
+  SYNQ_MACRO_STYLE_NONE = 0,
+  // Rust-style: `name!(...)` — ID followed by `!` then balanced parens.
+  SYNQ_MACRO_STYLE_RUST = 1,
+} SyntaqliteMacroStyle;
+
 // ── Types used by the parser vtable ─────────────────────────────────────
 typedef struct SynqParseCtx SynqParseCtx;
 
@@ -113,6 +125,13 @@ typedef struct SyntaqliteGrammarTemplate {
   // length = token_type_count; NULL = no categories
   const uint8_t* token_categories;
   uint32_t token_type_count;
+
+  // Macro invocation style for the batch parsing loop.
+  // Determines how the parser auto-detects macro calls when tokenizing.
+  // In incremental/embedded mode, callers handle macros via
+  // begin_macro/end_macro directly — this field is only used by
+  // syntaqlite_parser_next().
+  SyntaqliteMacroStyle macro_style;
 } SyntaqliteGrammarTemplate;
 
 // ── Configured grammar handle ─────────────────────────────────────────────

@@ -83,6 +83,8 @@ def _compile_perfetto_dialect(cli_binary: Path, work_dir: Path) -> Path:
             str(ROOT_DIR / "dialects" / "perfetto" / "actions"),
             "--nodes-dir",
             str(ROOT_DIR / "dialects" / "perfetto" / "nodes"),
+            "--macro-style",
+            "rust",
             "--output-dir",
             str(csrc_dir),
         ],

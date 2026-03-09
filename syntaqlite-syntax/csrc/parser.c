@@ -2,18 +2,61 @@
 // Licensed under the Apache License, Version 2.0.
 
 #include "syntaqlite/parser.h"
-#include "csrc/tokens.h"
-#include "syntaqlite/incremental.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "csrc/dialect_dispatch.h"
+#include "csrc/hashmap.h"
 #include "csrc/token_wrapped.h"
+#include "csrc/tokens.h"
 #include "syntaqlite/grammar.h"
+#include "syntaqlite/incremental.h"
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_types.h"
+
+// ---------------------------------------------------------------------------
+// Macro expansion types
+// ---------------------------------------------------------------------------
+
+#if defined(__GNUC__) || defined(__clang__)
+#define SYNQ_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define SYNQ_NOINLINE __declspec(noinline)
+#else
+#define SYNQ_NOINLINE
+#endif
+
+#define SYNQ_MAX_MACRO_DEPTH 16
+#define SYNQ_MACRO_TABLE_INITIAL_SIZE 16
+
+// A single registered macro.
+typedef struct SyntaqliteMacroEntry {
+  char* name;  // Owned copy of the macro name.
+  uint32_t name_len;
+
+  // --- Template macros ---
+  char* body;  // Body text with $param placeholders. Owned.
+  uint32_t body_len;
+  char** param_names;  // Array of param name strings. Owned.
+  uint32_t* param_name_lens;
+  uint32_t param_count;
+
+  uint8_t state;  // SYNQ_MAP_EMPTY / LIVE / TOMBSTONE
+} SyntaqliteMacroEntry;
+
+// A comma-separated argument extracted from a macro call site.
+typedef struct SynqMacroArg {
+  uint32_t offset;  // Byte offset in the source buffer.
+  uint32_t length;  // Byte length of the argument text.
+} SynqMacroArg;
+
+// An owned expansion buffer kept alive for AST span references.
+typedef struct SynqOwnedBuf {
+  char* data;
+  uint32_t len;
+} SynqOwnedBuf;
 
 // ---------------------------------------------------------------------------
 // Parser struct
@@ -42,6 +85,21 @@ struct SyntaqliteParser {
   SYNQ_VEC(SyntaqliteParserToken) tokens;
   uint32_t macro_depth;  // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
+
+  // ── Macro registry (open-addressing hashmap) ──────────────────────────
+  SyntaqliteMacroEntry* macro_table;
+  uint32_t macro_table_size;   // Capacity (power of 2).
+  uint32_t macro_table_count;  // Number of live entries.
+
+  // ── Expansion state ───────────────────────────────────────────────────
+  // Blue-paint recursion detection: names of macros currently being expanded.
+  const char* expansion_names[SYNQ_MAX_MACRO_DEPTH];
+  uint32_t expansion_name_lens[SYNQ_MAX_MACRO_DEPTH];
+  uint32_t expansion_depth;
+
+  // Owned expansion buffers kept alive so AST spans remain valid until
+  // the next reset_stmt().
+  SYNQ_VEC(SynqOwnedBuf) owned_bufs;
 };
 
 static int32_t set_result_status(SyntaqliteParser* p, int32_t rc) {
@@ -51,6 +109,18 @@ static int32_t set_result_status(SyntaqliteParser* p, int32_t rc) {
 
 // Forward declaration — defined after feed_one_token.
 static int check_macro_straddle(SyntaqliteParser* p);
+
+// Forward declaration — macro expansion in a buffer (defined later).
+static int try_expand_macro_in_buf(SyntaqliteParser* p,
+                                   const char* buf,
+                                   uint32_t buf_len,
+                                   uint32_t id_offset,
+                                   uint32_t id_len,
+                                   uint32_t bang_offset,
+                                   uint32_t depth);
+
+// Forward declaration — free macro entry strings (defined in Cleanup section).
+static void free_macro_entry(SyntaqliteParser* p, SyntaqliteMacroEntry* e);
 
 // ---------------------------------------------------------------------------
 // Internal: reusable state-reset helpers
@@ -78,6 +148,12 @@ static void reset_stmt(SyntaqliteParser* p) {
   syntaqlite_vec_clear(&p->comments);
   syntaqlite_vec_clear(&p->tokens);
   syntaqlite_vec_clear(&p->macros);
+  // Free owned expansion buffers from previous statement.
+  for (uint32_t i = 0; i < syntaqlite_vec_len(&p->owned_bufs); i++) {
+    p->mem.xFree(p->owned_bufs.data[i].data);
+  }
+  syntaqlite_vec_clear(&p->owned_bufs);
+  p->expansion_depth = 0;
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
   p->ctx.pending_explain_mode = 0;
@@ -131,6 +207,8 @@ SyntaqliteParser* syntaqlite_parser_create_with_grammar(
   syntaqlite_vec_init(&p->comments);
   syntaqlite_vec_init(&p->tokens);
   syntaqlite_vec_init(&p->macros);
+  syntaqlite_vec_init(&p->owned_bufs);
+  // macro_table, expansion state already zeroed by memset
   return p;
 }
 
@@ -328,6 +406,387 @@ static int finish_input(SyntaqliteParser* p) {
 }
 
 // ---------------------------------------------------------------------------
+// Internal: token recording and feeding
+// ---------------------------------------------------------------------------
+
+// Record a token and feed it to Lemon.  Returns 1 if a real statement
+// boundary was reached (caller should return stmt_boundary()), 0 otherwise.
+static int record_and_feed(SyntaqliteParser* p,
+                           uint32_t cur_type,
+                           uint32_t cur_offset,
+                           uint32_t cur_len) {
+  uint32_t tidx = 0xFFFFFFFF;
+  if (p->collect_tokens && cur_type != SYNTAQLITE_TK_SEMI) {
+    SyntaqliteParserToken tp = {cur_offset, cur_len, cur_type, 0};
+    syntaqlite_vec_push(&p->tokens, tp, p->mem);
+    tidx = syntaqlite_vec_len(&p->tokens) - 1;
+  }
+  int rc = feed_one_token(p, cur_type, p->source + cur_offset, cur_len, tidx);
+  // After parse_failure, Lemon stops reducing — force a boundary on SEMI
+  // so errors don't bleed into subsequent statements.
+  if (p->had_error && rc == 0 && cur_type == SYNTAQLITE_TK_SEMI)
+    rc = 1;
+  if (rc == 1 && (p->ctx.root != SYNTAQLITE_NULL_NODE || p->had_error))
+    return 1;
+  return 0;
+}
+
+// Record a comment token (outlined from the hot loop).
+SYNQ_NOINLINE
+static void record_comment(SyntaqliteParser* p, uint32_t offset, uint32_t len) {
+  const unsigned char* z = (const unsigned char*)p->source;
+  SyntaqliteComment t = {offset, len,
+                         z[offset] == '-' ? (uint8_t)0 : (uint8_t)1};
+  syntaqlite_vec_push(&p->comments, t, p->mem);
+}
+
+// Try to expand a Rust-style macro call: ID!(args).
+// Requires macro_style == RUST and a matching registry entry.
+// Returns 0 if expanded, -1 if not a macro call.
+SYNQ_NOINLINE
+static int try_macro_call(SyntaqliteParser* p,
+                          uint32_t id_offset,
+                          uint32_t id_len,
+                          uint32_t bang_offset) {
+  const unsigned char* z = (const unsigned char*)p->source;
+  if (z[bang_offset] != '!')
+    return -1;
+  if (p->grammar.tmpl->macro_style != SYNQ_MACRO_STYLE_RUST)
+    return -1;
+  if (p->macro_table_size == 0)
+    return -1;
+
+  // Look up macro in registry.
+  SyntaqliteMacroEntry* entry = NULL;
+  SYNQ_MAP_FIND(p->macro_table, p->macro_table_size, p->source + id_offset,
+                id_len, entry);
+  if (!entry)
+    return -1;
+
+  int rc = try_expand_macro_in_buf(p, p->source, p->source_len, id_offset,
+                                   id_len, bang_offset, 0);
+  if (rc < 0)
+    return -1;
+
+  // Record macro region for the formatter.
+  uint32_t call_end = (uint32_t)rc;
+  syntaqlite_parser_begin_macro(p, id_offset, call_end - id_offset);
+  syntaqlite_parser_end_macro(p);
+  p->offset = call_end;
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Macro expansion
+// ---------------------------------------------------------------------------
+
+// Scan balanced parens after '!' and split into comma-separated args.
+// Returns arg count on success, 0 if not a valid macro call.
+// `source`/`source_len` is the buffer being scanned (may be original source
+// or an expansion buffer for nested macros).
+static uint32_t scan_macro_args(SyntaqliteParser* p,
+                                const char* source,
+                                uint32_t source_len,
+                                uint32_t bang_offset,
+                                SynqMacroArg* out_args,
+                                uint32_t max_args,
+                                uint32_t* out_end_offset) {
+  const unsigned char* z = (const unsigned char*)source;
+  uint32_t pos = bang_offset + 1;  // skip '!'
+
+  // Expect LP.
+  uint32_t ttype = 0;
+  int64_t tlen = SynqSqliteGetTokenVersionWrapped(&p->grammar, z + pos, &ttype);
+  if (tlen <= 0 || ttype != SYNTAQLITE_TK_LP)
+    return 0;
+  pos += (uint32_t)tlen;
+
+  // Check for empty args: macro!()
+  ttype = 0;
+  tlen = SynqSqliteGetTokenVersionWrapped(&p->grammar, z + pos, &ttype);
+  if (tlen > 0 && ttype == SYNTAQLITE_TK_RP) {
+    *out_end_offset = pos + (uint32_t)tlen;
+    return 0;
+  }
+
+  uint32_t arg_count = 0;
+  uint32_t depth = 1;
+  uint32_t arg_start = pos;
+
+  while (pos < source_len && depth > 0) {
+    ttype = 0;
+    tlen = SynqSqliteGetTokenVersionWrapped(&p->grammar, z + pos, &ttype);
+    if (tlen <= 0)
+      return 0;
+
+    if (ttype == SYNTAQLITE_TK_LP) {
+      depth++;
+    } else if (ttype == SYNTAQLITE_TK_RP) {
+      depth--;
+      if (depth == 0) {
+        if (arg_count < max_args) {
+          out_args[arg_count].offset = arg_start;
+          out_args[arg_count].length = pos - arg_start;
+        }
+        arg_count++;
+        *out_end_offset = pos + (uint32_t)tlen;
+        return arg_count;
+      }
+    } else if (depth == 1 && ttype == SYNTAQLITE_TK_COMMA) {
+      if (arg_count < max_args) {
+        out_args[arg_count].offset = arg_start;
+        out_args[arg_count].length = pos - arg_start;
+      }
+      arg_count++;
+      arg_start = pos + (uint32_t)tlen;
+    } else if (ttype == SYNTAQLITE_TK_SEMI) {
+      return 0;
+    }
+
+    pos += (uint32_t)tlen;
+  }
+
+  return 0;  // Unbalanced parens.
+}
+
+// ---------------------------------------------------------------------------
+// Template expansion ($param substitution)
+// ---------------------------------------------------------------------------
+
+// Expand a template macro body by substituting $param references.
+// Uses the tokenizer to identify TK_VARIABLE tokens rather than
+// hand-rolling identifier scanning.
+// Allocates `*out_buf` via p->mem; caller owns the result.
+// Returns 0 on success, -1 on error (unknown $param).
+static int expand_template(SyntaqliteParser* p,
+                           const SyntaqliteMacroEntry* entry,
+                           const SynqMacroArg* args,
+                           uint32_t arg_count,
+                           const char* arg_source,
+                           char** out_buf,
+                           uint32_t* out_len) {
+  // Pre-size: body length + some slack for arg text.
+  uint32_t cap = entry->body_len + 64;
+  char* buf = p->mem.xMalloc(cap);
+  uint32_t len = 0;
+  const char* body = entry->body;
+  uint32_t blen = entry->body_len;
+  const unsigned char* z = (const unsigned char*)body;
+
+  uint32_t pos = 0;
+  while (pos < blen) {
+    uint32_t ttype = 0;
+    int64_t tlen =
+        SynqSqliteGetTokenVersionWrapped(&p->grammar, z + pos, &ttype);
+    if (tlen <= 0)
+      break;
+
+    if (ttype == SYNTAQLITE_TK_VARIABLE && body[pos] == '$' && tlen > 1) {
+      // $param — look up the name after '$'.
+      const char* pname = body + pos + 1;
+      uint32_t pname_len = (uint32_t)tlen - 1;
+
+      int found = -1;
+      for (uint32_t pi = 0; pi < entry->param_count; pi++) {
+        if (entry->param_name_lens[pi] == pname_len &&
+            memcmp(entry->param_names[pi], pname, pname_len) == 0) {
+          found = (int)pi;
+          break;
+        }
+      }
+
+      if (found < 0) {
+        snprintf(p->error_msg, sizeof(p->error_msg),
+                 "unknown macro parameter '$%.*s'", (int)pname_len, pname);
+        p->mem.xFree(buf);
+        return -1;
+      }
+
+      // Substitute the arg text.
+      if ((uint32_t)found < arg_count) {
+        uint32_t alen = args[found].length;
+        while (len + alen > cap) {
+          cap *= 2;
+          buf = p->mem.xRealloc(buf, cap);
+        }
+        memcpy(buf + len, arg_source + args[found].offset, alen);
+        len += alen;
+      }
+      // else: arg not provided — substitute empty string.
+    } else {
+      // Copy token verbatim.
+      while (len + (uint32_t)tlen > cap) {
+        cap *= 2;
+        buf = p->mem.xRealloc(buf, cap);
+      }
+      memcpy(buf + len, body + pos, (uint32_t)tlen);
+      len += (uint32_t)tlen;
+    }
+
+    pos += (uint32_t)tlen;
+  }
+
+  *out_buf = buf;
+  *out_len = len;
+  return 0;
+}
+
+// Tokenize `buf` and feed each token to Lemon.
+// `depth` is the current expansion nesting (for recursion limit).
+// Returns: 0 = ok, 1 = statement boundary, -1 = error.
+static int expand_and_feed(SyntaqliteParser* p,
+                           const char* buf,
+                           uint32_t buf_len,
+                           uint32_t depth) {
+  if (depth >= SYNQ_MAX_MACRO_DEPTH) {
+    snprintf(p->error_msg, sizeof(p->error_msg),
+             "macro expansion depth limit exceeded (%d)", SYNQ_MAX_MACRO_DEPTH);
+    p->had_error = 1;
+    return -1;
+  }
+
+  // Temporarily swap ctx.source so Lemon action offset computations are
+  // relative to the expansion buffer.
+  const char* saved_source = p->ctx.source;
+  p->ctx.source = buf;
+
+  const unsigned char* z = (const unsigned char*)buf;
+  uint32_t pos = 0;
+
+  while (pos < buf_len) {
+    uint32_t ttype = 0;
+    int64_t tlen =
+        SynqSqliteGetTokenVersionWrapped(&p->grammar, z + pos, &ttype);
+    if (tlen <= 0)
+      break;
+
+    if (ttype == SYNTAQLITE_TK_SPACE || ttype == SYNTAQLITE_TK_COMMENT) {
+      pos += (uint32_t)tlen;
+      continue;
+    }
+
+    // Check for nested macro call: ID followed by '!'.
+    uint32_t next_pos = pos + (uint32_t)tlen;
+    if (ttype == SYNTAQLITE_TK_ID && next_pos < buf_len && z[next_pos] == '!') {
+      int mrc = try_expand_macro_in_buf(p, buf, buf_len, pos, (uint32_t)tlen,
+                                        next_pos, depth);
+      if (mrc >= 0) {
+        // Nested macro handled (mrc is the new pos).
+        pos = (uint32_t)mrc;
+        continue;
+      }
+      // mrc == -1: not a macro or error — feed ID normally below.
+      if (p->had_error) {
+        p->ctx.source = saved_source;
+        return -1;
+      }
+    }
+
+    // Feed token to Lemon.
+    SynqParseToken minor = {.z = buf + pos,
+                            .n = (uint32_t)tlen,
+                            .type = ttype,
+                            .token_idx = 0xFFFFFFFF};
+    SYNQ_PARSER_FEED(p->grammar.tmpl, p->lemon, (int)ttype, minor);
+    p->last_token_type = ttype;
+
+    if (p->ctx.error) {
+      p->had_error = 1;
+      if (p->error_msg[0] == '\0') {
+        snprintf(p->error_msg, sizeof(p->error_msg),
+                 "syntax error in macro expansion near '%.*s'", (int)tlen,
+                 buf + pos);
+      }
+      p->ctx.error = 0;
+    }
+
+    if (p->ctx.stmt_completed) {
+      p->ctx.stmt_completed = 0;
+      p->ctx.source = saved_source;
+      return 1;
+    }
+
+    pos += (uint32_t)tlen;
+  }
+
+  p->ctx.source = saved_source;
+  return 0;
+}
+
+// Try to expand a macro call within an expansion buffer.
+// Returns: new position past the call on success, -1 if not a macro.
+static int try_expand_macro_in_buf(SyntaqliteParser* p,
+                                   const char* buf,
+                                   uint32_t buf_len,
+                                   uint32_t id_offset,
+                                   uint32_t id_len,
+                                   uint32_t bang_offset,
+                                   uint32_t depth) {
+  SyntaqliteMacroEntry* entry;
+  SYNQ_MAP_FIND(p->macro_table, p->macro_table_size, buf + id_offset, id_len,
+                entry);
+  if (!entry)
+    return -1;
+
+  // Check blue-paint: recursion detection.
+  for (uint32_t i = 0; i < p->expansion_depth; i++) {
+    if (synq_name_eq_ci(p->expansion_names[i], p->expansion_name_lens[i],
+                        entry->name, entry->name_len)) {
+      snprintf(p->error_msg, sizeof(p->error_msg),
+               "recursive macro expansion: '%.*s'", (int)entry->name_len,
+               entry->name);
+      p->had_error = 1;
+      return -1;
+    }
+  }
+
+  // Parse args.
+  SynqMacroArg args[64];
+  uint32_t end_offset = 0;
+  uint32_t arg_count =
+      scan_macro_args(p, buf, buf_len, bang_offset, args, 64, &end_offset);
+
+  // Check arg count.
+  if (entry->param_count > 0 && arg_count != entry->param_count) {
+    snprintf(p->error_msg, sizeof(p->error_msg),
+             "macro '%.*s' expects %u args, got %u", (int)entry->name_len,
+             entry->name, entry->param_count, arg_count);
+    p->had_error = 1;
+    return -1;
+  }
+
+  // Expand.
+  char* expanded = NULL;
+  uint32_t expanded_len = 0;
+
+  if (expand_template(p, entry, args, arg_count, buf, &expanded,
+                      &expanded_len) < 0) {
+    p->had_error = 1;
+    return -1;
+  }
+
+  // Keep the expansion buffer alive for AST spans.
+  SynqOwnedBuf ob = {expanded, expanded_len};
+  syntaqlite_vec_push(&p->owned_bufs, ob, p->mem);
+
+  // Push blue-paint.
+  p->expansion_names[p->expansion_depth] = entry->name;
+  p->expansion_name_lens[p->expansion_depth] = entry->name_len;
+  p->expansion_depth++;
+
+  // Feed expanded tokens.
+  int rc = expand_and_feed(p, expanded, expanded_len, depth + 1);
+
+  // Pop blue-paint.
+  p->expansion_depth--;
+
+  if (rc < 0)
+    return -1;
+
+  return (int)end_offset;
+}
+
+// ---------------------------------------------------------------------------
 // High-level API
 // ---------------------------------------------------------------------------
 
@@ -339,56 +798,60 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 
   const unsigned char* z = (const unsigned char*)p->source;
 
-  while (p->offset < p->source_len && z[p->offset] != '\0') {
-    uint32_t token_type = 0;
-    int64_t token_len = SynqSqliteGetTokenVersionWrapped(
-        &p->grammar, z + p->offset, &token_type);
-    if (token_len <= 0)
-      break;
+  // 1-token lookahead: tokenize the first token before entering the loop.
+  uint32_t cur_type = 0;
+  uint32_t cur_offset = p->offset;
+  int64_t cur_len = 0;
+  if (p->offset < p->source_len && z[p->offset] != '\0') {
+    cur_len =
+        SynqSqliteGetTokenVersionWrapped(&p->grammar, z + p->offset, &cur_type);
+  }
 
-    uint32_t tok_offset = p->offset;
-    p->offset += (uint32_t)token_len;
+  while (cur_len > 0) {
+    p->offset = cur_offset + (uint32_t)cur_len;
 
-    if (token_type == SYNTAQLITE_TK_SPACE) {
-      continue;
+    // Tokenize the lookahead — always one token ahead.
+    uint32_t la_offset = p->offset;
+    int64_t la_len = 0;
+    uint32_t la_type = 0;
+    if (p->offset < p->source_len && z[p->offset] != '\0') {
+      la_len = SynqSqliteGetTokenVersionWrapped(&p->grammar, z + p->offset,
+                                                &la_type);
     }
 
-    if (token_type == SYNTAQLITE_TK_COMMENT) {
+    if (cur_type == SYNTAQLITE_TK_SPACE) {
+      // Fast-path: skip whitespace (most common token).
+    } else if (cur_type == SYNTAQLITE_TK_COMMENT) {
       p->had_comment = 1;
-      if (p->collect_tokens) {
-        SyntaqliteComment t = {tok_offset, (uint32_t)token_len,
-                               z[tok_offset] == '-' ? (uint8_t)0 : (uint8_t)1};
-        syntaqlite_vec_push(&p->comments, t, p->mem);
+      if (p->collect_tokens)
+        record_comment(p, cur_offset, (uint32_t)cur_len);
+    } else {
+      // Macro detection: ID followed by TK_ILLEGAL ('!').
+      // TK_ILLEGAL is extremely rare so try_macro_call is almost never called.
+      if (cur_type == SYNTAQLITE_TK_ID && la_type == SYNTAQLITE_TK_ILLEGAL) {
+        int mrc = try_macro_call(p, cur_offset, (uint32_t)cur_len, la_offset);
+        if (mrc == 1)
+          return set_result_status(p, stmt_boundary(p));
+        if (mrc == 0) {
+          // Macro consumed tokens past the lookahead — re-tokenize.
+          cur_offset = p->offset;
+          cur_type = 0;
+          cur_len = 0;
+          if (p->offset < p->source_len && z[p->offset] != '\0')
+            cur_len = SynqSqliteGetTokenVersionWrapped(
+                &p->grammar, z + p->offset, &cur_type);
+          continue;
+        }
       }
-      continue;
+      // Normal token (or macro fallthrough): record + feed to Lemon.
+      if (record_and_feed(p, cur_type, cur_offset, (uint32_t)cur_len))
+        return set_result_status(p, stmt_boundary(p));
     }
 
-    uint32_t tidx = 0xFFFFFFFF;
-    if (p->collect_tokens && token_type != SYNTAQLITE_TK_SEMI) {
-      SyntaqliteParserToken tp = {tok_offset, (uint32_t)token_len, token_type,
-                                  0};
-      syntaqlite_vec_push(&p->tokens, tp, p->mem);
-      tidx = syntaqlite_vec_len(&p->tokens) - 1;
-    }
-
-    int rc = feed_one_token(p, token_type, p->source + tok_offset,
-                            (uint32_t)token_len, tidx);
-
-    // Safety net: if error recovery couldn't produce an ecmd ::= error SEMI .
-    // reduction (e.g. parse_failure), force completion on the next SEMI.
-    if (p->had_error && rc == 0 && token_type == SYNTAQLITE_TK_SEMI)
-      rc = 1;
-
-    if (rc == 1) {
-      // Bare semicolons (ecmd ::= SEMI.) and error-recovery completions
-      // (ecmd ::= error SEMI.) have root == NULL_NODE and reduce when the
-      // *next* token is the LALR(1) lookahead — that token has already been
-      // consumed by Lemon and must not be discarded by lemon_reinit.
-      if (p->ctx.root == SYNTAQLITE_NULL_NODE && !p->had_error)
-        continue;  // bare semicolon — Lemon state is clean enough
-      int32_t status = stmt_boundary(p);
-      return set_result_status(p, status);
-    }
+    // Shift: lookahead becomes current.
+    cur_type = la_type;
+    cur_offset = la_offset;
+    cur_len = la_len;
   }
 
   // End of input.
@@ -728,6 +1191,23 @@ char* syntaqlite_dump_node(SyntaqliteParser* p,
 // Cleanup
 // ---------------------------------------------------------------------------
 
+// Free a single macro entry's owned strings.
+static void free_macro_entry(SyntaqliteParser* p, SyntaqliteMacroEntry* e) {
+  p->mem.xFree(e->name);
+  p->mem.xFree(e->body);
+  if (e->param_names) {
+    for (uint32_t i = 0; i < e->param_count; i++)
+      p->mem.xFree(e->param_names[i]);
+    p->mem.xFree(e->param_names);
+    p->mem.xFree(e->param_name_lens);
+  }
+  e->name = NULL;
+  e->body = NULL;
+  e->param_names = NULL;
+  e->param_name_lens = NULL;
+  e->state = SYNQ_MAP_EMPTY;
+}
+
 void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
     SYNQ_PARSER_FREE(p->grammar.tmpl, p->lemon, p->mem.xFree);
@@ -735,6 +1215,18 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p) {
     syntaqlite_vec_free(&p->comments, p->mem);
     syntaqlite_vec_free(&p->tokens, p->mem);
     syntaqlite_vec_free(&p->macros, p->mem);
+    // Free owned expansion buffers.
+    for (uint32_t i = 0; i < syntaqlite_vec_len(&p->owned_bufs); i++)
+      p->mem.xFree(p->owned_bufs.data[i].data);
+    syntaqlite_vec_free(&p->owned_bufs, p->mem);
+    // Free macro registry.
+    if (p->macro_table) {
+      for (uint32_t i = 0; i < p->macro_table_size; i++) {
+        if (p->macro_table[i].state == SYNQ_MAP_LIVE)
+          free_macro_entry(p, &p->macro_table[i]);
+      }
+      p->mem.xFree(p->macro_table);
+    }
     p->mem.xFree(p);
   }
 }
@@ -780,5 +1272,71 @@ int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
   if (p->sealed)
     return -1;
   p->collect_tokens = enable;
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Macro registration API
+// ---------------------------------------------------------------------------
+
+// Helper: duplicate a string via the parser's allocator.
+static char* synq_strdup(SyntaqliteMemMethods mem,
+                         const char* s,
+                         uint32_t len) {
+  char* d = mem.xMalloc(len + 1);
+  memcpy(d, s, len);
+  d[len] = '\0';
+  return d;
+}
+
+int syntaqlite_parser_register_macro(SyntaqliteParser* p,
+                                     const char* name,
+                                     uint32_t name_len,
+                                     const char* const* param_names,
+                                     uint32_t param_count,
+                                     const char* body,
+                                     uint32_t body_len) {
+  SyntaqliteMacroEntry* slot;
+  SYNQ_MAP_INSERT(p->macro_table, p->macro_table_size, p->macro_table_count,
+                  name, name_len, p->mem, SYNQ_MACRO_TABLE_INITIAL_SIZE, slot);
+
+  // If the slot already has a live entry, free old data first.
+  if (slot->name) {
+    free_macro_entry(p, slot);
+    slot->state = SYNQ_MAP_LIVE;
+  }
+
+  slot->name = synq_strdup(p->mem, name, name_len);
+  slot->name_len = name_len;
+  slot->body = synq_strdup(p->mem, body, body_len);
+  slot->body_len = body_len;
+  slot->param_count = param_count;
+
+  if (param_count > 0) {
+    slot->param_names = p->mem.xMalloc(param_count * sizeof(char*));
+    slot->param_name_lens = p->mem.xMalloc(param_count * sizeof(uint32_t));
+    for (uint32_t i = 0; i < param_count; i++) {
+      uint32_t plen = (uint32_t)strlen(param_names[i]);
+      slot->param_names[i] = synq_strdup(p->mem, param_names[i], plen);
+      slot->param_name_lens[i] = plen;
+    }
+  } else {
+    slot->param_names = NULL;
+    slot->param_name_lens = NULL;
+  }
+
+  return 0;
+}
+
+int syntaqlite_parser_deregister_macro(SyntaqliteParser* p,
+                                       const char* name,
+                                       uint32_t name_len) {
+  SyntaqliteMacroEntry* entry;
+  SYNQ_MAP_FIND(p->macro_table, p->macro_table_size, name, name_len, entry);
+  if (!entry)
+    return -1;
+  free_macro_entry(p, entry);
+  entry->state = SYNQ_MAP_TOMBSTONE;
+  p->macro_table_count--;
   return 0;
 }

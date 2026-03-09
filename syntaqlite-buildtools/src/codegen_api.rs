@@ -22,6 +22,28 @@ use crate::parser_tools::{
 };
 use crate::{base_files, dialect_codegen, output_resolver, util};
 
+/// Macro invocation style for the batch parsing loop.
+///
+/// Mirrors the C enum `SyntaqliteMacroStyle` in `grammar.h`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum MacroStyle {
+    /// No macro detection.
+    #[default]
+    None,
+    /// Rust-style: `name!(...)` — ID followed by `!` then balanced parens.
+    Rust,
+}
+
+impl MacroStyle {
+    /// C enum identifier for code generation.
+    pub fn c_name(self) -> &'static str {
+        match self {
+            Self::None => "SYNQ_MACRO_STYLE_NONE",
+            Self::Rust => "SYNQ_MACRO_STYLE_RUST",
+        }
+    }
+}
+
 /// Naming conventions derived from a dialect name (e.g. `"sqlite"`).
 ///
 /// Provides consistent symbol names, header file names, and Rust type names
@@ -216,7 +238,8 @@ pub(crate) fn extract_token_defines(parse_h: &str) -> Vec<(String, u32)> {
 
 /// Token names needed by the grammar-agnostic runtime (`token_wrapped.c`).
 const RUNTIME_TOKEN_NAMES: &[&str] = &[
-    "PTR", "MINUS", "QNUMBER", "FLOAT", "INTEGER", "SPACE", "SEMI", "COMMENT",
+    "PTR", "MINUS", "QNUMBER", "FLOAT", "INTEGER", "SPACE", "SEMI", "COMMENT", "ID", "ILLEGAL",
+    "LP", "RP", "COMMA", "VARIABLE",
 ];
 
 /// Generate a minimal tokens header containing only the runtime-required tokens.
@@ -271,6 +294,8 @@ pub(crate) struct CodegenRequest<'a> {
     /// internal and public — suitable for external dialect crates where
     /// all headers live in a single output directory.
     pub dialect_c_includes: DialectCIncludes<'a>,
+    /// Macro invocation style for the batch parsing loop.
+    pub macro_style: MacroStyle,
 }
 
 /// A prepared codegen job for an external or amalgamated dialect.
@@ -290,6 +315,7 @@ pub struct DialectCodegenJob<'a> {
     include_rust: bool,
     open_for_extension: bool,
     crate_name: Option<String>,
+    macro_style: MacroStyle,
 }
 
 impl<'a> DialectCodegenJob<'a> {
@@ -322,7 +348,15 @@ impl<'a> DialectCodegenJob<'a> {
             include_rust: false,
             open_for_extension: false,
             crate_name: None,
+            macro_style: MacroStyle::None,
         }
+    }
+
+    /// Set the macro invocation style.
+    #[must_use]
+    pub const fn with_macro_style(mut self, style: MacroStyle) -> Self {
+        self.macro_style = style;
+        self
     }
 
     /// Pin the base `.synq` files as a baseline for extension tag numbering.
@@ -370,6 +404,7 @@ impl<'a> DialectCodegenJob<'a> {
             base_synq_files: self.base_synq_files,
             open_for_extension: self.open_for_extension,
             dialect_c_includes: layout.c_includes(),
+            macro_style: self.macro_style,
         };
         let artifacts = generate_codegen_artifacts(&request)?;
         layout.write_codegen_artifacts(self.dialect, artifacts, ensure_dir, write_file)
@@ -557,6 +592,7 @@ pub(crate) fn generate_codegen_artifacts(
         request.dialect.name(),
         Some(&token_defines),
         &request.dialect_c_includes,
+        request.macro_style,
     );
     let dialect_h = generate_dialect_h(request.dialect.name());
     let dialect_dispatch_h = generate_dialect_dispatch_h(request.dialect.name());

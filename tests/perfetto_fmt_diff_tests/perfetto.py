@@ -54,6 +54,32 @@ class PerfettoMacroFormat(TestSuite):
         )
 
 
+class PerfettoMacroCallFormat(TestSuite):
+    def test_macro_call_in_select(self):
+        return DiffTestBlueprint(
+            sql="SELECT foo!(1 + 2), 3",
+            out="SELECT foo!(1 + 2), 3",
+        )
+
+    def test_macro_call_in_from(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM my_macro!(t1)",
+            out="SELECT * FROM my_macro!(t1)",
+        )
+
+    def test_macro_call_nested_parens(self):
+        return DiffTestBlueprint(
+            sql="SELECT * FROM graph_reachable_dfs!((SELECT id FROM t), (SELECT id FROM s))",
+            out="SELECT * FROM graph_reachable_dfs!((SELECT id FROM t), (SELECT id FROM s))",
+        )
+
+    def test_macro_call_no_args(self):
+        return DiffTestBlueprint(
+            sql="SELECT my_macro!()",
+            out="SELECT my_macro!()",
+        )
+
+
 class PerfettoFunctionFormat(TestSuite):
     def test_create_perfetto_function_returns_on_newline(self):
         return DiffTestBlueprint(

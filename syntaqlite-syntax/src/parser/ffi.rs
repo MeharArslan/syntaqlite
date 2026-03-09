@@ -14,10 +14,12 @@ pub(crate) const PARSE_OK: i32 = 1;
 #[cfg(test)]
 pub(crate) const PARSE_ERROR: i32 = -1;
 
-/// Mirrors C `SyntaqliteMemMethods`.
+/// Mirrors C `SyntaqliteMemMethods` (xMalloc, xRealloc, xFree).
 #[repr(C)]
+#[expect(clippy::struct_field_names)]
 pub(crate) struct CMemMethods {
     pub x_malloc: unsafe extern "C" fn(usize) -> *mut c_void,
+    pub x_realloc: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void,
     pub x_free: unsafe extern "C" fn(*mut c_void),
 }
 
@@ -256,6 +258,33 @@ impl CParser {
         // SAFETY: self is a valid, non-null CParser pointer owned by the caller.
         unsafe { syntaqlite_parser_end_macro(self) }
     }
+
+    pub(crate) unsafe fn register_macro(
+        &mut self,
+        name: *const c_char,
+        name_len: u32,
+        param_names: *const *const c_char,
+        param_count: u32,
+        body: *const c_char,
+        body_len: u32,
+    ) -> i32 {
+        // SAFETY: self is a valid, non-null CParser pointer; name, param_names,
+        // and body are valid pointers with the specified lengths.
+        unsafe {
+            syntaqlite_parser_register_macro(
+                self, name, name_len, param_names, param_count, body, body_len,
+            )
+        }
+    }
+
+    pub(crate) unsafe fn deregister_macro(
+        &mut self,
+        name: *const c_char,
+        name_len: u32,
+    ) -> i32 {
+        // SAFETY: self is a valid, non-null CParser pointer; name is valid.
+        unsafe { syntaqlite_parser_deregister_macro(self, name, name_len) }
+    }
 }
 
 unsafe extern "C" {
@@ -305,7 +334,24 @@ unsafe extern "C" {
     fn syntaqlite_parser_completion_context(p: *mut CParser) -> CCompletionContext;
     fn syntaqlite_parser_begin_macro(p: *mut CParser, call_offset: u32, call_length: u32);
     fn syntaqlite_parser_end_macro(p: *mut CParser);
+
+    // Macro registration
+    fn syntaqlite_parser_register_macro(
+        p: *mut CParser,
+        name: *const c_char,
+        name_len: u32,
+        param_names: *const *const c_char,
+        param_count: u32,
+        body: *const c_char,
+        body_len: u32,
+    ) -> i32;
+    fn syntaqlite_parser_deregister_macro(
+        p: *mut CParser,
+        name: *const c_char,
+        name_len: u32,
+    ) -> i32;
 }
+
 
 #[cfg(all(test, feature = "sqlite"))]
 mod tests {
@@ -488,5 +534,169 @@ mod tests {
         assert_eq!(unsafe { parser.result_recovery_root() }, NULL_NODE);
         // SAFETY: result accessors are valid after non-DONE return.
         assert!(!unsafe { parser.result_error_msg().is_null() });
+    }
+
+    // ── Macro registry / hashmap tests ──────────────────────────────────
+
+    /// Helper: register a template macro via the C API.
+    fn register_macro(parser: &mut CParser, name: &str, params: &[&str], body: &str) {
+        let param_cstrings: Vec<CString> =
+            params.iter().map(|p| CString::new(*p).unwrap()).collect();
+        let param_ptrs: Vec<*const std::ffi::c_char> =
+            param_cstrings.iter().map(|c| c.as_ptr()).collect();
+        let rc = unsafe {
+            parser.register_macro(
+                name.as_ptr().cast(),
+                name.len() as u32,
+                param_ptrs.as_ptr(),
+                params.len() as u32,
+                body.as_ptr().cast(),
+                body.len() as u32,
+            )
+        };
+        assert_eq!(rc, 0, "register_macro failed for '{name}'");
+    }
+
+    /// Helper: parse a single statement and return its status.
+    fn parse_one(parser: &mut CParser, sql: &str) -> (i32, CString) {
+        let sql_c = reset_with_source(parser, sql);
+        let rc = unsafe { parser.next() };
+        (rc, sql_c)
+    }
+
+    #[test]
+    fn macro_register_and_expand() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        register_macro(parser, "double", &["x"], "($x + $x)");
+
+        let (rc, _sql) = parse_one(parser, "SELECT double!(1);");
+        assert_eq!(rc, PARSE_OK, "macro expansion should produce a valid statement");
+        assert_ne!(unsafe { parser.result_root() }, NULL_NODE);
+    }
+
+    #[test]
+    fn macro_deregister_removes_entry() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        register_macro(parser, "foo", &["x"], "$x");
+
+        let rc = unsafe { parser.deregister_macro(b"foo".as_ptr().cast(), 3) };
+        assert_eq!(rc, 0);
+
+        // After deregistering, the name is no longer a macro.
+        // "foo!(1)" won't expand — "!" is TK_ILLEGAL, which causes a parse error.
+        let (rc, _sql) = parse_one(parser, "SELECT foo!(1);");
+        assert_eq!(rc, PARSE_ERROR);
+    }
+
+    #[test]
+    fn macro_deregister_nonexistent_returns_error() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+
+        let rc = unsafe { parser.deregister_macro(b"nope".as_ptr().cast(), 4) };
+        assert_eq!(rc, -1);
+    }
+
+    #[test]
+    fn macro_case_insensitive_lookup() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        register_macro(parser, "MyMacro", &["x"], "$x");
+
+        // SQL identifiers are case-insensitive; "mymacro" should match "MyMacro".
+        let (rc, _sql) = parse_one(parser, "SELECT mymacro!(42);");
+        assert_eq!(rc, PARSE_OK);
+    }
+
+    #[test]
+    fn macro_overwrite_existing() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        register_macro(parser, "m", &["x"], "$x");
+        // Re-register with different body — should overwrite.
+        register_macro(parser, "m", &["x"], "($x + 1)");
+
+        let (rc, _sql) = parse_one(parser, "SELECT m!(5);");
+        assert_eq!(rc, PARSE_OK);
+    }
+
+    #[test]
+    fn macro_register_after_deregister_reuses_tombstone() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        register_macro(parser, "tmp", &["x"], "$x");
+
+        let rc = unsafe { parser.deregister_macro(b"tmp".as_ptr().cast(), 3) };
+        assert_eq!(rc, 0);
+
+        // Re-register the same name — should reuse the tombstone slot.
+        register_macro(parser, "tmp", &["x"], "($x)");
+
+        let (rc, _sql) = parse_one(parser, "SELECT tmp!(7);");
+        assert_eq!(rc, PARSE_OK);
+    }
+
+    #[test]
+    fn macro_many_entries_forces_grow() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+
+        // Register enough macros to trigger at least one table resize.
+        // Initial capacity is 16, load factor threshold is 70% → grows at 12.
+        let names: Vec<String> = (0..20).map(|i| format!("m{i}")).collect();
+        for name in &names {
+            register_macro(parser, name, &["x"], "$x");
+        }
+
+        // Verify all 20 macros are still reachable after growth.
+        for name in &names {
+            let sql = format!("SELECT {name}!(1);");
+            let (rc, _sql) = parse_one(parser, &sql);
+            assert_eq!(rc, PARSE_OK, "macro '{name}' should expand after table grow");
+        }
+    }
+
+    #[test]
+    fn macro_deregister_then_grow_drops_tombstones() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+
+        // Fill table, then delete half, then add more to force a grow.
+        // After grow, tombstones should be gone and all live entries reachable.
+        for i in 0..10 {
+            let name = format!("a{i}");
+            register_macro(parser, &name, &["x"], "$x");
+        }
+        for i in 0..5 {
+            let name = format!("a{i}");
+            let rc = unsafe {
+                parser.deregister_macro(name.as_ptr().cast(), name.len() as u32)
+            };
+            assert_eq!(rc, 0);
+        }
+        // Add more to force a grow (5 live + new entries past 70% of 16).
+        for i in 10..20 {
+            let name = format!("a{i}");
+            register_macro(parser, &name, &["x"], "$x");
+        }
+
+        // Verify surviving entries (a5..a19) all work.
+        for i in 5..20 {
+            let name = format!("a{i}");
+            let sql = format!("SELECT {name}!(1);");
+            let (rc, _sql) = parse_one(parser, &sql);
+            assert_eq!(rc, PARSE_OK, "macro '{name}' should be reachable after grow");
+        }
+
+        // Verify deleted entries (a0..a4) are gone.
+        for i in 0..5 {
+            let name = format!("a{i}");
+            let rc = unsafe {
+                parser.deregister_macro(name.as_ptr().cast(), name.len() as u32)
+            };
+            assert_eq!(rc, -1, "deleted macro 'a{i}' should not be found");
+        }
     }
 }

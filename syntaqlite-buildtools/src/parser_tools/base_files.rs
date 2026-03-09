@@ -91,6 +91,13 @@ const RUNTIME_CSRC: &[(&str, &str)] = &[
         )),
     ),
     (
+        "hashmap.h",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../syntaqlite-syntax/csrc/hashmap.h",
+        )),
+    ),
+    (
         "parser.c",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),

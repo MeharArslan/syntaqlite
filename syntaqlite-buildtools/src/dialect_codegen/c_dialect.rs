@@ -109,6 +109,7 @@ pub(crate) fn generate_dialect_c(
     dialect: &str,
     tokens: Option<&[(String, u32)]>,
     includes: &DialectCIncludes<'_>,
+    macro_style: crate::codegen_api::MacroStyle,
 ) -> String {
     let upper = dialect.to_uppercase();
     let mut w = CWriter::new();
@@ -202,6 +203,7 @@ pub(crate) fn generate_dialect_c(
         w.line("    .token_categories = 0,");
         w.line("    .token_type_count = 0,");
     }
+    w.line(&format!("    .macro_style = {},", macro_style.c_name()));
     w.line("};");
     w.newline();
 
@@ -491,7 +493,12 @@ mod tests {
 
     #[test]
     fn c_source_exposes_grammar_function() {
-        let c = generate_dialect_c("sqlite", None, &default_includes());
+        let c = generate_dialect_c(
+            "sqlite",
+            None,
+            &default_includes(),
+            crate::codegen_api::MacroStyle::None,
+        );
         assert!(c.contains("SyntaqliteGrammar syntaqlite_sqlite_grammar(void)"));
         assert!(c.contains("SyntaqliteGrammarTemplate SQLITE_GRAMMAR ="));
         assert!(c.contains("SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR)"));
@@ -589,7 +596,12 @@ mod tests {
     #[test]
     fn dialect_c_with_tokens_includes_categories() {
         let tokens = vec![("SELECT".to_string(), 0)];
-        let c = generate_dialect_c("sqlite", Some(&tokens), &default_includes());
+        let c = generate_dialect_c(
+            "sqlite",
+            Some(&tokens),
+            &default_includes(),
+            crate::codegen_api::MacroStyle::None,
+        );
         assert!(c.contains(".parser_expected_tokens = SynqSqliteParseExpectedTokens,"));
         assert!(c.contains(".keyword_text = synq_sqlite_zKWText,"));
         assert!(c.contains(".keyword_offsets = synq_sqlite_aKWOffset,"));
@@ -603,7 +615,12 @@ mod tests {
 
     #[test]
     fn dialect_c_without_tokens_uses_null() {
-        let c = generate_dialect_c("sqlite", None, &default_includes());
+        let c = generate_dialect_c(
+            "sqlite",
+            None,
+            &default_includes(),
+            crate::codegen_api::MacroStyle::None,
+        );
         assert!(c.contains(".keyword_text = 0,"));
         assert!(c.contains(".keyword_offsets = 0,"));
         assert!(c.contains(".keyword_lens = 0,"));
@@ -650,7 +667,12 @@ mod tests {
             tokens_header: "syntaqlite_sqlite/sqlite_tokens.h",
             dialect_roles_h: "",
         };
-        let c = generate_dialect_c("sqlite", None, &includes);
+        let c = generate_dialect_c(
+            "sqlite",
+            None,
+            &includes,
+            crate::codegen_api::MacroStyle::None,
+        );
         // Internal headers use the full csrc/sqlite/ path
         assert!(c.contains("\"csrc/sqlite/dialect_meta.h\""));
         // fmt header is included; builder is not (it's only for AST construction, not dialect.c)
@@ -665,7 +687,12 @@ mod tests {
 
     #[test]
     fn dialect_c_default_includes_no_prefix() {
-        let c = generate_dialect_c("sqlite", None, &default_includes());
+        let c = generate_dialect_c(
+            "sqlite",
+            None,
+            &default_includes(),
+            crate::codegen_api::MacroStyle::None,
+        );
         // Default: meta and fmt headers included; builder is not
         assert!(c.contains("\"dialect_meta.h\""));
         assert!(!c.contains("\"dialect_builder.h\""));

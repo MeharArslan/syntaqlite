@@ -206,7 +206,8 @@ impl Formatter {
             last_has_root = !root_id.is_null();
             let semicolons = self.config.semicolons;
             let has_comments = !self.comment_entries.is_empty();
-            let needs_token_ctx = has_comments;
+            let has_macros = !self.macro_regions.is_empty();
+            let needs_token_ctx = has_comments || has_macros;
 
             let comment_ctx = if needs_token_ctx {
                 // Move buffers into CommentCtx for this statement, then reclaim them after render.

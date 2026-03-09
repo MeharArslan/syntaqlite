@@ -37,6 +37,19 @@ impl Parser {
         ))
     }
 
+    /// Register a template macro with the parser.
+    ///
+    /// The macro body uses `$param` placeholders (e.g. `"$x + 1"`).
+    /// All strings are copied; the caller may free them after this call returns.
+    pub fn register_macro(&mut self, name: &str, params: &[&str], body: &str) {
+        self.0.register_macro(name, params, body);
+    }
+
+    /// Deregister a macro by name. Returns `true` if it was found and removed.
+    pub fn deregister_macro(&mut self, name: &str) -> bool {
+        self.0.deregister_macro(name)
+    }
+
     /// Parse a SQL script and return a statement-by-statement session.
     ///
     /// # Examples
@@ -298,6 +311,11 @@ impl<'a> ParsedStatement<'a> {
         self.0.clone().erase()
     }
 
+    /// Macro expansion call-site spans recorded during parsing.
+    pub fn macro_regions(&self) -> impl Iterator<Item = super::MacroRegion> + use<'_, 'a> {
+        self.0.macro_regions()
+    }
+
     /// Dump the AST as indented text into `out`.
     pub fn dump(&self, out: &mut String, indent: usize) {
         self.0.dump(out, indent);
@@ -532,4 +550,85 @@ mod tests {
             Ok(_) => panic!("fatal error expected"),
         }
     }
+
+    #[test]
+    fn macro_expansion_simple_template() {
+        let mut parser = Parser::new();
+        parser.register_macro("double", &["x"], "($x + $x)");
+
+        let mut session = parser.parse("SELECT double!(1);");
+        let stmt = match session.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("expected statement"),
+            ParseOutcome::Err(err) => panic!("unexpected error: {}", err.message()),
+        };
+
+        // The macro call `double!(1)` should expand to `(1 + 1)`.
+        let mut dump = String::new();
+        stmt.dump(&mut dump, 0);
+        assert!(
+            dump.contains("PLUS"),
+            "expanded AST should contain a PLUS op, got:\n{dump}"
+        );
+    }
+
+    #[test]
+    fn macro_expansion_records_macro_region() {
+        let mut parser = Parser::new();
+        parser.register_macro("id", &["x"], "$x");
+
+        let source = "SELECT id!(42);";
+        let mut session = parser.parse(source);
+        let stmt = match session.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("expected statement"),
+            ParseOutcome::Err(err) => panic!("unexpected error: {}", err.message()),
+        };
+
+        let regions: Vec<_> = stmt.macro_regions().collect();
+        assert_eq!(regions.len(), 1, "expected exactly one macro region");
+        let r = &regions[0];
+        let call_text = &source[r.call_offset as usize..(r.call_offset + r.call_length) as usize];
+        assert_eq!(call_text, "id!(42)");
+    }
+
+    #[test]
+    fn macro_expansion_multi_param() {
+        let mut parser = Parser::new();
+        parser.register_macro("sum2", &["a", "b"], "($a + $b)");
+
+        let mut session = parser.parse("SELECT sum2!(1, 2);");
+        let stmt = match session.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("expected statement"),
+            ParseOutcome::Err(err) => panic!("unexpected error: {}", err.message()),
+        };
+
+        let mut dump = String::new();
+        stmt.dump(&mut dump, 0);
+        assert!(
+            dump.contains("PLUS"),
+            "expanded AST should contain PLUS, got:\n{dump}"
+        );
+    }
+
+    #[test]
+    fn macro_deregister_falls_back_to_legacy() {
+        let mut parser = Parser::new();
+        parser.register_macro("foo", &["x"], "$x");
+        assert!(parser.deregister_macro("foo"));
+
+        // After deregistering, the macro call should not expand.
+        // Legacy behavior: `foo` is parsed as a plain identifier.
+        let mut session = parser.parse("SELECT foo!(1);");
+        let _outcome = session.next();
+        // We don't assert specific behavior here — just that it doesn't crash.
+    }
+
+    #[test]
+    fn macro_deregister_nonexistent_returns_false() {
+        let mut parser = Parser::new();
+        assert!(!parser.deregister_macro("nonexistent"));
+    }
+
 }

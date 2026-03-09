@@ -6,6 +6,8 @@
 use std::fs;
 use std::path::Path;
 
+use syntaqlite_buildtools::codegen_api::MacroStyle;
+
 fn ensure_dir(path: &Path, label: &str) -> Result<(), String> {
     fs::create_dir_all(path).map_err(|e| format!("Failed to create {label}: {e}"))
 }
@@ -61,6 +63,17 @@ pub(crate) struct DialectArgs {
     /// Default path for the extension header (dialect-only mode only).
     #[arg(long, default_value = "syntaqlite_dialect.h")]
     ext_header: String,
+
+    /// Macro invocation style: "none" or "rust" (for `name!(...)` patterns).
+    #[arg(long, value_enum, default_value_t = CliMacroStyle::None)]
+    macro_style: CliMacroStyle,
+}
+
+#[derive(Clone, Copy, Default, clap::ValueEnum)]
+pub(crate) enum CliMacroStyle {
+    #[default]
+    None,
+    Rust,
 }
 
 /// Hidden subcommands forwarded to the lemon/mkkeyword subprocess invocations.
@@ -85,6 +98,10 @@ pub(crate) fn dispatch_dialect(args: &DialectArgs) -> Result<(), String> {
     let name = &args.name;
     let actions_dir = args.actions_dir.as_deref();
     let nodes_dir = args.nodes_dir.as_deref();
+    let macro_style_val = match args.macro_style {
+        CliMacroStyle::None => MacroStyle::None,
+        CliMacroStyle::Rust => MacroStyle::Rust,
+    };
     let require_output_dir = |type_name: &str| -> Result<String, String> {
         args.output_dir
             .clone()
@@ -99,13 +116,22 @@ pub(crate) fn dispatch_dialect(args: &DialectArgs) -> Result<(), String> {
             &require_output_dir("dialect")?,
             &args.runtime_header,
             &args.ext_header,
+            macro_style_val,
         ),
-        OutputType::Raw => {
-            cmd_generate_dialect_raw(name, actions_dir, nodes_dir, &require_output_dir("raw")?)
-        }
-        OutputType::Full => {
-            cmd_generate_dialect_full(name, actions_dir, nodes_dir, &require_output_dir("full")?)
-        }
+        OutputType::Raw => cmd_generate_dialect_raw(
+            name,
+            actions_dir,
+            nodes_dir,
+            &require_output_dir("raw")?,
+            macro_style_val,
+        ),
+        OutputType::Full => cmd_generate_dialect_full(
+            name,
+            actions_dir,
+            nodes_dir,
+            &require_output_dir("full")?,
+            macro_style_val,
+        ),
         OutputType::RuntimeOnly => cmd_generate_runtime(&require_output_dir("runtime-only")?),
     }
 }
@@ -124,13 +150,14 @@ fn cmd_generate_dialect(
     output_dir: &str,
     runtime_header: &str,
     ext_header: &str,
+    macro_style: MacroStyle,
 ) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
 
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
     let temp = temp_dir.path();
     let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
-    codegen_to_dir_with_base(&merged_y, &merged_synq, temp, dialect)?;
+    codegen_to_dir_with_base(&merged_y, &merged_synq, temp, dialect, macro_style)?;
 
     let out = Path::new(output_dir);
     ensure_dir(out, "output dir")?;
@@ -147,6 +174,7 @@ fn cmd_generate_dialect_full(
     actions_dir: Option<&str>,
     nodes_dir: Option<&str>,
     output_dir: &str,
+    macro_style: MacroStyle,
 ) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
 
@@ -158,7 +186,13 @@ fn cmd_generate_dialect_full(
     let dialect_temp =
         tempfile::TempDir::new().map_err(|e| format!("creating dialect temp directory: {e}"))?;
     let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
-    codegen_to_dir_with_base(&merged_y, &merged_synq, dialect_temp.path(), dialect)?;
+    codegen_to_dir_with_base(
+        &merged_y,
+        &merged_synq,
+        dialect_temp.path(),
+        dialect,
+        macro_style,
+    )?;
 
     let out = Path::new(output_dir);
     ensure_dir(out, "output dir")?;
@@ -200,6 +234,7 @@ fn cmd_generate_dialect_raw(
     actions_dir: Option<&str>,
     nodes_dir: Option<&str>,
     output_dir: &str,
+    macro_style: MacroStyle,
 ) -> Result<(), String> {
     use syntaqlite_buildtools::codegen_api::{DialectCodegenJob, DialectNaming};
     use syntaqlite_buildtools::output_resolver::OutputLayout;
@@ -213,6 +248,7 @@ fn cmd_generate_dialect_raw(
     );
     DialectCodegenJob::new(&dialect_spec, &merged_y, &merged_synq)
         .with_base_synq(syntaqlite_buildtools::base_files::base_synq_files())
+        .with_macro_style(macro_style)
         .write_to(
             &layout,
             &|dir| ensure_dir(dir, "output directory"),
@@ -252,6 +288,7 @@ fn codegen_to_dir_with_base(
     synq_files: &NamedFiles,
     temp_root: &Path,
     dialect_name: &str,
+    macro_style: MacroStyle,
 ) -> Result<(), String> {
     use syntaqlite_buildtools::codegen_api::{DialectCodegenJob, DialectNaming};
     use syntaqlite_buildtools::output_resolver::OutputLayout;
@@ -261,6 +298,7 @@ fn codegen_to_dir_with_base(
         OutputLayout::for_amalg_temp(temp_root, dialect_name, &dialect_spec.include_dir_name());
     DialectCodegenJob::new(&dialect_spec, y_files, synq_files)
         .with_base_synq(syntaqlite_buildtools::base_files::base_synq_files())
+        .with_macro_style(macro_style)
         .write_to(
             &layout,
             &|dir| ensure_dir(dir, "output directory"),

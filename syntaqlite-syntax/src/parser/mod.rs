@@ -162,6 +162,70 @@ impl<G: TypedGrammar> TypedParser<G> {
     ///
     /// Panics if another session from this parser is still active.
     /// Drop the previous session before starting a new one.
+    /// Register a template macro with the parser.
+    ///
+    /// The macro `name` will be expanded when `name!(args)` is encountered
+    /// during batch parsing (`parse()`). The `body` uses `$param` placeholders
+    /// that are substituted with the corresponding arguments.
+    ///
+    /// # Panics
+    ///
+    /// Panics if another session from this parser is still active.
+    pub fn register_macro(&mut self, name: &str, params: &[&str], body: &str) {
+        let mut inner_ref = self.inner.borrow_mut();
+        let inner = inner_ref
+            .as_mut()
+            .expect("register_macro called while a session is still active");
+        // The C side uses strlen() on param names, so they must be NUL-terminated.
+        let param_cstrings: Vec<std::ffi::CString> = params
+            .iter()
+            .map(|p| std::ffi::CString::new(*p).expect("param name must not contain NUL"))
+            .collect();
+        let param_ptrs: Vec<*const std::ffi::c_char> =
+            param_cstrings.iter().map(|c| c.as_ptr()).collect();
+        // SAFETY: inner.raw is valid; all string pointers are valid for the
+        // duration of the C call (which copies them).
+        #[expect(clippy::cast_possible_truncation)]
+        unsafe {
+            inner.raw.as_mut().register_macro(
+                name.as_ptr().cast(),
+                name.len() as u32,
+                param_ptrs.as_ptr(),
+                params.len() as u32,
+                body.as_ptr().cast(),
+                body.len() as u32,
+            );
+        }
+    }
+
+    /// Deregister a macro by name.
+    ///
+    /// Returns `true` if the macro was found and removed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if another session from this parser is still active.
+    pub fn deregister_macro(&mut self, name: &str) -> bool {
+        let mut inner_ref = self.inner.borrow_mut();
+        let inner = inner_ref
+            .as_mut()
+            .expect("deregister_macro called while a session is still active");
+        #[expect(clippy::cast_possible_truncation)]
+        // SAFETY: inner.raw is valid; name pointer is valid for the C call duration.
+        let rc =
+            unsafe { inner.raw.as_mut().deregister_macro(name.as_ptr().cast(), name.len() as u32) };
+        rc == 0
+    }
+
+    /// Start incremental parsing for grammar `G`.
+    ///
+    /// Use this when tokens arrive over time (editor completion, interactive
+    /// parsing, macro-expansion pipelines).
+    ///
+    /// # Panics
+    ///
+    /// Panics if another session from this parser is still active.
+    /// Drop the previous session before starting a new one.
     pub fn incremental_parse(&self, source: &str) -> TypedIncrementalParseSession<G> {
         let mut inner = self
             .inner
@@ -557,6 +621,15 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
     /// The source text bound to this result.
     pub fn source(&self) -> &'a str {
         self.any.source
+    }
+
+    /// Macro expansion call-site spans recorded during parsing.
+    ///
+    /// Each [`MacroRegion`] describes a byte range in the original source
+    /// that was identified as a macro invocation (e.g. `name!(args)`).
+    /// Populated automatically when the grammar's `macro_style` is set.
+    pub fn macro_regions(&self) -> impl Iterator<Item = MacroRegion> + use<'_, 'a, G> {
+        self.any.macro_regions()
     }
 
     /// Statement-local token stream for this parse result.
