@@ -266,7 +266,6 @@ pub use syntaqlite::any::<<syntaqlite_syntax::any::*>>
 pub use syntaqlite::dialect::FIELD_ABSENT
 pub use syntaqlite::dialect::FieldIdx
 pub use syntaqlite::dialect::FlagSpec
-pub use syntaqlite::dialect::MacroDef
 pub use syntaqlite::dialect::RelationKind
 pub use syntaqlite::dialect::SemanticRole
 pub use syntaqlite::nodes::<<syntaqlite_syntax::nodes::*>>

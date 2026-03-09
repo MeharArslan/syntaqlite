@@ -876,8 +876,8 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
       p->had_comment = 1;
       if (p->collect_tokens)
         record_comment(p, cur_offset, (uint32_t)cur_len);
-      cur_len =
-          next_token(p, z, cur_offset + (uint32_t)cur_len, &cur_offset, &cur_type);
+      cur_len = next_token(p, z, cur_offset + (uint32_t)cur_len, &cur_offset,
+                           &cur_type);
       continue;
     }
 

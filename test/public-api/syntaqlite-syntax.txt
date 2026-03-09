@@ -778,8 +778,10 @@ pub fn syntaqlite_syntax::ParseOutcome<T, E>::map<U>(self, f: impl core::ops::fu
 pub fn syntaqlite_syntax::ParseOutcome<T, E>::map_err<F>(self, f: impl core::ops::function::FnOnce(E) -> F) -> syntaqlite_syntax::ParseOutcome<T, F>
 pub fn syntaqlite_syntax::ParseOutcome<T, E>::transpose(self) -> core::result::Result<core::option::Option<T>, E>
 pub fn syntaqlite_syntax::ParserConfig::collect_tokens(&self) -> bool
+pub fn syntaqlite_syntax::ParserConfig::macro_fallback(&self) -> bool
 pub fn syntaqlite_syntax::ParserConfig::trace(&self) -> bool
 pub fn syntaqlite_syntax::ParserConfig::with_collect_tokens(self, collect_tokens: bool) -> Self
+pub fn syntaqlite_syntax::ParserConfig::with_macro_fallback(self, macro_fallback: bool) -> Self
 pub fn syntaqlite_syntax::ParserConfig::with_trace(self, trace: bool) -> Self
 pub fn syntaqlite_syntax::ParserToken<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::ParserToken<'a>::flags(&self) -> syntaqlite_syntax::ParserTokenFlags

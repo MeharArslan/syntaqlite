@@ -182,7 +182,6 @@ impl Formatter {
     ///
     /// # Errors
     /// Returns [`FormatError`] when parsing fails for any statement in `source`.
-
     pub fn format(&mut self, source: &str) -> Result<String, FormatError> {
         let mut session = self.parser.parse(source);
         let mut result = String::with_capacity(source.len());

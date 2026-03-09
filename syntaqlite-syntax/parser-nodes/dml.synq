@@ -42,7 +42,7 @@ node DeleteStmt {
       "DELETE FROM " child(table)
       clause("WHERE", where_clause)
       clause("ORDER BY", orderby)
-      clause("LIMIT", limit_clause)
+      if_set(limit_clause) { line "LIMIT " child(limit_clause) }
       if_set(returning) { line "RETURNING " child(returning) }
     }
   }
@@ -90,7 +90,7 @@ node UpdateStmt {
       if_set(from_clause) { line "FROM " child(from_clause) }
       clause("WHERE", where_clause)
       clause("ORDER BY", orderby)
-      clause("LIMIT", limit_clause)
+      if_set(limit_clause) { line "LIMIT " child(limit_clause) }
       if_set(returning) { line "RETURNING " child(returning) }
     }
   }

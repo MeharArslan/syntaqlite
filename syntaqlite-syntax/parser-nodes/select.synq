@@ -45,7 +45,7 @@ node SelectStmt {
       clause("GROUP BY", groupby)
       clause("HAVING", having)
       clause("ORDER BY", orderby)
-      clause("LIMIT", limit_clause)
+      if_set(limit_clause) { line "LIMIT " child(limit_clause) }
       clause("WINDOW", window_clause)
     }
   }

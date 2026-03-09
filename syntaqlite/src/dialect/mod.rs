@@ -13,9 +13,7 @@ pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
 // ── Semantic role types (re-exported from syntaqlite-common) ─────────────────
 
-pub use syntaqlite_common::roles::{
-    FIELD_ABSENT, FieldIdx, FlagSpec, MacroDef, RelationKind, SemanticRole,
-};
+pub use syntaqlite_common::roles::{FIELD_ABSENT, FieldIdx, FlagSpec, RelationKind, SemanticRole};
 
 // ── Function catalog types ────────────────────────────────────────────────────
 
@@ -196,14 +194,6 @@ impl AnyDialect {
     pub(crate) fn roles(&self) -> &'static [SemanticRole] {
         // SAFETY: template() is valid for the lifetime of self.
         unsafe { self.template().roles() }
-    }
-
-    /// Macro definition metadata for this dialect.
-    ///
-    /// Empty for dialects without `macro_def` annotations.
-    pub(crate) fn macro_defs(&self) -> &'static [MacroDef] {
-        // SAFETY: template() is valid for the lifetime of self.
-        unsafe { self.template().macro_defs() }
     }
 
     /// Whether this dialect has formatter data.
@@ -423,7 +413,7 @@ mod tests {
 pub mod ffi {
     use syntaqlite_syntax::any::AnyGrammar;
 
-    use crate::dialect::{MacroDef, SemanticRole};
+    use crate::dialect::SemanticRole;
 
     /// C-ABI mirror of the `SyntaqliteDialectTemplate` struct emitted by dialect codegen.
     ///
@@ -482,23 +472,6 @@ pub mod ffi {
                 std::slice::from_raw_parts(
                     self.roles_data.cast::<SemanticRole>(),
                     self.roles_count as usize,
-                )
-            }
-        }
-
-        /// Macro definition metadata for this dialect, if any.
-        ///
-        /// # Safety
-        /// `self` must be a valid, fully-initialized `CDialectTemplate`.
-        pub(crate) unsafe fn macro_defs(&self) -> &'static [MacroDef] {
-            if self.macro_defs_count == 0 {
-                return &[];
-            }
-            // SAFETY: macro_defs_data points to macro_defs_count valid entries.
-            unsafe {
-                std::slice::from_raw_parts(
-                    self.macro_defs_data.cast::<MacroDef>(),
-                    self.macro_defs_count as usize,
                 )
             }
         }

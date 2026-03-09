@@ -331,8 +331,7 @@ class SelectClauseComment(TestSuite):
                 SELECT a
                 FROM t
                 -- c
-                LIMIT
-                  10;
+                LIMIT 10;
             """,
         )
 

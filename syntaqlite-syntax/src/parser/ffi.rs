@@ -728,8 +728,10 @@ mod tests {
 
     /// Helper: enable macro fallback + token collection on a parser.
     fn enable_fallback(parser: &mut CParser) {
+        // SAFETY: CParser wraps a valid C parser handle.
         let rc = unsafe { parser.set_macro_fallback(1) };
         assert_eq!(rc, 0, "set_macro_fallback should succeed");
+        // SAFETY: CParser wraps a valid C parser handle.
         let rc = unsafe { parser.set_collect_tokens(1) };
         assert_eq!(rc, 0, "set_collect_tokens should succeed");
     }
@@ -746,6 +748,7 @@ mod tests {
             rc, PARSE_OK,
             "unregistered macro call should parse OK with fallback enabled"
         );
+        // SAFETY: CParser wraps a valid C parser handle.
         assert_ne!(unsafe { parser.result_root() }, NULL_NODE);
     }
 
@@ -772,9 +775,11 @@ mod tests {
         let (rc, _sql) = parse_one(parser, sql);
         assert_eq!(rc, PARSE_OK);
 
+        // SAFETY: CParser wraps a valid C parser handle.
         let regions = unsafe { parser.result_macros() };
         assert_eq!(regions.len(), 1, "expected one macro region");
         let r = &regions[0];
+        #[expect(clippy::cast_possible_truncation)]
         let call_start = sql.find("foo!").unwrap() as u32;
         assert_eq!(r.call_offset, call_start);
         // "foo!(1, 2)" is 10 bytes.
@@ -843,12 +848,13 @@ mod tests {
             "nested parens in macro args should parse OK with fallback"
         );
 
+        // SAFETY: CParser wraps a valid C parser handle.
         let regions = unsafe { parser.result_macros() };
         assert_eq!(regions.len(), 1);
         let r = &regions[0];
         let call_text = &sql[r.call_offset as usize..(r.call_offset + r.call_length) as usize];
         assert!(
-            call_text.starts_with("graph!(") && call_text.ends_with(")"),
+            call_text.starts_with("graph!(") && call_text.ends_with(')'),
             "macro region should cover full call, got: '{call_text}'"
         );
     }

@@ -98,6 +98,7 @@ impl CommentCtx {
         self.drain_impl(end, source, arena, true)
     }
 
+    #[expect(clippy::too_many_lines)]
     fn drain_impl<'a>(
         &self,
         before: u32,
@@ -155,14 +156,14 @@ impl CommentCtx {
                         // does NOT immediately follow on the next line — that
                         // comment's leading hardline will provide the break.
                         let next_end = t.offset + t.length;
-                        let next_is_contiguous_comment = cursor + 1
-                            < self.comments.len()
+                        let next_is_contiguous_comment = cursor + 1 < self.comments.len()
                             && self.comments[cursor + 1].offset < before
                             && {
                                 let gap_s = (next_end as usize).min(source.len());
                                 let gap_e =
                                     (self.comments[cursor + 1].offset as usize).min(source.len());
-                                gap_s < gap_e && source[gap_s..gap_e].contains('\n')
+                                gap_s < gap_e
+                                    && source[gap_s..gap_e].contains('\n')
                                     && !source[gap_s..gap_e].contains("\n\n")
                             };
                         let chunk = if next_is_contiguous_comment {

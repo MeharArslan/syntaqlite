@@ -458,10 +458,10 @@ pub(crate) fn extract_terminals_from_y(
     // grammar-internal catch-all, not a real keyword.  Scan all .y files
     // (including base) since %wildcard is typically declared in the base grammar.
     for content in all_y_contents {
-        if let Ok(grammar) = util::grammar_parser::LemonGrammar::parse(content) {
-            if let Some(wc) = grammar.wildcard {
-                terminals.remove(wc);
-            }
+        if let Ok(grammar) = util::grammar_parser::LemonGrammar::parse(content)
+            && let Some(wc) = grammar.wildcard
+        {
+            terminals.remove(wc);
         }
     }
 
