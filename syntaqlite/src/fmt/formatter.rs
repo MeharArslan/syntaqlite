@@ -67,7 +67,7 @@ impl Formatter {
         // grammar here, as this method is called with external dialects too.
         let grammar = (*dialect).clone();
         let parser =
-            AnyParser::with_config(grammar, &ParserConfig::default().with_collect_tokens(true));
+            AnyParser::with_config(grammar, &ParserConfig::default().with_collect_tokens(true).with_macro_fallback(true));
         Formatter {
             dialect,
             parser,
