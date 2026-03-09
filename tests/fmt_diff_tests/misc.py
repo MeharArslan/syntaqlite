@@ -98,6 +98,28 @@ class CteFormat(TestSuite):
             """,
         )
 
+    def test_cte_body_indented(self):
+        return DiffTestBlueprint(
+            sql="""\
+                WITH cte AS (
+                    SELECT a, b, c, d, e, f, g, h, i, j, k
+                    FROM some_table
+                    WHERE some_column = 1 AND another_col = 2
+                )
+                SELECT * FROM cte
+            """,
+            out="""\
+                WITH cte AS (
+                  SELECT a, b, c, d, e, f, g, h, i, j, k
+                  FROM some_table
+                  WHERE
+                    some_column = 1
+                    AND another_col = 2
+                )
+                SELECT * FROM cte;
+            """,
+        )
+
 
 class JoinFormat(TestSuite):
     def test_inner_join(self):

@@ -14,7 +14,7 @@ node CteDefinition {
     " AS "
     if_enum(materialized, MATERIALIZED) { "MATERIALIZED " }
     if_enum(materialized, NOT_MATERIALIZED) { "NOT MATERIALIZED " }
-    "(" child(select) ")"
+    group { "(" nest { softline child(select) } softline ")" }
   }
 }
 

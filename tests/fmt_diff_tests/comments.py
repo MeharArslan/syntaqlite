@@ -789,7 +789,9 @@ class CteComment(TestSuite):
             out="""\
                 WITH cte AS\x20
                 -- c
-                (SELECT 1)
+                (
+                  SELECT 1
+                )
                 SELECT * FROM cte;
             """,
         )
