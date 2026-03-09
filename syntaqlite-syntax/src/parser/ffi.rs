@@ -272,16 +272,18 @@ impl CParser {
         // and body are valid pointers with the specified lengths.
         unsafe {
             syntaqlite_parser_register_macro(
-                self, name, name_len, param_names, param_count, body, body_len,
+                self,
+                name,
+                name_len,
+                param_names,
+                param_count,
+                body,
+                body_len,
             )
         }
     }
 
-    pub(crate) unsafe fn deregister_macro(
-        &mut self,
-        name: *const c_char,
-        name_len: u32,
-    ) -> i32 {
+    pub(crate) unsafe fn deregister_macro(&mut self, name: *const c_char, name_len: u32) -> i32 {
         // SAFETY: self is a valid, non-null CParser pointer; name is valid.
         unsafe { syntaqlite_parser_deregister_macro(self, name, name_len) }
     }
@@ -351,7 +353,6 @@ unsafe extern "C" {
         name_len: u32,
     ) -> i32;
 }
-
 
 #[cfg(all(test, feature = "sqlite"))]
 mod tests {
@@ -571,7 +572,10 @@ mod tests {
         register_macro(parser, "double", &["x"], "($x + $x)");
 
         let (rc, _sql) = parse_one(parser, "SELECT double!(1);");
-        assert_eq!(rc, PARSE_OK, "macro expansion should produce a valid statement");
+        assert_eq!(
+            rc, PARSE_OK,
+            "macro expansion should produce a valid statement"
+        );
         assert_ne!(unsafe { parser.result_root() }, NULL_NODE);
     }
 
@@ -654,7 +658,10 @@ mod tests {
         for name in &names {
             let sql = format!("SELECT {name}!(1);");
             let (rc, _sql) = parse_one(parser, &sql);
-            assert_eq!(rc, PARSE_OK, "macro '{name}' should expand after table grow");
+            assert_eq!(
+                rc, PARSE_OK,
+                "macro '{name}' should expand after table grow"
+            );
         }
     }
 
@@ -671,9 +678,7 @@ mod tests {
         }
         for i in 0..5 {
             let name = format!("a{i}");
-            let rc = unsafe {
-                parser.deregister_macro(name.as_ptr().cast(), name.len() as u32)
-            };
+            let rc = unsafe { parser.deregister_macro(name.as_ptr().cast(), name.len() as u32) };
             assert_eq!(rc, 0);
         }
         // Add more to force a grow (5 live + new entries past 70% of 16).
@@ -687,15 +692,16 @@ mod tests {
             let name = format!("a{i}");
             let sql = format!("SELECT {name}!(1);");
             let (rc, _sql) = parse_one(parser, &sql);
-            assert_eq!(rc, PARSE_OK, "macro '{name}' should be reachable after grow");
+            assert_eq!(
+                rc, PARSE_OK,
+                "macro '{name}' should be reachable after grow"
+            );
         }
 
         // Verify deleted entries (a0..a4) are gone.
         for i in 0..5 {
             let name = format!("a{i}");
-            let rc = unsafe {
-                parser.deregister_macro(name.as_ptr().cast(), name.len() as u32)
-            };
+            let rc = unsafe { parser.deregister_macro(name.as_ptr().cast(), name.len() as u32) };
             assert_eq!(rc, -1, "deleted macro 'a{i}' should not be found");
         }
     }

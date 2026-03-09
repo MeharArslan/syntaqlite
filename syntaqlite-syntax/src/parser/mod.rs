@@ -212,8 +212,12 @@ impl<G: TypedGrammar> TypedParser<G> {
             .expect("deregister_macro called while a session is still active");
         #[expect(clippy::cast_possible_truncation)]
         // SAFETY: inner.raw is valid; name pointer is valid for the C call duration.
-        let rc =
-            unsafe { inner.raw.as_mut().deregister_macro(name.as_ptr().cast(), name.len() as u32) };
+        let rc = unsafe {
+            inner
+                .raw
+                .as_mut()
+                .deregister_macro(name.as_ptr().cast(), name.len() as u32)
+        };
         rc == 0
     }
 
@@ -271,6 +275,41 @@ impl<G: TypedGrammar> Drop for TypedParseSession<G> {
 }
 
 impl<G: TypedGrammar> TypedParseSession<G> {
+    /// Register a template macro with the parser during an active session.
+    ///
+    /// This is used by the formatter to auto-register macros defined by
+    /// `CREATE PERFETTO MACRO` statements so that subsequent macro calls
+    /// are expanded correctly.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the session has already finished.
+    pub fn register_macro(&mut self, name: &str, params: &[&str], body: &str) {
+        let inner = self
+            .inner
+            .as_mut()
+            .expect("register_macro called on finished session");
+        let param_cstrings: Vec<std::ffi::CString> = params
+            .iter()
+            .map(|p| std::ffi::CString::new(*p).expect("param name must not contain NUL"))
+            .collect();
+        let param_ptrs: Vec<*const std::ffi::c_char> =
+            param_cstrings.iter().map(|c| c.as_ptr()).collect();
+        // SAFETY: inner.raw is valid; all string pointers are valid for the
+        // duration of the C call (which copies them).
+        #[expect(clippy::cast_possible_truncation)]
+        unsafe {
+            inner.raw.as_mut().register_macro(
+                name.as_ptr().cast(),
+                name.len() as u32,
+                param_ptrs.as_ptr(),
+                params.len() as u32,
+                body.as_ptr().cast(),
+                body.len() as u32,
+            );
+        }
+    }
+
     /// Parse and return the next statement as a tri-state outcome.
     ///
     /// Mirrors C parser return codes directly:

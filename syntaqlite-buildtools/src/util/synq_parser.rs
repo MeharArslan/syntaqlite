@@ -126,13 +126,32 @@ pub(crate) struct SemanticAnnotation {
     pub(crate) role: SemanticRole,
 }
 
+/// A `macro_def { ... }` annotation marking a node as a template macro definition.
+///
+/// Tells the formatter which fields contain the macro name, body, and parameter
+/// names so it can auto-register macros for expansion in subsequent statements.
+#[derive(Debug, Clone)]
+pub(crate) struct MacroDefAnnotation {
+    /// Field name for the macro name span.
+    pub(crate) name: String,
+    /// Field name for the macro body span.
+    pub(crate) body: String,
+    /// Field name for the args list node (None if the macro takes no params).
+    pub(crate) args: Option<String>,
+    /// Within each args list item, the field name for the param name span.
+    /// Required when `args` is Some.
+    pub(crate) arg_name: Option<String>,
+}
+
 #[derive(Debug)]
+#[expect(clippy::large_enum_variant)]
 pub(crate) enum Item {
     Node {
         name: String,
         fields: Vec<Field>,
         fmt: Option<Vec<Fmt>>,
         semantic: Option<SemanticAnnotation>,
+        macro_def: Option<MacroDefAnnotation>,
     },
     Enum {
         name: String,
@@ -478,6 +497,7 @@ impl Parser {
         let mut fields = Vec::new();
         let mut fmt = None;
         let mut semantic = None;
+        let mut macro_def = None;
         loop {
             if self.at_tok(&Token::RBrace) {
                 self.advance();
@@ -492,6 +512,11 @@ impl Parser {
                 self.advance();
                 self.expect(&Token::LBrace)?;
                 semantic = Some(self.parse_semantic(&name, &fields)?);
+                self.expect(&Token::RBrace)?;
+            } else if self.at("macro_def") {
+                self.advance();
+                self.expect(&Token::LBrace)?;
+                macro_def = Some(self.parse_macro_def(&name, &fields)?);
                 self.expect(&Token::RBrace)?;
             } else {
                 let name = self.ident()?;
@@ -518,6 +543,7 @@ impl Parser {
             fields,
             fmt,
             semantic,
+            macro_def,
         })
     }
 
@@ -636,6 +662,34 @@ impl Parser {
             }
         };
         Ok(SemanticAnnotation { role })
+    }
+
+    /// Parse a `macro_def(name: ..., body: ..., args: ..., arg_name: ...)` block.
+    ///
+    /// Marks the node as a template macro definition. The formatter uses this
+    /// to extract macro name/params/body and register them for expansion.
+    fn parse_macro_def(
+        &mut self,
+        node_name: &str,
+        fields: &[Field],
+    ) -> Result<MacroDefAnnotation, String> {
+        let params = self.parse_semantic_params(node_name, fields, &[])?;
+        let name = require_param(&params, "name", node_name, "macro_def")?;
+        let body = require_param(&params, "body", node_name, "macro_def")?;
+        let args = get_param(&params, "args").map(str::to_string);
+        let arg_name = get_param(&params, "arg_name").map(str::to_string);
+        if args.is_some() && arg_name.is_none() {
+            return Err(format!(
+                "macro_def in '{node_name}' specifies 'args' but missing 'arg_name' \
+                 (the field within each arg list item that holds the param name)"
+            ));
+        }
+        Ok(MacroDefAnnotation {
+            name,
+            body,
+            args,
+            arg_name,
+        })
     }
 
     /// Parse `(key: value, ...)` parameter list.

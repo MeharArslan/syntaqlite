@@ -38,6 +38,10 @@ RUST_VERSION: str = "1.94.0"  # Latest stable
 EMSCRIPTEN_VERSION: str = "4.0.8"  # Pre-built tarballs from Perfetto's GCS
 NODE_VERSION: str = "20.11.0"  # Pre-built from Chromium's storage (same as Perfetto)
 
+# Pinned commit for the Perfetto stdlib checkout.
+PERFETTO_REPO: str = "https://github.com/google/perfetto.git"
+PERFETTO_COMMIT: str = "HEAD"  # TODO: pin to a specific commit for CI reproducibility
+
 
 @dataclass
 class BinaryDep:
@@ -464,6 +468,59 @@ def install_source_dep(dep: SourceDep, target_dir: str) -> bool:
             os.unlink(tmp_path)
 
 
+def install_perfetto(target_dir: str, commit: str) -> bool:
+    """Shallow-clone the Perfetto repo for stdlib testing.
+
+    Clones only the stdlib subtree to third_party/src/perfetto/.
+    """
+    dest_dir = os.path.join(target_dir, "perfetto")
+    stamp_path = os.path.join(target_dir, ".perfetto.stamp")
+
+    # Check if already installed at the right commit.
+    if os.path.exists(stamp_path) and os.path.isdir(dest_dir):
+        with open(stamp_path) as f:
+            if f.read().strip() == commit:
+                return True
+
+    vprint(1, "Cloning Perfetto repository...")
+    os.makedirs(target_dir, exist_ok=True)
+
+    # Remove stale checkout.
+    if os.path.exists(dest_dir):
+        shutil.rmtree(dest_dir)
+
+    result = subprocess.run(
+        ["git", "clone", "--depth=1", "--filter=blob:none",
+         "--sparse", PERFETTO_REPO, dest_dir],
+        capture_output=VERBOSITY == 0,
+    )
+    if result.returncode != 0:
+        print("Failed to clone Perfetto repo", file=sys.stderr)
+        return False
+
+    # Sparse checkout: only the stdlib directory.
+    result = subprocess.run(
+        ["git", "-C", dest_dir, "sparse-checkout", "set",
+         "src/trace_processor/perfetto_sql/stdlib"],
+        capture_output=VERBOSITY == 0,
+    )
+    if result.returncode != 0:
+        print("Failed to set sparse checkout", file=sys.stderr)
+        return False
+
+    # Record the actual HEAD commit for the stamp.
+    actual_commit = subprocess.run(
+        ["git", "-C", dest_dir, "rev-parse", "HEAD"],
+        capture_output=True, text=True,
+    ).stdout.strip()
+
+    with open(stamp_path, "w") as f:
+        f.write(actual_commit if commit == "HEAD" else commit)
+
+    vprint(1, f"Installed Perfetto stdlib to {dest_dir} (commit {actual_commit[:12]})")
+    return True
+
+
 def main() -> int:
     global VERBOSITY
 
@@ -483,6 +540,11 @@ def main() -> int:
         "--ui",
         action="store_true",
         help="Install Emscripten SDK (for wasm/web-playground builds)"
+    )
+    parser.add_argument(
+        "--perfetto",
+        action="store_true",
+        help="Clone the Perfetto repo stdlib for format testing"
     )
     args = parser.parse_args()
     VERBOSITY = args.verbose
@@ -531,6 +593,11 @@ def main() -> int:
     # Install source dependencies
     for dep in SOURCE_DEPS:
         if not install_source_dep(dep, THIRD_PARTY_SRC_DIR):
+            success = False
+
+    # Install Perfetto stdlib (--perfetto only).
+    if args.perfetto:
+        if not install_perfetto(THIRD_PARTY_SRC_DIR, PERFETTO_COMMIT):
             success = False
 
     return 0 if success else 1

@@ -112,14 +112,13 @@ void syntaqlite_parser_end_macro(SyntaqliteParser* p);
 // Register a template macro.  Copies all strings.
 // The macro body uses $param placeholders (e.g. "$x + 1").
 // Returns 0 on success.
-int syntaqlite_parser_register_macro(
-    SyntaqliteParser* p,
-    const char* name,
-    uint32_t name_len,
-    const char* const* param_names,
-    uint32_t param_count,
-    const char* body,
-    uint32_t body_len);
+int syntaqlite_parser_register_macro(SyntaqliteParser* p,
+                                     const char* name,
+                                     uint32_t name_len,
+                                     const char* const* param_names,
+                                     uint32_t param_count,
+                                     const char* body,
+                                     uint32_t body_len);
 
 // Deregister a macro by name.  Returns 0 on success, -1 if not found.
 int syntaqlite_parser_deregister_macro(SyntaqliteParser* p,

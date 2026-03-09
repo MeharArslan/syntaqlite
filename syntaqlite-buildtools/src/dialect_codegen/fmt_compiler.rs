@@ -955,6 +955,7 @@ mod tests {
             }],
             fmt: Some(vec![Fmt::Span("source".into())]),
             semantic: None,
+            macro_def: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -981,6 +982,7 @@ mod tests {
                 els: Some(vec![Fmt::Text("NO".into())]),
             }]),
             semantic: None,
+            macro_def: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -1014,6 +1016,7 @@ mod tests {
                     default: None,
                 }]),
                 semantic: None,
+                macro_def: None,
             },
         ];
 
@@ -1043,6 +1046,7 @@ mod tests {
                     mappings: vec![("PLUS".into(), "+".into()), ("MINUS".into(), "-".into())],
                 }]),
                 semantic: None,
+                macro_def: None,
             },
         ];
 
@@ -1080,6 +1084,7 @@ mod tests {
                 field: "target".into(),
             }]),
             semantic: None,
+            macro_def: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -1101,6 +1106,7 @@ mod tests {
                 }],
                 fmt: Some(vec![Fmt::Child("x".into())]),
                 semantic: None,
+                macro_def: None,
             },
             Item::List {
                 name: "FooList".into(),

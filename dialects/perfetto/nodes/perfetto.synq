@@ -177,6 +177,8 @@ node CreatePerfettoMacroStmt {
   body: inline SyntaqliteSourceSpan
   args: index PerfettoMacroArgList
 
+  macro_def(name: macro_name, body: body, args: args, arg_name: arg_name)
+
   fmt {
     group {
       "CREATE"

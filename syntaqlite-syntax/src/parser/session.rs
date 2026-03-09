@@ -630,5 +630,4 @@ mod tests {
         let mut parser = Parser::new();
         assert!(!parser.deregister_macro("nonexistent"));
     }
-
 }

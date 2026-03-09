@@ -3,7 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::util::synq_parser::{Field, Fmt, Item, SemanticAnnotation};
+use crate::util::synq_parser::{Field, Fmt, Item, MacroDefAnnotation, SemanticAnnotation};
 
 pub(crate) mod c_dialect;
 pub(crate) mod c_meta_codegen;
@@ -56,6 +56,7 @@ pub(crate) struct NodeRef<'a> {
     #[expect(dead_code)]
     pub(crate) fmt: Option<&'a [Fmt]>,
     pub(crate) semantic: Option<&'a SemanticAnnotation>,
+    pub(crate) macro_def: Option<&'a MacroDefAnnotation>,
 }
 
 #[derive(Clone, Copy)]
@@ -120,12 +121,14 @@ impl<'a> AstModel<'a> {
                     fields,
                     fmt,
                     semantic,
+                    macro_def,
                 } => {
                     let node = NodeRef {
                         name: name.as_str(),
                         fields: fields.as_slice(),
                         fmt: fmt.as_deref(),
                         semantic: semantic.as_ref(),
+                        macro_def: macro_def.as_ref(),
                     };
                     node_names.insert(node.name);
                     nodes.push(node);
@@ -237,6 +240,7 @@ impl<'a> AstModel<'a> {
                     fields,
                     fmt,
                     semantic,
+                    macro_def,
                 } => {
                     let name_str = name.as_str();
                     let node = NodeRef {
@@ -244,6 +248,7 @@ impl<'a> AstModel<'a> {
                         fields: fields.as_slice(),
                         fmt: fmt.as_deref(),
                         semantic: semantic.as_ref(),
+                        macro_def: macro_def.as_ref(),
                     };
 
                     if let Some(base_fields) = base_node_fields.get(name_str) {

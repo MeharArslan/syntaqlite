@@ -21,7 +21,7 @@
 
 use std::mem::size_of;
 
-use syntaqlite_common::roles::{FIELD_ABSENT, FlagSpec, RelationKind, SemanticRole};
+use syntaqlite_common::roles::{FIELD_ABSENT, FlagSpec, MacroDef, RelationKind, SemanticRole};
 
 use super::AstModel;
 use crate::util::c_writer::CWriter;
@@ -349,9 +349,107 @@ pub(crate) fn generate_c_roles_h(model: &AstModel, prefix: &str) -> String {
     w.line(&format!(
         "static const uint32_t {prefix}_roles_count = {count};"
     ));
+
+    // Append macro_def entries (if any nodes have macro_def annotations).
+    append_macro_defs_to_header(&mut w, model, prefix);
+
     w.newline();
     w.header_guard_end(&guard);
     w.finish()
+}
+
+/// Append `macro_def` entries to the roles header.
+///
+/// Emits `static const uint8_t <prefix>_macro_defs_data[]` and
+/// `static const uint32_t <prefix>_macro_defs_count`.
+///
+/// Each entry is `size_of::<MacroDef>()` = 8 bytes.
+#[expect(clippy::cast_possible_truncation)]
+pub(crate) fn append_macro_defs_to_header(w: &mut CWriter, model: &AstModel, prefix: &str) {
+    use super::NodeLikeRef;
+    const MACRO_DEF_SIZE: usize = std::mem::size_of::<MacroDef>();
+
+    let mut entries: Vec<[u8; 8]> = Vec::new();
+
+    // Tags are 1-based (0 is the sentinel). node_like_items are in tag order.
+    for (idx, node_like) in model.node_like_items().iter().enumerate() {
+        let tag = (idx + 1) as u16; // 1-based; node tags fit u16
+        if let NodeLikeRef::Node(n) = node_like
+            && let Some(mdef) = n.macro_def
+        {
+            let fi = |name: &str| -> u8 { field_index(n.fields, name) };
+
+            // Resolve arg_name_field: look up the list's child type, find the field.
+            let arg_name_field = if let Some(ref args_field_name) = mdef.args {
+                let args_field = &n.fields[fi(args_field_name) as usize];
+                // The args field points to a list type. Find that list's child type.
+                let child_type = model
+                    .lists()
+                    .iter()
+                    .find(|l| l.name == args_field.type_name)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "args field '{args_field_name}' in '{}' references \
+                             list type '{}' not found",
+                            n.name, args_field.type_name
+                        )
+                    })
+                    .child_type;
+                // Find the child type's fields and look up arg_name.
+                let arg_name = mdef
+                    .arg_name
+                    .as_ref()
+                    .expect("arg_name required when args is set");
+                let child_node = model
+                    .nodes()
+                    .iter()
+                    .find(|cn| cn.name == child_type)
+                    .unwrap_or_else(|| {
+                        panic!("list child type '{child_type}' not found as node")
+                    });
+                field_index(child_node.fields, arg_name)
+            } else {
+                FIELD_ABSENT
+            };
+
+            let mut bytes = [0u8; 8];
+            bytes[0] = (tag & 0xFF) as u8;
+            bytes[1] = (tag >> 8) as u8;
+            bytes[2] = fi(&mdef.name);
+            bytes[3] = fi(&mdef.body);
+            bytes[4] = mdef.args.as_ref().map_or(FIELD_ABSENT, |a| fi(a));
+            bytes[5] = arg_name_field;
+            // bytes[6..8] = padding (zero)
+            entries.push(bytes);
+        }
+    }
+
+    w.newline();
+    w.line(&format!(
+        "/* Macro definition metadata for the {prefix} dialect. */\n\
+         /* Each entry is {MACRO_DEF_SIZE} bytes: node_tag(u16) + 4 field indices + 2 pad. */"
+    ));
+    w.newline();
+    if entries.is_empty() {
+        // Empty array: use a single zero byte to avoid zero-length array.
+        w.line(&format!(
+            "static const uint8_t {prefix}_macro_defs_data[] = {{ 0 }};"
+        ));
+    } else {
+        w.line(&format!(
+            "static const uint8_t {prefix}_macro_defs_data[] = {{"
+        ));
+        for entry in &entries {
+            let vals: Vec<String> = entry.iter().map(|b| format!("0x{b:02x}")).collect();
+            w.line(&format!("    {},", vals.join(",")));
+        }
+        w.line("};");
+    }
+    w.newline();
+    w.line(&format!(
+        "static const uint32_t {prefix}_macro_defs_count = {};",
+        entries.len()
+    ));
 }
 
 #[cfg(test)]

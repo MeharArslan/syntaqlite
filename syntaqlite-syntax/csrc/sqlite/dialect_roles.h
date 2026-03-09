@@ -69,4 +69,11 @@ static const uint8_t sqlite_roles_data[] = {
 
 static const uint32_t sqlite_roles_count = 79;
 
+/* Macro definition metadata for the sqlite dialect. */
+/* Each entry is 8 bytes: node_tag(u16) + 4 field indices + 2 pad. */
+
+static const uint8_t sqlite_macro_defs_data[] = {0};
+
+static const uint32_t sqlite_macro_defs_count = 0;
+
 #endif  // SYNTAQLITE_SQLITE_DIALECT_ROLES_H

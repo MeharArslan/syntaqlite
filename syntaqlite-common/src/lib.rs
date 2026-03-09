@@ -245,10 +245,52 @@ pub mod roles {
         Transparent = 16,
     }
 
+    /// Metadata for a node type that defines a template macro.
+    ///
+    /// Stored in a small array in the dialect template, indexed linearly
+    /// (typically 0–1 entries). The formatter checks each parsed statement's
+    /// root tag against these entries to auto-register macros.
+    ///
+    /// ## Layout
+    ///
+    /// All fields are `u8` (alignment = 1), so it can be safely cast from
+    /// a `*const u8` byte array. Total size is 8 bytes (6 payload + 2 pad).
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct MacroDef {
+        /// Node tag low byte (little-endian).
+        pub node_tag_lo: u8,
+        /// Node tag high byte (little-endian).
+        pub node_tag_hi: u8,
+        /// Field index for the macro name (`SyntaqliteSourceSpan`).
+        pub name_field: FieldIdx,
+        /// Field index for the macro body (`SyntaqliteSourceSpan`).
+        pub body_field: FieldIdx,
+        /// Field index for the args list node (`FIELD_ABSENT` if no params).
+        pub args_field: FieldIdx,
+        /// Within each args list item, field index of the param name span.
+        /// Only meaningful when `args_field != FIELD_ABSENT`.
+        pub arg_name_field: FieldIdx,
+        _pad0: u8,
+        _pad1: u8,
+    }
+
+    impl MacroDef {
+        /// Reconstruct the node tag as a `u32`.
+        pub fn node_tag(self) -> u32 {
+            u32::from(self.node_tag_lo) | (u32::from(self.node_tag_hi) << 8)
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
         use std::mem::size_of;
+
+        #[test]
+        fn macro_def_is_8_bytes() {
+            assert_eq!(size_of::<MacroDef>(), 8);
+        }
 
         #[test]
         fn semantic_role_is_8_bytes() {

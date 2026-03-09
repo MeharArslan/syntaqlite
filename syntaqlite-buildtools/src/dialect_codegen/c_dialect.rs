@@ -248,6 +248,8 @@ pub(crate) fn generate_dialect_c(
         w.line("    uint32_t fmt_dispatch_count;");
         w.line("    const uint8_t *roles_data;");
         w.line("    uint32_t roles_count;");
+        w.line("    const uint8_t *macro_defs_data;");
+        w.line("    uint32_t macro_defs_count;");
         w.line("    const uint8_t *fmt_prec_table;");
         w.line("    uint32_t fmt_prec_table_count;");
         w.line("    const uint32_t *fmt_expr_meta;");
@@ -289,6 +291,18 @@ pub(crate) fn generate_dialect_c(
         } else {
             w.line("    .roles_data = 0,");
             w.line("    .roles_count = 0,");
+        }
+        // macro_defs are always emitted inside the roles header (count=0 when none).
+        if has_roles {
+            w.line(&format!(
+                "    .macro_defs_data = {dialect}_macro_defs_data,"
+            ));
+            w.line(&format!(
+                "    .macro_defs_count = {dialect}_macro_defs_count,"
+            ));
+        } else {
+            w.line("    .macro_defs_data = 0,");
+            w.line("    .macro_defs_count = 0,");
         }
         if has_fmt {
             w.line(&format!("    .fmt_prec_table = {p}_prec_table,"));
