@@ -626,6 +626,13 @@ static int expand_template(SyntaqliteParser* p,
     pos += (uint32_t)tlen;
   }
 
+  // Null-terminate so the tokenizer has a sentinel when scanning ahead.
+  while (len + 1 > cap) {
+    cap *= 2;
+    buf = p->mem.xRealloc(buf, cap);
+  }
+  buf[len] = '\0';
+
   *out_buf = buf;
   *out_len = len;
   return 0;
