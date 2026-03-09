@@ -1,6 +1,7 @@
 impl core::convert::From<syntaqlite_buildtools::version_analysis::SqliteVersion> for alloc::string::String
 impl core::fmt::Display for syntaqlite_buildtools::version_analysis::SqliteVersion
 impl syntaqlite_buildtools::codegen_api::DialectNaming
+impl syntaqlite_buildtools::codegen_api::MacroStyle
 impl syntaqlite_buildtools::commands::AnalyzeVersions
 impl syntaqlite_buildtools::commands::SqliteCodegen
 impl syntaqlite_buildtools::commands::SqliteExtract
@@ -11,6 +12,8 @@ impl<'a> syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>
 pub const fn syntaqlite_buildtools::base_files::base_synq_files() -> &'static [(&'static str, &'static str)]
 pub const fn syntaqlite_buildtools::base_files::base_y_files() -> &'static [(&'static str, &'static str)]
 pub const fn syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>::with_base_synq(self, files: &'a [(&'a str, &'a str)]) -> Self
+pub const fn syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>::with_macro_style(self, style: syntaqlite_buildtools::codegen_api::MacroStyle) -> Self
+pub enum syntaqlite_buildtools::codegen_api::MacroStyle
 pub fn alloc::string::String::from(v: syntaqlite_buildtools::version_analysis::SqliteVersion) -> Self
 pub fn syntaqlite_buildtools::amalgamate::amalgamate_dialect(dialect: &str, dialect_dir: &std::path::Path, runtime_header: core::option::Option<&str>, ext_header: core::option::Option<&str>) -> core::result::Result<syntaqlite_buildtools::amalgamate::AmalgamateOutput, alloc::string::String>
 pub fn syntaqlite_buildtools::amalgamate::amalgamate_full(dialect: &str, runtime_dir: &std::path::Path, dialect_dir: &std::path::Path) -> core::result::Result<syntaqlite_buildtools::amalgamate::AmalgamateOutput, alloc::string::String>
@@ -34,6 +37,7 @@ pub fn syntaqlite_buildtools::codegen_api::DialectNaming::node_header_name(&self
 pub fn syntaqlite_buildtools::codegen_api::DialectNaming::parser_symbol_prefix(&self) -> alloc::string::String
 pub fn syntaqlite_buildtools::codegen_api::DialectNaming::token_type_name(&self) -> alloc::string::String
 pub fn syntaqlite_buildtools::codegen_api::DialectNaming::tokens_header_name(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::MacroStyle::c_name(self) -> &'static str
 pub fn syntaqlite_buildtools::codegen_api::read_named_files_from_dir(dir: &str, ext: &str) -> core::result::Result<alloc::vec::Vec<(alloc::string::String, alloc::string::String)>, alloc::string::String>
 pub fn syntaqlite_buildtools::commands::AnalyzeVersions::run(&self) -> core::result::Result<(), alloc::string::String>
 pub fn syntaqlite_buildtools::commands::SqliteCodegen::run(&self) -> core::result::Result<(), alloc::string::String>
@@ -79,6 +83,8 @@ pub struct syntaqlite_buildtools::version_analysis::grammar::GrammarSummary
 pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::ext_header: core::option::Option<alloc::string::String>
 pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::header: alloc::string::String
 pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::source: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::MacroStyle::None
+pub syntaqlite_buildtools::codegen_api::MacroStyle::Rust
 pub syntaqlite_buildtools::commands::AnalyzeVersions::output_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::AnalyzeVersions::sqlite_source_dir: alloc::string::String
 pub syntaqlite_buildtools::commands::SqliteCodegen::actions_dir: alloc::string::String

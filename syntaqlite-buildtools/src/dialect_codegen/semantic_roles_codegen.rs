@@ -404,9 +404,7 @@ pub(crate) fn append_macro_defs_to_header(w: &mut CWriter, model: &AstModel, pre
                     .nodes()
                     .iter()
                     .find(|cn| cn.name == child_type)
-                    .unwrap_or_else(|| {
-                        panic!("list child type '{child_type}' not found as node")
-                    });
+                    .unwrap_or_else(|| panic!("list child type '{child_type}' not found as node"));
                 field_index(child_node.fields, arg_name)
             } else {
                 FIELD_ABSENT

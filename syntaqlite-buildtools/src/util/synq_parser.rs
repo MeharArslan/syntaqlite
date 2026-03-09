@@ -515,9 +515,7 @@ impl Parser {
                 self.expect(&Token::RBrace)?;
             } else if self.at("macro_def") {
                 self.advance();
-                self.expect(&Token::LBrace)?;
                 macro_def = Some(self.parse_macro_def(&name, &fields)?);
-                self.expect(&Token::RBrace)?;
             } else {
                 let name = self.ident()?;
                 self.expect(&Token::Colon)?;
@@ -673,7 +671,7 @@ impl Parser {
         node_name: &str,
         fields: &[Field],
     ) -> Result<MacroDefAnnotation, String> {
-        let params = self.parse_semantic_params(node_name, fields, &[])?;
+        let params = self.parse_semantic_params(node_name, fields, &["arg_name"])?;
         let name = require_param(&params, "name", node_name, "macro_def")?;
         let body = require_param(&params, "body", node_name, "macro_def")?;
         let args = get_param(&params, "args").map(str::to_string);

@@ -1973,7 +1973,7 @@ mod tests {
 
     // ── DML: unknown table should not produce column errors ─────────────────
 
-    /// INSERT INTO unknown_table(col) — column refs in the INSERT column list
+    /// `INSERT INTO unknown_table(col)` — column refs in the INSERT column list
     /// must not be flagged when the target table is unknown.
     #[test]
     fn insert_unknown_table_columns_not_flagged() {
@@ -1995,7 +1995,7 @@ mod tests {
         );
     }
 
-    /// UPDATE unknown_table SET col=val WHERE other_col=1 — column refs in
+    /// `UPDATE unknown_table SET col=val WHERE other_col=1` — column refs in
     /// SET and WHERE must not be flagged when the target table is unknown.
     #[test]
     fn update_unknown_table_columns_not_flagged() {
@@ -2017,7 +2017,7 @@ mod tests {
         );
     }
 
-    /// DELETE FROM unknown_table WHERE col=1 — column refs in WHERE must not
+    /// `DELETE FROM unknown_table WHERE col=1` — column refs in WHERE must not
     /// be flagged when the target table is unknown.
     #[test]
     fn delete_unknown_table_columns_not_flagged() {

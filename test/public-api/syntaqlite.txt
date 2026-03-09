@@ -82,7 +82,9 @@ pub fn syntaqlite::LspServer::run(dialect: impl core::convert::Into<syntaqlite::
 pub fn syntaqlite::SemanticAnalyzer::analyze(&mut self, source: &str, user_catalog: &syntaqlite::Catalog, config: &syntaqlite::ValidationConfig) -> syntaqlite::SemanticModel
 pub fn syntaqlite::SemanticAnalyzer::default() -> Self
 pub fn syntaqlite::SemanticAnalyzer::new() -> Self
+pub fn syntaqlite::SemanticAnalyzer::set_mode(&mut self, mode: syntaqlite::semantic::AnalysisMode)
 pub fn syntaqlite::SemanticAnalyzer::with_dialect(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>) -> Self
+pub fn syntaqlite::SemanticAnalyzer::with_mode(self, mode: syntaqlite::semantic::AnalysisMode) -> Self
 pub fn syntaqlite::SemanticModel::diagnostics(&self) -> &[syntaqlite::Diagnostic]
 pub fn syntaqlite::SemanticModel::source(&self) -> &str
 pub fn syntaqlite::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
@@ -263,6 +265,8 @@ pub use syntaqlite::TokenType
 pub use syntaqlite::any::<<syntaqlite_syntax::any::*>>
 pub use syntaqlite::dialect::FIELD_ABSENT
 pub use syntaqlite::dialect::FieldIdx
+pub use syntaqlite::dialect::FlagSpec
+pub use syntaqlite::dialect::MacroDef
 pub use syntaqlite::dialect::RelationKind
 pub use syntaqlite::dialect::SemanticRole
 pub use syntaqlite::nodes::<<syntaqlite_syntax::nodes::*>>

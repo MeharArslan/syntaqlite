@@ -540,11 +540,14 @@ mod tests {
     // ── Macro registry / hashmap tests ──────────────────────────────────
 
     /// Helper: register a template macro via the C API.
+    #[expect(clippy::cast_possible_truncation)]
     fn register_macro(parser: &mut CParser, name: &str, params: &[&str], body: &str) {
         let param_cstrings: Vec<CString> =
             params.iter().map(|p| CString::new(*p).unwrap()).collect();
         let param_ptrs: Vec<*const std::ffi::c_char> =
             param_cstrings.iter().map(|c| c.as_ptr()).collect();
+        // SAFETY: All pointers point to valid Rust-owned data that outlives
+        // the FFI call. Lengths are small test values that fit in u32.
         let rc = unsafe {
             parser.register_macro(
                 name.as_ptr().cast(),
@@ -561,6 +564,7 @@ mod tests {
     /// Helper: parse a single statement and return its status.
     fn parse_one(parser: &mut CParser, sql: &str) -> (i32, CString) {
         let sql_c = reset_with_source(parser, sql);
+        // SAFETY: parser has been reset with a valid NUL-terminated source.
         let rc = unsafe { parser.next() };
         (rc, sql_c)
     }
@@ -576,6 +580,7 @@ mod tests {
             rc, PARSE_OK,
             "macro expansion should produce a valid statement"
         );
+        // SAFETY: parser has valid state after parse_one.
         assert_ne!(unsafe { parser.result_root() }, NULL_NODE);
     }
 
@@ -585,6 +590,7 @@ mod tests {
         let parser = handle.parser_mut();
         register_macro(parser, "foo", &["x"], "$x");
 
+        // SAFETY: pointer and length match the literal "foo".
         let rc = unsafe { parser.deregister_macro(b"foo".as_ptr().cast(), 3) };
         assert_eq!(rc, 0);
 
@@ -599,6 +605,7 @@ mod tests {
         let mut handle = ParserHandle::new();
         let parser = handle.parser_mut();
 
+        // SAFETY: pointer and length match the literal "nope".
         let rc = unsafe { parser.deregister_macro(b"nope".as_ptr().cast(), 4) };
         assert_eq!(rc, -1);
     }
@@ -632,6 +639,7 @@ mod tests {
         let parser = handle.parser_mut();
         register_macro(parser, "tmp", &["x"], "$x");
 
+        // SAFETY: pointer and length match the literal "tmp".
         let rc = unsafe { parser.deregister_macro(b"tmp".as_ptr().cast(), 3) };
         assert_eq!(rc, 0);
 
@@ -678,6 +686,8 @@ mod tests {
         }
         for i in 0..5 {
             let name = format!("a{i}");
+            // SAFETY: pointer and length refer to the valid `name` string.
+            #[expect(clippy::cast_possible_truncation)]
             let rc = unsafe { parser.deregister_macro(name.as_ptr().cast(), name.len() as u32) };
             assert_eq!(rc, 0);
         }
@@ -701,6 +711,8 @@ mod tests {
         // Verify deleted entries (a0..a4) are gone.
         for i in 0..5 {
             let name = format!("a{i}");
+            // SAFETY: pointer and length refer to the valid `name` string.
+            #[expect(clippy::cast_possible_truncation)]
             let rc = unsafe { parser.deregister_macro(name.as_ptr().cast(), name.len() as u32) };
             assert_eq!(rc, -1, "deleted macro 'a{i}' should not be found");
         }

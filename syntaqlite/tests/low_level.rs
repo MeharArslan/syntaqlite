@@ -229,7 +229,7 @@ fn macro_straddle_rejected_by_parser() {
     );
 }
 
-/// Multi-statement via feed_token: both statements produce correct AST roots.
+/// Multi-statement via `feed_token`: both statements produce correct AST roots.
 #[test]
 fn feed_tokens_multi_statement_both_roots() {
     let source = "SELECT 1; SELECT 2";
@@ -255,7 +255,7 @@ fn feed_tokens_multi_statement_both_roots() {
     assert!(matches!(stmt2.root(), Some(Stmt::SelectStmt(_))));
 }
 
-/// Three statements: the middle one has an explicit SEMI, the last uses finish().
+/// Three statements: the middle one has an explicit SEMI, the last uses `finish()`.
 #[test]
 fn feed_tokens_three_statements() {
     let source = "SELECT 1; SELECT 2; SELECT 3";
@@ -376,7 +376,7 @@ fn feed_tokens_normal_then_explain() {
     );
 }
 
-/// finish() on an incomplete statement reports a syntax error.
+/// `finish()` on an incomplete statement reports a syntax error.
 #[test]
 fn feed_tokens_incomplete_statement_error() {
     let source = "SELECT";
