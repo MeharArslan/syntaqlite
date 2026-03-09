@@ -174,14 +174,18 @@ node CreatePerfettoMacroStmt {
   macro_name: inline SyntaqliteSourceSpan
   or_replace: inline Bool
   return_type: inline SyntaqliteSourceSpan
+  body: inline SyntaqliteSourceSpan
   args: index PerfettoMacroArgList
 
   fmt {
-    "CREATE"
-    if_flag(or_replace) { " OR REPLACE" }
-    " PERFETTO MACRO " span(macro_name)
-    "(" if_set(args) { child(args) } ")"
-    " RETURNS " span(return_type)
+    group {
+      "CREATE"
+      if_flag(or_replace) { " OR REPLACE" }
+      " PERFETTO MACRO " span(macro_name)
+      "(" if_set(args) { child(args) } ")"
+    }
+    hardline "RETURNS " span(return_type)
+    hardline "AS " span(body)
   }
 }
 

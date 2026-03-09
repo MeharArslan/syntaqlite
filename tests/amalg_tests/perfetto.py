@@ -241,6 +241,7 @@ class PerfettoExtension(TestSuite):
               macro_name: "m"
               or_replace: FALSE
               return_type: "TableOrSubquery"
+              body: "x"
               args:
                 PerfettoMacroArgList [1 items]
                   PerfettoMacroArg

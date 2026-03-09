@@ -16,6 +16,44 @@ class PerfettoIndexFormat(TestSuite):
         )
 
 
+class PerfettoMacroFormat(TestSuite):
+    def test_create_perfetto_macro_body_preserved(self):
+        return DiffTestBlueprint(
+            sql="""\
+                CREATE PERFETTO MACRO m(x TableOrSubquery) RETURNS TableOrSubquery AS x
+            """,
+            out="""\
+                CREATE PERFETTO MACRO m(x TableOrSubquery)
+                RETURNS TableOrSubquery
+                AS x
+            """,
+        )
+
+    def test_create_perfetto_macro_body_select(self):
+        return DiffTestBlueprint(
+            sql="""\
+                CREATE PERFETTO MACRO my_macro(t TableOrSubquery) RETURNS TableOrSubquery AS (SELECT * FROM $t)
+            """,
+            out="""\
+                CREATE PERFETTO MACRO my_macro(t TableOrSubquery)
+                RETURNS TableOrSubquery
+                AS (SELECT * FROM $t)
+            """,
+        )
+
+    def test_create_or_replace_perfetto_macro_body(self):
+        return DiffTestBlueprint(
+            sql="""\
+                CREATE OR REPLACE PERFETTO MACRO m(x Expr) RETURNS Expr AS $x
+            """,
+            out="""\
+                CREATE OR REPLACE PERFETTO MACRO m(x Expr)
+                RETURNS Expr
+                AS $x
+            """,
+        )
+
+
 class PerfettoFunctionFormat(TestSuite):
     def test_create_perfetto_function_returns_on_newline(self):
         return DiffTestBlueprint(

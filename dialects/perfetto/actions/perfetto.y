@@ -145,17 +145,21 @@ cmd(A) ::= CREATE perfetto_or_replace(R) PERFETTO INDEX nm(N) ON nm(T) LP perfet
 }
 
 // Macro body: consumes arbitrary tokens via the %wildcard ANY mechanism.
-perfetto_macro_body ::= ANY.
-perfetto_macro_body ::= perfetto_macro_body ANY.
+%type perfetto_macro_body {SynqParseToken}
+perfetto_macro_body(A) ::= ANY(B). { A = B; }
+perfetto_macro_body(A) ::= perfetto_macro_body(B) ANY(C). {
+    A = (SynqParseToken){B.z, (uint32_t)(C.z + C.n - B.z), B.type};
+}
 
 // ---------- CREATE PERFETTO MACRO ----------
 
-cmd(A) ::= CREATE perfetto_or_replace(R) PERFETTO MACRO nm(N) LP perfetto_macro_arg_list(ARGS) RP RETURNS ID(T) AS perfetto_macro_body. {
+cmd(A) ::= CREATE perfetto_or_replace(R) PERFETTO MACRO nm(N) LP perfetto_macro_arg_list(ARGS) RP RETURNS ID(T) AS perfetto_macro_body(BODY). {
     synq_mark_as_type(pCtx, T);
     A = synq_parse_create_perfetto_macro_stmt(pCtx,
         synq_span(pCtx, N),
         R ? SYNTAQLITE_BOOL_TRUE : SYNTAQLITE_BOOL_FALSE,
         synq_span(pCtx, T),
+        synq_span(pCtx, BODY),
         ARGS);
 }
 
