@@ -137,11 +137,41 @@ impl CommentCtx {
             match t.kind {
                 CommentKind::Line => {
                     if has_newline {
+                        // Preserve blank lines between separate comment blocks.
+                        let has_blank_line = {
+                            let gs = gap_start.min(source.len());
+                            let ge = gap_end.min(source.len());
+                            gs < ge && source[gs..ge].contains("\n\n")
+                        };
                         let hl1 = arena.hardline();
+                        let prefix = if has_blank_line && leading != NIL_DOC {
+                            let extra = arena.hardline();
+                            arena.cat(extra, hl1)
+                        } else {
+                            hl1
+                        };
                         let comment_doc = arena.text(text);
-                        let hl2 = arena.hardline();
-                        let inner = arena.cat(comment_doc, hl2);
-                        let chunk = arena.cat(hl1, inner);
+                        // Only emit a trailing hardline if the next comment
+                        // does NOT immediately follow on the next line — that
+                        // comment's leading hardline will provide the break.
+                        let next_end = t.offset + t.length;
+                        let next_is_contiguous_comment = cursor + 1
+                            < self.comments.len()
+                            && self.comments[cursor + 1].offset < before
+                            && {
+                                let gap_s = (next_end as usize).min(source.len());
+                                let gap_e =
+                                    (self.comments[cursor + 1].offset as usize).min(source.len());
+                                gap_s < gap_e && source[gap_s..gap_e].contains('\n')
+                                    && !source[gap_s..gap_e].contains("\n\n")
+                            };
+                        let chunk = if next_is_contiguous_comment {
+                            arena.cat(prefix, comment_doc)
+                        } else {
+                            let hl2 = arena.hardline();
+                            let inner = arena.cat(comment_doc, hl2);
+                            arena.cat(prefix, inner)
+                        };
                         leading = if leading == NIL_DOC {
                             chunk
                         } else {
