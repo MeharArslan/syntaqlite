@@ -319,7 +319,8 @@ export class Engine {
     }
   }
   /** Set the active language mode. Must be called before running diagnostics or semantic
-   *  tokens so the WASM can dispatch to the correct implementation automatically. */
+   *  tokens so the WASM can dispatch to the correct implementation automatically.
+   *  @experimental Embedded language support is experimental and may change. */
   setLanguageMode(lang: "sql" | EmbeddedLanguage): void {
     this.currentLangMode = lang;
     if (!this.setLanguageModeRaw) return;
@@ -328,7 +329,8 @@ export class Engine {
   }
 
   /** Extract SQL fragments from `source`. Returns empty in SQL mode (O(1) fast path).
-   *  In embedded mode the WASM extractor runs based on the language set by setLanguageMode. */
+   *  In embedded mode the WASM extractor runs based on the language set by setLanguageMode.
+   *  @experimental Embedded language support is experimental and may change. */
   runExtract(source: string): EmbeddedExtractResult {
     if (this.currentLangMode === "sql") return {ok: true, fragments: []};
     if (!this.extractRaw) return {ok: true, fragments: []};

@@ -30,9 +30,9 @@ export class App {
   /** Set by the workspace to reveal a diagnostic in the editor. */
   revealDiagnostic: ((d: DiagnosticEntry) => void) | undefined = undefined;
 
-  /** Current editor language mode. */
+  /** Current editor language mode. Embedded modes (python, typescript) are experimental. */
   languageMode: "sql" | EmbeddedLanguage = "sql";
-  /** Extracted SQL fragments in embedded mode. */
+  /** Extracted SQL fragments in embedded mode (experimental). */
   embeddedFragments: EmbeddedFragment[] = [];
   /** Selected fragment index (-1 = show all). */
   selectedFragmentIndex = -1;

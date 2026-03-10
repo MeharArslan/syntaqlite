@@ -54,8 +54,8 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
           },
           [
             m("option", {value: "sql"}, "SQL"),
-            m("option", {value: "python"}, "Python"),
-            m("option", {value: "typescript"}, "TypeScript"),
+            m("option", {value: "python"}, "Python (experimental)"),
+            m("option", {value: "typescript"}, "TypeScript (experimental)"),
           ],
         ),
         m("label.sq-editor-pane__label", {for: "sq-editor-preset"}, "Presets"),

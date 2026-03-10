@@ -22,6 +22,12 @@ pub(crate) mod sqlite;
 #[cfg(feature = "lsp")]
 pub mod lsp;
 
+/// Embedded SQL extraction from host language sources.
+///
+/// # Experimental
+///
+/// This module is experimental and its API may change in future releases.
+/// Enable with the `embedded` cargo feature.
 #[cfg(feature = "embedded")]
 pub mod embedded;
 

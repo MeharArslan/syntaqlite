@@ -3,6 +3,10 @@
 
 //! Embedded SQL extraction from host language sources.
 //!
+//! # Experimental
+//!
+//! This module is experimental and its API may change in future releases.
+//!
 //! Extracts SQL fragments from host language files, replaces interpolation holes
 //! with macro-call placeholders ([`HOLE_PLACEHOLDER`]), runs validation via
 //! [`SemanticAnalyzer`] with `macro_fallback` enabled, and maps diagnostic
@@ -36,6 +40,8 @@ use offset_map::OffsetMap;
 // ── Shared types ────────────────────────────────────────────────────────
 
 /// A SQL fragment extracted from a host language source file.
+///
+/// **Experimental:** this type is part of the experimental embedded SQL API.
 #[derive(Debug)]
 pub struct EmbeddedFragment {
     /// Byte range of the SQL content in the host file (excluding quotes).
@@ -130,6 +136,8 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 // ── EmbeddedAnalyzer ────────────────────────────────────────────────────
 
 /// Analyzer for embedded SQL in host-language source files.
+///
+/// **Experimental:** this type is part of the experimental embedded SQL API.
 ///
 /// Holds the dialect, optional catalog context, and validation config so they
 /// don't need to be threaded through every call.

@@ -7,6 +7,8 @@ use super::{EmbeddedFragment, HOLE_PLACEHOLDER, Hole, starts_with_sql_keyword};
 
 /// Extract SQL fragments from Python source code.
 ///
+/// **Experimental:** this function is part of the experimental embedded SQL API.
+///
 /// Scans for f-strings (`f"..."`, `f'...'`, `f"""..."""`, `f'''...'''`) and
 /// checks if their content starts with a SQL keyword. For qualifying strings,
 /// interpolation holes (`{expr}`) are replaced with [`HOLE_PLACEHOLDER`](super::HOLE_PLACEHOLDER).

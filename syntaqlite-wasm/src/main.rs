@@ -384,6 +384,10 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
 /// Set the active language mode. Pass `u32::MAX` for raw SQL mode, or a host-language
 /// code (0 = Python, 1 = TypeScript) for embedded-SQL mode. After this call,
 /// `wasm_diagnostics`, `wasm_semantic_tokens`, and `wasm_extract` dispatch automatically.
+///
+/// # Experimental
+///
+/// Embedded language support is experimental and may change in future releases.
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_set_language_mode(lang: u32) {
     let embedded = if lang == LANG_SQL_SENTINEL {
@@ -551,9 +555,10 @@ pub extern "C" fn wasm_clear_all_cflags() -> i32 {
     catch_unwind(run_clear_all_cflags, "wasm_clear_all_cflags panicked")
 }
 
-// ── Embedded SQL WASM exports ────────────────────────────────────────
+// ── Embedded SQL WASM exports (experimental) ─────────────────────────
 //
 // lang encoding: 0 = Python, 1 = TypeScript/JavaScript
+// NOTE: Embedded language support is experimental and may change.
 
 use syntaqlite::embedded::{EmbeddedAnalyzer, EmbeddedFragment};
 

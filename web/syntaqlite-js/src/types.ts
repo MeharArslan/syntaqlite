@@ -130,16 +130,19 @@ export interface DiagnosticsResult {
   diagnostics: DiagnosticEntry[];
 }
 
-// ── Embedded SQL types ──
+// ── Embedded SQL types (experimental) ──
 
+/** @experimental Embedded language support is experimental and may change. */
 export type EmbeddedLanguage = "python" | "typescript";
 
+/** @experimental */
 export interface EmbeddedHole {
   start: number;
   end: number;
   placeholder: string;
 }
 
+/** @experimental */
 export interface EmbeddedFragment {
   start: number;
   end: number;
@@ -147,6 +150,7 @@ export interface EmbeddedFragment {
   holes: EmbeddedHole[];
 }
 
+/** @experimental */
 export interface EmbeddedExtractResult {
   ok: boolean;
   fragments: EmbeddedFragment[];
