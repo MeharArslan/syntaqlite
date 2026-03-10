@@ -25,7 +25,10 @@ node PerfettoMacroArg {
   }
 }
 
-list PerfettoMacroArgList { PerfettoMacroArg }
+list PerfettoMacroArgList {
+  PerfettoMacroArg
+  fmt { for_each(sep: "," line) { child(_item) } }
+}
 
 node PerfettoIndexedColumn {
   column_name: inline SyntaqliteSourceSpan
@@ -211,7 +214,15 @@ node CreatePerfettoMacroStmt {
       "CREATE"
       if_flag(or_replace) { " OR REPLACE" }
       " PERFETTO MACRO " span(macro_name)
-      "(" if_set(args) { child(args) } ")"
+      "("
+      if_set(args) {
+        nest {
+          softline
+          child(args)
+        }
+        softline
+      }
+      ")"
     }
     hardline "RETURNS " span(return_type)
     hardline "AS " span(body)

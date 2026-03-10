@@ -102,6 +102,148 @@ fn macro_multi_node_no_extra_separator() {
 }
 
 #[test]
+fn macro_multiline_reindented() {
+    let input = concat!(
+        "SELECT *\n",
+        "FROM graph_next_sibling!(\n",
+        "        (\n",
+        "          SELECT id, parent_id, ts\n",
+        "          FROM slice\n",
+        "          WHERE dur = 0\n",
+        "        )\n",
+        "    )\n",
+    );
+    let mut fmt = syntaqlite::Formatter::new();
+    let out = fmt.format(input).unwrap();
+    eprintln!("=== actual ===\n{out}=== end ===");
+    assert_eq!(
+        out,
+        concat!(
+            "SELECT *\n",
+            "FROM graph_next_sibling!(\n",
+            "  (\n",
+            "    SELECT id, parent_id, ts\n",
+            "    FROM slice\n",
+            "    WHERE dur = 0\n",
+            "  )\n",
+            ");\n",
+        )
+    );
+}
+
+#[test]
+fn macro_parens_in_strings_ignored() {
+    // Parens inside string literals must not affect indentation depth.
+    let input = concat!(
+        "SELECT *\n",
+        "FROM my_macro!(\n",
+        "  (\n",
+        "    SELECT '(((' AS x\n",
+        "    FROM t\n",
+        "  )\n",
+        ")\n",
+    );
+    let mut fmt = syntaqlite::Formatter::new();
+    let out = fmt.format(input).unwrap();
+    eprintln!("=== actual ===\n{out}=== end ===");
+    assert_eq!(
+        out,
+        concat!(
+            "SELECT *\n",
+            "FROM my_macro!(\n",
+            "  (\n",
+            "    SELECT '(((' AS x\n",
+            "    FROM t\n",
+            "  )\n",
+            ");\n",
+        )
+    );
+}
+
+#[test]
+fn macro_with_function_calls() {
+    // IIF() and other function calls with parens must be tracked correctly.
+    let input = concat!(
+        "SELECT *\n",
+        "FROM scan!(\n",
+        "  (\n",
+        "    SELECT\n",
+        "      IIF(\n",
+        "        x > 0,\n",
+        "        1,\n",
+        "        0\n",
+        "      ) AS flag\n",
+        "    FROM t\n",
+        "  )\n",
+        ")\n",
+    );
+    let mut fmt = syntaqlite::Formatter::new();
+    let out = fmt.format(input).unwrap();
+    eprintln!("=== actual ===\n{out}=== end ===");
+    assert_eq!(
+        out,
+        concat!(
+            "SELECT *\n",
+            "FROM scan!(\n",
+            "  (\n",
+            "    SELECT\n",
+            "    IIF(\n",
+            "      x > 0,\n",
+            "      1,\n",
+            "      0\n",
+            "    ) AS flag\n",
+            "    FROM t\n",
+            "  )\n",
+            ");\n",
+        )
+    );
+}
+
+#[test]
+fn macro_comma_separated_args() {
+    // Multiple macro arguments at different paren depths.
+    let input = concat!(
+        "SELECT *\n",
+        "FROM scan!(\n",
+        "    edges,\n",
+        "    inits,\n",
+        "    (a, b, c),\n",
+        "    (\n",
+        "      SELECT id\n",
+        "      FROM t\n",
+        "    )\n",
+        "  )\n",
+    );
+    let mut fmt = syntaqlite::Formatter::new();
+    let out = fmt.format(input).unwrap();
+    eprintln!("=== actual ===\n{out}=== end ===");
+    assert_eq!(
+        out,
+        concat!(
+            "SELECT *\n",
+            "FROM scan!(\n",
+            "  edges,\n",
+            "  inits,\n",
+            "  (a, b, c),\n",
+            "  (\n",
+            "    SELECT id\n",
+            "    FROM t\n",
+            "  )\n",
+            ");\n",
+        )
+    );
+}
+
+#[test]
+fn macro_single_line_preserved() {
+    let input = "SELECT foo!(1 + 2), 3\n";
+    let mut fmt = syntaqlite::Formatter::new();
+    let out = fmt.format(input).unwrap();
+    eprintln!("=== actual ===\n{out}=== end ===");
+    assert_eq!(out, "SELECT foo!(1 + 2), 3;\n");
+}
+
+#[test]
 fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
     let mut fmt = formatter();

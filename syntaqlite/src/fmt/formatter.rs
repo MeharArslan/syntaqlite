@@ -1,7 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_syntax::any::{AnyParsedStatement, AnyParser, MacroRegion, ParseOutcome};
+use syntaqlite_syntax::any::{
+    AnyParsedStatement, AnyParser, AnyTokenizer, MacroRegion, ParseOutcome,
+};
 use syntaqlite_syntax::{CommentKind, ParserConfig};
 
 use super::FormatConfig;
@@ -25,6 +27,8 @@ pub struct Formatter {
     pub(super) token_entries: Vec<TokenEntry>,
     pub(super) parts: Vec<DocId>,
     pub(super) consumed_regions: Vec<bool>,
+    /// Reusable tokenizer for macro body re-indentation.
+    pub(super) macro_tokenizer: AnyTokenizer,
 }
 
 #[cfg(feature = "sqlite")]
@@ -70,6 +74,7 @@ impl Formatter {
                 .with_collect_tokens(true)
                 .with_macro_fallback(true),
         );
+        let macro_tokenizer = AnyTokenizer::new((*dialect).clone());
         Formatter {
             dialect,
             parser,
@@ -82,6 +87,7 @@ impl Formatter {
             token_entries: Vec::with_capacity(256),
             parts: Vec::with_capacity(64),
             consumed_regions: Vec::with_capacity(32),
+            macro_tokenizer,
         }
     }
 
@@ -405,6 +411,7 @@ pub(crate) fn try_macro_verbatim<'a>(
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
     consumed: &mut [bool],
+    tokenizer: &AnyTokenizer,
 ) -> Option<DocId> {
     let cctx = ctx.comment_ctx.as_ref()?;
     let (tok_offset, _) = cctx.peek_next_token()?;
@@ -419,10 +426,121 @@ pub(crate) fn try_macro_verbatim<'a>(
                 return Some(NIL_DOC);
             }
             consumed[i] = true;
-            return Some(arena.text(&source[r_start as usize..r_end as usize]));
+            let macro_text = &source[r_start as usize..r_end as usize];
+            return Some(reindent_macro(macro_text, tokenizer, arena));
         }
     }
     None
+}
+
+/// Raw LP/RP token type values from the SQLite tokenizer. These are stable
+/// across all dialects built on the SQLite grammar.
+const TK_LP: u32 = 113;
+const TK_RP: u32 = 115;
+
+/// Re-indent a multiline macro call using tokenizer-based paren-depth tracking.
+///
+/// Single-line macros (e.g. `foo!(1 + 2)`) are returned verbatim.
+/// Multiline macros get each line trimmed and re-indented based on
+/// parenthesis nesting depth, using `hardline` + `nest()` so that
+/// the base indentation adapts to the surrounding formatter context.
+///
+/// Paren depth is computed by tokenizing the macro body with the dialect's
+/// tokenizer, so parentheses inside strings, comments, and quoted identifiers
+/// are correctly ignored.
+fn reindent_macro<'a>(
+    macro_text: &'a str,
+    tokenizer: &AnyTokenizer,
+    arena: &mut DocArena<'a>,
+) -> DocId {
+    // Find "!(" to split name from body.
+    let Some(bang_pos) = macro_text.find("!(") else {
+        return arena.text(macro_text);
+    };
+
+    let prefix = &macro_text[..bang_pos + 2]; // "name!("
+    let inner = &macro_text[bang_pos + 2..]; // everything after "!("
+
+    // Single-line: return verbatim.
+    if !inner.contains('\n') {
+        return arena.text(macro_text);
+    }
+
+    // Step 1: Tokenize the inner body to compute paren depth at each newline.
+    // depth_at_newline[i] = depth after processing all tokens up to and
+    // including the (i+1)-th newline. We start at depth 1 because we're
+    // inside the `!(` paren.
+    let mut depth: i32 = 1;
+    let mut depth_at_newline: Vec<i32> = Vec::new();
+
+    for tok in tokenizer.tokenize(inner) {
+        let tt: u32 = tok.token_type().into();
+        let tok_text = tok.text();
+
+        // LP/RP update depth. Tokens like strings and comments never produce
+        // LP/RP, so parens inside them are automatically ignored.
+        if tt == TK_LP {
+            depth += 1;
+        } else if tt == TK_RP {
+            depth -= 1;
+        }
+
+        // Record depth at each newline boundary. Newlines appear in Space
+        // tokens (and occasionally block-comment tokens).
+        for _ in tok_text.bytes().filter(|&b| b == b'\n') {
+            depth_at_newline.push(depth);
+        }
+    }
+    // tokenizer cursor is dropped here
+
+    // Step 2: Build doc from lines using pre-computed depths.
+    let mut result = arena.text(prefix);
+    let mut first = true;
+
+    for (i, line) in inner.split('\n').enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            if first {
+                first = false;
+            }
+            continue;
+        }
+
+        // Depth at the start of this line (before any tokens on this line).
+        // Line 0 starts at depth 1 (inside `!(`).
+        // Subsequent lines start at the depth recorded at the preceding newline.
+        let line_depth = if i == 0 {
+            1
+        } else {
+            depth_at_newline.get(i - 1).copied().unwrap_or(0)
+        };
+
+        // Leading `)` chars reduce indent for this line. Safe to count raw
+        // characters here: a `)` at position 0 of trimmed text is always an
+        // actual RP token (strings start with `'`, comments with `--`/`/*`).
+        let leading_close = trimmed.bytes().take_while(|&b| b == b')').count() as i32;
+        let indent = (line_depth - leading_close).max(0) as i16 * 2;
+
+        if first {
+            // Content on same line as "!(" — keep inline.
+            first = false;
+            let txt = arena.text(trimmed);
+            result = arena.cat(result, txt);
+        } else {
+            // Emit hardline + indent via nest wrappers.
+            let hl = arena.hardline();
+            let txt = arena.text(trimmed);
+            let line_doc = arena.cat(hl, txt);
+            let indented = if indent > 0 {
+                arena.nest(indent, line_doc)
+            } else {
+                line_doc
+            };
+            result = arena.cat(result, indented);
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]

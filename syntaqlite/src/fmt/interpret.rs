@@ -73,6 +73,7 @@ impl Formatter {
         self.consumed_regions.resize(ctx.macro_regions.len(), false);
         let consumed_regions = &mut self.consumed_regions;
         let scratch = &mut self.interpret_scratch;
+        let macro_tokenizer = &self.macro_tokenizer;
 
         if root_id.is_null() {
             return NIL_DOC;
@@ -249,6 +250,7 @@ impl Formatter {
                                 macro_regions,
                                 arena,
                                 consumed_regions,
+                                macro_tokenizer,
                             )
                         {
                             running = arena.cat(running, doc);
@@ -365,6 +367,7 @@ impl Formatter {
                             macro_regions,
                             arena,
                             consumed_regions,
+                            macro_tokenizer,
                         )
                     } else {
                         None
@@ -564,6 +567,7 @@ impl Formatter {
                                 macro_regions,
                                 arena,
                                 consumed_regions,
+                                macro_tokenizer,
                             )
                         {
                             running = arena.cat(running, doc);
@@ -617,6 +621,7 @@ impl Formatter {
                                 macro_regions,
                                 arena,
                                 consumed_regions,
+                                macro_tokenizer,
                             )
                         {
                             running = arena.cat(running, doc);

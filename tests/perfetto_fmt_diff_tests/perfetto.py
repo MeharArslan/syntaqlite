@@ -41,6 +41,21 @@ class PerfettoMacroFormat(TestSuite):
             """,
         )
 
+    def test_create_perfetto_macro_long_args_indented(self):
+        return DiffTestBlueprint(
+            sql="""\
+                CREATE PERFETTO MACRO _viz_flamegraph_filter_frames(source TableOrSubquery, show_from_frame_bits Expr) RETURNS TableOrSubquery AS $source
+            """,
+            out="""\
+                CREATE PERFETTO MACRO _viz_flamegraph_filter_frames(
+                  source TableOrSubquery,
+                  show_from_frame_bits Expr
+                )
+                RETURNS TableOrSubquery
+                AS $source
+            """,
+        )
+
     def test_create_or_replace_perfetto_macro_body(self):
         return DiffTestBlueprint(
             sql="""\
