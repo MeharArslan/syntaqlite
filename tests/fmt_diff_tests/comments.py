@@ -903,6 +903,137 @@ class ListCommentSpacing(TestSuite):
         )
 
 
+# ── Star column comments ─────────────────────────────────────────────────────
+
+
+class StarColumnComment(TestSuite):
+    def test_after_star(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT *
+                -- about from
+                FROM t
+            """,
+            out="""\
+                SELECT *
+                -- about from
+                FROM t;
+            """,
+        )
+
+    def test_trailing_on_select(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT -- pick cols
+                a FROM t
+            """,
+            out="""\
+                SELECT -- pick cols
+                  a
+                FROM t;
+            """,
+        )
+
+    def test_trailing_not_dropped_when_followed_by_line_comment(self):
+        return DiffTestBlueprint(
+            sql="""\
+                select a, b
+                -- y
+                from t -- x
+                -- z
+                where c = 1
+            """,
+            out="""\
+                SELECT a, b
+                -- y
+                FROM t -- x
+                -- z
+                WHERE
+                  c = 1;
+            """,
+        )
+
+
+# ── JOIN comments (simple) ───────────────────────────────────────────────────
+
+
+class SimpleJoinComment(TestSuite):
+    def test_before_join_no_on(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT a FROM slice
+                -- before join
+                JOIN track
+            """,
+            out="""\
+                SELECT a
+                FROM slice
+                -- before join
+                JOIN track;
+            """,
+        )
+
+
+# ── Multi-statement comments ────────────────────────────────────────────────
+
+
+class MultiStatementComment(TestSuite):
+    def test_basic(self):
+        return DiffTestBlueprint(
+            sql="SELECT 1;\nSELECT 2",
+            out="""\
+                SELECT 1;
+
+                SELECT 2;
+            """,
+        )
+
+    def test_comment_between(self):
+        return DiffTestBlueprint(
+            sql="SELECT 1;\n-- between\nSELECT 2",
+            out="""\
+                SELECT 1;
+
+                -- between
+                SELECT 2;
+            """,
+        )
+
+    def test_trailing_after_first(self):
+        return DiffTestBlueprint(
+            sql="SELECT 1; -- after first\nSELECT 2",
+            out="""\
+                SELECT 1; -- after first
+
+                SELECT 2;
+            """,
+        )
+
+    def test_comment_before_first(self):
+        return DiffTestBlueprint(
+            sql="-- header\nSELECT 1",
+            out="""\
+                -- header
+                SELECT 1;
+            """,
+        )
+
+    def test_multi_stmt_three_comments(self):
+        return DiffTestBlueprint(
+            sql="SELECT 1;\n\n-- foo\nselect\n-- foo bar\n1\n-- foo\nfrom slice;",
+            out="""\
+                SELECT 1;
+
+                -- foo
+                SELECT
+                  -- foo bar
+                  1
+                -- foo
+                FROM slice;
+            """,
+        )
+
+
 class CteComment(TestSuite):
     def test_before_cte_body(self):
         return DiffTestBlueprint(

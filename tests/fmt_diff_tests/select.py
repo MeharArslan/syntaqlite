@@ -146,6 +146,22 @@ class ExprFormat(TestSuite):
             out="SELECT CASE WHEN x > 0 THEN 'pos' ELSE 'neg' END FROM t;",
         )
 
+    def test_case_multiline(self):
+        return DiffTestBlueprint(
+            sql="SELECT CASE WHEN status = 'ACTIVE' THEN 'active' WHEN status = 'INACTIVE' THEN 'inactive' WHEN status = 'PENDING' THEN 'pending' WHEN status = 'DELETED' THEN 'deleted' ELSE 'unknown' END FROM users",
+            out="""\
+                SELECT
+                  CASE
+                    WHEN status = 'ACTIVE' THEN 'active'
+                    WHEN status = 'INACTIVE' THEN 'inactive'
+                    WHEN status = 'PENDING' THEN 'pending'
+                    WHEN status = 'DELETED' THEN 'deleted'
+                    ELSE 'unknown'
+                  END
+                FROM users;
+            """,
+        )
+
     def test_cast(self):
         return DiffTestBlueprint(
             sql="select cast(x as integer) from t",

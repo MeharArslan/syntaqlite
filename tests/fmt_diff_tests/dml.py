@@ -65,6 +65,12 @@ class DmlFormat(TestSuite):
             out="INSERT INTO t(a, b) VALUES (1, 2);",
         )
 
+    def test_insert_space_before_values(self):
+        return DiffTestBlueprint(
+            sql="INSERT INTO t(a, b) VALUES(1, 2)",
+            out="INSERT INTO t(a, b) VALUES (1, 2);",
+        )
+
     def test_insert_or_replace(self):
         return DiffTestBlueprint(
             sql="insert or replace into t values (1)",

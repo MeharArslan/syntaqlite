@@ -110,14 +110,6 @@ fn update_with_order_by_limit() {
     );
 }
 
-#[test]
-fn insert_stmt() {
-    assert_eq!(
-        format_sql("INSERT INTO t(a, b) VALUES(1, 2)"),
-        "INSERT INTO t(a, b) VALUES (1, 2)"
-    );
-}
-
 // -- Line breaking for INSERT --
 
 #[test]
@@ -167,14 +159,6 @@ fn insert_many_values_breaks() {
 // -- Comments --
 
 #[test]
-fn comment_trailing_on_select() {
-    assert_eq!(
-        format_sql("SELECT -- pick cols\na FROM t"),
-        "SELECT -- pick cols\n  a\nFROM t"
-    );
-}
-
-#[test]
 fn comment_leading_before_column() {
     let config = FormatConfig {
         line_width: 20,
@@ -195,30 +179,6 @@ fn comment_between_columns() {
     assert_eq!(
         format_sql_with("SELECT\n  a,\n  -- about b\n  b\nFROM t", &config),
         "SELECT\n  a,\n  -- about b\n  b\nFROM t"
-    );
-}
-
-#[test]
-fn comment_before_join_does_not_move() {
-    assert_eq!(
-        format_sql("SELECT a FROM slice\n-- before join\nJOIN track"),
-        "SELECT a\nFROM slice\n-- before join\nJOIN track"
-    );
-}
-
-#[test]
-fn comment_after_star_column() {
-    assert_eq!(
-        format_sql("SELECT *\n-- about from\nFROM t"),
-        "SELECT *\n-- about from\nFROM t"
-    );
-}
-
-#[test]
-fn comment_trailing_not_dropped_when_followed_by_line_comment() {
-    assert_eq!(
-        format_sql("select a, b\n-- y\nfrom t -- x\n-- z\nwhere c = 1"),
-        "SELECT a, b\n-- y\nFROM t -- x\n-- z\nWHERE\n  c = 1"
     );
 }
 
@@ -256,32 +216,6 @@ fn debug_multi_stmt_comments() {
             stmt_num += 1;
         }
     }
-}
-
-#[test]
-fn multi_stmt_basic() {
-    assert_eq!(format_sql("SELECT 1;\nSELECT 2"), "SELECT 1;\n\nSELECT 2");
-}
-
-#[test]
-fn multi_stmt_comment_between() {
-    assert_eq!(
-        format_sql("SELECT 1;\n-- between\nSELECT 2"),
-        "SELECT 1;\n\n-- between\nSELECT 2"
-    );
-}
-
-#[test]
-fn multi_stmt_trailing_comment_after_first() {
-    assert_eq!(
-        format_sql("SELECT 1; -- after first\nSELECT 2"),
-        "SELECT 1; -- after first\n\nSELECT 2"
-    );
-}
-
-#[test]
-fn comment_before_first_stmt() {
-    assert_eq!(format_sql("-- header\nSELECT 1"), "-- header\nSELECT 1");
 }
 
 // -- Keyword casing --

@@ -49,30 +49,6 @@ fn multi_stmt_comments_preserved_in_order() {
     );
 }
 
-/// Exact output round-trip for the minimal repro.
-///
-/// Expected layout (comments as leading comments in the correct positions):
-///
-/// ```text
-/// SELECT 1;
-///
-/// -- foo
-/// SELECT
-///   -- foo bar
-///   1
-/// -- foo
-/// FROM slice;
-/// ```
-#[test]
-fn multi_stmt_comments_exact_output() {
-    let input = "SELECT 1;\n\n-- foo\nselect\n-- foo bar\n1\n-- foo\nfrom slice;";
-    let out = fmt(input);
-    eprintln!("=== actual output ===\n{out}=== end ===");
-
-    let expected = "SELECT 1;\n\n-- foo\nSELECT\n  -- foo bar\n  1\n-- foo\nFROM slice;\n";
-    assert_eq!(out, expected);
-}
-
 /// Debug helper: print comment/token offsets per statement.
 #[test]
 fn debug_comment_token_offsets() {
@@ -147,28 +123,4 @@ fn debug_comment_token_offsets() {
         }
     }
     assert_eq!(stmt_num, 2, "expected exactly 2 statements");
-}
-
-// ── CASE expression formatting ──────────────────────────────────────────────
-
-/// Multi-WHEN CASE expressions should break each WHEN onto its own line.
-#[test]
-fn case_when_line_breaks() {
-    let input = "SELECT CASE WHEN status = 'ACTIVE' THEN 'active' WHEN status = 'INACTIVE' THEN 'inactive' WHEN status = 'PENDING' THEN 'pending' WHEN status = 'DELETED' THEN 'deleted' ELSE 'unknown' END FROM users;";
-    let out = fmt(input);
-    eprintln!("=== actual ===\n{out}=== end ===");
-    assert_eq!(
-        out,
-        "\
-SELECT
-  CASE
-    WHEN status = 'ACTIVE' THEN 'active'
-    WHEN status = 'INACTIVE' THEN 'inactive'
-    WHEN status = 'PENDING' THEN 'pending'
-    WHEN status = 'DELETED' THEN 'deleted'
-    ELSE 'unknown'
-  END
-FROM users;
-"
-    );
 }
