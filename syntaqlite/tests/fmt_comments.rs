@@ -124,3 +124,29 @@ fn debug_comment_token_offsets() {
     }
     assert_eq!(stmt_num, 2, "expected exactly 2 statements");
 }
+
+/// Regression: a comment between JOIN and WHERE in a subquery was being
+/// moved to the outer query, eating the semicolon terminator.
+#[test]
+fn comment_between_join_and_where_in_subquery() {
+    let input = concat!(
+        "SELECT *\n",
+        "FROM (\n",
+        "  SELECT a\n",
+        "  FROM t1\n",
+        "  JOIN t2 ON (t1.id = t2.id)\n",
+        "  -- this comment belongs here\n",
+        "  WHERE x > 0\n",
+        ");\n",
+    );
+    let out = fmt(input);
+    eprintln!("=== actual ===\n{out}=== end ===");
+    // Comment must stay inside the subquery, not migrate to outer query.
+    assert!(
+        out.contains("-- this comment belongs here"),
+        "comment was dropped"
+    );
+    // Semicolon must not be swallowed by the comment.
+    let second_pass = fmt(&out);
+    assert_eq!(out, second_pass, "formatting is not idempotent");
+}

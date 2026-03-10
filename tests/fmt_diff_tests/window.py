@@ -112,7 +112,7 @@ class WindowFunctionFormat(TestSuite):
                       android_standardize_thread_name(thread.name)
                     ORDER BY
                       thread.start_ts
-                    RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur)
+                    RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur) FOLLOWING
                   )
                 FROM thread;
             """,

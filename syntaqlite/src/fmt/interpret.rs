@@ -251,6 +251,7 @@ impl Formatter {
                                 arena,
                                 consumed_regions,
                                 macro_tokenizer,
+                                child_id,
                             )
                         {
                             running = arena.cat(running, doc);
@@ -368,6 +369,7 @@ impl Formatter {
                             arena,
                             consumed_regions,
                             macro_tokenizer,
+                            child_id,
                         )
                     } else {
                         None
@@ -568,6 +570,7 @@ impl Formatter {
                                 arena,
                                 consumed_regions,
                                 macro_tokenizer,
+                                child_id,
                             )
                         {
                             running = arena.cat(running, doc);
@@ -622,6 +625,7 @@ impl Formatter {
                                 arena,
                                 consumed_regions,
                                 macro_tokenizer,
+                                child_id,
                             )
                         {
                             running = arena.cat(running, doc);

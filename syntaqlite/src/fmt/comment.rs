@@ -224,30 +224,53 @@ impl CommentCtx {
         DrainResult { trailing, leading }
     }
 
-    /// Peek at the next N tokens without advancing the token cursor.
+    /// Find the next occurrence of a keyword in the token stream, starting
+    /// from the current token cursor.
+    ///
     /// Verifies each token's text matches the corresponding keyword word
-    /// (case-insensitive). Returns `None` if the keyword is not present in
-    /// the source (e.g., an inserted `AS`).
+    /// (case-insensitive). If the keyword starts at the current cursor
+    /// position, returns immediately. Otherwise, scans forward up to
+    /// `MAX_SCAN` tokens to handle untracked tokens (e.g. `(` and `)` from
+    /// grammar-level syntax that no fmt opcode covers).
+    ///
+    /// On match, the token cursor is advanced past any skipped tokens so it
+    /// points to the first word of the keyword. Returns `None` if the
+    /// keyword is not present in the source (e.g., an inserted `AS`).
     pub(crate) fn peek_keyword_tokens(&self, kw_text: &str, source: &str) -> Option<(u32, usize)> {
-        let first_idx = self.token_cursor.get();
-        let mut word_count = 0usize;
-        for word in kw_text.split_whitespace() {
-            let tok_idx = first_idx + word_count;
-            if tok_idx >= self.tokens.len() {
+        const MAX_SCAN: usize = 8;
+        let start_idx = self.token_cursor.get();
+
+        for scan in 0..MAX_SCAN {
+            let first_idx = start_idx + scan;
+            if first_idx >= self.tokens.len() {
                 return None;
             }
-            let tok = &self.tokens[tok_idx];
-            let tok_text = &source[tok.offset as usize..(tok.offset + tok.length) as usize];
-            if !tok_text.eq_ignore_ascii_case(word) {
-                return None;
+            let mut word_count = 0usize;
+            let mut matched = true;
+            for word in kw_text.split_whitespace() {
+                let tok_idx = first_idx + word_count;
+                if tok_idx >= self.tokens.len() {
+                    matched = false;
+                    break;
+                }
+                let tok = &self.tokens[tok_idx];
+                let tok_text = &source[tok.offset as usize..(tok.offset + tok.length) as usize];
+                if !tok_text.eq_ignore_ascii_case(word) {
+                    matched = false;
+                    break;
+                }
+                word_count += 1;
             }
-            word_count += 1;
+            if matched && word_count > 0 {
+                // Advance past any skipped tokens.
+                if scan > 0 {
+                    self.token_cursor.set(first_idx);
+                }
+                let first_offset = self.tokens[first_idx].offset;
+                return Some((first_offset, word_count));
+            }
         }
-        if word_count == 0 {
-            return None;
-        }
-        let first_offset = self.tokens[first_idx].offset;
-        Some((first_offset, word_count))
+        None
     }
 
     /// Advance the token cursor by `n` positions.

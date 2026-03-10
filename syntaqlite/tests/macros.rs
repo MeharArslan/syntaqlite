@@ -235,6 +235,19 @@ fn macro_comma_separated_args() {
 }
 
 #[test]
+fn macro_in_frame_bound_preserves_following() {
+    let input =
+        "SELECT count() OVER (ORDER BY ts RANGE BETWEEN CURRENT ROW AND my_macro!(x) FOLLOWING) FROM t;\n";
+    let mut fmt = syntaqlite::Formatter::new();
+    let out = fmt.format(input).unwrap();
+    eprintln!("=== actual ===\n{out}=== end ===");
+    assert!(
+        out.contains("FOLLOWING"),
+        "FOLLOWING keyword was dropped: {out}"
+    );
+}
+
+#[test]
 fn macro_single_line_preserved() {
     let input = "SELECT foo!(1 + 2), 3\n";
     let mut fmt = syntaqlite::Formatter::new();

@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite_syntax::any::{
-    AnyParsedStatement, AnyParser, AnyTokenizer, MacroRegion, ParseOutcome,
+    AnyNodeId, AnyParsedStatement, AnyParser, AnyTokenizer, FieldValue, MacroRegion, ParseOutcome,
 };
 use syntaqlite_syntax::{CommentKind, ParserConfig};
 
@@ -406,12 +406,19 @@ fn drain_gap_comments<'a>(
 /// Requires `comment_ctx` to be populated on `ctx`. `format_parsed` satisfies
 /// this precondition by building a `CommentCtx` from the statement's collected
 /// tokens (which requires `collect_tokens: true` at parse time).
+///
+/// Only matches at the *innermost* node that fully contains the macro.
+/// If the child node has inline enum/flag fields with non-default values,
+/// it likely carries additional keywords (e.g. `FOLLOWING` in a FrameBound)
+/// and should format normally — the inner expression handler will emit
+/// the verbatim text at the appropriate level.
 pub(crate) fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
     consumed: &mut [bool],
     tokenizer: &AnyTokenizer,
+    child_id: AnyNodeId,
 ) -> Option<DocId> {
     let cctx = ctx.comment_ctx.as_ref()?;
     let (tok_offset, _) = cctx.peek_next_token()?;
@@ -422,6 +429,24 @@ pub(crate) fn try_macro_verbatim<'a>(
         let r_end = r_start + r.call_length;
 
         if tok_offset >= r_start && tok_offset < r_end {
+            // Check if this child node extends beyond the macro region
+            // by examining its fields. If it has enum fields with non-zero
+            // values or spans beyond the region, it's an intermediate node
+            // (like FrameBound with EXPR_FOLLOWING) — skip and let the
+            // inner expression handler emit verbatim at the right level.
+            if let Some((_, child_fields)) = ctx.reader.extract_fields(child_id) {
+                for i in 0..child_fields.len() {
+                    match child_fields[i] {
+                        // Non-zero enum → node has keyword variants
+                        // (e.g. EXPR_FOLLOWING)
+                        FieldValue::Enum(v) if v != 0 => return None,
+                        // Non-zero flags → node has keyword modifiers
+                        FieldValue::Flags(f) if f != 0 => return None,
+                        _ => {}
+                    }
+                }
+            }
+
             if consumed[i] {
                 return Some(NIL_DOC);
             }
