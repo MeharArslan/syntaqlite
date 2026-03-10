@@ -4,8 +4,11 @@
 //! Embedded SQL extraction from host language sources.
 //!
 //! Extracts SQL fragments from host language files, replaces interpolation holes
-//! with placeholder identifiers, runs validation via [`SemanticAnalyzer`], and
-//! maps diagnostic offsets back to host-file positions.
+//! with macro-call placeholders ([`HOLE_PLACEHOLDER`]), runs validation via
+//! [`SemanticAnalyzer`] with `macro_fallback` enabled, and maps diagnostic
+//! offsets back to host-file positions. The parser records a
+//! [`MacroRegion`](syntaqlite_syntax::any::MacroRegion) for each hole, which is
+//! used to filter diagnostics that would otherwise reference the placeholder.
 //!
 //! Language-specific extractors live in submodules:
 //! - [`extract_python`] — Python f-string extraction
@@ -26,7 +29,7 @@ use crate::dialect::AnyDialect;
 use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::catalog::Catalog;
-use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage};
+use crate::semantic::diagnostics::Diagnostic;
 
 use offset_map::OffsetMap;
 
@@ -44,15 +47,23 @@ pub struct EmbeddedFragment {
 }
 
 /// An interpolation hole (e.g. `{expr}` in a Python f-string, `${expr}` in JS).
+///
+/// Holes are replaced with [`HOLE_PLACEHOLDER`] in `sql_text` and parsed as
+/// macro calls via the parser's `macro_fallback` mode. The parser records a
+/// [`MacroRegion`](syntaqlite_syntax::any::MacroRegion) for each one.
 #[derive(Debug)]
 pub struct Hole {
     /// Byte range of the hole expression in the host file.
     pub host_range: Range<usize>,
     /// Byte offset in `sql_text` where the placeholder sits.
     pub sql_offset: usize,
-    /// The placeholder identifier (e.g. `__hole_0__`).
-    pub placeholder: String,
 }
+
+/// Placeholder text inserted into `sql_text` for each interpolation hole.
+///
+/// Uses macro-call syntax so the parser's `macro_fallback` mode treats it as a
+/// single identifier token and records a [`MacroRegion`](syntaqlite_syntax::any::MacroRegion).
+pub const HOLE_PLACEHOLDER: &str = "__h__!()";
 
 // ── Shared scanner utilities ────────────────────────────────────────────
 
@@ -166,8 +177,8 @@ impl EmbeddedAnalyzer {
 
     /// Validate all SQL fragments and return diagnostics mapped to host-file positions.
     ///
-    /// Diagnostics whose spans fall entirely inside a hole placeholder are
-    /// filtered out.
+    /// Diagnostics whose spans fall inside a hole placeholder are automatically
+    /// filtered out by [`OffsetMap::to_host`] returning `None`.
     pub fn validate(&self, fragments: &[EmbeddedFragment]) -> Vec<Diagnostic> {
         let mut all_diags = Vec::new();
 
@@ -176,9 +187,6 @@ impl EmbeddedAnalyzer {
             let offset_map = OffsetMap::new(fragment);
 
             for mut d in diags {
-                if is_hole_diagnostic(&d, fragment) {
-                    continue;
-                }
                 let Some(start) = offset_map.to_host(d.start_offset) else {
                     continue;
                 };
@@ -201,7 +209,7 @@ impl EmbeddedAnalyzer {
         &self,
         fragment: &EmbeddedFragment,
     ) -> Vec<(usize, usize, TokenCategory)> {
-        let mut analyzer = SemanticAnalyzer::with_dialect(self.dialect.clone());
+        let mut analyzer = self.make_analyzer();
         let model = analyzer.analyze(&fragment.sql_text, &self.catalog, &self.config);
         analyzer
             .semantic_tokens(&model)
@@ -285,28 +293,19 @@ impl EmbeddedAnalyzer {
         result
     }
 
+    /// Create a [`SemanticAnalyzer`] with `macro_fallback` enabled so that
+    /// [`HOLE_PLACEHOLDER`] calls are treated as single identifier tokens.
+    fn make_analyzer(&self) -> SemanticAnalyzer {
+        SemanticAnalyzer::with_dialect(self.dialect.clone()).with_macro_fallback(true)
+    }
+
     /// Parse and validate a single fragment.
     ///
     /// Returns diagnostics with SQL-text byte offsets (not yet mapped to host).
     fn validate_fragment(&self, fragment: &EmbeddedFragment) -> Vec<Diagnostic> {
-        let mut analyzer = SemanticAnalyzer::with_dialect(self.dialect.clone());
+        let mut analyzer = self.make_analyzer();
         let model = analyzer.analyze(&fragment.sql_text, &self.catalog, &self.config);
         model.diagnostics().to_vec()
-    }
-}
-
-// ── Utilities ────────────────────────────────────────────────────────────
-
-/// Check if a diagnostic message references a hole placeholder name.
-fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
-    match &diag.message {
-        DiagnosticMessage::UnknownTable { name } | DiagnosticMessage::UnknownFunction { name } => {
-            fragment.holes.iter().any(|h| h.placeholder == *name)
-        }
-        DiagnosticMessage::UnknownColumn { column, .. } => {
-            fragment.holes.iter().any(|h| h.placeholder == *column)
-        }
-        _ => false,
     }
 }
 
@@ -315,7 +314,7 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
 mod tests {
     use super::*;
     use crate::embedded::{python::extract_python, typescript::extract_typescript};
-    use crate::semantic::diagnostics::Severity;
+    use crate::semantic::diagnostics::{DiagnosticMessage, Severity};
 
     fn analyzer() -> EmbeddedAnalyzer {
         EmbeddedAnalyzer::new(crate::sqlite::dialect::dialect())
@@ -590,7 +589,7 @@ mod tests {
         for diag in &all {
             let msg = format!("{}", diag.message);
             assert!(
-                !msg.contains("__hole_"),
+                !msg.contains("__h__"),
                 "hole placeholder leaked into diagnostics: {msg}",
             );
         }

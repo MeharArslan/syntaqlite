@@ -7,7 +7,7 @@
 //! offsets shift because `{some_long_expr}` might become `__hole_0__` (or
 //! vice-versa). The `OffsetMap` handles this translation.
 
-use super::EmbeddedFragment;
+use super::{EmbeddedFragment, HOLE_PLACEHOLDER};
 
 /// An entry in the offset map: a region where the SQL text and host text differ.
 #[derive(Debug)]
@@ -36,7 +36,7 @@ impl OffsetMap {
             .iter()
             .map(|h| Segment {
                 sql_start: h.sql_offset,
-                sql_len: h.placeholder.len(),
+                sql_len: HOLE_PLACEHOLDER.len(),
                 host_len: h.host_range.len(),
             })
             .collect();
@@ -93,15 +93,16 @@ mod tests {
     #[test]
     fn single_hole_shorter() {
         // Host: "SELECT * FROM {table_name}" (range 10..36)
-        // SQL:  "SELECT * FROM __hole_0__"
-        // Hole: {table_name} at host 24..36 (12 bytes), placeholder at sql offset 14 (10 bytes)
+        // SQL:  "SELECT * FROM __h__!()"
+        // Hole: {table_name} at host 24..36 (12 bytes), placeholder at sql offset 14 (8 bytes)
+        let ph = HOLE_PLACEHOLDER; // "__h__!()" = 8 bytes
+        let sql_text = format!("SELECT * FROM {ph}");
         let fragment = EmbeddedFragment {
             sql_range: 10..36,
-            sql_text: "SELECT * FROM __hole_0__".to_string(),
+            sql_text,
             holes: vec![Hole {
                 host_range: 24..36,
                 sql_offset: 14,
-                placeholder: "__hole_0__".to_string(),
             }],
         };
         let map = OffsetMap::new(&fragment);
@@ -112,49 +113,49 @@ mod tests {
 
         // Inside hole: returns None (host-language expression, not SQL).
         assert_eq!(map.to_host(14), None);
-        assert_eq!(map.to_host(20), None);
+        assert_eq!(map.to_host(18), None);
     }
 
     #[test]
     fn placeholder_longer_than_host_hole_no_overlap() {
         // Reproduces the datetime('now') highlighting bug:
-        // When a placeholder (__hole_1__, 10 bytes) is longer than the host
+        // When a placeholder (__h__!(), 8 bytes) is longer than the host
         // hole ({total}, 7 bytes), an emitted semantic token using the
         // placeholder length would extend past the hole boundary, overlapping
         // with subsequent tokens like `datetime`.
         //
         // Host content (starting at offset 2):
         //   "VALUES ({customer_id}, {total}, datetime('now'))"
-        //   offset:  2         15  17  24  26          38
         //
         // SQL text:
-        //   "VALUES (__hole_0__, __hole_1__, datetime('now'))"
+        //   "VALUES (__h__!(), __h__!(), datetime('now'))"
+        let ph = HOLE_PLACEHOLDER;
+        let sql_text = format!("VALUES ({ph}, {ph}, datetime('now'))");
         let fragment = EmbeddedFragment {
             sql_range: 2..50,
-            sql_text: "VALUES (__hole_0__, __hole_1__, datetime('now'))".to_string(),
+            sql_text,
             holes: vec![
                 Hole {
                     host_range: 10..25, // {customer_id} = 15 bytes
                     sql_offset: 8,
-                    placeholder: "__hole_0__".to_string(),
                 },
                 Hole {
                     host_range: 27..34, // {total} = 7 bytes
-                    sql_offset: 20,
-                    placeholder: "__hole_1__".to_string(),
+                    sql_offset: 18,     // 8 (offset of first ph) + 8 (ph len) + 2 (", ")
                 },
             ],
         };
         let map = OffsetMap::new(&fragment);
 
         // Inside holes: must return None so no semantic token is emitted.
-        assert_eq!(map.to_host(8), None, "__hole_0__ start");
-        assert_eq!(map.to_host(20), None, "__hole_1__ start");
-        assert_eq!(map.to_host(25), None, "__hole_1__ mid");
+        assert_eq!(map.to_host(8), None, "first placeholder start");
+        assert_eq!(map.to_host(18), None, "second placeholder start");
+        assert_eq!(map.to_host(22), None, "second placeholder mid");
 
-        // `datetime` at sql_offset 32 must map correctly and not overlap
-        // with any hole token.
-        let datetime_host = map.to_host(32);
+        // `datetime` sits after both placeholders in SQL text.
+        // sql_offset of "datetime" = 8 + 8 + 2 + 8 + 2 = 28
+        let datetime_sql_offset = 28;
+        let datetime_host = map.to_host(datetime_sql_offset);
         assert_eq!(
             datetime_host,
             Some(36),

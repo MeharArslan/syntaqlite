@@ -574,7 +574,6 @@ fn make_embedded_analyzer() -> Result<EmbeddedAnalyzer, String> {
 struct WasmHole {
     start: usize,
     end: usize,
-    placeholder: String,
 }
 
 #[derive(Serialize)]
@@ -601,7 +600,6 @@ fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
                 .map(|h| WasmHole {
                     start: h.host_range.start,
                     end: h.host_range.end,
-                    placeholder: h.placeholder.clone(),
                 })
                 .collect(),
         })

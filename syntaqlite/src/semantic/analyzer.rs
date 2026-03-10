@@ -36,6 +36,7 @@ pub struct SemanticAnalyzer {
     dialect: AnyDialect,
     catalog: Catalog,
     mode: AnalysisMode,
+    macro_fallback: bool,
 }
 
 #[expect(dead_code)]
@@ -53,6 +54,7 @@ impl SemanticAnalyzer {
             catalog: Catalog::new(dialect.clone()),
             dialect,
             mode: AnalysisMode::default(),
+            macro_fallback: false,
         }
     }
 
@@ -66,6 +68,14 @@ impl SemanticAnalyzer {
     /// Set the analysis mode on an existing analyzer.
     pub fn set_mode(&mut self, mode: AnalysisMode) {
         self.mode = mode;
+    }
+
+    /// Enable macro fallback: unregistered `name!(args)` calls parse as
+    /// identifiers and record [`MacroRegion`]s on the resulting model.
+    #[must_use]
+    pub(crate) fn with_macro_fallback(mut self, enabled: bool) -> Self {
+        self.macro_fallback = enabled;
+        self
     }
 
     /// Return the dialect this analyzer was constructed for.
@@ -183,8 +193,12 @@ impl SemanticAnalyzer {
 
     fn analyze_inner(&mut self, source: &str, config: &ValidationConfig) -> SemanticModel {
         let grammar = (*self.dialect).clone();
-        let parser =
-            AnyParser::with_config(grammar, &ParserConfig::default().with_collect_tokens(true));
+        let parser = AnyParser::with_config(
+            grammar,
+            &ParserConfig::default()
+                .with_collect_tokens(true)
+                .with_macro_fallback(self.macro_fallback),
+        );
         let mut session = parser.parse(source);
 
         let mut tokens: Vec<StoredToken> = Vec::new();

@@ -3,13 +3,13 @@
 
 //! Python f-string SQL extraction.
 
-use super::{EmbeddedFragment, Hole, starts_with_sql_keyword};
+use super::{EmbeddedFragment, HOLE_PLACEHOLDER, Hole, starts_with_sql_keyword};
 
 /// Extract SQL fragments from Python source code.
 ///
 /// Scans for f-strings (`f"..."`, `f'...'`, `f"""..."""`, `f'''...'''`) and
 /// checks if their content starts with a SQL keyword. For qualifying strings,
-/// interpolation holes (`{expr}`) are replaced with `__hole_N__` placeholders.
+/// interpolation holes (`{expr}`) are replaced with [`HOLE_PLACEHOLDER`](super::HOLE_PLACEHOLDER).
 pub fn extract_python(source: &str) -> Vec<EmbeddedFragment> {
     let bytes = source.as_bytes();
     let len = bytes.len();
@@ -125,7 +125,6 @@ fn extract_fstring_fragment(
     let mut sql_text = String::new();
     let mut holes = Vec::new();
     let mut j = content_start;
-    let mut hole_idx = 0;
 
     while j < content_end {
         if bytes[j] == b'{' {
@@ -139,17 +138,13 @@ fn extract_fstring_fragment(
             let hole_content_end = find_matching_brace(bytes, j + 1, content_end)?;
             let hole_end = hole_content_end + 1;
 
-            let placeholder = format!("__hole_{hole_idx}__");
             let sql_offset = sql_text.len();
-            sql_text.push_str(&placeholder);
+            sql_text.push_str(HOLE_PLACEHOLDER);
 
             holes.push(Hole {
                 host_range: hole_start..hole_end,
                 sql_offset,
-                placeholder,
             });
-
-            hole_idx += 1;
             j = hole_end;
         } else if bytes[j] == b'}' && j + 1 < content_end && bytes[j + 1] == b'}' {
             sql_text.push('}');
@@ -236,8 +231,7 @@ mod tests {
 
         let f = &fragments[0];
         assert_eq!(f.holes.len(), 1);
-        assert_eq!(f.holes[0].placeholder, "__hole_0__");
-        assert!(f.sql_text.contains("__hole_0__"));
+        assert!(f.sql_text.contains(HOLE_PLACEHOLDER));
         assert!(f.sql_text.starts_with("SELECT * FROM users WHERE id = "));
     }
 

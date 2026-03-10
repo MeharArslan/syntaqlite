@@ -6,7 +6,7 @@
 
 #![cfg(feature = "embedded")]
 
-use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python, extract_typescript};
+use syntaqlite::embedded::{EmbeddedAnalyzer, HOLE_PLACEHOLDER, extract_python, extract_typescript};
 
 fn analyzer() -> EmbeddedAnalyzer {
     EmbeddedAnalyzer::new(syntaqlite::sqlite_dialect())
@@ -20,7 +20,7 @@ fn simple_fstring_with_valid_sql() {
     let fragments = extract_python(source);
     assert_eq!(fragments.len(), 1);
     assert_eq!(fragments[0].holes.len(), 1);
-    assert_eq!(fragments[0].holes[0].placeholder, "__hole_0__");
+    assert!(fragments[0].sql_text.contains(HOLE_PLACEHOLDER));
 }
 
 #[test]
@@ -75,10 +75,11 @@ fn fstring_with_holes_in_multiple_positions() {
     assert_eq!(fragments.len(), 1);
     let f = &fragments[0];
     assert_eq!(f.holes.len(), 4);
-    assert_eq!(f.holes[0].placeholder, "__hole_0__");
-    assert_eq!(f.holes[1].placeholder, "__hole_1__");
-    assert_eq!(f.holes[2].placeholder, "__hole_2__");
-    assert_eq!(f.holes[3].placeholder, "__hole_3__");
+    // All holes use the same constant placeholder.
+    for hole in &f.holes {
+        let end = hole.sql_offset + HOLE_PLACEHOLDER.len();
+        assert_eq!(&f.sql_text[hole.sql_offset..end], HOLE_PLACEHOLDER);
+    }
 }
 
 // ── Validation tests ────────────────────────────────────────────────────
@@ -89,13 +90,11 @@ fn validate_simple_select_with_hole() {
     let fragments = extract_python(source);
     let diags = analyzer().validate(&fragments);
 
-    // "users" is unknown (no schema), but hole placeholder "__hole_0__" should
-    // be suppressed. We expect a warning about "unknown table 'users'".
+    // Hole placeholders must not leak into diagnostics.
     for d in &diags {
         let msg = d.message.to_string();
-        // Hole placeholders must not leak into diagnostics.
         assert!(
-            !msg.contains("__hole_"),
+            !msg.contains("__h__"),
             "hole placeholder leaked into diagnostic: {msg}"
         );
     }
@@ -109,7 +108,7 @@ fn validate_multiple_holes_no_placeholder_leaks() {
 
     for d in &diags {
         let msg = d.message.to_string();
-        assert!(!msg.contains("__hole_"), "hole placeholder leaked: {msg}");
+        assert!(!msg.contains("__h__"), "hole placeholder leaked: {msg}");
     }
 }
 
@@ -129,7 +128,7 @@ query = f"SELECT id, name FROM users WHERE id = {uid}"
 
     for d in &diags {
         let msg = d.message.to_string();
-        assert!(!msg.contains("__hole_"), "hole placeholder leaked: {msg}");
+        assert!(!msg.contains("__h__"), "hole placeholder leaked: {msg}");
     }
 }
 
@@ -161,7 +160,7 @@ fn ts_simple_template_literal_with_valid_sql() {
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 1);
     assert_eq!(fragments[0].holes.len(), 1);
-    assert_eq!(fragments[0].holes[0].placeholder, "__hole_0__");
+    assert!(fragments[0].sql_text.contains(HOLE_PLACEHOLDER));
 }
 
 #[test]
@@ -206,10 +205,10 @@ fn ts_template_with_multiple_holes() {
     assert_eq!(fragments.len(), 1);
     let f = &fragments[0];
     assert_eq!(f.holes.len(), 4);
-    assert_eq!(f.holes[0].placeholder, "__hole_0__");
-    assert_eq!(f.holes[1].placeholder, "__hole_1__");
-    assert_eq!(f.holes[2].placeholder, "__hole_2__");
-    assert_eq!(f.holes[3].placeholder, "__hole_3__");
+    for hole in &f.holes {
+        let end = hole.sql_offset + HOLE_PLACEHOLDER.len();
+        assert_eq!(&f.sql_text[hole.sql_offset..end], HOLE_PLACEHOLDER);
+    }
 }
 
 #[test]
@@ -241,7 +240,7 @@ fn ts_validate_simple_select_with_hole() {
     for d in &diags {
         let msg = d.message.to_string();
         assert!(
-            !msg.contains("__hole_"),
+            !msg.contains("__h__"),
             "hole placeholder leaked into diagnostic: {msg}"
         );
     }
@@ -255,7 +254,7 @@ fn ts_validate_multiple_holes_no_placeholder_leaks() {
 
     for d in &diags {
         let msg = d.message.to_string();
-        assert!(!msg.contains("__hole_"), "hole placeholder leaked: {msg}");
+        assert!(!msg.contains("__h__"), "hole placeholder leaked: {msg}");
     }
 }
 
