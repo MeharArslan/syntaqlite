@@ -50,11 +50,15 @@ node CaseExpr {
   whens: index CaseWhenList
 
   fmt {
-    "CASE"
-    if_set(operand) { " " child_paren_list(operand) }
-    if_set(whens) { child(whens) }
-    if_set(else_expr) { " ELSE " child(else_expr) }
-    " END"
+    group {
+      "CASE"
+      if_set(operand) { " " child_paren_list(operand) }
+      nest {
+        if_set(whens) { child(whens) }
+        if_set(else_expr) { line "ELSE " child(else_expr) }
+      }
+      line "END"
+    }
   }
 }
 
@@ -62,7 +66,7 @@ node CaseWhen {
   when_expr: index Expr
   then_expr: index Expr
 
-  fmt { " WHEN " child(when_expr) " THEN " child(then_expr) }
+  fmt { line "WHEN " child(when_expr) " THEN " child(then_expr) }
 }
 
 list CaseWhenList {

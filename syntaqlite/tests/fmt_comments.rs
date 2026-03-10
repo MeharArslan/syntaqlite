@@ -148,3 +148,27 @@ fn debug_comment_token_offsets() {
     }
     assert_eq!(stmt_num, 2, "expected exactly 2 statements");
 }
+
+// ── CASE expression formatting ──────────────────────────────────────────────
+
+/// Multi-WHEN CASE expressions should break each WHEN onto its own line.
+#[test]
+fn case_when_line_breaks() {
+    let input = "SELECT CASE WHEN status = 'ACTIVE' THEN 'active' WHEN status = 'INACTIVE' THEN 'inactive' WHEN status = 'PENDING' THEN 'pending' WHEN status = 'DELETED' THEN 'deleted' ELSE 'unknown' END FROM users;";
+    let out = fmt(input);
+    eprintln!("=== actual ===\n{out}=== end ===");
+    assert_eq!(
+        out,
+        "\
+SELECT
+  CASE
+    WHEN status = 'ACTIVE' THEN 'active'
+    WHEN status = 'INACTIVE' THEN 'inactive'
+    WHEN status = 'PENDING' THEN 'pending'
+    WHEN status = 'DELETED' THEN 'deleted'
+    ELSE 'unknown'
+  END
+FROM users;
+"
+    );
+}
