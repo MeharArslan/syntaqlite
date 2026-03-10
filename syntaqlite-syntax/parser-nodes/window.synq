@@ -51,10 +51,10 @@ node WindowDef {
         "("
         nest {
           softline
-          if_set(partition_by) { "PARTITION BY " child(partition_by) }
+          if_set(partition_by) { "PARTITION BY" nest { line child(partition_by) } }
           if_set(orderby) {
             if_set(partition_by) { line }
-            "ORDER BY " child(orderby)
+            "ORDER BY" nest { line child(orderby) }
           }
           if_set(frame) {
             if_set(partition_by) { line } else {

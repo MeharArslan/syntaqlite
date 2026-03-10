@@ -61,8 +61,10 @@ class WindowFunctionFormat(TestSuite):
                   order_id,
                   order_total,
                   rank() OVER (
-                    PARTITION BY customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
-                    ORDER BY order_total DESC
+                    PARTITION BY
+                      customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
+                    ORDER BY
+                      order_total DESC
                   ) AS customer_rank,
                   dense_rank() OVER (PARTITION BY customer_id ORDER BY order_total DESC) AS customer_dense_rank,
                   count(*) OVER (PARTITION BY customer_id) AS customer_order_count
@@ -84,10 +86,42 @@ class WindowFunctionFormat(TestSuite):
                 FROM orders
                 WINDOW
                   w AS (
-                    PARTITION BY customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
-                    ORDER BY order_total DESC
+                    PARTITION BY
+                      customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
+                    ORDER BY
+                      order_total DESC
                   );
             """,
+        )
+
+
+    def test_partition_by_multi_arg_nests(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT last_value(thread.start_ts) OVER (
+                  PARTITION BY upid, android_standardize_thread_name(thread.name)
+                  ORDER BY thread.start_ts
+                  RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur) FOLLOWING
+                ) FROM thread
+            """,
+            out="""\
+                SELECT
+                  last_value(thread.start_ts) OVER (
+                    PARTITION BY
+                      upid,
+                      android_standardize_thread_name(thread.name)
+                    ORDER BY
+                      thread.start_ts
+                    RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur)
+                  )
+                FROM thread;
+            """,
+        )
+
+    def test_short_partition_by_stays_inline(self):
+        return DiffTestBlueprint(
+            sql="SELECT sum(x) OVER (PARTITION BY id ORDER BY ts) FROM t",
+            out="SELECT sum(x) OVER (PARTITION BY id ORDER BY ts) FROM t;",
         )
 
 
@@ -134,7 +168,8 @@ class FrameSpecFormat(TestSuite):
             out="""\
                 SELECT
                   sum(x) OVER (
-                    ORDER BY y
+                    ORDER BY
+                      y
                     GROUPS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE TIES
                   )
                 FROM t;
