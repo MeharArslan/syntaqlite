@@ -236,8 +236,7 @@ fn macro_comma_separated_args() {
 
 #[test]
 fn macro_in_frame_bound_preserves_following() {
-    let input =
-        "SELECT count() OVER (ORDER BY ts RANGE BETWEEN CURRENT ROW AND my_macro!(x) FOLLOWING) FROM t;\n";
+    let input = "SELECT count() OVER (ORDER BY ts RANGE BETWEEN CURRENT ROW AND my_macro!(x) FOLLOWING) FROM t;\n";
     let mut fmt = syntaqlite::Formatter::new();
     let out = fmt.format(input).unwrap();
     eprintln!("=== actual ===\n{out}=== end ===");

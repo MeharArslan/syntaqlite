@@ -440,6 +440,7 @@ class LikeExprBasic(TestSuite):
                     expr:
                       LikeExpr
                         negated: FALSE
+                        keyword: LIKE
                         operand:
                           Literal
                             literal_type: STRING
@@ -473,6 +474,7 @@ class LikeExprBasic(TestSuite):
                     expr:
                       LikeExpr
                         negated: TRUE
+                        keyword: LIKE
                         operand:
                           Literal
                             literal_type: STRING
@@ -513,6 +515,7 @@ class LikeExprBasic(TestSuite):
               where_clause:
                 LikeExpr
                   negated: FALSE
+                  keyword: LIKE
                   operand:
                     ColumnRef
                       column: "a"
@@ -546,6 +549,7 @@ class LikeExprBasic(TestSuite):
                     expr:
                       LikeExpr
                         negated: FALSE
+                        keyword: LIKE
                         operand:
                           Literal
                             literal_type: STRING

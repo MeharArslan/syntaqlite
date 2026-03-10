@@ -83,6 +83,13 @@ typedef enum SyntaqliteIsOp {
   SYNTAQLITE_IS_OP_IS_DISTINCT = 5
 } SyntaqliteIsOp;
 
+typedef enum SyntaqliteLikeKeyword {
+  SYNTAQLITE_LIKE_KEYWORD_LIKE = 0,
+  SYNTAQLITE_LIKE_KEYWORD_GLOB = 1,
+  SYNTAQLITE_LIKE_KEYWORD_MATCH = 2,
+  SYNTAQLITE_LIKE_KEYWORD_REGEXP = 3
+} SyntaqliteLikeKeyword;
+
 typedef enum SyntaqliteForeignKeyAction {
   SYNTAQLITE_FOREIGN_KEY_ACTION_NO_ACTION = 0,
   SYNTAQLITE_FOREIGN_KEY_ACTION_SET_NULL = 1,
@@ -457,6 +464,7 @@ typedef struct SyntaqliteBetweenExpr {
 typedef struct SyntaqliteLikeExpr {
   SyntaqliteNodeTag tag;
   SyntaqliteBool negated;
+  SyntaqliteLikeKeyword keyword;
   uint32_t operand;
   uint32_t pattern;
   uint32_t escape;

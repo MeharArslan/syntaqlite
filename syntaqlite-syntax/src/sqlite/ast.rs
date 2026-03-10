@@ -331,6 +331,26 @@ impl IsOp {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
+pub enum LikeKeyword {
+    Like = 0,
+    Glob = 1,
+    Match = 2,
+    Regexp = 3,
+}
+
+impl LikeKeyword {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LikeKeyword::Like => "LIKE",
+            LikeKeyword::Glob => "GLOB",
+            LikeKeyword::Match => "MATCH",
+            LikeKeyword::Regexp => "REGEXP",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
 pub enum ForeignKeyAction {
     NoAction = 0,
     SetNull = 1,
@@ -2115,6 +2135,9 @@ impl<'a> LikeExpr<'a> {
     }
     pub fn negated(&self) -> bool {
         self.raw.negated == super::ffi::Bool::True
+    }
+    pub fn keyword(&self) -> LikeKeyword {
+        self.raw.keyword
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.operand)

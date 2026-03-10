@@ -152,6 +152,10 @@ pub(crate) enum Item {
         fmt: Option<Vec<Fmt>>,
         semantic: Option<SemanticAnnotation>,
         macro_def: Option<MacroDefAnnotation>,
+        /// `fmt_precedence(N)` — fixed precedence for this node type.
+        fmt_precedence: Option<u8>,
+        /// `fmt_group(N)` — fixed operator group for this node type.
+        fmt_group: Option<u8>,
     },
     Enum {
         name: String,
@@ -160,6 +164,8 @@ pub(crate) enum Item {
         fmt_precedence: Vec<(String, u8)>,
         /// `fmt_group { VARIANT=N ... }` — per-variant operator group values.
         fmt_group: Vec<(String, u8)>,
+        /// `fmt_paren_boundary { VARIANT ... }` — variants that trigger readability parens.
+        fmt_paren_boundary: Vec<String>,
     },
     Flags {
         name: String,
@@ -246,6 +252,12 @@ pub(crate) enum Fmt {
     },
     /// `child_paren_list(field)` — wrap if child is a list node.
     ChildParenList(String),
+    /// `child_prec_fixed(child_field)` or `child_prec_fixed(child_field, right)`.
+    /// Uses the node's own `fmt_precedence` / `fmt_group` as parent prec.
+    ChildPrecFixed {
+        child_field: String,
+        is_right: bool,
+    },
 }
 
 // ── Tokens ───────────────────────────────────────────────────────────────
@@ -498,6 +510,8 @@ impl Parser {
         let mut fmt = None;
         let mut semantic = None;
         let mut macro_def = None;
+        let mut fmt_precedence = None;
+        let mut fmt_group = None;
         loop {
             if self.at_tok(&Token::RBrace) {
                 self.advance();
@@ -508,6 +522,18 @@ impl Parser {
                 self.expect(&Token::LBrace)?;
                 fmt = Some(self.parse_fmt_seq()?);
                 self.expect(&Token::RBrace)?;
+            } else if self.at("fmt_precedence") {
+                self.advance();
+                self.expect(&Token::LParen)?;
+                let n = self.int()?;
+                fmt_precedence = Some(u8::try_from(n).map_err(|_| "fmt_precedence must fit u8")?);
+                self.expect(&Token::RParen)?;
+            } else if self.at("fmt_group") {
+                self.advance();
+                self.expect(&Token::LParen)?;
+                let n = self.int()?;
+                fmt_group = Some(u8::try_from(n).map_err(|_| "fmt_group must fit u8")?);
+                self.expect(&Token::RParen)?;
             } else if self.at("semantic") {
                 self.advance();
                 self.expect(&Token::LBrace)?;
@@ -542,6 +568,8 @@ impl Parser {
             fmt,
             semantic,
             macro_def,
+            fmt_precedence,
+            fmt_group,
         })
     }
 
@@ -739,6 +767,7 @@ impl Parser {
         let mut variants = Vec::new();
         let mut fmt_precedence = Vec::new();
         let mut fmt_group = Vec::new();
+        let mut fmt_paren_boundary = Vec::new();
         while !self.at_tok(&Token::RBrace) {
             if self.at("fmt_precedence") {
                 self.advance();
@@ -760,6 +789,13 @@ impl Parser {
                     fmt_group.push((v, u8::try_from(n).map_err(|_| "group must fit u8")?));
                 }
                 self.advance();
+            } else if self.at("fmt_paren_boundary") {
+                self.advance();
+                self.expect(&Token::LBrace)?;
+                while !self.at_tok(&Token::RBrace) {
+                    fmt_paren_boundary.push(self.ident()?);
+                }
+                self.advance();
             } else {
                 variants.push(self.ident()?);
             }
@@ -770,6 +806,7 @@ impl Parser {
             variants,
             fmt_precedence,
             fmt_group,
+            fmt_paren_boundary,
         })
     }
 
@@ -1022,6 +1059,28 @@ impl Parser {
                     let f = self.ident()?;
                     self.expect(&Token::RParen)?;
                     Ok(Fmt::ChildParenList(f))
+                }
+                "child_prec_fixed" => {
+                    self.advance();
+                    self.expect(&Token::LParen)?;
+                    let child_field = self.ident()?;
+                    let is_right = if self.at_tok(&Token::Comma) {
+                        self.advance();
+                        let tag = self.ident()?;
+                        if tag != "right" {
+                            return Err(format!(
+                                "child_prec_fixed second arg must be 'right', got '{tag}'"
+                            ));
+                        }
+                        true
+                    } else {
+                        false
+                    };
+                    self.expect(&Token::RParen)?;
+                    Ok(Fmt::ChildPrecFixed {
+                        child_field,
+                        is_right,
+                    })
                 }
                 "for_each" => {
                     self.advance();

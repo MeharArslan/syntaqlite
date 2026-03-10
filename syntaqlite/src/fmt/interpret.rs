@@ -544,7 +544,7 @@ impl Formatter {
                     let FieldValue::Enum(parent_op_ordinal) = fields[op_field_idx] else {
                         panic!("ChildPrec: op field {op_field_idx} is not an Enum");
                     };
-                    let (parent_prec, parent_group) =
+                    let (parent_prec, parent_group_and_flags) =
                         ctx.dialect.fmt_prec_lookup(prec_base, parent_op_ordinal);
 
                     let FieldValue::NodeId(child_id) = fields[child_idx as usize] else {
@@ -585,7 +585,7 @@ impl Formatter {
                                 return_action = child_prec_action(
                                     ctx,
                                     parent_prec,
-                                    parent_group,
+                                    parent_group_and_flags,
                                     is_right,
                                     ctag,
                                     &child_fields,
@@ -649,32 +649,109 @@ impl Formatter {
                         }
                     }
                 }
+                FmtOp::ChildPrecFixed(child_idx, packed_b, is_right_flag) => {
+                    let parent_prec = (packed_b >> 8) as u8;
+                    let parent_group_and_flags = (packed_b & 0xFF) as u8;
+                    let is_right = is_right_flag != 0;
+
+                    let FieldValue::NodeId(child_id) = fields[child_idx as usize] else {
+                        panic!("ChildPrecFixed: field {child_idx} is not a NodeId");
+                    };
+
+                    if !child_id.is_null() {
+                        drain_comments_before_child(
+                            ctx.comment_ctx.as_ref(),
+                            source,
+                            &mut pending,
+                            &mut running,
+                            arena,
+                        );
+
+                        let mut return_action = ReturnAction::CatOntoRunning;
+                        let macro_regions = &ctx.macro_regions;
+                        if !macro_regions.is_empty()
+                            && ctx.reader.list_children(child_id).is_none()
+                            && let Some(doc) = super::formatter::try_macro_verbatim(
+                                ctx,
+                                macro_regions,
+                                arena,
+                                consumed_regions,
+                                macro_tokenizer,
+                                child_id,
+                            )
+                        {
+                            running = arena.cat(running, doc);
+                            return_action = ReturnAction::Discard;
+                        }
+
+                        if let Some((ctag, child_fields)) = ctx.reader.extract_fields(child_id)
+                            && let Some((child_ops_bytes, child_ops_len)) =
+                                ctx.dialect.fmt_dispatch(ctag)
+                        {
+                            if return_action != ReturnAction::Discard && parent_prec > 0 {
+                                return_action = child_prec_action(
+                                    ctx,
+                                    parent_prec,
+                                    parent_group_and_flags,
+                                    is_right,
+                                    ctag,
+                                    &child_fields,
+                                );
+                            }
+                            push_call_frame!(
+                                child_id,
+                                child_ops_bytes,
+                                child_ops_len,
+                                child_fields,
+                                return_action
+                            );
+                        }
+                    }
+                }
             }
             ip += 1;
         }
     }
 }
 
-/// Determine the return action for a `CHILD_PREC` opcode.
+/// Decode a packed group_and_flags byte: bits 0-6 = group, bit 7 = paren_boundary.
+/// Group value 0x7F means "no group".
+#[inline]
+fn decode_group(group_and_flags: u8) -> (u8, bool) {
+    let group = group_and_flags & 0x7F;
+    let is_boundary = group_and_flags & 0x80 != 0;
+    (group, is_boundary)
+}
+
+/// Determine the return action for a `CHILD_PREC` / `CHILD_PREC_FIXED` opcode.
 ///
 /// Compares the parent's operator precedence/group with the child's (if the
 /// child tag has expr-meta). Also wraps list children (ExprList-as-expression).
+///
+/// The `parent_group_and_flags` byte packs group (bits 0-6) and paren_boundary
+/// (bit 7). Group 0x7F means "no group".
 fn child_prec_action(
     ctx: &FmtCtx,
     parent_prec: u8,
-    parent_group: u8,
+    parent_group_and_flags: u8,
     is_right: bool,
     child_tag: syntaqlite_syntax::any::AnyNodeTag,
     child_fields: &syntaqlite_syntax::any::NodeFields,
 ) -> ReturnAction {
     // Check if child carries operator precedence info.
     if let Some((child_op_field_idx, child_prec_base)) = ctx.dialect.fmt_expr_meta(child_tag) {
-        let FieldValue::Enum(child_op_ordinal) = child_fields[child_op_field_idx as usize] else {
-            return ReturnAction::CatOntoRunning;
+        // Resolve child's prec and group.
+        let (child_prec, child_group_and_flags) = if child_op_field_idx == 0xFF {
+            // Fixed-prec node: ordinal is always 0.
+            ctx.dialect.fmt_prec_lookup(child_prec_base, 0)
+        } else {
+            let FieldValue::Enum(child_op_ordinal) = child_fields[child_op_field_idx as usize]
+            else {
+                return ReturnAction::CatOntoRunning;
+            };
+            ctx.dialect
+                .fmt_prec_lookup(child_prec_base, child_op_ordinal)
         };
-        let (child_prec, child_group) = ctx
-            .dialect
-            .fmt_prec_lookup(child_prec_base, child_op_ordinal);
         if child_prec == 0 {
             // Child variant has no prec annotation — treat as plain child.
             return ReturnAction::CatOntoRunning;
@@ -686,9 +763,22 @@ fn child_prec_action(
             return ReturnAction::WrapInParens;
         }
 
-        // Readability: preserve parens when crossing operator groups.
-        // 0xFF means "no group" — skip group comparison in that case.
-        if parent_group != 0xFF && child_group != 0xFF && parent_group != child_group {
+        let (parent_group, _) = decode_group(parent_group_and_flags);
+        let (child_group, child_is_boundary) = decode_group(child_group_and_flags);
+
+        // Readability: parens when crossing operator groups.
+        // 0x7F means "no group" — skip group comparison in that case.
+        if parent_group != 0x7F && child_group != 0x7F && parent_group != child_group {
+            return ReturnAction::WrapInParens;
+        }
+
+        // Readability: paren_boundary — when the child has the boundary flag
+        // and is nested inside a different-precedence operator in the same group.
+        if child_is_boundary
+            && parent_group != 0x7F
+            && parent_group == child_group
+            && child_prec != parent_prec
+        {
             return ReturnAction::WrapInParens;
         }
 
@@ -809,6 +899,8 @@ enum FmtOp {
     ChildPrec(FieldIdx, u16, u16),
     /// Paren-list child: `a`=`child_field`. Wraps if child is a list node.
     ChildParenList(FieldIdx),
+    /// Fixed-precedence child: `a`=`child_field`, `b`=packed(`prec<<8|group_and_flags`), `c`=`is_right`.
+    ChildPrecFixed(FieldIdx, u16, u16),
 }
 
 impl FmtOp {
@@ -844,6 +936,7 @@ impl FmtOp {
             opcodes::FOR_EACH_SELF_START => FmtOp::ForEachSelfStart,
             opcodes::CHILD_PREC => FmtOp::ChildPrec(a.into(), b, c),
             opcodes::CHILD_PAREN_LIST => FmtOp::ChildParenList(a.into()),
+            opcodes::CHILD_PREC_FIXED => FmtOp::ChildPrecFixed(a.into(), b, c),
             _ => panic!("unknown opcode in fmt data"),
         }
     }

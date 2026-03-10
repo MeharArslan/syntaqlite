@@ -416,6 +416,12 @@ pub mod fmt {
             /// `a` = child field index. Handles the "ExprList-as-expression" case where
             /// a list node appears in a single-expression context.
             pub const CHILD_PAREN_LIST: u8 = 24;
+            /// Recurse into a child node with fixed-precedence parenthesization.
+            ///
+            /// `a` = child field index, `b` = packed `(prec << 8) | group_and_flags`,
+            /// `c` = `is_right` (0 or 1).
+            /// Like `CHILD_PREC` but the parent's precedence is fixed (not from an enum field).
+            pub const CHILD_PREC_FIXED: u8 = 25;
         }
 
         /// A compiled op in its binary encoding: 6 bytes total.

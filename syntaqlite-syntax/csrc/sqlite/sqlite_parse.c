@@ -7539,8 +7539,15 @@ static YYACTIONTYPE yy_reduce(
       SyntaqliteBool negated = (yymsp[-1].minor.yy0.n & 0x80000000)
                                    ? SYNTAQLITE_BOOL_TRUE
                                    : SYNTAQLITE_BOOL_FALSE;
+      uint32_t len = yymsp[-1].minor.yy0.n & 0x7FFFFFFF;
+      SyntaqliteLikeKeyword kw =
+          (len == 6)   ? SYNTAQLITE_LIKE_KEYWORD_REGEXP
+          : (len == 5) ? SYNTAQLITE_LIKE_KEYWORD_MATCH
+          : (yymsp[-1].minor.yy0.z[0] == 'g' || yymsp[-1].minor.yy0.z[0] == 'G')
+              ? SYNTAQLITE_LIKE_KEYWORD_GLOB
+              : SYNTAQLITE_LIKE_KEYWORD_LIKE;
       yylhsminor.yy141 =
-          synq_parse_like_expr(pCtx, negated, yymsp[-2].minor.yy141,
+          synq_parse_like_expr(pCtx, negated, kw, yymsp[-2].minor.yy141,
                                yymsp[0].minor.yy141, SYNTAQLITE_NULL_NODE);
     }
       yymsp[-2].minor.yy141 = yylhsminor.yy141;
@@ -7550,8 +7557,15 @@ static YYACTIONTYPE yy_reduce(
       SyntaqliteBool negated = (yymsp[-3].minor.yy0.n & 0x80000000)
                                    ? SYNTAQLITE_BOOL_TRUE
                                    : SYNTAQLITE_BOOL_FALSE;
+      uint32_t len = yymsp[-3].minor.yy0.n & 0x7FFFFFFF;
+      SyntaqliteLikeKeyword kw =
+          (len == 6)   ? SYNTAQLITE_LIKE_KEYWORD_REGEXP
+          : (len == 5) ? SYNTAQLITE_LIKE_KEYWORD_MATCH
+          : (yymsp[-3].minor.yy0.z[0] == 'g' || yymsp[-3].minor.yy0.z[0] == 'G')
+              ? SYNTAQLITE_LIKE_KEYWORD_GLOB
+              : SYNTAQLITE_LIKE_KEYWORD_LIKE;
       yylhsminor.yy141 =
-          synq_parse_like_expr(pCtx, negated, yymsp[-4].minor.yy141,
+          synq_parse_like_expr(pCtx, negated, kw, yymsp[-4].minor.yy141,
                                yymsp[-2].minor.yy141, yymsp[0].minor.yy141);
     }
       yymsp[-4].minor.yy141 = yylhsminor.yy141;

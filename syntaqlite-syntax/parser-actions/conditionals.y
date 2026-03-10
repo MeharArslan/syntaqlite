@@ -68,14 +68,27 @@ likeop(A) ::= NOT LIKE_KW|MATCH(B). {
     A.n |= 0x80000000;
 }
 
+// Map token to LikeKeyword enum by length + first char (case-insensitive).
+// LIKE=4/L, GLOB=4/G, MATCH=5, REGEXP=6.
+
 expr(A) ::= expr(B) likeop(C) expr(D). [LIKE_KW] {
     SyntaqliteBool negated = (C.n & 0x80000000) ? SYNTAQLITE_BOOL_TRUE : SYNTAQLITE_BOOL_FALSE;
-    A = synq_parse_like_expr(pCtx, negated, B, D, SYNTAQLITE_NULL_NODE);
+    uint32_t len = C.n & 0x7FFFFFFF;
+    SyntaqliteLikeKeyword kw = (len == 6) ? SYNTAQLITE_LIKE_KEYWORD_REGEXP
+        : (len == 5) ? SYNTAQLITE_LIKE_KEYWORD_MATCH
+        : (C.z[0] == 'g' || C.z[0] == 'G') ? SYNTAQLITE_LIKE_KEYWORD_GLOB
+        : SYNTAQLITE_LIKE_KEYWORD_LIKE;
+    A = synq_parse_like_expr(pCtx, negated, kw, B, D, SYNTAQLITE_NULL_NODE);
 }
 
 expr(A) ::= expr(B) likeop(C) expr(D) ESCAPE expr(E). [LIKE_KW] {
     SyntaqliteBool negated = (C.n & 0x80000000) ? SYNTAQLITE_BOOL_TRUE : SYNTAQLITE_BOOL_FALSE;
-    A = synq_parse_like_expr(pCtx, negated, B, D, E);
+    uint32_t len = C.n & 0x7FFFFFFF;
+    SyntaqliteLikeKeyword kw = (len == 6) ? SYNTAQLITE_LIKE_KEYWORD_REGEXP
+        : (len == 5) ? SYNTAQLITE_LIKE_KEYWORD_MATCH
+        : (C.z[0] == 'g' || C.z[0] == 'G') ? SYNTAQLITE_LIKE_KEYWORD_GLOB
+        : SYNTAQLITE_LIKE_KEYWORD_LIKE;
+    A = synq_parse_like_expr(pCtx, negated, kw, B, D, E);
 }
 
 // ============ CASE ============

@@ -19,9 +19,10 @@ enum BinaryOp {
   fmt_group {
     OR=0 AND=0 EQ=0 NE=0 LT=0 GT=0 LE=0 GE=0
     BIT_AND=1 BIT_OR=1 LSHIFT=1 RSHIFT=1
-    PLUS=2 MINUS=2 STAR=2 SLASH=2 REM=2
-    CONCAT=3 PTR=3
+    PLUS=0 MINUS=0 STAR=0 SLASH=0 REM=0
+    CONCAT=0 PTR=0
   }
+  fmt_paren_boundary { AND }
 }
 
 enum UnaryOp {

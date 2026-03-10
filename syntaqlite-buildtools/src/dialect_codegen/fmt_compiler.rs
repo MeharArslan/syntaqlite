@@ -13,7 +13,7 @@
 //! The binary bytecode file contains the same data in a compact format
 //! loadable at runtime (see `bytecode.rs` in syntaqlite-fmt).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
 use super::AstModel;
@@ -196,9 +196,12 @@ fn build_field_map(fields: &[Field]) -> (Vec<FieldInfo>, HashMap<String, usize>)
 // ── Precedence table builder ─────────────────────────────────────────────
 
 struct PrecTableBuilder {
-    /// Flat `(prec, group)` pairs, one per variant of annotated enums.
+    /// Flat `(prec, group_and_flags)` pairs, one per variant of annotated enums
+    /// or one for fixed-prec nodes. The `group_and_flags` byte packs:
+    /// - bits 0-6: group value (0x7F = no group)
+    /// - bit 7: paren_boundary flag
     data: Vec<u8>,
-    /// Map: enum type name → base index into `data` (in variant units, not byte units).
+    /// Map: enum type name or node name → base index into `data` (in entry units).
     bases: HashMap<String, u16>,
 }
 
@@ -210,13 +213,19 @@ impl PrecTableBuilder {
         }
     }
 
-    /// Register an enum with `fmt_precedence` / `fmt_group` annotations.
+    /// Encode group + paren_boundary into a single byte.
+    fn encode_group(group: u8, is_boundary: bool) -> u8 {
+        if is_boundary { group | 0x80 } else { group }
+    }
+
+    /// Register an enum with `fmt_precedence` / `fmt_group` / `fmt_paren_boundary`.
     fn add_enum(
         &mut self,
         name: &str,
         variants: &[String],
         fmt_precedence: &[(String, u8)],
         fmt_group: &[(String, u8)],
+        fmt_paren_boundary: &[String],
     ) {
         if fmt_precedence.is_empty() {
             return;
@@ -230,18 +239,28 @@ impl PrecTableBuilder {
             .collect();
         let group_map: HashMap<&str, u8> =
             fmt_group.iter().map(|(v, g)| (v.as_str(), *g)).collect();
+        let boundary_set: HashSet<&str> = fmt_paren_boundary.iter().map(|v| v.as_str()).collect();
 
         for variant in variants {
             let prec = prec_map.get(variant.as_str()).copied().unwrap_or(0);
-            let group = group_map.get(variant.as_str()).copied().unwrap_or(0xFF);
+            let group = group_map.get(variant.as_str()).copied().unwrap_or(0x7F);
+            let is_boundary = boundary_set.contains(variant.as_str());
             self.data.push(prec);
-            self.data.push(group);
+            self.data.push(Self::encode_group(group, is_boundary));
         }
     }
 
-    /// Get the prec table base for an enum type, or `None` if not annotated.
-    fn base_for(&self, enum_type: &str) -> Option<u16> {
-        self.bases.get(enum_type).copied()
+    /// Register a node with fixed precedence (single-entry "enum").
+    fn add_fixed(&mut self, name: &str, prec: u8, group: u8) {
+        let base = u16::try_from(self.data.len() / 2).expect("prec table base fits in u16");
+        self.bases.insert(name.to_string(), base);
+        self.data.push(prec);
+        self.data.push(if group == 0xFF { 0x7F } else { group });
+    }
+
+    /// Get the prec table base for an enum type or node name, or `None` if not annotated.
+    fn base_for(&self, name: &str) -> Option<u16> {
+        self.bases.get(name).copied()
     }
 }
 
@@ -257,6 +276,8 @@ struct CompileCtx<'a> {
     prec_table: &'a PrecTableBuilder,
     /// If the current node uses `child_prec`, records `(op_field_idx, prec_table_base)`.
     expr_meta: Option<(u8, u16)>,
+    /// Name of the node being compiled (for `child_prec_fixed` lookups).
+    node_name: &'a str,
 }
 
 impl CompileCtx<'_> {
@@ -480,6 +501,26 @@ fn compile_one(
         Fmt::ChildParenList(field) => {
             let info = ctx.field(field)?;
             ops.push(opa(opcodes::CHILD_PAREN_LIST, idx_u8(info.idx)?));
+        }
+        Fmt::ChildPrecFixed {
+            child_field,
+            is_right,
+        } => {
+            let child_idx = idx_u8(ctx.field(child_field)?.idx)?;
+            let prec_base = ctx.prec_table.base_for(ctx.node_name).ok_or_else(|| {
+                FmtCompileError::UnknownField(format!(
+                    "child_prec_fixed: node '{}' has no fmt_precedence",
+                    ctx.node_name,
+                ))
+            })?;
+            // Read the fixed (prec, group_and_flags) from the table at base+0.
+            let prec = ctx.prec_table.data[prec_base as usize * 2];
+            let group_and_flags = ctx.prec_table.data[prec_base as usize * 2 + 1];
+            let b = (u16::from(prec) << 8) | u16::from(group_and_flags);
+            let c = u16::from(*is_right);
+            // Record expr-meta: op_field_idx=0xFF signals fixed prec.
+            ctx.expr_meta = Some((0xFF, prec_base));
+            ops.push(opabc(opcodes::CHILD_PREC_FIXED, child_idx, b, c));
         }
         Fmt::ForEach { sep, body } => {
             ops.push(op0(opcodes::FOR_EACH_SELF_START));
@@ -723,9 +764,29 @@ pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCo
             variants,
             fmt_precedence,
             fmt_group,
+            fmt_paren_boundary,
         } = item
         {
-            prec_table_builder.add_enum(name, variants, fmt_precedence, fmt_group);
+            prec_table_builder.add_enum(
+                name,
+                variants,
+                fmt_precedence,
+                fmt_group,
+                fmt_paren_boundary,
+            );
+        }
+    }
+
+    // Add node-level fixed precedence entries.
+    for item in &items {
+        if let Item::Node {
+            name,
+            fmt_precedence: Some(prec),
+            fmt_group,
+            ..
+        } = item
+        {
+            prec_table_builder.add_fixed(name, *prec, fmt_group.unwrap_or(0xFF));
         }
     }
 
@@ -822,6 +883,7 @@ impl FmtCompileEnv {
             flags_items: &self.flags_items,
             prec_table: &self.prec_table,
             expr_meta: None,
+            node_name: name,
         };
         compile_seq(fmt_body, &mut cctx, &mut ops)?;
         Ok(CompiledNode {
@@ -872,6 +934,9 @@ mod tests {
             opcodes::FOR_EACH_SELF_START => "FmtOp::ForEachSelfStart".to_string(),
             opcodes::CHILD_PREC => format!("FmtOp::ChildPrec({}, {}, {})", op.a, op.b, op.c),
             opcodes::CHILD_PAREN_LIST => format!("FmtOp::ChildParenList({})", op.a),
+            opcodes::CHILD_PREC_FIXED => {
+                format!("FmtOp::ChildPrecFixed({}, {}, {})", op.a, op.b, op.c)
+            }
             _ => panic!("unknown opcode {}", op.opcode),
         }
     }
@@ -956,6 +1021,8 @@ mod tests {
             fmt: Some(vec![Fmt::Span("source".into())]),
             semantic: None,
             macro_def: None,
+            fmt_precedence: None,
+            fmt_group: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -983,6 +1050,8 @@ mod tests {
             }]),
             semantic: None,
             macro_def: None,
+            fmt_precedence: None,
+            fmt_group: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -999,6 +1068,7 @@ mod tests {
                 variants: vec!["ADD".into(), "SUB".into()],
                 fmt_precedence: vec![],
                 fmt_group: vec![],
+                fmt_paren_boundary: vec![],
             },
             Item::Node {
                 name: "Test".into(),
@@ -1017,6 +1087,8 @@ mod tests {
                 }]),
                 semantic: None,
                 macro_def: None,
+                fmt_precedence: None,
+                fmt_group: None,
             },
         ];
 
@@ -1033,6 +1105,7 @@ mod tests {
                 variants: vec!["PLUS".into(), "MINUS".into()],
                 fmt_precedence: vec![],
                 fmt_group: vec![],
+                fmt_paren_boundary: vec![],
             },
             Item::Node {
                 name: "Test".into(),
@@ -1047,6 +1120,8 @@ mod tests {
                 }]),
                 semantic: None,
                 macro_def: None,
+                fmt_precedence: None,
+                fmt_group: None,
             },
         ];
 
@@ -1085,6 +1160,8 @@ mod tests {
             }]),
             semantic: None,
             macro_def: None,
+            fmt_precedence: None,
+            fmt_group: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -1107,6 +1184,8 @@ mod tests {
                 fmt: Some(vec![Fmt::Child("x".into())]),
                 semantic: None,
                 macro_def: None,
+                fmt_precedence: None,
+                fmt_group: None,
             },
             Item::List {
                 name: "FooList".into(),

@@ -40,8 +40,11 @@ node InExpr {
   operand: index Expr
   source: index InExprSource
 
+  fmt_precedence(3)
+  fmt_group(0)
+
   fmt {
-    child_paren_list(operand)
+    child_prec_fixed(operand)
     if_flag(negated) { " NOT IN " } else { " IN " }
     group { "(" nest { softline child(source) } softline ")" }
   }

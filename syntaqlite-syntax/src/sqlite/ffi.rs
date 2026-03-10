@@ -112,6 +112,7 @@ pub(crate) struct BetweenExpr {
 pub(crate) struct LikeExpr {
     pub(crate) tag: u32,
     pub(crate) negated: Bool,
+    pub(crate) keyword: super::ast::LikeKeyword,
     pub(crate) operand: AnyNodeId,
     pub(crate) pattern: AnyNodeId,
     pub(crate) escape: AnyNodeId,

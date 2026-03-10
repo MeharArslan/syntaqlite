@@ -122,6 +122,7 @@ impl<'a> AstModel<'a> {
                     fmt,
                     semantic,
                     macro_def,
+                    ..
                 } => {
                     let node = NodeRef {
                         name: name.as_str(),
@@ -241,6 +242,7 @@ impl<'a> AstModel<'a> {
                     fmt,
                     semantic,
                     macro_def,
+                    ..
                 } => {
                     let name_str = name.as_str();
                     let node = NodeRef {

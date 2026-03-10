@@ -44,6 +44,13 @@ static const char* const display_is_op[] = {
     "IS", "IS_NOT", "IS_NULL", "NOT_NULL", "IS_NOT_DISTINCT", "IS_DISTINCT",
 };
 
+static const char* const display_like_keyword[] = {
+    "LIKE",
+    "GLOB",
+    "MATCH",
+    "REGEXP",
+};
+
 static const char* const display_foreign_key_action[] = {
     "NO_ACTION", "SET_NULL", "SET_DEFAULT", "CASCADE", "RESTRICT",
 };
@@ -303,6 +310,9 @@ static const SyntaqliteFieldMeta field_meta_between_expr[] = {
 static const SyntaqliteFieldMeta field_meta_like_expr[] = {
     {offsetof(SyntaqliteLikeExpr, negated), SYNTAQLITE_FIELD_BOOL, "negated",
      display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteLikeExpr, keyword), SYNTAQLITE_FIELD_ENUM, "keyword",
+     display_like_keyword,
+     sizeof(display_like_keyword) / sizeof(display_like_keyword[0])},
     {offsetof(SyntaqliteLikeExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand",
      NULL, 0},
     {offsetof(SyntaqliteLikeExpr, pattern), SYNTAQLITE_FIELD_NODE_ID, "pattern",
@@ -1223,7 +1233,7 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     3,  /* InExpr */
     3,  /* IsExpr */
     4,  /* BetweenExpr */
-    4,  /* LikeExpr */
+    5,  /* LikeExpr */
     3,  /* CaseExpr */
     2,  /* CaseWhen */
     0,  /* CaseWhenList */

@@ -5,14 +5,17 @@ node IsExpr {
   left: index Expr
   right: index Expr
 
+  fmt_precedence(3)
+  fmt_group(0)
+
   fmt {
     switch(op) {
-      IS_NULL         { child_paren_list(left) " ISNULL" }
-      NOT_NULL        { child_paren_list(left) " NOTNULL" }
-      IS              { child_paren_list(left) " IS " child_paren_list(right) }
-      IS_NOT          { child_paren_list(left) " IS NOT " child_paren_list(right) }
-      IS_NOT_DISTINCT { child_paren_list(left) " IS NOT DISTINCT FROM " child_paren_list(right) }
-      IS_DISTINCT     { child_paren_list(left) " IS DISTINCT FROM " child_paren_list(right) }
+      IS_NULL         { child_prec_fixed(left) " ISNULL" }
+      NOT_NULL        { child_prec_fixed(left) " NOTNULL" }
+      IS              { child_prec_fixed(left) " IS " child_prec_fixed(right, right) }
+      IS_NOT          { child_prec_fixed(left) " IS NOT " child_prec_fixed(right, right) }
+      IS_NOT_DISTINCT { child_prec_fixed(left) " IS NOT DISTINCT FROM " child_prec_fixed(right, right) }
+      IS_DISTINCT     { child_prec_fixed(left) " IS DISTINCT FROM " child_prec_fixed(right, right) }
     }
   }
 }
@@ -23,23 +26,38 @@ node BetweenExpr {
   low: index Expr
   high: index Expr
 
+  fmt_precedence(3)
+  fmt_group(0)
+
   fmt {
-    child_paren_list(operand)
+    child_prec_fixed(operand)
     if_flag(negated) { " NOT BETWEEN " } else { " BETWEEN " }
     child(low) " AND " child(high)
   }
 }
 
+enum LikeKeyword { LIKE GLOB MATCH REGEXP }
+
 node LikeExpr {
   negated: inline Bool
+  keyword: inline LikeKeyword
   operand: index Expr
   pattern: index Expr
   escape: index Expr
 
+  fmt_precedence(3)
+  fmt_group(0)
+
   fmt {
-    child_paren_list(operand)
-    if_flag(negated) { " NOT LIKE " } else { " LIKE " }
-    child(pattern)
+    child_prec_fixed(operand)
+    if_flag(negated) { " NOT " } else { " " }
+    switch(keyword) {
+      LIKE   { "LIKE" }
+      GLOB   { "GLOB" }
+      MATCH  { "MATCH" }
+      REGEXP { "REGEXP" }
+    }
+    " " child(pattern)
     if_set(escape) { " ESCAPE " child(escape) }
   }
 }
