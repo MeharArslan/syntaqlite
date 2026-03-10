@@ -53,6 +53,15 @@ pub struct FormatError {
     pub length: Option<usize>,
 }
 
+impl FormatError {
+    /// Render this error as a rustc-style snippet to `out`.
+    pub fn render(&self, out: &mut impl std::io::Write, source: &str, file: &str) -> std::io::Result<()> {
+        let start = self.offset.unwrap_or(0);
+        let end = start + self.length.unwrap_or(0);
+        crate::util::render_source_error(out, source, file, "error", &self.message, start, end, None)
+    }
+}
+
 impl std::fmt::Display for FormatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message)

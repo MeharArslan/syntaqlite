@@ -1,7 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Cross-cutting utilities for grammar configuration and compatibility.
+//! Cross-cutting utilities for grammar configuration, compatibility, and rendering.
+
+use std::io::{self, Write};
 
 pub use crate::sqlite::cflags::SqliteFlag;
 pub use syntaqlite_syntax::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVersion};
@@ -92,6 +94,90 @@ impl From<SqliteSyntaxFlags> for SqliteFlags {
         }
         flags
     }
+}
+
+// ── Rustc-style source error rendering ───────────────────────────────────────
+
+/// Render a rustc-style source error snippet to `out`.
+///
+/// General-purpose utility — callers supply raw strings and byte offsets,
+/// with no dependency on diagnostic types.
+///
+/// ```text
+/// error: syntax error near 'SELECT'
+///  --> query.sql:1:15
+///   |
+/// 1 | SELECT id FROM usr WHERE id = 1
+///   |               ^~~
+///   = help: did you mean 'users'?
+/// ```
+///
+/// # Errors
+/// Returns `Err` if writing to `out` fails.
+pub(crate) fn render_source_error(
+    out: &mut impl Write,
+    source: &str,
+    file: &str,
+    severity: &str,
+    message: &str,
+    start_offset: usize,
+    end_offset: usize,
+    help: Option<&str>,
+) -> io::Result<()> {
+    let (line, col) = offset_to_line_col(source, start_offset);
+    let line_text = source_line_at(source, start_offset);
+    let gutter_width = line.to_string().len();
+
+    writeln!(out, "{severity}: {message}")?;
+    writeln!(out, "{:>gutter_width$}--> {file}:{line}:{col}", " ")?;
+    writeln!(out, "{:>gutter_width$} |", " ")?;
+    writeln!(out, "{line} | {line_text}")?;
+
+    let underline_len = if end_offset > start_offset {
+        let line_end = start_offset + (line_text.len().saturating_sub(col - 1));
+        (end_offset.min(line_end) - start_offset).max(1)
+    } else {
+        1
+    };
+    writeln!(
+        out,
+        "{:>gutter_width$} | {:padding$}^{}",
+        " ",
+        "",
+        "~".repeat(underline_len.saturating_sub(1)),
+        padding = col - 1,
+    )?;
+
+    if let Some(help) = help {
+        writeln!(out, "{:>gutter_width$} = help: {help}", " ")?;
+    }
+
+    Ok(())
+}
+
+fn offset_to_line_col(source: &str, offset: usize) -> (usize, usize) {
+    let mut line = 1usize;
+    let mut col = 1usize;
+    for (i, ch) in source.char_indices() {
+        if i >= offset {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
+fn source_line_at(source: &str, offset: usize) -> &str {
+    let start = source[..offset].rfind('\n').map_or(0, |i| i + 1);
+    let end = source[offset..]
+        .find('\n')
+        .map_or(source.len(), |i| offset + i);
+    &source[start..end]
 }
 
 #[cfg(test)]

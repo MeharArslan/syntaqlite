@@ -237,7 +237,10 @@ fn cmd_fmt(
             if in_place {
                 return Err("--in-place requires file arguments".to_string());
             }
-            let out = format_source(dialect, source, config).map_err(|e| format!("{e}"))?;
+            let out = format_source(dialect, source, config).map_err(|e| {
+                e.render(&mut io::stderr(), source, "<stdin>").ok();
+                format!("<stdin>: {e}")
+            })?;
             print!("{out}");
             Ok(())
         },
@@ -258,7 +261,9 @@ fn cmd_fmt(
                     }
                 }
                 Err(e) => {
-                    errors.push(format!("{}: {e}", path.display()));
+                    let label = path.display().to_string();
+                    e.render(&mut io::stderr(), source, &label).ok();
+                    errors.push(format!("{label}: {e}"));
                 }
             }
             Ok(())

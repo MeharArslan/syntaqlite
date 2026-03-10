@@ -6,6 +6,7 @@
 use std::io::{self, Write};
 
 use super::diagnostics::{Diagnostic, Severity};
+use crate::util::render_source_error;
 
 /// Renders diagnostics in rustc-style format to any `Write` target.
 ///
@@ -28,31 +29,6 @@ impl<'a> DiagnosticRenderer<'a> {
         Self { source, file }
     }
 
-    fn offset_to_line_col(&self, offset: usize) -> (usize, usize) {
-        let mut line = 1usize;
-        let mut col = 1usize;
-        for (i, ch) in self.source.char_indices() {
-            if i >= offset {
-                break;
-            }
-            if ch == '\n' {
-                line += 1;
-                col = 1;
-            } else {
-                col += 1;
-            }
-        }
-        (line, col)
-    }
-
-    fn source_line_at(&self, offset: usize) -> &str {
-        let start = self.source[..offset].rfind('\n').map_or(0, |i| i + 1);
-        let end = self.source[offset..]
-            .find('\n')
-            .map_or(self.source.len(), |i| offset + i);
-        &self.source[start..end]
-    }
-
     /// Render a single diagnostic to `out`.
     ///
     /// # Errors
@@ -65,35 +41,17 @@ impl<'a> DiagnosticRenderer<'a> {
             Severity::Hint => "hint",
         };
         let message = diag.message.to_string();
-        let (line, col) = self.offset_to_line_col(diag.start_offset);
-        let line_text = self.source_line_at(diag.start_offset);
-        let gutter_width = line.to_string().len();
-
-        writeln!(out, "{severity}: {message}")?;
-        writeln!(out, "{:>gutter_width$}--> {}:{line}:{col}", " ", self.file)?;
-        writeln!(out, "{:>gutter_width$} |", " ")?;
-        writeln!(out, "{line} | {line_text}")?;
-
-        let underline_len = if diag.end_offset > diag.start_offset {
-            let line_end = diag.start_offset + (line_text.len().saturating_sub(col - 1));
-            (diag.end_offset.min(line_end) - diag.start_offset).max(1)
-        } else {
-            1
-        };
-        writeln!(
+        let help = diag.help.as_ref().map(|h| h.to_string());
+        render_source_error(
             out,
-            "{:>gutter_width$} | {:padding$}^{}",
-            " ",
-            "",
-            "~".repeat(underline_len.saturating_sub(1)),
-            padding = col - 1,
-        )?;
-
-        if let Some(ref help) = diag.help {
-            writeln!(out, "{:>gutter_width$} = help: {help}", " ")?;
-        }
-
-        Ok(())
+            self.source,
+            self.file,
+            severity,
+            &message,
+            diag.start_offset,
+            diag.end_offset,
+            help.as_deref(),
+        )
     }
 
     /// Render all diagnostics to `out`. Returns `true` if any had `Severity::Error`.
