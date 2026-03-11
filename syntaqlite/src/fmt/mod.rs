@@ -14,6 +14,9 @@
 
 mod comment;
 mod doc;
+#[cfg(feature = "sqlite")]
+#[expect(unreachable_pub)]
+pub(crate) mod ffi;
 pub(crate) mod formatter;
 mod interpret;
 

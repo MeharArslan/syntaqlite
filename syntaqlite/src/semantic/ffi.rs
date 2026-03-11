@@ -14,6 +14,7 @@ use crate::dialect::AnyDialect;
 use super::analyzer::SemanticAnalyzer;
 use super::catalog::{Catalog, CatalogLayer};
 use super::diagnostics::Severity;
+use super::render::DiagnosticRenderer;
 use super::{AnalysisMode, ValidationConfig};
 
 // ── C-compatible diagnostic struct ──────────────────────────────────────────
@@ -47,6 +48,12 @@ struct ValidatorState {
     c_diagnostics: Vec<SyntaqliteDiagnostic>,
     /// Rendered message strings, kept alive for the C pointers.
     rendered_messages: Vec<CString>,
+    /// Source from the last `analyze()` call, retained for rendering.
+    last_source: String,
+    /// Diagnostics from the last `analyze()` call, retained for rendering.
+    last_diagnostics: Vec<super::diagnostics::Diagnostic>,
+    /// Rendered diagnostic output, kept alive for C pointer.
+    rendered_output: CString,
 }
 
 /// Opaque C handle — the pointer target of `SyntaqliteValidator*`.
@@ -101,6 +108,9 @@ pub extern "C" fn syntaqlite_validator_create_sqlite() -> *mut SyntaqliteValidat
         dialect,
         c_diagnostics: Vec::new(),
         rendered_messages: Vec::new(),
+        last_source: String::new(),
+        last_diagnostics: Vec::new(),
+        rendered_output: CString::default(),
     });
     Box::into_raw(state).cast::<SyntaqliteValidator>()
 }
@@ -161,6 +171,12 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
 
     let config = ValidationConfig::default();
     let model = state.analyzer.analyze(src, &state.user_catalog, &config);
+
+    // Retain source + diagnostics for diagnostic rendering.
+    state.last_source.clear();
+    state.last_source.push_str(src);
+    state.last_diagnostics.clear();
+    state.last_diagnostics.extend(model.diagnostics().iter().cloned());
 
     // Reuse existing Vec capacity — clear + push avoids reallocating
     // on steady-state calls.
@@ -289,5 +305,380 @@ pub unsafe extern "C" fn syntaqlite_validator_diagnostics(
         std::ptr::null()
     } else {
         state.c_diagnostics.as_ptr()
+    }
+}
+
+// ── Diagnostic rendering ──────────────────────────────────────────────────
+
+/// Render all diagnostics from the last `analyze()` call as a rustc-style
+/// human-readable string.
+///
+/// `file` is a NUL-terminated label shown in the `-->` line (e.g. "query.sql").
+/// If `file` is NULL, the label `"<input>"` is used.
+///
+/// Returns a NUL-terminated UTF-8 string. The pointer is valid until the
+/// next `analyze()`, `render_diagnostics()`, or `destroy()` call.
+/// Returns an empty string when there are no diagnostics.
+///
+/// # Safety
+///
+/// - `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+/// - `file` must be NULL or a valid NUL-terminated C string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_validator_render_diagnostics(
+    v: *mut SyntaqliteValidator,
+    file: *const c_char,
+) -> *const c_char {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &mut *v };
+    let state = v.state_mut();
+
+    if state.last_diagnostics.is_empty() {
+        state.rendered_output = CString::default();
+        return state.rendered_output.as_ptr();
+    }
+
+    let file_label = if file.is_null() {
+        "<input>"
+    } else {
+        // SAFETY: caller guarantees `file` is a valid NUL-terminated C string.
+        unsafe { CStr::from_ptr(file) }.to_str().unwrap_or("<input>")
+    };
+
+    let renderer = DiagnosticRenderer::new(&state.last_source, file_label);
+    let mut buf = Vec::new();
+    // Ignore write errors — Vec<u8> writes are infallible.
+    let _ = renderer.render_diagnostics(&state.last_diagnostics, &mut buf);
+
+    state.rendered_output = CString::new(buf).unwrap_or_default();
+    state.rendered_output.as_ptr()
+}
+
+/// Free a string returned by `syntaqlite_string_*` functions.
+/// No-op if `s` is NULL.
+///
+/// # Safety
+///
+/// `s` must be NULL or a pointer returned by a `syntaqlite_*` function that
+/// documents ownership transfer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_string_destroy(s: *mut c_char) {
+    if !s.is_null() {
+        drop(unsafe { CString::from_raw(s) });
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "sqlite")]
+mod tests {
+    use super::*;
+
+    /// Helper: analyze SQL via FFI and return the diagnostic count.
+    unsafe fn analyze(v: *mut SyntaqliteValidator, sql: &str) -> u32 {
+        unsafe { syntaqlite_validator_analyze(v, sql.as_ptr().cast(), sql.len() as u32) }
+    }
+
+    /// Helper: read the i-th diagnostic message as a Rust string.
+    unsafe fn diag_msg(v: *const SyntaqliteValidator, i: usize) -> String {
+        unsafe {
+            let ptr = syntaqlite_validator_diagnostics(v);
+            assert!(!ptr.is_null());
+            let d = &*ptr.add(i);
+            CStr::from_ptr(d.message).to_str().unwrap().to_owned()
+        }
+    }
+
+    /// Helper: render diagnostics and return as a Rust string.
+    unsafe fn render(v: *mut SyntaqliteValidator, file: Option<&CStr>) -> String {
+        unsafe {
+            let file_ptr = file.map_or(std::ptr::null(), |f| f.as_ptr());
+            let ptr = syntaqlite_validator_render_diagnostics(v, file_ptr);
+            assert!(!ptr.is_null());
+            CStr::from_ptr(ptr).to_str().unwrap().to_owned()
+        }
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn create_and_destroy() {
+        let v = syntaqlite_validator_create_sqlite();
+        assert!(!v.is_null());
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn null_destroy_is_noop() {
+        unsafe { syntaqlite_validator_destroy(std::ptr::null_mut()) };
+    }
+
+    // ── Analysis: clean SQL ───────────────────────────────────────────────
+
+    #[test]
+    fn valid_sql_produces_no_diagnostics() {
+        let v = syntaqlite_validator_create_sqlite();
+        let n = unsafe { analyze(v, "SELECT 1") };
+        assert_eq!(n, 0);
+        assert_eq!(unsafe { syntaqlite_validator_diagnostic_count(v) }, 0);
+        assert!(unsafe { syntaqlite_validator_diagnostics(v) }.is_null());
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── Analysis: unknown table ───────────────────────────────────────────
+
+    #[test]
+    fn unknown_table_produces_diagnostic() {
+        let v = syntaqlite_validator_create_sqlite();
+        let n = unsafe { analyze(v, "SELECT id FROM no_such_table") };
+        assert!(n > 0, "expected at least one diagnostic");
+
+        let msg = unsafe { diag_msg(v, 0) };
+        assert!(
+            msg.contains("no_such_table"),
+            "diagnostic should mention the table: {msg}"
+        );
+
+        // Severity should be warning (default non-strict mode).
+        let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
+        assert_eq!(d.severity, SEVERITY_WARNING);
+
+        // Offsets should be within the source bounds.
+        assert!(d.start_offset < d.end_offset);
+        assert!((d.end_offset as usize) <= "SELECT id FROM no_such_table".len());
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── Catalog: add_tables ───────────────────────────────────────────────
+
+    #[test]
+    fn add_tables_resolves_unknown_table() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        // Before adding: diagnostic.
+        let n = unsafe { analyze(v, "SELECT id FROM users") };
+        assert!(n > 0);
+
+        // Register the table.
+        let name = CString::new("users").unwrap();
+        let col_id = CString::new("id").unwrap();
+        let col_name = CString::new("name").unwrap();
+        let cols: [*const c_char; 2] = [col_id.as_ptr(), col_name.as_ptr()];
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: cols.as_ptr(),
+            column_count: 2,
+        };
+        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+
+        // After adding: clean.
+        let n = unsafe { analyze(v, "SELECT id FROM users") };
+        assert_eq!(n, 0, "table should be resolved after add_tables");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn add_tables_with_null_columns_accepts_any_column() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        let name = CString::new("events").unwrap();
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: std::ptr::null(),
+            column_count: 0,
+        };
+        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+
+        // Any column reference should be accepted (unknown-columns table).
+        let n = unsafe { analyze(v, "SELECT anything, goes FROM events") };
+        assert_eq!(n, 0);
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn add_tables_wrong_column_produces_diagnostic() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        let name = CString::new("users").unwrap();
+        let col_id = CString::new("id").unwrap();
+        let cols: [*const c_char; 1] = [col_id.as_ptr()];
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: cols.as_ptr(),
+            column_count: 1,
+        };
+        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+
+        let n = unsafe { analyze(v, "SELECT nonexistent FROM users") };
+        assert!(n > 0, "referencing a bad column should produce a diagnostic");
+
+        let msg = unsafe { diag_msg(v, 0) };
+        assert!(msg.contains("nonexistent"), "should mention the column: {msg}");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── Catalog: reset ────────────────────────────────────────────────────
+
+    #[test]
+    fn reset_catalog_removes_tables() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        let name = CString::new("users").unwrap();
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: std::ptr::null(),
+            column_count: 0,
+        };
+        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+        assert_eq!(unsafe { analyze(v, "SELECT 1 FROM users") }, 0);
+
+        unsafe { syntaqlite_validator_reset_catalog(v) };
+
+        let n = unsafe { analyze(v, "SELECT 1 FROM users") };
+        assert!(n > 0, "table should be gone after reset");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── Analysis mode ─────────────────────────────────────────────────────
+
+    #[test]
+    fn execute_mode_accumulates_ddl() {
+        let v = syntaqlite_validator_create_sqlite();
+        unsafe { syntaqlite_validator_set_mode(v, 1) }; // Execute
+
+        // CREATE TABLE in one call...
+        unsafe { analyze(v, "CREATE TABLE t(x)") };
+
+        // ...visible in the next call.
+        let n = unsafe { analyze(v, "SELECT x FROM t") };
+        assert_eq!(n, 0, "DDL should persist in execute mode");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn document_mode_resets_ddl_between_calls() {
+        let v = syntaqlite_validator_create_sqlite();
+        // Document mode is the default (mode=0).
+
+        unsafe { analyze(v, "CREATE TABLE t(x)") };
+        let n = unsafe { analyze(v, "SELECT x FROM t") };
+        assert!(n > 0, "DDL should NOT persist in document mode");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── Reuse across calls ────────────────────────────────────────────────
+
+    #[test]
+    fn successive_analyze_calls_replace_diagnostics() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        // First call: diagnostics.
+        let n1 = unsafe { analyze(v, "SELECT 1 FROM bad_table") };
+        assert!(n1 > 0);
+
+        // Second call: clean.
+        let n2 = unsafe { analyze(v, "SELECT 1") };
+        assert_eq!(n2, 0);
+        assert_eq!(unsafe { syntaqlite_validator_diagnostic_count(v) }, 0);
+        assert!(unsafe { syntaqlite_validator_diagnostics(v) }.is_null());
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── Diagnostic rendering ──────────────────────────────────────────────
+
+    #[test]
+    fn render_diagnostics_with_file_label() {
+        let v = syntaqlite_validator_create_sqlite();
+        let n = unsafe { analyze(v, "SELECT 1 FROM bad") };
+        assert!(n > 0);
+
+        let file = CString::new("test.sql").unwrap();
+        let rendered = unsafe { render(v, Some(&file)) };
+
+        assert!(rendered.contains("test.sql"), "should contain file label: {rendered}");
+        assert!(rendered.contains("bad"), "should contain table name: {rendered}");
+        assert!(
+            rendered.contains("warning") || rendered.contains("error"),
+            "should contain severity: {rendered}"
+        );
+    }
+
+    #[test]
+    fn render_diagnostics_with_null_file_uses_default() {
+        let v = syntaqlite_validator_create_sqlite();
+        unsafe { analyze(v, "SELECT 1 FROM bad") };
+
+        let rendered = unsafe { render(v, None) };
+        assert!(rendered.contains("<input>"), "should use default label: {rendered}");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn render_diagnostics_empty_when_no_errors() {
+        let v = syntaqlite_validator_create_sqlite();
+        unsafe { analyze(v, "SELECT 1") };
+
+        let rendered = unsafe { render(v, None) };
+        assert!(rendered.is_empty(), "should be empty for clean SQL: {rendered}");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn render_diagnostics_shows_multiple_issues() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        let name = CString::new("t").unwrap();
+        let col = CString::new("x").unwrap();
+        let cols: [*const c_char; 1] = [col.as_ptr()];
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: cols.as_ptr(),
+            column_count: 1,
+        };
+        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+
+        // Two bad columns in one query.
+        let n = unsafe { analyze(v, "SELECT bad1, bad2 FROM t") };
+        assert!(n >= 2, "expected at least 2 diagnostics, got {n}");
+
+        let rendered = unsafe { render(v, None) };
+        assert!(rendered.contains("bad1"), "should mention bad1: {rendered}");
+        assert!(rendered.contains("bad2"), "should mention bad2: {rendered}");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn render_replaces_previous_render() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        // Render with one error.
+        unsafe { analyze(v, "SELECT 1 FROM alpha") };
+        let r1 = unsafe { render(v, None) };
+        assert!(r1.contains("alpha"));
+
+        // Render with a different error — previous render is replaced.
+        unsafe { analyze(v, "SELECT 1 FROM beta") };
+        let r2 = unsafe { render(v, None) };
+        assert!(r2.contains("beta"));
+        assert!(!r2.contains("alpha"), "old render should be gone: {r2}");
+
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── string_destroy ────────────────────────────────────────────────────
+
+    #[test]
+    fn string_destroy_null_is_noop() {
+        unsafe { syntaqlite_string_destroy(std::ptr::null_mut()) };
     }
 }

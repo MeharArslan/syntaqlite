@@ -71,10 +71,6 @@ typedef enum {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-// Create a validator for the built-in SQLite dialect.
-// The default analysis mode is SYNTAQLITE_MODE_DOCUMENT.
-SyntaqliteValidator* syntaqlite_validator_create_sqlite(void);
-
 // Free the validator and all associated resources. No-op if v is NULL.
 void syntaqlite_validator_destroy(SyntaqliteValidator* v);
 
@@ -117,6 +113,45 @@ uint32_t syntaqlite_validator_diagnostic_count(const SyntaqliteValidator* v);
 // Returns NULL when diagnostic_count is 0.
 const SyntaqliteDiagnostic* syntaqlite_validator_diagnostics(
     const SyntaqliteValidator* v);
+
+// ---------------------------------------------------------------------------
+// Diagnostic rendering
+// ---------------------------------------------------------------------------
+
+// Render all diagnostics from the last analyze() call as a rustc-style
+// human-readable string. Example output:
+//
+//   error: unknown table 'usr'
+//    --> query.sql:1:15
+//     |
+//   1 | SELECT id FROM usr WHERE id = 1
+//     |               ^~~
+//     = help: did you mean 'users'?
+//
+// `file` is a NUL-terminated label for the "--> file:line:col" header.
+// Pass NULL to use the default label "<input>".
+//
+// Returns a NUL-terminated UTF-8 string. The pointer is valid until the
+// next analyze(), render_diagnostics(), or destroy() call.
+// Returns an empty string when there are no diagnostics.
+const char* syntaqlite_validator_render_diagnostics(SyntaqliteValidator* v,
+                                                     const char* file);
+
+// Free a string returned by a syntaqlite_* function that documents
+// ownership transfer. No-op if s is NULL.
+void syntaqlite_string_destroy(char* s);
+
+// ---------------------------------------------------------------------------
+// SQLite convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
+// ---------------------------------------------------------------------------
+
+#ifndef SYNTAQLITE_OMIT_SQLITE_API
+
+// Create a validator for the built-in SQLite dialect.
+// The default analysis mode is SYNTAQLITE_MODE_DOCUMENT.
+SyntaqliteValidator* syntaqlite_validator_create_sqlite(void);
+
+#endif  // SYNTAQLITE_OMIT_SQLITE_API
 
 #ifdef __cplusplus
 }
