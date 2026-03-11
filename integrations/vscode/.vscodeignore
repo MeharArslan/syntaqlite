@@ -1,6 +1,8 @@
 src/**
 node_modules/**
+scripts/**
 .vscode/**
 tsconfig.json
 **/*.ts
 **/*.map
+**/*.md

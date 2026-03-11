@@ -1,0 +1,81 @@
+# Build platform-specific .vsix packages with bundled syntaqlite binaries.
+# Runs on release tags and can be triggered manually.
+name: VS Code Extension
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '**[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  build-vsix:
+    name: Package ${{ matrix.vscode-target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - vscode-target: darwin-arm64
+            rust-target: aarch64-apple-darwin
+            runner: macos-14
+            binary: syntaqlite
+          - vscode-target: darwin-x64
+            rust-target: x86_64-apple-darwin
+            runner: macos-13
+            binary: syntaqlite
+          - vscode-target: linux-x64
+            rust-target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            binary: syntaqlite
+          - vscode-target: linux-arm64
+            rust-target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            binary: syntaqlite
+          - vscode-target: win32-x64
+            rust-target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            binary: syntaqlite.exe
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        if: runner.os == 'Linux'
+        run: python3 tools/install-build-deps
+
+      - name: Install cross-compilation target
+        if: matrix.rust-target == 'aarch64-unknown-linux-gnu'
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
+
+      - name: Build CLI
+        run: cargo build --release -p syntaqlite-cli --target ${{ matrix.rust-target }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install extension dependencies
+        working-directory: integrations/vscode
+        run: npm ci
+
+      - name: Compile extension
+        working-directory: integrations/vscode
+        run: npm run compile
+
+      - name: Package .vsix
+        working-directory: integrations/vscode
+        run: node scripts/package-target.mjs --target ${{ matrix.vscode-target }} --binary ../../target/${{ matrix.rust-target }}/release/${{ matrix.binary }}
+
+      - name: Upload .vsix
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-${{ matrix.vscode-target }}
+          path: integrations/vscode/*.vsix
+          retention-days: 30

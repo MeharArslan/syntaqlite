@@ -1,21 +1,29 @@
 # syntaqlite VS Code Extension
 
-SQL language support powered by the syntaqlite LSP server.
+SQL language support powered by the syntaqlite language server.
 
 ## Features
 
-- Syntax error diagnostics
-- Code formatting
-- Completions (functions, keywords)
+- **Diagnostics** — syntax errors and semantic warnings as you type
+- **Formatting** — format SQL documents via `Format Document` or on save
+- **Completions** — SQL keywords and built-in functions
+- **Semantic highlighting** — context-aware token coloring
 
-## Prerequisites
+## Installation
 
-The `syntaqlite` CLI must be on your `PATH`. Build it from the repo root:
+Install from the VS Code Marketplace. The extension includes the
+syntaqlite binary for your platform — no additional setup required.
 
-```sh
-cargo build --release -p syntaqlite-cli
-export PATH="$PWD/target/release:$PATH"
-```
+## Configuration
+
+| Setting                  | Default | Description                                   |
+|--------------------------|---------|-----------------------------------------------|
+| `syntaqlite.serverPath`  | `""`    | Override path to the syntaqlite binary.       |
+
+## Commands
+
+- **syntaqlite: Restart Language Server** — restart the LSP server
+- **syntaqlite: Format Document** — format the active SQL file
 
 ## Development
 
@@ -25,4 +33,22 @@ npm install
 npm run compile
 ```
 
-Then press **F5** in VS Code to launch an Extension Development Host with the extension loaded.
+Build the CLI and point the extension at it via `syntaqlite.serverPath`:
+
+```sh
+cargo build --release -p syntaqlite-cli
+```
+
+Then set `syntaqlite.serverPath` to the absolute path of `target/release/syntaqlite`
+in your VS Code settings.
+
+Press **F5** to launch an Extension Development Host.
+
+### Packaging platform-specific .vsix
+
+```sh
+cargo build --release -p syntaqlite-cli
+node scripts/package-target.mjs --target darwin-arm64 --binary ../../target/release/syntaqlite
+```
+
+Supported targets: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, `win32-x64`

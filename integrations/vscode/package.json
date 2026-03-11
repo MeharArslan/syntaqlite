@@ -1,14 +1,19 @@
 {
   "name": "syntaqlite",
   "displayName": "syntaqlite",
-  "description": "SQL language support powered by syntaqlite",
+  "description": "SQL language support powered by syntaqlite — diagnostics, formatting, completions, and semantic highlighting",
   "version": "0.1.0",
   "publisher": "syntaqlite",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicholasgasior/syntaqlite"
+  },
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": ["Programming Languages", "Formatters", "Linters"],
+  "keywords": ["sql", "sqlite", "formatter", "linter", "lsp"],
   "activationEvents": ["onLanguage:sql"],
   "main": "./out/extension.js",
   "contributes": {
@@ -18,11 +23,34 @@
         "extensions": [".sql"],
         "aliases": ["SQL"]
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "syntaqlite.restartServer",
+        "title": "syntaqlite: Restart Language Server"
+      },
+      {
+        "command": "syntaqlite.formatDocument",
+        "title": "syntaqlite: Format Document"
+      }
+    ],
+    "configuration": {
+      "title": "syntaqlite",
+      "properties": {
+        "syntaqlite.serverPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the syntaqlite binary. Leave empty to use the bundled binary or PATH."
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "lint": "tsc --noEmit",
+    "package": "vsce package",
+    "package:target": "node scripts/package-target.mjs"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
@@ -30,6 +58,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^3.0.0",
     "typescript": "^5.0.0"
   }
 }
