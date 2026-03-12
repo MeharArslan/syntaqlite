@@ -3,82 +3,18 @@
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
 
-//! Tokenizer and parser for `SQLite` SQL.
+//! Low-level tokenizer and parser for `SQLite` SQL.
 //!
-//! This crate wraps `SQLite`'s own tokenizer and grammar rules behind
-//! safe, zero-dependency Rust APIs. Four design principles guide the library:
+//! This crate is split from `syntaqlite` for internal build reasons — it is
+//! **not** a separate user-facing library. All public types are re-exported by
+//! [`syntaqlite`](https://docs.rs/syntaqlite). **Depend on `syntaqlite`
+//! directly.** If you only need parsing (no formatting or validation), disable
+//! the default features and enable just `sqlite`:
 //!
-//! - **Reliability** — uses `SQLite`'s own tokenizer and grammar rules directly; verified by tests to be identical to `SQLite`'s interpretation.
-//! - **Speed** — [`Tokenizer`] is zero-copy; [`Parser`] is minimal-copy, uses arena allocation and can be reused across multiple SQL inputs.
-//! - **Portability** — no runtime dependencies in Rust or C beyond the standard library.
-//! - **Flexibility** — the grammar system supports database engines which extend `SQLite`'s grammar with their own tokens and rules.
-//!
-//! # Tokenizing
-//!
-//! Use [`Tokenizer`] to break SQL source text into [`Token`]s:
-//!
-//! ```rust
-//! let tokenizer = syntaqlite_syntax::Tokenizer::new();
-//! for token in tokenizer.tokenize("SELECT 1") {
-//!     println!("{:?}: {:?}", token.token_type(), token.text());
-//! }
+//! ```toml
+//! [dependencies]
+//! syntaqlite = { version = "0.1", default-features = false, features = ["sqlite"] }
 //! ```
-//!
-//! # Parsing
-//!
-//! Use [`Parser`] to parse SQL source text into a typed AST:
-//!
-//! ```rust
-//! use syntaqlite_syntax::ParseErrorKind;
-//!
-//! let parser = syntaqlite_syntax::Parser::new();
-//! let mut session = parser.parse("SELECT 1");
-//! loop {
-//!     match session.next() {
-//!         syntaqlite_syntax::ParseOutcome::Ok(statement) => println!("{:?}", statement.root()),
-//!         syntaqlite_syntax::ParseOutcome::Err(error) => {
-//!             eprintln!("parse error: {}", error.message());
-//!             if error.kind() == ParseErrorKind::Fatal {
-//!                 break;
-//!             }
-//!         }
-//!         syntaqlite_syntax::ParseOutcome::Done => break,
-//!     }
-//! }
-//! ```
-//!
-//! # Incremental Parsing
-//!
-//! Use [`IncrementalParseSession`] when SQL arrives token-by-token
-//! (for example in editors and completion engines):
-//!
-//! ```rust
-//! use syntaqlite_syntax::{Parser, TokenType};
-//!
-//! let parser = Parser::new();
-//! let mut session = parser.incremental_parse("SELECT 1");
-//!
-//! assert!(session.feed_token(TokenType::Select, 0..6).is_none());
-//! assert!(session.feed_token(TokenType::Integer, 7..8).is_none());
-//!
-//! let stmt = session.finish().and_then(Result::ok).unwrap();
-//! let _ = stmt.root();
-//! ```
-//!
-//! # Features
-//!
-//! - `sqlite` *(default)*: enables the built-in `SQLite` grammar
-//!   ([`Tokenizer`], [`Token`], and `sqlite::grammar`/`sqlite::ast`).
-//! - `serde`: implements [`serde::Serialize`] on [`any::AnyNode`], producing
-//!   JSON that mirrors the text dump format.
-//! - `serde-json`: adds [`typed::TypedParsedStatement::dump_json`], a
-//!   convenience wrapper that calls `serde_json::to_string` on the root node.
-//!
-//! # Choosing an API Layer
-//!
-//! - Use top-level [`Parser`] and [`Tokenizer`] for normal `SQLite` application code.
-//! - Use [`typed`] when building reusable code over known generated grammars.
-//! - Use [`any`] when grammar choice happens at runtime or crosses FFI/plugin boundaries.
 
 // ==== Public API ====
 

@@ -5,36 +5,35 @@
 
 //! Fast, accurate SQL tooling for `SQLite` and its dialects.
 //!
-//! This crate provides formatting and semantic validation for SQL, built on
-//! top of [`syntaqlite_syntax`]'s parser and grammar system. Four design
-//! principles guide the library:
+//! This crate provides parsing, formatting, and semantic validation for SQL,
+//! built on `SQLite`'s own tokenizer and grammar rules. Four design principles
+//! guide the library:
 //!
 //! - **Reliability** — uses `SQLite`'s own grammar rules; formatting is round-trip safe and validation mirrors real engine behaviour.
 //! - **Speed** — all core types ([`Formatter`], [`SemanticAnalyzer`], [`Catalog`]) are designed for reuse across many inputs without re-allocation.
 //! - **Portability** — the core formatting and validation engine has no runtime dependencies beyond the standard library; optional features (`lsp`, `serde`) pull in additional crates.
 //! - **Flexibility** — supports multiple database dialects that extend `SQLite`'s grammar with their own tokens and rules.
 //!
-//! # Formatting
+//! # Parsing
 //!
-//! Use [`Formatter`] to pretty-print SQL with consistent style. The formatter
-//! parses each statement, runs a bytecode interpreter over the AST, and
-//! renders the result with a Wadler-style pretty-printer.
+//! Use [`Parser`] to parse SQL source text into a typed AST:
 //!
 //! ```rust
-//! # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
-//! let mut fmt = Formatter::with_config(
-//!     &FormatConfig::default()
-//!         .with_keyword_case(KeywordCase::Lower)
-//!         .with_line_width(60),
-//! );
+//! use syntaqlite::{Parser, ParseOutcome, ParseErrorKind};
 //!
-//! let output = fmt.format("select id,name from users where active=1").unwrap();
-//! assert!(output.starts_with("select"));
-//! assert!(output.contains("from"));
+//! let parser = Parser::new();
+//! let mut session = parser.parse("SELECT 1; SELECT 2");
+//! loop {
+//!     match session.next() {
+//!         ParseOutcome::Ok(stmt) => println!("{:?}", stmt.root()),
+//!         ParseOutcome::Err(e) => {
+//!             eprintln!("parse error: {}", e.message());
+//!             if e.kind() == ParseErrorKind::Fatal { break; }
+//!         }
+//!         ParseOutcome::Done => break,
+//!     }
+//! }
 //! ```
-//!
-//! See [`FormatConfig`] for all available options (line width, indent width,
-//! keyword casing, semicolons).
 //!
 //! # Validation
 //!
@@ -64,6 +63,59 @@
 //! For richer output, use [`DiagnosticRenderer`](util::DiagnosticRenderer) to produce rustc-style
 //! error messages with source context and underlines.
 //!
+//! # Formatting
+//!
+//! Use [`Formatter`] to pretty-print SQL with consistent style. The formatter
+//! parses each statement, runs a bytecode interpreter over the AST, and
+//! renders the result with a Wadler-style pretty-printer.
+//!
+//! ```rust
+//! # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
+//! let mut fmt = Formatter::with_config(
+//!     &FormatConfig::default()
+//!         .with_keyword_case(KeywordCase::Lower)
+//!         .with_line_width(60),
+//! );
+//!
+//! let output = fmt.format("select id,name from users where active=1").unwrap();
+//! assert!(output.starts_with("select"));
+//! assert!(output.contains("from"));
+//! ```
+//!
+//! See [`FormatConfig`] for all available options (line width, indent width,
+//! keyword casing, semicolons).
+//!
+//! # Advanced
+//!
+//! ## Tokenizing
+//!
+//! Use [`Tokenizer`] to break SQL source text into [`Token`]s:
+//!
+//! ```rust
+//! let tokenizer = syntaqlite::Tokenizer::new();
+//! for token in tokenizer.tokenize("SELECT 1") {
+//!     println!("{:?}: {:?}", token.token_type(), token.text());
+//! }
+//! ```
+//!
+//! ## Incremental Parsing
+//!
+//! Use [`IncrementalParseSession`] when SQL arrives token-by-token
+//! (for example in editors and completion engines):
+//!
+//! ```rust
+//! use syntaqlite::{Parser, TokenType};
+//!
+//! let parser = Parser::new();
+//! let mut session = parser.incremental_parse("SELECT 1");
+//!
+//! assert!(session.feed_token(TokenType::Select, 0..6).is_none());
+//! assert!(session.feed_token(TokenType::Integer, 7..8).is_none());
+//!
+//! let stmt = session.finish().and_then(Result::ok).unwrap();
+//! let _ = stmt.root();
+//! ```
+//!
 //! # Features
 //!
 //! - `sqlite` *(default)*: enables the built-in `SQLite` grammar, [`Dialect`],
@@ -72,7 +124,7 @@
 //!   [`KeywordCase`].
 //! - `validation` *(default)*: enables [`SemanticAnalyzer`], [`Catalog`],
 //!   [`Diagnostic`], and related types.
-//! - `lsp`: enables [`LspServer`] and [`lsp::LspHost`] for editor integration.
+//! - `lsp`: enables [`LspServer`](lsp::LspServer) and [`lsp::LspHost`] for editor integration.
 //! - `experimental-embedded`: enables [`embedded`] SQL extraction from Python
 //!   and TypeScript/JavaScript source files.
 //! - `serde`: adds `Serialize`/`Deserialize` impls for diagnostics and AST
@@ -81,14 +133,15 @@
 //!
 //! # Choosing an API
 //!
-//! - Use [`Formatter`] when you need to pretty-print or normalize SQL text.
+//! - Use [`Parser`] and [`Tokenizer`] for parsing and tokenizing SQL.
 //! - Use [`SemanticAnalyzer`] + [`Catalog`] when you need to validate SQL
 //!   against a database schema (table/column/function resolution).
-//! - Use [`LspServer`] (requires the `lsp` feature) to embed a full
+//! - Use [`Formatter`] when you need to pretty-print or normalize SQL text.
+//! - Use [`LspServer`](lsp::LspServer) (requires the `lsp` feature) to embed a full
 //!   Language Server Protocol implementation in an editor or tool.
-//! - Use the re-exported [`Parser`] and [`Tokenizer`] from
-//!   [`syntaqlite_syntax`] for low-level parsing without formatting or
-//!   validation.
+//! - Use [`typed`] when building reusable code over known generated grammars.
+//! - Use [`any`] when grammar choice happens at runtime or crosses
+//!   FFI/plugin boundaries.
 
 // Temporarily disabled during refactor except for formatter dependency chain.
 #[cfg(feature = "fmt")]
@@ -122,8 +175,6 @@ pub mod embedded;
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
 pub use fmt::{FormatConfig, FormatError, KeywordCase};
-#[cfg(feature = "lsp")]
-pub use lsp::LspServer;
 #[cfg(feature = "validation")]
 pub use semantic::{
     AnalysisMode, AritySpec, Catalog, CatalogLayer, CatalogLayerContents, Diagnostic,

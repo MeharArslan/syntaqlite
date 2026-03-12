@@ -118,7 +118,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             require_dialect(dialect).and_then(|d| cmd_validate(&d, &files, lang))
         }
         Command::Lsp => require_dialect(dialect)
-            .and_then(|d| syntaqlite::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))),
+            .and_then(|d| syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))),
         Command::Fmt {
             files,
             line_width,
