@@ -52,11 +52,11 @@ fn main() {
             .file(sqlite_csrc.join("sqlite_keyword.c"))
             .include(&manifest_dir) // for csrc/sqlite/*.h internal headers
             .include(&include_dir) // for public syntaqlite*/*.h headers
-            .flag("-Wno-int-conversion")
-            .flag("-Wno-void-pointer-to-int-cast")
-            .flag("-Wno-unused-variable")
-            .flag("-Wno-unused-parameter")
-            .flag("-Wno-comment");
+            .flag_if_supported("-Wno-int-conversion")
+            .flag_if_supported("-Wno-void-pointer-to-int-cast")
+            .flag_if_supported("-Wno-unused-variable")
+            .flag_if_supported("-Wno-unused-parameter")
+            .flag_if_supported("-Wno-comment");
         if target_os == "emscripten" {
             build.flag("-fPIC");
         }
