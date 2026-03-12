@@ -1,175 +1,173 @@
-#!/usr/bin/env bash
-# Run the competitive comparison and optionally write markdown to docs.
-#
-# Usage:
-#   tools/run-comparison --setup                # install all competitor tools
-#   tools/run-comparison                        # terminal output, all categories
-#   tools/run-comparison validator              # terminal output, one category
-#   tools/run-comparison --markdown             # write markdown to web/docs/content/reference/
-#   tools/run-comparison --markdown validator   # write one category to docs
+#!/usr/bin/env python3
+"""
+Run the competitive comparison and optionally write markdown to docs.
 
-set -euo pipefail
-DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO="$(cd "$DIR/.." && pwd)"
-DOCS_DIR="$REPO/web/docs/content/reference"
-RUNNER="$REPO/python/syntaqlite/comparison/run.py"
-COMP_DIR="$REPO/tests/comparison"
+Usage:
+  tools/run-comparison --setup                # install all competitor tools
+  tools/run-comparison                        # run all categories, save JSON results
+  tools/run-comparison parser formatter       # run specific categories
+  tools/run-comparison --markdown             # generate markdown from cached JSON
+  tools/run-comparison --all                  # run + generate markdown in one step
+"""
 
-# ── Setup ──────────────────────────────────────────────────────────────
+import argparse
+import os
+import shutil
+import subprocess
+import sys
 
-do_setup() {
-    echo "==> Installing comparison dependencies..."
-    echo ""
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
+COMP_DIR = os.path.join(REPO, "tests", "comparison")
+DOCS_DIR = os.path.join(REPO, "web", "docs", "content", "reference")
 
-    # 1. npm local deps (sql-parser-cst, node-sql-parser, prettier, sql-lint)
-    echo "--- npm install (tests/comparison/) ---"
-    (cd "$COMP_DIR" && npm install)
-    echo ""
+# Add python/ to path so we can import comparison modules
+sys.path.insert(0, os.path.join(REPO, "python"))
 
-    # 2. npm global tools (sql-formatter, sql-language-server)
-    echo "--- npm install global tools ---"
-    npm install -g sql-formatter sql-language-server
-    echo ""
 
-    # 3. Python deps via uv (sqlglot, sqlfluff, sqlfmt)
-    echo "--- uv sync (tests/comparison/) ---"
-    if ! command -v uv &>/dev/null; then
-        echo "ERROR: 'uv' not found. Install it: https://docs.astral.sh/uv/getting-started/installation/"
-        exit 1
-    fi
-    (cd "$COMP_DIR" && uv sync)
-    echo ""
+# ── Setup ──────────────────────────────────────────────────────────
 
-    # 4. Rust parser benchmarks (lemon-rs, sqlparser-rs)
-    echo "--- cargo build (tests/comparison/parser/) ---"
-    cargo build --release --manifest-path "$COMP_DIR/parser/Cargo.toml" --target-dir "$COMP_DIR/parser/target"
-    echo ""
+def do_setup():
+    print("==> Installing comparison dependencies...\n")
+
+    def _sh(cmd, **kw):
+        subprocess.run(cmd, shell=True, check=True, **kw)
+
+    # 1. npm local deps
+    print("--- npm install (tests/comparison/) ---")
+    _sh("npm install", cwd=COMP_DIR)
+    print()
+
+    # 2. npm global tools
+    print("--- npm install global tools ---")
+    _sh("npm install -g sql-formatter sql-language-server")
+    print()
+
+    # 3. Python deps via uv
+    print("--- uv sync (tests/comparison/) ---")
+    if not shutil.which("uv"):
+        print("ERROR: 'uv' not found. Install: https://docs.astral.sh/uv/getting-started/installation/")
+        sys.exit(1)
+    _sh("uv sync", cwd=COMP_DIR)
+    print()
+
+    # 4. Rust parser benchmarks
+    print("--- cargo build (tests/comparison/parser/) ---")
+    _sh(f"cargo build --release --manifest-path {COMP_DIR}/parser/Cargo.toml "
+        f"--target-dir {COMP_DIR}/parser/target")
+    print()
 
     # 5. Cargo-installed tools
-    echo "--- cargo install (sleek) ---"
-    cargo install sleek 2>/dev/null || true
-    echo ""
+    print("--- cargo install (sleek) ---")
+    subprocess.run("cargo install sleek", shell=True, stderr=subprocess.DEVNULL)
+    print()
 
     # 6. Homebrew tools
-    echo "--- brew install (sqruff, hyperfine) ---"
-    for tool in sqruff hyperfine; do
-        if ! command -v "$tool" &>/dev/null; then
-            brew install "$tool"
-        else
-            echo "$tool already installed"
-        fi
-    done
-    echo ""
+    print("--- brew install (sqruff, hyperfine) ---")
+    for tool in ["sqruff", "hyperfine"]:
+        if shutil.which(tool):
+            print(f"{tool} already installed")
+        else:
+            _sh(f"brew install {tool}")
+    print()
 
-    # 7. Go tools (sqls)
-    echo "--- go install (sqls) ---"
-    if command -v go &>/dev/null; then
-        go install github.com/sqls-server/sqls@latest 2>/dev/null || true
-    else
-        echo "WARN: 'go' not found, skipping sqls install"
-    fi
-    echo ""
+    # 7. Go tools
+    print("--- go install (sqls) ---")
+    if shutil.which("go"):
+        subprocess.run("go install github.com/sqls-server/sqls@latest",
+                       shell=True, stderr=subprocess.DEVNULL)
+    else:
+        print("WARN: 'go' not found, skipping sqls install")
+    print()
 
-    # 8. Build syntaqlite itself
-    echo "--- building syntaqlite CLI ---"
-    "$REPO/tools/cargo" build --release -p syntaqlite-cli
-    echo ""
+    # 8. Build syntaqlite
+    print("--- building syntaqlite CLI ---")
+    _sh(f"{REPO}/tools/cargo build --release -p syntaqlite-cli")
+    print()
 
-    echo "==> Setup complete."
-}
+    print("==> Setup complete.")
 
-# ── Preflight check ───────────────────────────────────────────────────
 
-check_deps() {
-    local missing=()
+# ── Preflight ──────────────────────────────────────────────────────
 
-    # syntaqlite binary
-    [ -x "$REPO/target/release/syntaqlite" ] || missing+=("syntaqlite (run: tools/cargo build --release -p syntaqlite-cli)")
+def check_deps():
+    missing = []
 
-    # Rust parser binaries
-    [ -x "$COMP_DIR/parser/target/release/lemon-rs-parse" ] || missing+=("lemon-rs-parse (run: cargo build --release --manifest-path tests/comparison/parser/Cargo.toml)")
-    [ -x "$COMP_DIR/parser/target/release/sqlparser-parse" ] || missing+=("sqlparser-parse")
+    if not os.access(os.path.join(REPO, "target", "release", "syntaqlite"), os.X_OK):
+        missing.append("syntaqlite (run: tools/cargo build --release -p syntaqlite-cli)")
 
-    # npm local deps
-    [ -d "$COMP_DIR/node_modules/sql-parser-cst" ] || missing+=("sql-parser-cst (run: cd tests/comparison && npm install)")
-    [ -d "$COMP_DIR/node_modules/node-sql-parser" ] || missing+=("node-sql-parser")
+    if not os.access(os.path.join(COMP_DIR, "parser", "target", "release", "lemon-rs-parse"), os.X_OK):
+        missing.append("lemon-rs-parse (run: cargo build --release --manifest-path tests/comparison/parser/Cargo.toml)")
 
-    # Global/PATH tools
-    command -v sql-formatter &>/dev/null || missing+=("sql-formatter (run: npm install -g sql-formatter)")
-    command -v hyperfine &>/dev/null || missing+=("hyperfine (run: brew install hyperfine)")
-    command -v uv &>/dev/null || missing+=("uv (install: https://docs.astral.sh/uv/)")
+    if not os.access(os.path.join(COMP_DIR, "parser", "target", "release", "sqlparser-parse"), os.X_OK):
+        missing.append("sqlparser-parse")
 
-    if [ ${#missing[@]} -gt 0 ]; then
-        echo "ERROR: Missing comparison dependencies:" >&2
-        for dep in "${missing[@]}"; do
-            echo "  - $dep" >&2
-        done
-        echo "" >&2
-        echo "Run 'tools/run-comparison --setup' to install all dependencies." >&2
-        exit 1
-    fi
-}
+    if not os.path.isdir(os.path.join(COMP_DIR, "node_modules", "sql-parser-cst")):
+        missing.append("sql-parser-cst (run: cd tests/comparison && npm install)")
 
-# ── Main ───────────────────────────────────────────────────────────────
+    if not os.path.isdir(os.path.join(COMP_DIR, "node_modules", "node-sql-parser")):
+        missing.append("node-sql-parser")
 
-output_mode="terminal"
-categories=()
+    if not shutil.which("sql-formatter"):
+        missing.append("sql-formatter (run: npm install -g sql-formatter)")
 
-for arg in "$@"; do
-    case "$arg" in
-        --setup)
-            do_setup
-            exit 0
-            ;;
-        --markdown|-m)
-            output_mode="markdown"
-            ;;
-        *)
-            categories+=("$arg")
-            ;;
-    esac
-done
+    if not shutil.which("hyperfine"):
+        missing.append("hyperfine (run: brew install hyperfine)")
 
-check_deps
+    if not shutil.which("uv"):
+        missing.append("uv (install: https://docs.astral.sh/uv/)")
 
-if [ "$output_mode" = "markdown" ]; then
-    summary_file="$DOCS_DIR/comparison.md"
-    detail_file="$DOCS_DIR/comparison-details.md"
-    mkdir -p "$DOCS_DIR"
+    if missing:
+        print("ERROR: Missing comparison dependencies:", file=sys.stderr)
+        for dep in missing:
+            print(f"  - {dep}", file=sys.stderr)
+        print("\nRun 'tools/run-comparison --setup' to install all dependencies.", file=sys.stderr)
+        sys.exit(1)
 
-    summary_frontmatter='+++
-title = "Competitive Comparison"
-weight = 10
-+++
-'
-    detail_frontmatter='+++
-title = "Comparison Details"
-weight = 11
-+++
-'
 
-    echo "Running comparison (markdown mode)..."
-    echo "Summary: $summary_file"
-    echo "Details: $detail_file"
-    echo ""
+# ── Main ──────────────────────────────────────────────────────────
 
-    python3 "$RUNNER" --output markdown \
-        --output-file "$detail_file.tmp" \
-        --summary-file "$summary_file.tmp" \
-        "${categories[@]+"${categories[@]}"}"
+ALL_CATEGORIES = ["parser", "formatter", "validator", "lsp"]
 
-    # Prepend Zola frontmatter to both files
-    printf '%s' "$summary_frontmatter" > "$summary_file"
-    cat "$summary_file.tmp" >> "$summary_file"
-    rm -f "$summary_file.tmp"
 
-    printf '%s' "$detail_frontmatter" > "$detail_file"
-    cat "$detail_file.tmp" >> "$detail_file"
-    rm -f "$detail_file.tmp"
+def main():
+    parser = argparse.ArgumentParser(
+        description="syntaqlite competitive comparison",
+        usage="tools/run-comparison [--setup | --markdown | --all] [categories...]",
+    )
+    parser.add_argument("categories", nargs="*", default=ALL_CATEGORIES,
+                        help="Categories to run (parser, formatter, validator, lsp)")
+    parser.add_argument("--setup", action="store_true",
+                        help="Install all competitor tool dependencies")
+    parser.add_argument("--markdown", action="store_true",
+                        help="Generate markdown docs from cached JSON results")
+    parser.add_argument("--all", action="store_true",
+                        help="Run comparisons and generate markdown in one step")
+    args = parser.parse_args()
 
-    echo ""
-    echo "Written to $summary_file"
-    echo "Written to $detail_file"
-else
-    python3 "$RUNNER" "${categories[@]+"${categories[@]}"}"
-fi
+    if args.setup:
+        do_setup()
+        return
+
+    from syntaqlite.comparison.collect import collect_all, load_results
+    from syntaqlite.comparison.render import write_docs
+
+    if args.markdown:
+        # Just render from cached JSON
+        results = load_results(args.categories)
+        if not results:
+            print("No cached results found. Run without --markdown first.", file=sys.stderr)
+            sys.exit(1)
+        write_docs(results, DOCS_DIR)
+        return
+
+    # Default: run comparisons and save JSON
+    check_deps()
+    results = collect_all(args.categories)
+
+    if args.all:
+        write_docs(results, DOCS_DIR)
+
+
+if __name__ == "__main__":
+    main()

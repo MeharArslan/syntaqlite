@@ -136,6 +136,10 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             };
             require_dialect(dialect).and_then(|d| cmd_fmt(&d, &files, &config, in_place))
         }
+        Command::Version => {
+            println!("syntaqlite {}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        }
         Command::Dialect(args) => crate::codegen::dispatch_dialect(&args),
         Command::DialectTool(cmd) => crate::codegen::dispatch_tool(cmd),
     }

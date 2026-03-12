@@ -23,7 +23,7 @@ pub(crate) enum ParseOutput {
 }
 
 #[derive(Parser)]
-#[command(about = "SQL formatting and analysis tools")]
+#[command(name = "syntaqlite", about = "SQL formatting and analysis tools", version)]
 pub(crate) struct Cli {
     /// Path to a shared library (.so/.dylib/.dll) providing a dialect.
     #[cfg(feature = "builtin-sqlite")]
@@ -96,6 +96,8 @@ pub(crate) enum Command {
     /// Generate dialect C sources and Rust bindings for external dialects.
     #[cfg(feature = "builtin-sqlite")]
     Dialect(codegen::DialectArgs),
+    /// Print version information
+    Version,
     /// Hidden lemon/mkkeyword subcommands for codegen subprocess support.
     #[cfg(feature = "builtin-sqlite")]
     #[command(flatten)]
