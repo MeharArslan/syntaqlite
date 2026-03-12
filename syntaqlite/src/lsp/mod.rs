@@ -7,10 +7,26 @@
 //! # Overview
 //!
 //! - [`LspHost`] — stateful document store with lazy per-document
-//!   analysis (diagnostics, semantic tokens, completions, formatting).
+//!   analysis (diagnostics, semantic tokens, completions, formatting,
+//!   hover, signature help).
 //!   Delegates semantic validation to [`SemanticAnalyzer`](crate::semantic::SemanticAnalyzer).
 //! - [`LspServer`] — stdio JSON-RPC server that drives an `LspHost`
 //!   in response to LSP messages from an editor.
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! // Requires the `lsp` feature.
+//! use syntaqlite::lsp::{LspHost, LspServer};
+//!
+//! // Programmatic usage — embed in your own tool:
+//! let mut host = LspHost::new();
+//! host.update_document("file:///q.sql", 1, "SELECT 1;".into());
+//! let tokens = host.semantic_tokens_encoded("file:///q.sql", None);
+//!
+//! // Turnkey stdio server — launch from an editor:
+//! // LspServer::run(syntaqlite::sqlite_dialect()).unwrap();
+//! ```
 
 /// Semantic token type names in legend-index order, for use in LSP
 /// `SemanticTokensLegend` and Monaco provider registration.
@@ -36,7 +52,12 @@ pub(crate) use crate::semantic::model::{CompletionContext, CompletionInfo};
 
 // ── LSP-specific types ──────────────────────────────────────────────────
 
-/// A completion item returned by [`LspHost::completion_items`].
+/// A single suggestion returned by [`LspHost::completion_items`].
+///
+/// Each entry carries a display label (which is also the text to insert) and a
+/// [`CompletionKind`] indicating whether it is a keyword or a function name.
+/// Convert to your editor's native completion type using [`label()`](Self::label)
+/// and [`kind()`](Self::kind).
 #[derive(Debug, Clone)]
 pub struct CompletionEntry {
     label: String,

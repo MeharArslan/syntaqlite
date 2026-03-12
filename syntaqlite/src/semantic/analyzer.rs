@@ -34,6 +34,29 @@ use super::{AnalysisMode, ValidationConfig};
 ///
 /// Set [`AnalysisMode::Execute`] via [`with_mode`](Self::with_mode) to make
 /// DDL accumulate across calls (interactive session semantics).
+///
+/// # Example
+///
+/// ```
+/// # use syntaqlite::{
+/// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, Severity,
+/// # };
+/// // 1. Create analyzer (reusable across many inputs).
+/// let mut analyzer = SemanticAnalyzer::new();
+///
+/// // 2. Set up a catalog describing the database schema.
+/// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+/// catalog
+///     .layer_mut(CatalogLayer::Database)
+///     .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+///
+/// // 3. Analyze a query.
+/// let config = ValidationConfig::default();
+/// let model = analyzer.analyze("SELECT id, name FROM users;", &catalog, &config);
+///
+/// // 4. No diagnostics — the query is valid against the schema.
+/// assert!(model.diagnostics().is_empty());
+/// ```
 pub struct SemanticAnalyzer {
     dialect: AnyDialect,
     catalog: Catalog,
@@ -44,6 +67,17 @@ pub struct SemanticAnalyzer {
 #[expect(dead_code)]
 impl SemanticAnalyzer {
     /// Create an analyzer for the built-in `SQLite` dialect.
+    ///
+    /// This is the most common entry point. The returned analyzer is ready to
+    /// use with [`analyze`](Self::analyze). For custom or third-party dialects,
+    /// use [`with_dialect`](Self::with_dialect) instead.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use syntaqlite::SemanticAnalyzer;
+    /// let mut analyzer = SemanticAnalyzer::new();
+    /// ```
     #[cfg(feature = "sqlite")]
     pub fn new() -> Self {
         Self::with_dialect(crate::sqlite::dialect::dialect())
@@ -99,6 +133,26 @@ impl SemanticAnalyzer {
     ///
     /// In [`AnalysisMode::Execute`], DDL from this call is promoted to the
     /// connection layer so it persists across subsequent calls.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use syntaqlite::{
+    /// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, Severity,
+    /// # };
+    /// let mut analyzer = SemanticAnalyzer::new();
+    /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+    /// catalog
+    ///     .layer_mut(CatalogLayer::Database)
+    ///     .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+    ///
+    /// let config = ValidationConfig::default();
+    ///
+    /// // Referencing a column that does not exist produces a diagnostic.
+    /// let model = analyzer.analyze("SELECT email FROM users;", &catalog, &config);
+    /// assert!(!model.diagnostics().is_empty());
+    /// assert_eq!(model.diagnostics()[0].severity(), Severity::Warning);
+    /// ```
     pub fn analyze(
         &mut self,
         source: &str,

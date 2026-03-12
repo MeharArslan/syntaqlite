@@ -4,6 +4,79 @@
 #![cfg_attr(test, expect(clippy::unwrap_used))]
 
 //! Fast, accurate SQL tooling for `SQLite` and its dialects.
+//!
+//! This crate provides formatting and semantic validation for SQL, built on
+//! top of [`syntaqlite_syntax`]'s parser and grammar system. Three design
+//! principles guide the library:
+//!
+//! - **Correctness** — uses `SQLite`'s own grammar rules; formatting is
+//!   round-trip safe and validation mirrors real engine behaviour.
+//! - **Performance** — all core types ([`Formatter`], [`SemanticAnalyzer`],
+//!   [`Catalog`]) are designed for reuse across many inputs without
+//!   re-allocation.
+//! - **Incrementality** — the semantic analyzer supports both single-document
+//!   and multi-statement session modes via [`AnalysisMode`](semantic::AnalysisMode).
+//!
+//! # Formatting
+//!
+//! Use [`Formatter`] to pretty-print SQL with consistent style. The formatter
+//! parses each statement, runs a bytecode interpreter over the AST, and
+//! renders the result with a Wadler-style pretty-printer.
+//!
+//! ```rust
+//! # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
+//! let mut fmt = Formatter::with_config(
+//!     &FormatConfig::default()
+//!         .with_keyword_case(KeywordCase::Lower)
+//!         .with_line_width(60),
+//! );
+//!
+//! let output = fmt.format("select id,name from users where active=1").unwrap();
+//! assert!(output.starts_with("select"));
+//! assert!(output.contains("from"));
+//! ```
+//!
+//! See [`FormatConfig`] for all available options (line width, indent width,
+//! keyword casing, semicolons).
+//!
+//! # Validation
+//!
+//! Use [`SemanticAnalyzer`] to check SQL against a known schema. The analyzer
+//! produces a [`SemanticModel`] containing structured [`Diagnostic`] values
+//! with byte-offset spans and "did you mean?" suggestions.
+//!
+//! ```rust
+//! use syntaqlite::{
+//!     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, sqlite_dialect,
+//! };
+//!
+//! let mut analyzer = SemanticAnalyzer::new();
+//! let mut catalog = Catalog::new(sqlite_dialect());
+//!
+//! // Register a table so the analyzer can resolve column references.
+//! catalog.layer_mut(CatalogLayer::Database)
+//!     .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+//!
+//! let config = ValidationConfig::default();
+//! let model = analyzer.analyze("SELECT id, name FROM users", &catalog, &config);
+//!
+//! // All names resolve — no diagnostics.
+//! assert!(model.diagnostics().is_empty());
+//! ```
+//!
+//! For richer output, use [`DiagnosticRenderer`](util::DiagnosticRenderer) to produce rustc-style
+//! error messages with source context and underlines.
+//!
+//! # Choosing an API
+//!
+//! - Use [`Formatter`] when you need to pretty-print or normalize SQL text.
+//! - Use [`SemanticAnalyzer`] + [`Catalog`] when you need to validate SQL
+//!   against a database schema (table/column/function resolution).
+//! - Use [`LspServer`] (requires the `lsp` feature) to embed a full
+//!   Language Server Protocol implementation in an editor or tool.
+//! - Use the re-exported [`Parser`] and [`Tokenizer`] from
+//!   [`syntaqlite_syntax`] for low-level parsing without formatting or
+//!   validation.
 
 // Temporarily disabled during refactor except for formatter dependency chain.
 #[cfg(feature = "fmt")]
@@ -34,8 +107,6 @@ pub mod embedded;
 // ── Public API ────────────────────────────────────────────────────────────────
 
 #[cfg(feature = "fmt")]
-pub use dialect::{AnyDialect, TypedDialect};
-#[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
 pub use fmt::{FormatConfig, FormatError, KeywordCase};
@@ -43,8 +114,8 @@ pub use fmt::{FormatConfig, FormatError, KeywordCase};
 pub use lsp::LspServer;
 #[cfg(feature = "validation")]
 pub use semantic::{
-    Catalog, Diagnostic, DiagnosticMessage, Help, SemanticAnalyzer, SemanticModel, Severity,
-    ValidationConfig,
+    AritySpec, Catalog, CatalogLayer, CatalogLayerContents, Diagnostic, DiagnosticMessage,
+    FunctionCategory, Help, SemanticAnalyzer, SemanticModel, Severity, ValidationConfig,
 };
 #[cfg(feature = "sqlite")]
 pub use sqlite::dialect::Dialect;
@@ -73,11 +144,17 @@ pub use syntaqlite_syntax::{
 /// Type-erased (grammar-agnostic) parser and tokenizer types.
 pub mod any {
     pub use syntaqlite_syntax::any::*;
+
+    #[cfg(feature = "fmt")]
+    pub use crate::dialect::AnyDialect;
 }
 
 /// Typed (grammar-parameterized) parser and tokenizer infrastructure.
 pub mod typed {
     pub use syntaqlite_syntax::typed::*;
+
+    #[cfg(feature = "fmt")]
+    pub use crate::dialect::TypedDialect;
 }
 
 /// Generated typed AST nodes for the built-in `SQLite` grammar.

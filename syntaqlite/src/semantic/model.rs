@@ -113,6 +113,32 @@ pub(crate) struct Resolution {
 /// Owns the source text, stored token/comment positions, and all diagnostics
 /// (both parse errors and semantic issues). Produced by
 /// [`SemanticAnalyzer::analyze`](super::analyzer::SemanticAnalyzer::analyze).
+///
+/// # Example
+///
+/// ```
+/// # use syntaqlite::{
+/// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, Severity,
+/// # };
+/// let mut analyzer = SemanticAnalyzer::new();
+/// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+/// catalog
+///     .layer_mut(CatalogLayer::Database)
+///     .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+///
+/// let model = analyzer.analyze(
+///     "SELECT emial FROM users;",
+///     &catalog,
+///     &ValidationConfig::default(),
+/// );
+///
+/// // Iterate diagnostics to find the warning about "emial".
+/// for diag in model.diagnostics() {
+///     assert_eq!(diag.severity(), Severity::Warning);
+///     let msg = diag.message().to_string();
+///     assert!(msg.contains("emial"));
+/// }
+/// ```
 pub struct SemanticModel {
     pub(crate) source: String,
     pub(crate) tokens: Vec<StoredToken>,

@@ -42,6 +42,16 @@ use offset_map::OffsetMap;
 /// A SQL fragment extracted from a host language source file.
 ///
 /// **Experimental:** this type is part of the experimental embedded SQL API.
+///
+/// Represents one contiguous SQL string found by a language-specific extractor
+/// such as [`extract_python`] or [`extract_typescript`]. The fragment contains
+/// the rewritten SQL text (with interpolation holes replaced by
+/// [`HOLE_PLACEHOLDER`]) and metadata for mapping offsets back to the original
+/// host file.
+///
+/// Use this when you need to inspect extraction results before passing them
+/// to [`EmbeddedAnalyzer::validate`] or
+/// [`EmbeddedAnalyzer::semantic_tokens_encoded`].
 #[derive(Debug)]
 pub struct EmbeddedFragment {
     /// Byte range of the SQL content in the host file (excluding quotes).
@@ -166,16 +176,30 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 /// **Experimental:** this type is part of the experimental embedded SQL API.
 ///
 /// Holds the dialect, optional catalog context, and validation config so they
-/// don't need to be threaded through every call.
+/// don't need to be threaded through every call. Use this when you want to
+/// lint SQL embedded in Python, TypeScript, or other host languages.
+///
+/// The workflow is:
+/// 1. Extract fragments with [`extract_python`] or [`extract_typescript`].
+/// 2. Create an `EmbeddedAnalyzer`, optionally attaching a [`Catalog`] for
+///    schema-aware validation.
+/// 3. Call [`validate`](Self::validate) to get diagnostics mapped to host-file
+///    positions, or [`semantic_tokens_encoded`](Self::semantic_tokens_encoded)
+///    for syntax highlighting.
 ///
 /// # Example
 ///
-/// ```rust,no_run
-/// # use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python};
-/// # let source = "";
-/// # let dialect = syntaqlite::sqlite_dialect();
-/// let fragments = extract_python(source);
-/// let diags = EmbeddedAnalyzer::new(dialect).validate(&fragments);
+/// ```rust,ignore
+/// # // Requires the `experimental-embedded` and `sqlite` features.
+/// use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python};
+///
+/// let python_source = r#"db.execute(f"SELECT id, name FROM users WHERE age > {min_age}")"#;
+/// let fragments = extract_python(python_source);
+/// assert_eq!(fragments.len(), 1);
+///
+/// let analyzer = EmbeddedAnalyzer::new(syntaqlite::sqlite_dialect());
+/// let diags = analyzer.validate(&fragments);
+/// // `diags` contains diagnostics with byte offsets into `python_source`.
 /// ```
 pub struct EmbeddedAnalyzer {
     dialect: AnyDialect,

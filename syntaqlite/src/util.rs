@@ -13,18 +13,29 @@ pub use syntaqlite_syntax::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVer
 /// Full set of `SQLite` compile-time compatibility flags.
 ///
 /// Covers all 42 known flags using a 64-bit bitset indexed by [`SqliteFlag`]
-/// discriminants. Parser flags (indices 0–21) share the same bit positions as
+/// discriminants. Parser flags (indices 0-21) share the same bit positions as
 /// the C compact `SYNQ_CFLAG_IDX_*` values, so conversion to/from
 /// [`SqliteSyntaxFlags`] requires no translation table.
 ///
-/// Use this type with [`AnyDialect::with_cflags`](crate::AnyDialect::with_cflags)
+/// Use this type with [`AnyDialect::with_cflags`](crate::any::AnyDialect::with_cflags)
 /// to filter function availability based on compile-time `SQLite` configuration.
 ///
 /// # Example
-/// ```rust,ignore
+///
+/// ```
 /// use syntaqlite::util::{SqliteFlag, SqliteFlags};
-/// let dialect = syntaqlite::sqlite_dialect()
-///     .with_cflags(SqliteFlags::default().with(SqliteFlag::EnableMathFunctions));
+///
+/// let flags = SqliteFlags::default()
+///     .with(SqliteFlag::EnableMathFunctions)
+///     .with(SqliteFlag::EnableFts5);
+///
+/// assert!(flags.has(SqliteFlag::EnableMathFunctions));
+/// assert!(flags.has(SqliteFlag::EnableFts5));
+///
+/// // Pass to a dialect to control function availability.
+/// let dialect = syntaqlite::sqlite_dialect().erase()
+///     .with_cflags(flags);
+/// assert!(dialect.cflags().has(SqliteFlag::EnableMathFunctions));
 /// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SqliteFlags(pub(crate) u64);

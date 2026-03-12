@@ -12,6 +12,24 @@ use super::{EmbeddedFragment, HOLE_PLACEHOLDER, Hole, starts_with_sql_keyword};
 /// Scans for f-strings (`f"..."`, `f'...'`, `f"""..."""`, `f'''...'''`) and
 /// checks if their content starts with a SQL keyword. For qualifying strings,
 /// interpolation holes (`{expr}`) are replaced with [`HOLE_PLACEHOLDER`](super::HOLE_PLACEHOLDER).
+///
+/// Non-f-strings, regular strings, and comments are skipped.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// # // Requires the `experimental-embedded` feature.
+/// use syntaqlite::embedded::extract_python;
+///
+/// let source = r#"
+/// name = "world"
+/// db.execute(f"SELECT id FROM users WHERE name = {name}")
+/// "#;
+/// let fragments = extract_python(source);
+/// assert_eq!(fragments.len(), 1);
+/// assert!(fragments[0].sql_text().starts_with("SELECT"));
+/// assert_eq!(fragments[0].holes().len(), 1);
+/// ```
 pub fn extract_python(source: &str) -> Vec<EmbeddedFragment> {
     let bytes = source.as_bytes();
     let len = bytes.len();

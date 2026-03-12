@@ -38,8 +38,31 @@ use crate::semantic::diagnostics::Severity;
 /// Stdio LSP server for a syntaqlite dialect.
 ///
 /// Runs a JSON-RPC message loop on stdin/stdout, driving an [`LspHost`]
-/// for all analysis requests.  Exits cleanly when the client sends a
+/// for all analysis requests. Exits cleanly when the client sends a
 /// `shutdown` request.
+///
+/// Use this when you want a turnkey LSP binary that editors can launch as a
+/// child process. For programmatic access (e.g., in a web worker or test
+/// harness), use [`LspHost`] directly instead.
+///
+/// # Supported capabilities
+///
+/// - `textDocument/didOpen`, `didChange`, `didClose`
+/// - `textDocument/completion` (keywords and functions)
+/// - `textDocument/hover` (table, column, and function info)
+/// - `textDocument/signatureHelp` (function arities)
+/// - `textDocument/semanticTokens/full`
+/// - `textDocument/formatting`
+/// - `textDocument/publishDiagnostics` (parse + semantic errors)
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // Requires the `lsp` feature. Blocks on stdin/stdout.
+/// use syntaqlite::lsp::LspServer;
+///
+/// LspServer::run(syntaqlite::sqlite_dialect()).expect("LSP server failed");
+/// ```
 pub struct LspServer;
 
 impl LspServer {

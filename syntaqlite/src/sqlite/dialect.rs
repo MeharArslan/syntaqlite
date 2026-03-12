@@ -15,8 +15,25 @@ use crate::util::SqliteFlags;
 
 /// The typed `SQLite` dialect handle.
 ///
-/// Wraps an [`AnyDialect`] and implements [`TypedDialect`]. Obtain via [`crate::sqlite_dialect()`];
-/// configure with [`with_version`](Self::with_version) and [`with_cflags`](Self::with_cflags).
+/// Wraps an [`AnyDialect`] and implements [`TypedDialect`]. Obtain via
+/// [`crate::sqlite_dialect()`]; configure with [`with_version`](Self::with_version)
+/// and [`with_cflags`](Self::with_cflags).
+///
+/// Call [`.erase()`](Self::erase) or `.into()` to convert to an [`AnyDialect`]
+/// when a type-erased handle is needed.
+///
+/// # Example
+///
+/// ```
+/// use syntaqlite::Dialect;
+/// use syntaqlite::util::SqliteVersion;
+///
+/// let dialect = Dialect::new().with_version(SqliteVersion::V3_39);
+/// assert_eq!(dialect.version(), SqliteVersion::V3_39);
+///
+/// // Convert to AnyDialect for use with the analyzer or formatter.
+/// let any = dialect.erase();
+/// ```
 #[derive(Clone)]
 pub struct Dialect {
     raw: AnyDialect,

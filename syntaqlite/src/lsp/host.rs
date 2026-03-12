@@ -48,11 +48,46 @@ fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, user_catalo
 
 // ── LspHost ───────────────────────────────────────────────────────────────────
 
-/// Manages open documents and answers analysis queries.
+/// Main integration point for embedding syntaqlite analysis in an editor or
+/// language-aware tool.
 ///
-/// Stores documents by URI and lazily computes per-document analysis
-/// (diagnostics, semantic tokens, completions, formatting) on first access
-/// after each edit. Semantic validation delegates to [`SemanticAnalyzer`].
+/// `LspHost` manages a set of open documents keyed by URI and lazily computes
+/// analysis results on first access after each edit. The typical lifecycle is:
+///
+/// 1. **Open / update** a document with [`update_document`](Self::update_document).
+/// 2. **Query** the document for diagnostics, semantic tokens, completions,
+///    hover information, signature help, or formatting.
+/// 3. **Optionally set schema context** via [`set_session_context`](Self::set_session_context),
+///    [`set_session_context_from_ddl`](Self::set_session_context_from_ddl), or
+///    [`set_session_context_from_json`](Self::set_session_context_from_json) to
+///    enable table/column/function validation.
+///
+/// Analysis is cached per-document and invalidated automatically when the
+/// source text or catalog context changes. Semantic validation delegates to
+/// [`SemanticAnalyzer`].
+///
+/// Use this when you are building an LSP server, a web-based editor plugin,
+/// or any tool that needs incremental SQL analysis tied to document identity.
+/// For one-shot analysis without document management, use
+/// [`SemanticAnalyzer`] directly.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // Requires the `lsp` feature.
+/// use syntaqlite::lsp::LspHost;
+///
+/// let mut host = LspHost::new(); // SQLite dialect by default
+///
+/// // Feed a document into the host.
+/// host.update_document("file:///query.sql", 1, "SELECT * FROM users;".into());
+///
+/// // Retrieve semantic tokens for syntax highlighting.
+/// let tokens = host.semantic_tokens_encoded("file:///query.sql", None);
+///
+/// // Retrieve completions at a cursor position.
+/// let items = host.completion_items("file:///query.sql", 9);
+/// ```
 pub struct LspHost {
     dialect: AnyDialect,
     /// User-provided schema (tables, views, functions).

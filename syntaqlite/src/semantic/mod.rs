@@ -23,7 +23,7 @@ pub(crate) mod render;
 #[cfg(feature = "validation")]
 pub use analyzer::SemanticAnalyzer;
 #[cfg(feature = "validation")]
-pub use catalog::Catalog;
+pub use catalog::{AritySpec, Catalog, CatalogLayer, CatalogLayerContents, FunctionCategory};
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 #[cfg(feature = "validation")]
 pub use model::SemanticModel;
@@ -49,6 +49,33 @@ pub enum AnalysisMode {
 }
 
 /// Configuration for semantic validation.
+///
+/// Controls how the [`SemanticAnalyzer`] reports unresolved names and
+/// generates "did you mean?" suggestions:
+///
+/// - **`strict_schema`** (`false` by default) — when `false`, unresolved
+///   table/column/function names produce [`Severity::Warning`]; when `true`,
+///   they produce [`Severity::Error`]. Use strict mode for CI pipelines where
+///   schema mismatches should block deployment.
+/// - **`suggestion_threshold`** (`2` by default) — maximum Levenshtein
+///   distance for "did you mean?" suggestions. Set to `0` to disable
+///   suggestions entirely.
+///
+/// # Example
+///
+/// ```
+/// # use syntaqlite::{ValidationConfig, Severity};
+/// // Default: warnings + suggestions within edit distance 2.
+/// let config = ValidationConfig::default();
+/// assert_eq!(config.severity(), Severity::Warning);
+/// assert_eq!(config.suggestion_threshold(), 2);
+///
+/// // Strict mode for CI: errors + tighter suggestions.
+/// let strict = ValidationConfig::default()
+///     .with_strict_schema(true)
+///     .with_suggestion_threshold(1);
+/// assert_eq!(strict.severity(), Severity::Error);
+/// ```
 #[derive(Clone, Copy)]
 pub struct ValidationConfig {
     strict_schema: bool,

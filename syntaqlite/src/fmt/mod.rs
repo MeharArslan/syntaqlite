@@ -23,6 +23,15 @@ mod interpret;
 // ── Config types (formerly config.rs) ────────────────────────────────────
 
 /// Controls how SQL keywords are cased in formatted output.
+///
+/// ```rust
+/// # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
+/// let mut fmt = Formatter::with_config(
+///     &FormatConfig::default().with_keyword_case(KeywordCase::Lower),
+/// );
+/// let out = fmt.format("SELECT 1").unwrap();
+/// assert!(out.starts_with("select"));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum KeywordCase {
     /// Convert keywords to UPPER CASE.
@@ -33,6 +42,35 @@ pub enum KeywordCase {
 }
 
 /// Configuration for the SQL formatter.
+///
+/// Controls line width, indentation, keyword casing, and semicolons.
+/// All settings have sensible defaults (see [`Default`] impl):
+///
+/// | Setting        | Default                      |
+/// |----------------|------------------------------|
+/// | `line_width`   | 80                           |
+/// | `indent_width` | 2                            |
+/// | `keyword_case` | [`KeywordCase::Upper`]       |
+/// | `semicolons`   | `true`                       |
+///
+/// Use the builder methods (`with_*`) to customize:
+///
+/// ```rust
+/// # use syntaqlite::{FormatConfig, KeywordCase};
+/// let config = FormatConfig::default()
+///     .with_line_width(120)
+///     .with_indent_width(4)
+///     .with_keyword_case(KeywordCase::Lower)
+///     .with_semicolons(false);
+///
+/// assert_eq!(config.line_width(), 120);
+/// assert_eq!(config.indent_width(), 4);
+/// assert_eq!(config.keyword_case(), KeywordCase::Lower);
+/// assert!(!config.semicolons());
+/// ```
+///
+/// Pass the config to [`Formatter::with_config`](crate::Formatter::with_config)
+/// to apply it.
 #[derive(Debug, Clone)]
 pub struct FormatConfig {
     line_width: usize,

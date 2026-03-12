@@ -25,16 +25,22 @@ fn opt_field(v: u8) -> Option<u8> {
 /// The category of a catalog function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FunctionCategory {
+    /// A scalar function (e.g. `length`, `upper`).
     Scalar,
+    /// An aggregate function (e.g. `count`, `sum`).
     Aggregate,
+    /// A window function (e.g. `row_number`, `rank`).
     Window,
 }
 
 /// Describes how many arguments a function overload accepts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AritySpec {
+    /// Accepts exactly this many arguments.
     Exact(usize),
+    /// Accepts at least this many arguments (variadic).
     AtLeast(usize),
+    /// Accepts any number of arguments.
     Any,
 }
 
@@ -128,8 +134,29 @@ impl CatalogLayerContents {
         );
     }
 
-    /// Insert a table. `columns = None` means columns are unknown (refs
-    /// against it are conservatively accepted).
+    /// Insert a table into this layer.
+    ///
+    /// Pass `columns = Some(vec![...])` when the column list is known so the
+    /// analyzer can validate column references. Pass `columns = None` when the
+    /// table exists but its columns are unknown — references against it are
+    /// conservatively accepted without warnings.
+    ///
+    /// Set `without_rowid` to `true` for `WITHOUT ROWID` tables (suppresses
+    /// the implicit `rowid` column during resolution).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use syntaqlite::{Catalog, CatalogLayer};
+    /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+    /// let db = catalog.layer_mut(CatalogLayer::Database);
+    ///
+    /// // Known columns — misspelled column names will produce diagnostics.
+    /// db.insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+    ///
+    /// // Unknown columns — any column reference is accepted.
+    /// db.insert_table("external_data", None, false);
+    /// ```
     pub fn insert_table(
         &mut self,
         name: impl Into<String>,
@@ -147,7 +174,21 @@ impl CatalogLayerContents {
         );
     }
 
-    /// Insert a view. Views never have implicit rowid columns.
+    /// Insert a view into this layer.
+    ///
+    /// Views behave like tables for resolution purposes but never expose an
+    /// implicit `rowid` column. As with [`insert_table`](Self::insert_table),
+    /// pass `None` for `columns` when the column list is unknown.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use syntaqlite::{Catalog, CatalogLayer};
+    /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+    /// catalog
+    ///     .layer_mut(CatalogLayer::Database)
+    ///     .insert_view("active_users", Some(vec!["id".into(), "name".into()]));
+    /// ```
     pub fn insert_view(&mut self, name: impl Into<String>, columns: Option<Vec<String>>) {
         let name = name.into();
         self.relations.insert(
@@ -160,7 +201,36 @@ impl CatalogLayerContents {
         );
     }
 
-    /// Insert a single function overload.
+    /// Insert a single function overload into this layer.
+    ///
+    /// Use this to register application-defined functions so the analyzer can
+    /// validate calls and arity. Call multiple times with the same name to
+    /// register multiple overloads (e.g. one accepting 1 argument and another
+    /// accepting 2).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use syntaqlite::{
+    /// #     Catalog, CatalogLayer, FunctionCategory, AritySpec,
+    /// #     SemanticAnalyzer, ValidationConfig,
+    /// # };
+    /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+    /// let db = catalog.layer_mut(CatalogLayer::Database);
+    ///
+    /// // Register a custom scalar function that takes exactly 2 arguments.
+    /// db.insert_function_overload("my_concat", FunctionCategory::Scalar, AritySpec::Exact(2));
+    ///
+    /// // The analyzer now accepts calls to my_concat().
+    /// let mut analyzer = SemanticAnalyzer::new();
+    /// let config = ValidationConfig::default();
+    /// let model = analyzer.analyze(
+    ///     "SELECT my_concat('hello', 'world');",
+    ///     &catalog,
+    ///     &config,
+    /// );
+    /// assert!(model.diagnostics().is_empty());
+    /// ```
     pub fn insert_function_overload(
         &mut self,
         name: impl Into<String>,
@@ -284,7 +354,11 @@ const FIXED_LAYER_COUNT: usize = 4;
 
 // ── Public Catalog ────────────────────────────────────────────────────────────
 
-/// Layered semantic catalog.
+/// Layered semantic catalog describing a database schema.
+///
+/// Use this to tell [`SemanticAnalyzer`](super::analyzer::SemanticAnalyzer)
+/// which tables, views, and functions exist so it can validate column
+/// references, function calls, and arity.
 ///
 /// Layers are stored in a single `Vec` indexed by priority (lowest first):
 ///
@@ -297,25 +371,50 @@ const FIXED_LAYER_COUNT: usize = 4;
 /// ```
 ///
 /// Resolution iterates layers from highest index to lowest, so the priority
-/// order is: innermost query scope → document → connection → database → dialect.
-///
-/// The `Vec` is never shorter than `FIXED_LAYER_COUNT`.
+/// order is: innermost query scope > document > connection > database > dialect.
 ///
 /// # Populating layers
 ///
-/// Obtain a mutable reference to any fixed layer and call `insert_*` on it:
+/// Obtain a mutable reference to any fixed layer via [`layer_mut`](Self::layer_mut)
+/// and call `insert_*` methods on the returned [`CatalogLayerContents`]:
 ///
-/// ```ignore
-/// catalog.layer_mut(CatalogLayer::Database)
-///        .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+/// ```
+/// # use syntaqlite::{Catalog, CatalogLayer};
+/// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+///
+/// // Register a table with known columns.
+/// catalog
+///     .layer_mut(CatalogLayer::Database)
+///     .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+///
+/// // Register a table whose columns are unknown — column references
+/// // against it are conservatively accepted without warnings.
+/// catalog
+///     .layer_mut(CatalogLayer::Database)
+///     .insert_table("logs", None, false);
 /// ```
 pub struct Catalog {
     layers: Vec<CatalogLayerContents>,
 }
 
 impl Catalog {
-    /// Create a catalog for `dialect`. The dialect's built-in functions are
-    /// loaded immediately into the dialect layer.
+    /// Create a catalog for `dialect`.
+    ///
+    /// The dialect's built-in functions (e.g. `length`, `count`, `substr` for
+    /// SQLite) are loaded immediately into the dialect layer. After
+    /// construction, use [`layer_mut`](Self::layer_mut) to populate the
+    /// database layer with your application's tables and views.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use syntaqlite::{Catalog, CatalogLayer};
+    /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+    ///
+    /// catalog
+    ///     .layer_mut(CatalogLayer::Database)
+    ///     .insert_table("orders", Some(vec!["id".into(), "total".into()]), false);
+    /// ```
     pub fn new(dialect: impl Into<AnyDialect>) -> Self {
         let dialect = dialect.into();
         let mut layers = vec![CatalogLayerContents::default(); FIXED_LAYER_COUNT];

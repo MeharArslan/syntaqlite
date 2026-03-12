@@ -9,7 +9,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use clap::ValueEnum;
-use syntaqlite::AnyDialect;
+use syntaqlite::any::AnyDialect;
 use syntaqlite::any::{AnyParser, ParseOutcome};
 use syntaqlite::util::DiagnosticRenderer;
 use syntaqlite::{

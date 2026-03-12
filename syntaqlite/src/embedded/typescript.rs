@@ -12,6 +12,24 @@ use super::{EmbeddedFragment, HOLE_PLACEHOLDER, Hole, starts_with_sql_keyword};
 /// Scans for template literals (`` `...` ``) and checks if their content starts
 /// with a SQL keyword. For qualifying strings, interpolation holes (`${expr}`)
 /// are replaced with [`HOLE_PLACEHOLDER`](super::HOLE_PLACEHOLDER).
+///
+/// Regular strings (`"..."`, `'...'`) and comments are skipped.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// # // Requires the `experimental-embedded` feature.
+/// use syntaqlite::embedded::extract_typescript;
+///
+/// let source = r#"
+/// const uid = 42;
+/// db.prepare(`SELECT name FROM users WHERE id = ${uid}`).all();
+/// "#;
+/// let fragments = extract_typescript(source);
+/// assert_eq!(fragments.len(), 1);
+/// assert!(fragments[0].sql_text().starts_with("SELECT"));
+/// assert_eq!(fragments[0].holes().len(), 1);
+/// ```
 pub fn extract_typescript(source: &str) -> Vec<EmbeddedFragment> {
     let bytes = source.as_bytes();
     let len = bytes.len();

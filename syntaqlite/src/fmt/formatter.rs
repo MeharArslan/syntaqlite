@@ -13,7 +13,34 @@ use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch};
 use crate::dialect::AnyDialect;
 
-/// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
+/// High-level SQL formatter that pretty-prints SQL source text.
+///
+/// Created from a [`Dialect`](crate::Dialect) and a [`FormatConfig`], the
+/// formatter is designed to be **reused** across many inputs. Internal
+/// buffers (parser, arena, scratch space) are recycled between calls to
+/// [`format`](Self::format), avoiding per-call allocation overhead.
+///
+/// # Quick start
+///
+/// ```rust
+/// # use syntaqlite::Formatter;
+/// let mut fmt = Formatter::new();   // SQLite dialect, default config
+/// let output = fmt.format("select 1+2").unwrap();
+/// assert_eq!(output, "SELECT 1 + 2;\n");
+/// ```
+///
+/// # Custom configuration
+///
+/// ```rust
+/// # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
+/// let config = FormatConfig::default()
+///     .with_keyword_case(KeywordCase::Lower)
+///     .with_semicolons(false);
+///
+/// let mut fmt = Formatter::with_config(&config);
+/// let output = fmt.format("SELECT 1").unwrap();
+/// assert_eq!(output, "select 1\n");
+/// ```
 pub struct Formatter {
     pub(super) dialect: AnyDialect,
     pub(super) parser: AnyParser,
@@ -120,6 +147,22 @@ impl Formatter {
     ///
     /// # Errors
     /// Returns [`FormatError`] when parsing fails for any statement in `source`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use syntaqlite::Formatter;
+    /// let mut fmt = Formatter::new();
+    ///
+    /// // Single statement
+    /// let out = fmt.format("select 1").unwrap();
+    /// assert_eq!(out, "SELECT 1;\n");
+    ///
+    /// // Multiple statements (reuses the same formatter)
+    /// let out = fmt.format("select 1; select 2").unwrap();
+    /// assert!(out.contains("SELECT 1"));
+    /// assert!(out.contains("SELECT 2"));
+    /// ```
     pub fn format(&mut self, source: &str) -> Result<String, FormatError> {
         let mut session = self.parser.parse(source);
         let mut result = String::with_capacity(source.len());

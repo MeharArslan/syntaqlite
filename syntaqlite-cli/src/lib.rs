@@ -110,7 +110,7 @@ pub(crate) enum Command {
 
 /// Run the CLI.
 #[cfg(feature = "builtin-sqlite")]
-pub fn run(name: &str, dialect: Option<syntaqlite::AnyDialect>) {
+pub fn run(name: &str, dialect: Option<syntaqlite::any::AnyDialect>) {
     let cli =
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
             .unwrap_or_else(|e| e.exit());

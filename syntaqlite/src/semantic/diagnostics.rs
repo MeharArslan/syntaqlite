@@ -7,7 +7,40 @@
 //! optional "did you mean?" suggestions. Both parse errors and semantic
 //! issues (unknown table, wrong arity, etc.) are represented uniformly.
 
-/// A diagnostic message associated with a source range.
+/// A diagnostic produced by parsing or semantic analysis.
+///
+/// Every diagnostic carries a byte-offset range into the source text,
+/// a structured [`DiagnosticMessage`], a [`Severity`] level, and an
+/// optional [`Help`] suggestion (e.g. "did you mean 'users'?").
+///
+/// You typically obtain diagnostics from [`SemanticModel::diagnostics`] after
+/// calling [`SemanticAnalyzer::analyze`].
+///
+/// [`SemanticModel::diagnostics`]: crate::SemanticModel::diagnostics
+/// [`SemanticAnalyzer::analyze`]: crate::SemanticAnalyzer::analyze
+///
+/// # Example
+///
+/// ```
+/// # use syntaqlite::{SemanticAnalyzer, Catalog, ValidationConfig, Severity};
+/// # let mut analyzer = SemanticAnalyzer::new();
+/// # let catalog = Catalog::new(syntaqlite::sqlite_dialect());
+/// # let config = ValidationConfig::default();
+/// let model = analyzer.analyze("SELECT 1 FROM no_such_table", &catalog, &config);
+///
+/// for diag in model.diagnostics() {
+///     println!(
+///         "[{:?}] bytes {}..{}: {}",
+///         diag.severity(),
+///         diag.start_offset(),
+///         diag.end_offset(),
+///         diag.message(),
+///     );
+///     if let Some(help) = diag.help() {
+///         println!("  help: {help}");
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub(crate) start_offset: usize,
@@ -61,6 +94,34 @@ impl Diagnostic {
 ///
 /// Each variant carries the identifiers needed for machine-readable
 /// consumption; [`fmt::Display`](std::fmt::Display) produces the human-readable form.
+///
+/// # Example
+///
+/// ```
+/// # use syntaqlite::{SemanticAnalyzer, Catalog, ValidationConfig, DiagnosticMessage};
+/// # let mut analyzer = SemanticAnalyzer::new();
+/// # let catalog = Catalog::new(syntaqlite::sqlite_dialect());
+/// # let config = ValidationConfig::default();
+/// let model = analyzer.analyze("SELECT no_such_func(1)", &catalog, &config);
+///
+/// for diag in model.diagnostics() {
+///     match diag.message() {
+///         DiagnosticMessage::UnknownFunction { name } => {
+///             println!("function not found: {name}");
+///         }
+///         DiagnosticMessage::UnknownTable { name } => {
+///             println!("table not found: {name}");
+///         }
+///         DiagnosticMessage::Other(msg) => {
+///             println!("parse error: {msg}");
+///         }
+///         other => {
+///             // FunctionArity, UnknownColumn, CteColumnCountMismatch
+///             println!("{other}");
+///         }
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub enum DiagnosticMessage {
     /// Referenced table name was not found in any catalog layer.
@@ -151,7 +212,11 @@ impl DiagnosticMessage {
     }
 }
 
-/// Structured help information attached to a diagnostic.
+/// Structured help attached to a [`Diagnostic`].
+///
+/// When the analyzer finds a close match for an unresolved identifier it
+/// attaches a [`Help::Suggestion`] containing the corrected name. Display
+/// this as a "did you mean ...?" hint in your UI.
 #[derive(Debug, Clone)]
 pub enum Help {
     /// A "did you mean?" suggestion with the corrected identifier.
@@ -167,6 +232,16 @@ impl std::fmt::Display for Help {
 }
 
 /// Diagnostic severity level.
+///
+/// Severity levels mirror the LSP `DiagnosticSeverity` enum. Use them to
+/// decide how to present issues to the user:
+///
+/// | Level       | Meaning                                              |
+/// |-------------|------------------------------------------------------|
+/// | [`Error`](Self::Error)     | Blocking issue -- the query is invalid.  |
+/// | [`Warning`](Self::Warning) | Suspicious but non-fatal (e.g. unresolved name in lenient mode). |
+/// | [`Info`](Self::Info)       | Informational note, no action required.  |
+/// | [`Hint`](Self::Hint)       | Style suggestion or minor improvement.   |
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
     /// Blocking issue that should fail validation.

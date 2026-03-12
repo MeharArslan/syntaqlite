@@ -8,7 +8,12 @@ use std::io::{self, Write};
 use super::diagnostics::{Diagnostic, Severity};
 use crate::util::render_source_error;
 
-/// Renders diagnostics in rustc-style format to any `Write` target.
+/// Renders diagnostics in rustc-style format to any [`Write`](std::io::Write) target.
+///
+/// Use this to produce human-readable error output from the diagnostics
+/// returned by [`SemanticModel::diagnostics`](super::model::SemanticModel::diagnostics).
+/// The output mirrors `rustc`'s familiar format with source context, carets,
+/// and help text:
 ///
 /// ```text
 /// error: unknown table 'usr'
@@ -17,6 +22,31 @@ use crate::util::render_source_error;
 /// 1 | SELECT id FROM usr WHERE id = 1
 ///   |               ^~~
 ///   = help: did you mean 'users'?
+/// ```
+///
+/// # Example
+///
+/// ```
+/// # use syntaqlite::{
+/// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig,
+/// # };
+/// # use syntaqlite::util::DiagnosticRenderer;
+/// let mut analyzer = SemanticAnalyzer::new();
+/// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+/// catalog
+///     .layer_mut(CatalogLayer::Database)
+///     .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+///
+/// let source = "SELECT id FROM usr;";
+/// let model = analyzer.analyze(source, &catalog, &ValidationConfig::default());
+///
+/// // Render each diagnostic to a String.
+/// let renderer = DiagnosticRenderer::new(model.source(), "query.sql");
+/// let mut buf = Vec::new();
+/// renderer.render_diagnostics(model.diagnostics(), &mut buf).unwrap();
+///
+/// let output = String::from_utf8(buf).unwrap();
+/// assert!(output.contains("usr"));
 /// ```
 pub struct DiagnosticRenderer<'a> {
     source: &'a str,
