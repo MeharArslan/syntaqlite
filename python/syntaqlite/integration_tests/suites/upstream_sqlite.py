@@ -161,6 +161,7 @@ def _build_extension(ctx: SuiteContext, verbose: bool) -> Path | None:
     output = root / "target" / f"tclsyntaqlite{ext}"
 
     syntax_include = root / "syntaqlite-syntax" / "include"
+    lib_include = root / "syntaqlite" / "include"
     sqlite_amalg = root / "third_party" / "src" / "sqlite-amalgamation"
 
     tcl_lib_flags = _find_tcl_lib_flags()
@@ -173,6 +174,7 @@ def _build_extension(ctx: SuiteContext, verbose: bool) -> Path | None:
         str(sqlite_amalg / "sqlite3.c"),
         f"-I{tcl_include}",
         f"-I{syntax_include}",
+        f"-I{lib_include}",
         f"-I{sqlite_amalg}",
         f"-L{static_lib.parent}",
         "-lsyntaqlite",
