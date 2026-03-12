@@ -6,16 +6,13 @@
 //! Fast, accurate SQL tooling for `SQLite` and its dialects.
 //!
 //! This crate provides formatting and semantic validation for SQL, built on
-//! top of [`syntaqlite_syntax`]'s parser and grammar system. Three design
+//! top of [`syntaqlite_syntax`]'s parser and grammar system. Four design
 //! principles guide the library:
 //!
-//! - **Correctness** — uses `SQLite`'s own grammar rules; formatting is
-//!   round-trip safe and validation mirrors real engine behaviour.
-//! - **Performance** — all core types ([`Formatter`], [`SemanticAnalyzer`],
-//!   [`Catalog`]) are designed for reuse across many inputs without
-//!   re-allocation.
-//! - **Incrementality** — the semantic analyzer supports both single-document
-//!   and multi-statement session modes via [`AnalysisMode`](semantic::AnalysisMode).
+//! - **Reliability** — uses `SQLite`'s own grammar rules; formatting is round-trip safe and validation mirrors real engine behaviour.
+//! - **Speed** — all core types ([`Formatter`], [`SemanticAnalyzer`], [`Catalog`]) are designed for reuse across many inputs without re-allocation.
+//! - **Portability** — the core formatting and validation engine has no runtime dependencies beyond the standard library; optional features (`lsp`, `serde`) pull in additional crates.
+//! - **Flexibility** — supports multiple database dialects that extend `SQLite`'s grammar with their own tokens and rules.
 //!
 //! # Formatting
 //!
@@ -67,6 +64,21 @@
 //! For richer output, use [`DiagnosticRenderer`](util::DiagnosticRenderer) to produce rustc-style
 //! error messages with source context and underlines.
 //!
+//! # Features
+//!
+//! - `sqlite` *(default)*: enables the built-in `SQLite` grammar, [`Dialect`],
+//!   and re-exports [`Parser`], [`Tokenizer`], and typed AST [`nodes`].
+//! - `fmt` *(default)*: enables [`Formatter`], [`FormatConfig`], and
+//!   [`KeywordCase`].
+//! - `validation` *(default)*: enables [`SemanticAnalyzer`], [`Catalog`],
+//!   [`Diagnostic`], and related types.
+//! - `lsp`: enables [`LspServer`] and [`lsp::LspHost`] for editor integration.
+//! - `experimental-embedded`: enables [`embedded`] SQL extraction from Python
+//!   and TypeScript/JavaScript source files.
+//! - `serde`: adds `Serialize`/`Deserialize` impls for diagnostics and AST
+//!   nodes.
+//! - `serde-json`: adds JSON convenience helpers (catalog from JSON, AST dump).
+//!
 //! # Choosing an API
 //!
 //! - Use [`Formatter`] when you need to pretty-print or normalize SQL text.
@@ -114,15 +126,16 @@ pub use fmt::{FormatConfig, FormatError, KeywordCase};
 pub use lsp::LspServer;
 #[cfg(feature = "validation")]
 pub use semantic::{
-    AritySpec, Catalog, CatalogLayer, CatalogLayerContents, Diagnostic, DiagnosticMessage,
-    FunctionCategory, Help, SemanticAnalyzer, SemanticModel, Severity, ValidationConfig,
+    AnalysisMode, AritySpec, Catalog, CatalogLayer, CatalogLayerContents, Diagnostic,
+    DiagnosticMessage, FunctionCategory, Help, SemanticAnalyzer, SemanticModel, Severity,
+    ValidationConfig,
 };
 #[cfg(feature = "sqlite")]
 pub use sqlite::dialect::Dialect;
 /// Returns the built-in `SQLite` dialect handle.
 ///
 /// Returns a [`Dialect`] (the SQLite-specific newtype). Call `.erase()` or
-/// `.into()` to obtain an [`AnyDialect`] when a type-erased handle is needed.
+/// `.into()` to obtain an [`AnyDialect`](any::AnyDialect) when a type-erased handle is needed.
 #[cfg(feature = "sqlite")]
 pub fn sqlite_dialect() -> Dialect {
     Dialect::new()

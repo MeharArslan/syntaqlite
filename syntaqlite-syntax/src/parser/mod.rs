@@ -560,11 +560,12 @@ impl<'a> AnyParsedStatement<'a> {
         }
     }
 
-    /// Return the root node as an [`AnyNode`], or `None` if the parse result
-    /// has no root (e.g. empty input or fatal parse error).
+    /// Return the root node as an [`AnyNode`](crate::ast::AnyNode), or `None`
+    /// if the parse result has no root (e.g. empty input or fatal parse error).
     ///
-    /// When the `serde` feature is enabled, the returned [`AnyNode`] implements
-    /// [`serde::Serialize`] using the same structure as [`Self::dump_node`].
+    /// When the `serde` feature is enabled, the returned
+    /// [`AnyNode`](crate::ast::AnyNode) implements [`serde::Serialize`] using
+    /// the same structure as `dump_node`.
     pub fn root_node(&self) -> Option<crate::ast::AnyNode<'_>> {
         let id = self.root_id();
         if id.is_null() {

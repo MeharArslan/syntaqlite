@@ -207,7 +207,7 @@ pub trait TypedGrammar: Clone + Into<AnyGrammar> {
 ///
 /// Built-in grammars hold `&'static` C data directly. Dynamically loaded
 /// grammars transmute library-memory pointers to `&'static` and keep the
-/// library alive via an [`Arc`]. Use [`AnyGrammar::load`] to create one.
+/// library alive via an [`Arc`](std::sync::Arc). Use `AnyGrammar::load` to create one.
 #[derive(Clone)]
 pub struct AnyGrammar {
     pub(crate) inner: ffi::CGrammar,

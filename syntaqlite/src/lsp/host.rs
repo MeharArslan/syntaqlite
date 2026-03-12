@@ -419,7 +419,7 @@ impl LspHost {
 
     /// Parse a JSON schema blob and use it as the session context.
     ///
-    /// Convenience wrapper over [`set_session_context`] that constructs a
+    /// Convenience wrapper over [`Self::set_session_context`] that constructs a
     /// [`Catalog`] using the host's dialect, avoiding the need for callers to
     /// handle `Dialect` directly.
     ///
@@ -435,7 +435,7 @@ impl LspHost {
 
     /// Parse DDL statements and use the resulting schema as the session context.
     ///
-    /// Convenience wrapper over [`set_session_context`] that constructs a
+    /// Convenience wrapper over [`Self::set_session_context`] that constructs a
     /// [`Catalog`] using the host's dialect and DDL source, avoiding the need
     /// for callers to handle `Dialect` directly.
     ///

@@ -8,15 +8,15 @@
 //! This module is experimental and its API may change in future releases.
 //!
 //! Extracts SQL fragments from host language files, replaces interpolation holes
-//! with macro-call placeholders ([`HOLE_PLACEHOLDER`]), runs validation via
-//! [`SemanticAnalyzer`] with `macro_fallback` enabled, and maps diagnostic
-//! offsets back to host-file positions. The parser records a
-//! [`MacroRegion`](syntaqlite_syntax::any::MacroRegion) for each hole, which is
-//! used to filter diagnostics that would otherwise reference the placeholder.
+//! with macro-call placeholders (`HOLE_PLACEHOLDER`), runs validation via
+//! [`SemanticAnalyzer`](crate::SemanticAnalyzer) with `macro_fallback` enabled,
+//! and maps diagnostic offsets back to host-file positions. The parser records a
+//! [`MacroRegion`](crate::MacroRegion) for each hole, which is used to filter
+//! diagnostics that would otherwise reference the placeholder.
 //!
 //! Language-specific extractors live in submodules:
-//! - [`extract_python`] — Python f-string extraction
-//! - [`extract_typescript`] — TypeScript/JavaScript template literal extraction
+//! - [`extract_python`](crate::embedded::extract_python) — Python f-string extraction
+//! - [`extract_typescript`](crate::embedded::extract_typescript) — TypeScript/JavaScript template literal extraction
 
 pub(crate) mod offset_map;
 mod python;
@@ -236,7 +236,7 @@ impl EmbeddedAnalyzer {
     /// Validate all SQL fragments and return diagnostics mapped to host-file positions.
     ///
     /// Diagnostics whose spans fall inside a hole placeholder are automatically
-    /// filtered out by [`OffsetMap::to_host`] returning `None`.
+    /// filtered out by the internal offset map returning `None`.
     pub fn validate(&self, fragments: &[EmbeddedFragment]) -> Vec<Diagnostic> {
         let mut all_diags = Vec::new();
 

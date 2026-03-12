@@ -9,7 +9,7 @@
 
 /// Semantic role types shared between the codegen tool and the runtime.
 ///
-/// [`SemanticRole`] is `#[repr(C, u8)]` so the Rust in-memory layout
+/// `SemanticRole` is `#[repr(C, u8)]` so the Rust in-memory layout
 /// **is** the C wire format — the codegen tool byte-encodes constructed values
 /// and the runtime casts the pointer directly to `&[SemanticRole]` without
 /// any decoding.
