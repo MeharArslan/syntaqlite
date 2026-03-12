@@ -15,12 +15,17 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification as _,
     PublishDiagnostics,
 };
-use lsp_types::request::{Completion, Formatting, Request as _, SemanticTokensFullRequest};
+use lsp_types::request::{
+    Completion, Formatting, HoverRequest, Request as _, SemanticTokensFullRequest,
+    SignatureHelpRequest,
+};
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
-    InitializeParams, Position, PositionEncodingKind, Range, SemanticTokenType,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
-    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
+    Hover, HoverContents, HoverProviderCapability, InitializeParams, MarkupContent, MarkupKind,
+    ParameterInformation, ParameterLabel, Position, PositionEncodingKind, Range,
+    SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
+    SignatureHelp, SignatureHelpOptions, SignatureInformation, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri,
 };
 
@@ -52,9 +57,15 @@ impl LspServer {
         let server_capabilities = serde_json::to_value(ServerCapabilities {
             position_encoding: Some(PositionEncodingKind::UTF16),
             text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+            hover_provider: Some(HoverProviderCapability::Simple(true)),
             document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
             completion_provider: Some(CompletionOptions {
                 trigger_characters: Some(vec![" ".into(), "\n".into(), "\t".into(), ";".into()]),
+                ..Default::default()
+            }),
+            signature_help_provider: Some(SignatureHelpOptions {
+                trigger_characters: Some(vec!["(".into(), ",".into()]),
+                retrigger_characters: Some(vec![",".into()]),
                 ..Default::default()
             }),
             semantic_tokens_provider: Some(
@@ -110,6 +121,8 @@ impl LspServer {
     ) -> Result<(), Box<dyn Error + Sync + Send>> {
         let response = match req.method.as_str() {
             Completion::METHOD => Self::handle_completion(req, host),
+            HoverRequest::METHOD => Self::handle_hover(req, host),
+            SignatureHelpRequest::METHOD => Self::handle_signature_help(req, host),
             Formatting::METHOD => Self::handle_formatting(req, host),
             SemanticTokensFullRequest::METHOD => Self::handle_semantic_tokens(req, host),
             _ => Response::new_err(
@@ -159,6 +172,130 @@ impl LspServer {
                 Response::new_ok(req.id, CompletionResponse::Array(items))
             }
             None => Response::new_ok(req.id, Option::<CompletionResponse>::None),
+        }
+    }
+
+    fn handle_hover(req: Request, host: &mut LspHost) -> Response {
+        let params: lsp_types::HoverParams = match serde_json::from_value(req.params) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    e.to_string(),
+                );
+            }
+        };
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let uri_str = uri.as_str();
+
+        let Some(source) = host.document_source(uri_str) else {
+            return Response::new_ok(req.id, Option::<Hover>::None);
+        };
+        let offset = SourcePositionMap::new(source).position_to_offset(position);
+
+        match host.hover_info(uri_str, offset) {
+            Some((text, tok_offset, tok_length)) => {
+                let source = host.document_source(uri_str).unwrap();
+                let map = SourcePositionMap::new(source);
+                let positions = map.offsets_to_positions(&[tok_offset, tok_offset + tok_length]);
+                let range = Range::new(positions[0], positions[1]);
+                let hover = Hover {
+                    contents: HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: text,
+                    }),
+                    range: Some(range),
+                };
+                Response::new_ok(req.id, hover)
+            }
+            None => Response::new_ok(req.id, Option::<Hover>::None),
+        }
+    }
+
+    fn handle_signature_help(req: Request, host: &mut LspHost) -> Response {
+        let params: lsp_types::SignatureHelpParams = match serde_json::from_value(req.params) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    e.to_string(),
+                );
+            }
+        };
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let uri_str = uri.as_str();
+
+        let Some(source) = host.document_source(uri_str) else {
+            return Response::new_ok(req.id, Option::<SignatureHelp>::None);
+        };
+        let offset = SourcePositionMap::new(source).position_to_offset(position);
+
+        match host.signature_help(uri_str, offset) {
+            Some(info) => {
+                use crate::semantic::catalog::AritySpec;
+
+                let signatures: Vec<SignatureInformation> = info
+                    .arities
+                    .iter()
+                    .map(|arity| {
+                        let (label, params) = match arity {
+                            AritySpec::Exact(n) => {
+                                let names: Vec<String> =
+                                    (0..*n).map(|i| format!("arg{}", i + 1)).collect();
+                                let label = format!("{}({})", info.name, names.join(", "));
+                                let params: Vec<ParameterInformation> = names
+                                    .iter()
+                                    .map(|name| ParameterInformation {
+                                        label: ParameterLabel::Simple(name.clone()),
+                                        documentation: None,
+                                    })
+                                    .collect();
+                                (label, params)
+                            }
+                            AritySpec::AtLeast(n) => {
+                                let mut names: Vec<String> =
+                                    (0..*n).map(|i| format!("arg{}", i + 1)).collect();
+                                names.push("...".to_string());
+                                let label = format!("{}({})", info.name, names.join(", "));
+                                let params: Vec<ParameterInformation> = names
+                                    .iter()
+                                    .map(|name| ParameterInformation {
+                                        label: ParameterLabel::Simple(name.clone()),
+                                        documentation: None,
+                                    })
+                                    .collect();
+                                (label, params)
+                            }
+                            AritySpec::Any => {
+                                let label = format!("{}(...)", info.name);
+                                let params = vec![ParameterInformation {
+                                    label: ParameterLabel::Simple("...".to_string()),
+                                    documentation: None,
+                                }];
+                                (label, params)
+                            }
+                        };
+                        SignatureInformation {
+                            label,
+                            documentation: None,
+                            parameters: Some(params),
+                            active_parameter: Some(info.active_parameter),
+                        }
+                    })
+                    .collect();
+
+                let help = SignatureHelp {
+                    signatures,
+                    active_signature: Some(0),
+                    active_parameter: Some(info.active_parameter),
+                };
+                Response::new_ok(req.id, help)
+            }
+            None => Response::new_ok(req.id, Option::<SignatureHelp>::None),
         }
     }
 

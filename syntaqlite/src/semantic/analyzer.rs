@@ -15,12 +15,14 @@ use crate::dialect::AnyDialect;
 use crate::dialect::{FIELD_ABSENT, SemanticRole};
 
 use super::catalog::{
-    Catalog, CatalogLayer, ColumnResolution, FunctionCheckResult, columns_from_select,
+    AritySpec, Catalog, CatalogLayer, ColumnResolution, FunctionCategory, FunctionCheckResult,
+    columns_from_select,
 };
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 use super::fuzzy::best_suggestion;
 use super::model::{
-    CompletionContext, CompletionInfo, SemanticModel, SemanticToken, StoredComment, StoredToken,
+    CompletionContext, CompletionInfo, Resolution, ResolvedSymbol, SemanticModel, SemanticToken,
+    StoredComment, StoredToken,
 };
 use super::{AnalysisMode, ValidationConfig};
 
@@ -45,6 +47,11 @@ impl SemanticAnalyzer {
     #[cfg(feature = "sqlite")]
     pub fn new() -> Self {
         Self::with_dialect(crate::sqlite::dialect::dialect())
+    }
+
+    /// The analyzer's internal catalog (includes DDL from last analysis).
+    pub(crate) fn catalog(&self) -> &Catalog {
+        &self.catalog
     }
 
     /// Create an analyzer bound to a specific dialect.
@@ -204,6 +211,7 @@ impl SemanticAnalyzer {
         let mut tokens: Vec<StoredToken> = Vec::new();
         let mut comments: Vec<StoredComment> = Vec::new();
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
+        let mut resolutions: Vec<Resolution> = Vec::new();
 
         loop {
             let stmt = match session.next() {
@@ -269,6 +277,7 @@ impl SemanticAnalyzer {
                 &mut self.catalog,
                 config,
                 &mut diagnostics,
+                &mut resolutions,
             );
         }
 
@@ -277,6 +286,7 @@ impl SemanticAnalyzer {
             tokens,
             comments,
             diagnostics,
+            resolutions,
         }
     }
 }
@@ -289,6 +299,21 @@ impl Default for SemanticAnalyzer {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+fn format_arity(name: &str, arity: AritySpec) -> String {
+    match arity {
+        AritySpec::Exact(n) => {
+            let params: Vec<String> = (0..n).map(|i| format!("arg{}", i + 1)).collect();
+            format!("{}({})", name, params.join(", "))
+        }
+        AritySpec::AtLeast(n) => {
+            let mut params: Vec<String> = (0..n).map(|i| format!("arg{}", i + 1)).collect();
+            params.push("...".to_string());
+            format!("{}({})", name, params.join(", "))
+        }
+        AritySpec::Any => format!("{name}(...)"),
+    }
+}
 
 fn parse_error_span(err: &AnyParseError<'_>, source: &str) -> (usize, usize) {
     match (err.offset(), err.length()) {
@@ -369,6 +394,7 @@ struct ValidationPass<'a> {
     catalog: &'a mut Catalog,
     config: &'a ValidationConfig,
     diagnostics: &'a mut Vec<Diagnostic>,
+    resolutions: &'a mut Vec<Resolution>,
 }
 
 impl<'a> ValidationPass<'a> {
@@ -379,6 +405,7 @@ impl<'a> ValidationPass<'a> {
         catalog: &'a mut Catalog,
         config: &'a ValidationConfig,
         diagnostics: &'a mut Vec<Diagnostic>,
+        resolutions: &'a mut Vec<Resolution>,
     ) {
         let roles = dialect.roles();
         let source_start = stmt.source().as_ptr() as usize;
@@ -388,6 +415,7 @@ impl<'a> ValidationPass<'a> {
             catalog,
             config,
             diagnostics,
+            resolutions,
         };
         pass.visit(stmt, root);
     }
@@ -571,6 +599,18 @@ impl<'a> ValidationPass<'a> {
         let alias = self.name_text(stmt, Self::field_node_id(fields, alias_idx));
         let scope_name = if alias.is_empty() { name } else { alias };
         let columns = self.catalog.columns_for_table_source(name);
+
+        if is_known {
+            self.resolutions.push(Resolution {
+                start: offset,
+                end: offset + name.len(),
+                symbol: ResolvedSymbol::Table {
+                    name: name.to_string(),
+                    columns: columns.clone(),
+                },
+            });
+        }
+
         self.catalog.add_query_table(scope_name, columns);
     }
 
@@ -591,7 +631,27 @@ impl<'a> ValidationPass<'a> {
                 .and_then(|id| stmt.list_children(id))
                 .map_or(0, <[_]>::len);
             match self.catalog.check_function(name, arg_count) {
-                FunctionCheckResult::Ok => {}
+                FunctionCheckResult::Ok => {
+                    if let Some((cat, arities)) = self.catalog.function_signature(name) {
+                        let cat_str = match cat {
+                            FunctionCategory::Scalar => "scalar function",
+                            FunctionCategory::Aggregate => "aggregate function",
+                            FunctionCategory::Window => "window function",
+                        };
+                        let arity_strs: Vec<String> = arities
+                            .iter()
+                            .map(|a| format_arity(name, *a))
+                            .collect();
+                        self.resolutions.push(Resolution {
+                            start: offset,
+                            end: offset + name.len(),
+                            symbol: ResolvedSymbol::Function {
+                                category: cat_str.to_string(),
+                                arities: arity_strs,
+                            },
+                        });
+                    }
+                }
                 FunctionCheckResult::Unknown => {
                     let candidates = self.catalog.all_function_names();
                     let suggestion =
@@ -638,7 +698,23 @@ impl<'a> ValidationPass<'a> {
         let offset = self.span_offset(column);
 
         match self.catalog.resolve_column(table, column) {
-            ColumnResolution::Found | ColumnResolution::TableNotFound => {}
+            ColumnResolution::Found {
+                table: resolved_table,
+                all_columns,
+            } => {
+                if !resolved_table.is_empty() {
+                    self.resolutions.push(Resolution {
+                        start: offset,
+                        end: offset + column.len(),
+                        symbol: ResolvedSymbol::Column {
+                            column: column.to_string(),
+                            table: resolved_table,
+                            all_columns,
+                        },
+                    });
+                }
+            }
+            ColumnResolution::TableNotFound => {}
             ColumnResolution::TableFoundColumnMissing => {
                 let tbl = table.expect("qualifier present when TableFoundColumnMissing");
                 let candidates = self.catalog.all_column_names(Some(tbl));

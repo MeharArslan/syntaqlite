@@ -13,7 +13,7 @@ use crate::semantic::Catalog;
 use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::diagnostics::Diagnostic;
-use crate::semantic::model::{SemanticModel, SemanticToken};
+use crate::semantic::model::{ResolvedSymbol, SemanticModel, SemanticToken, StoredToken};
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind};
 
@@ -303,6 +303,52 @@ impl LspHost {
         formatter.format(&doc.source).map_err(FormatError::Format)
     }
 
+    // ── Hover ──────────────────────────────────────────────────────────────────
+
+    /// Hover information at a byte offset: returns (hover_text, token_offset, token_length).
+    pub(crate) fn hover_info(&mut self, uri: &str, offset: usize) -> Option<(String, usize, usize)> {
+        let doc = self.documents.get_mut(uri)?;
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        let model = doc.model.as_ref().expect("ensure_model sets model");
+
+        let resolution = model.resolution_at(offset)?;
+        let (start, end) = model
+            .resolutions
+            .iter()
+            .find(|r| offset >= r.start && offset < r.end)
+            .map(|r| (r.start, r.end))?;
+
+        let hover = format_resolved_hover(resolution);
+        Some((hover, start, end - start))
+    }
+
+    // ── Signature help ────────────────────────────────────────────────────────
+
+    /// Signature help at a byte offset: finds enclosing function call and returns
+    /// (function_name, active_parameter, overloads).
+    pub(crate) fn signature_help(
+        &mut self,
+        uri: &str,
+        offset: usize,
+    ) -> Option<SignatureHelpInfo> {
+        let doc = self.documents.get_mut(uri)?;
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        let model = doc.model.as_ref().expect("ensure_model sets model");
+        let source = model.source();
+
+        // Walk backwards from offset to find enclosing `name(` and count commas.
+        let before = &source[..offset.min(source.len())];
+        let (func_name, active_param) = find_enclosing_call(before, &model.tokens, &self.dialect)?;
+
+        let (_category, arities) = self.user_catalog.function_signature(&func_name)?;
+
+        Some(SignatureHelpInfo {
+            name: func_name,
+            arities,
+            active_parameter: active_param,
+        })
+    }
+
     // ── Schema helpers ────────────────────────────────────────────────────────
 
     /// All function names available given the current dialect and user catalog.
@@ -408,6 +454,99 @@ fn encode_semantic_tokens(
     }
 
     result
+}
+
+// ── Hover/signature helpers ────────────────────────────────────────────────────
+
+use crate::semantic::catalog::AritySpec;
+
+/// Signature help result from the host.
+pub(crate) struct SignatureHelpInfo {
+    pub name: String,
+    pub arities: Vec<AritySpec>,
+    pub active_parameter: u32,
+}
+
+fn format_resolved_hover(symbol: &ResolvedSymbol) -> String {
+    match symbol {
+        ResolvedSymbol::Table { name, columns } => match columns {
+            Some(cols) => format!(
+                "**table** `{name}`\n\n```\n{}\n```",
+                cols.join(", ")
+            ),
+            None => format!("**table** `{name}`"),
+        },
+        ResolvedSymbol::Column {
+            column,
+            table,
+            all_columns,
+        } => {
+            let col_list: Vec<String> = all_columns
+                .iter()
+                .map(|c| {
+                    if c.eq_ignore_ascii_case(column) {
+                        format!("**{c}**")
+                    } else {
+                        c.clone()
+                    }
+                })
+                .collect();
+            format!("**column** in `{table}`\n\n{}", col_list.join(", "))
+        }
+        ResolvedSymbol::Function {
+            category,
+            arities,
+            ..
+        } => {
+            format!("**{category}**\n\n```\n{}\n```", arities.join("\n"))
+        }
+    }
+}
+
+/// Walk backwards from cursor to find enclosing `func_name(` and count commas
+/// to determine active parameter index.
+fn find_enclosing_call(
+    before: &str,
+    tokens: &[StoredToken],
+    dialect: &AnyDialect,
+) -> Option<(String, u32)> {
+    let bytes = before.as_bytes();
+    let mut depth: i32 = 0;
+    let mut commas: u32 = 0;
+    let mut pos = bytes.len();
+
+    // Scan backwards to find the matching `(`.
+    while pos > 0 {
+        pos -= 1;
+        match bytes[pos] {
+            b')' => depth += 1,
+            b'(' => {
+                if depth == 0 {
+                    // Found the opening paren — look for the function name token before it.
+                    let paren_offset = pos;
+                    let func_token = tokens.iter().rev().find(|t| {
+                        t.offset + t.length <= paren_offset
+                            && dialect.classify_token(t.token_type, t.flags)
+                                == TokenCategory::Function
+                    })?;
+                    // Make sure the function token is immediately before the paren
+                    // (only whitespace between).
+                    let between = &before[func_token.offset + func_token.length..paren_offset];
+                    if between.trim().is_empty() {
+                        let name =
+                            before[func_token.offset..func_token.offset + func_token.length]
+                                .to_string();
+                        return Some((name, commas));
+                    }
+                    return None;
+                }
+                depth -= 1;
+            }
+            b',' if depth == 0 => commas += 1,
+            _ => {}
+        }
+    }
+    None
 }
 
 // ── FormatError ───────────────────────────────────────────────────────────────

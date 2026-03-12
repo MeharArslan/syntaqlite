@@ -73,6 +73,37 @@ pub(crate) struct CompletionInfo {
     pub context: CompletionContext,
 }
 
+// ── Resolved symbols ──────────────────────────────────────────────────────────
+
+/// A symbol resolution recorded during the validation pass.
+#[derive(Debug, Clone)]
+pub(crate) enum ResolvedSymbol {
+    /// A table or view reference that resolved successfully.
+    Table {
+        name: String,
+        columns: Option<Vec<String>>,
+    },
+    /// A column reference that resolved successfully.
+    Column {
+        column: String,
+        table: String,
+        all_columns: Vec<String>,
+    },
+    /// A function call that resolved successfully.
+    Function {
+        category: String,
+        arities: Vec<String>,
+    },
+}
+
+/// A resolved symbol at a specific source location.
+#[derive(Debug, Clone)]
+pub(crate) struct Resolution {
+    pub start: usize,
+    pub end: usize,
+    pub symbol: ResolvedSymbol,
+}
+
 // ── SemanticModel ─────────────────────────────────────────────────────────────
 
 /// Result of a single analysis pass.
@@ -85,6 +116,7 @@ pub struct SemanticModel {
     pub(crate) tokens: Vec<StoredToken>,
     pub(crate) comments: Vec<StoredComment>,
     pub(crate) diagnostics: Vec<Diagnostic>,
+    pub(crate) resolutions: Vec<Resolution>,
 }
 
 impl SemanticModel {
@@ -96,5 +128,13 @@ impl SemanticModel {
     /// All diagnostics produced by the analysis pass (parse errors + semantic issues).
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
+    }
+
+    /// Find the resolved symbol at a byte offset, if any.
+    pub(crate) fn resolution_at(&self, offset: usize) -> Option<&ResolvedSymbol> {
+        self.resolutions
+            .iter()
+            .find(|r| offset >= r.start && offset < r.end)
+            .map(|r| &r.symbol)
     }
 }

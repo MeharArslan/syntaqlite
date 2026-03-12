@@ -73,7 +73,10 @@ struct TableFunctionSet {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ColumnResolution {
     /// Column found (or table has unknown columns — conservatively accepted).
-    Found,
+    Found {
+        table: String,
+        all_columns: Vec<String>,
+    },
     /// Table is in scope but this column is not in its known list.
     TableFoundColumnMissing,
     /// The qualifier table is not in scope — table check already reported this.
@@ -700,6 +703,23 @@ impl Catalog {
         names
     }
 
+    /// Look up function metadata by name: returns (category, arities) if found.
+    pub(crate) fn function_signature(
+        &self,
+        name: &str,
+    ) -> Option<(FunctionCategory, Vec<AritySpec>)> {
+        let set = self
+            .all_layers_ordered()
+            .find_map(|layer| layer.function(name))?;
+        let category = set
+            .overloads
+            .first()
+            .map(|ov| ov.category)
+            .unwrap_or(FunctionCategory::Scalar);
+        let arities: Vec<AritySpec> = set.overloads.iter().map(|ov| ov.arity).collect();
+        Some((category, arities))
+    }
+
     pub(crate) fn all_function_names(&self) -> Vec<String> {
         let mut seen = HashSet::new();
         let mut out = Vec::new();
@@ -735,13 +755,23 @@ impl Catalog {
     fn resolve_qualified_column(&self, table: &str, column: &str) -> ColumnResolution {
         for layer in self.all_layers_ordered() {
             if let Some(rel) = layer.relation(table) {
+                let all_cols = rel.columns.clone().unwrap_or_default();
                 return match &rel.columns {
                     Some(cols) if cols.iter().any(|c| c.eq_ignore_ascii_case(column)) => {
-                        ColumnResolution::Found
+                        ColumnResolution::Found {
+                            table: rel.name.clone(),
+                            all_columns: all_cols,
+                        }
                     }
-                    Some(_) if is_implicit_rowid(column, rel) => ColumnResolution::Found,
+                    Some(_) if is_implicit_rowid(column, rel) => ColumnResolution::Found {
+                        table: rel.name.clone(),
+                        all_columns: all_cols,
+                    },
                     Some(_) => ColumnResolution::TableFoundColumnMissing,
-                    None => ColumnResolution::Found, // unknown columns — accept conservatively
+                    None => ColumnResolution::Found {
+                        table: rel.name.clone(),
+                        all_columns: all_cols,
+                    },
                 };
             }
         }
@@ -754,10 +784,16 @@ impl Catalog {
             for rel in layer.relations.values() {
                 match &rel.columns {
                     Some(cols) if cols.iter().any(|c| c.eq_ignore_ascii_case(column)) => {
-                        return ColumnResolution::Found;
+                        return ColumnResolution::Found {
+                            table: rel.name.clone(),
+                            all_columns: cols.clone(),
+                        };
                     }
                     Some(_) if is_implicit_rowid(column, rel) => {
-                        return ColumnResolution::Found;
+                        return ColumnResolution::Found {
+                            table: rel.name.clone(),
+                            all_columns: rel.columns.clone().unwrap_or_default(),
+                        };
                     }
                     Some(_) => {}
                     None => has_unknown = true,
@@ -765,8 +801,10 @@ impl Catalog {
             }
         }
         if has_unknown {
-            // A table with unknown columns is in scope — can't rule the column out.
-            ColumnResolution::Found
+            ColumnResolution::Found {
+                table: String::new(),
+                all_columns: Vec::new(),
+            }
         } else {
             ColumnResolution::NotFound
         }
