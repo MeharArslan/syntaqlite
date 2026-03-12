@@ -27,8 +27,8 @@ pub mod lsp;
 /// # Experimental
 ///
 /// This module is experimental and its API may change in future releases.
-/// Enable with the `embedded` cargo feature.
-#[cfg(feature = "embedded")]
+/// Enable with the `experimental-embedded` cargo feature.
+#[cfg(feature = "experimental-embedded")]
 pub mod embedded;
 
 // ── Public API ────────────────────────────────────────────────────────────────

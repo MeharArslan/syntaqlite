@@ -47,8 +47,10 @@ impl LspServer {
         let dialect = dialect.into();
         let (connection, io_threads) = Connection::stdio();
 
+        // VSCode only supports UTF-16 and UTF-32 position encodings.
+        // Default to UTF-16 which is the LSP baseline.
         let server_capabilities = serde_json::to_value(ServerCapabilities {
-            position_encoding: Some(PositionEncodingKind::UTF8),
+            position_encoding: Some(PositionEncodingKind::UTF16),
             text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
             document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
             completion_provider: Some(CompletionOptions {

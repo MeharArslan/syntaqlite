@@ -14,14 +14,27 @@
   },
   "categories": ["Programming Languages", "Formatters", "Linters"],
   "keywords": ["sql", "sqlite", "formatter", "linter", "lsp"],
-  "activationEvents": ["onLanguage:sql"],
+  "activationEvents": [
+    "onLanguage:sql",
+    "onLanguage:sqlite",
+    "onCommand:syntaqlite.restartServer",
+    "onCommand:syntaqlite.formatDocument"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
-        "id": "sql",
-        "extensions": [".sql"],
-        "aliases": ["SQL"]
+        "id": "sqlite",
+        "extensions": [".sqlite.sql"],
+        "aliases": ["SQLite", "SQL (SQLite)"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sqlite",
+        "scopeName": "source.sql.sqlite",
+        "path": "./syntaxes/sql.tmLanguage.json"
       }
     ],
     "commands": [

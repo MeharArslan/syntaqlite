@@ -1,0 +1,8 @@
+{
+  "scopeName": "source.sql.sqlite",
+  "name": "SQLite",
+  "comment": "Inherits VSCode's built-in SQL highlighting for SQLite files.",
+  "patterns": [
+    { "include": "source.sql" }
+  ]
+}

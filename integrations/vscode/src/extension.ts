@@ -76,7 +76,10 @@ export async function activate(
   };
 
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: "file", language: "sql" }],
+    documentSelector: [
+      { scheme: "file", language: "sql" },
+      { scheme: "file", language: "sqlite" },
+    ],
     outputChannel,
   };
 
@@ -102,7 +105,7 @@ export async function activate(
   context.subscriptions.push(
     vscode.commands.registerCommand("syntaqlite.formatDocument", async () => {
       const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document.languageId === "sql") {
+      if (editor && (editor.document.languageId === "sql" || editor.document.languageId === "sqlite")) {
         await vscode.commands.executeCommand(
           "editor.action.formatDocument",
         );
@@ -126,6 +129,11 @@ export async function activate(
 
 export async function deactivate(): Promise<void> {
   if (client) {
-    await client.stop();
+    try {
+      await client.stop();
+    } catch {
+      // Client may not be running (e.g. start failed) — ignore.
+    }
+    client = undefined;
   }
 }
