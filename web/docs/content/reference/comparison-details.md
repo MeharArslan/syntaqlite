@@ -353,7 +353,7 @@ LIMIT 12;
 
 Static semantic analysis — offline, no database needed. Finds **both** errors in one pass:
 
-```
+```text
 error: table 'monthly_stats' has 2 values for 3 columns
   --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpqzdko0xi.sql:29:3
    |
@@ -371,7 +371,7 @@ warning: unknown function 'ROUDN'
 
 Runtime execution — stops at first error:
 
-```
+```text
 Error: in prepare, table monthly_stats has 2 values for 3 columns
 ```
 
@@ -379,7 +379,7 @@ Error: in prepare, table monthly_stats has 2 values for 3 columns
 
 Runtime via LSP — wraps sqlite3, same single error:
 
-```
+```text
 (no diagnostics)
 ```
 
@@ -387,7 +387,7 @@ Runtime via LSP — wraps sqlite3, same single error:
 
 Structural checks only:
 
-```
+```text
 /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpnv0fbs3q.sql:1 sql-lint was unable to lint the following query "WITH...
 ```
 
@@ -485,19 +485,19 @@ What each server reports for `SELEC * FROM users;` (syntax error):
 
 ### syntaqlite
 
-```
+```text
 1:1 error syntax error near 'SELEC'
 ```
 
 ### sqls
 
-```
+```text
 (no diagnostics)
 ```
 
 ### sql-language-server
 
-```
+```text
 1:2 error Expected "$", "(", "--", "/*", "ALTER", "CREATE TABLE", "CREATE", "DELETE", "DROP TABLE", "DROP VIEW", "DROP", "INSERT", "REPLACE", "SELECT", "UPDATE", "WITH", "return", [ \t\n\r], or end of input but "S" found.
 ```
 

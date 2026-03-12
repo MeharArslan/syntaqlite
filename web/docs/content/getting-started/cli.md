@@ -92,7 +92,7 @@ CREATE TABLE users (id INTEGER, name TEXT, email TEXT);
 SELECT nme FROM users;
 ```
 
-```
+```text
 error: unknown column 'nme'
  --> schema.sql:3:8
   |

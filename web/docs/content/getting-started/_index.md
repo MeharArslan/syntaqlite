@@ -51,7 +51,7 @@ Catch a schema error:
 ```bash
 echo "CREATE TABLE users (id, name, email); SELECT nme FROM users;" | syntaqlite validate
 ```
-```
+```text
 error: unknown column 'nme'
  --> stdin:1:43
   |

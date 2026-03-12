@@ -10,7 +10,7 @@ weight = 1
 
 Format SQL files.
 
-```
+```bash
 syntaqlite fmt [OPTIONS] [FILES...]
 ```
 
@@ -35,7 +35,7 @@ Exit codes:
 
 Validate SQL against schema.
 
-```
+```bash
 syntaqlite validate [OPTIONS] [FILES...]
 ```
 
@@ -55,7 +55,7 @@ stderr in rustc-style format.
 
 Print the parsed AST.
 
-```
+```bash
 syntaqlite ast [FILES...]
 ```
 
@@ -70,7 +70,7 @@ Exit codes:
 
 Start the language server on stdio.
 
-```
+```bash
 syntaqlite lsp [OPTIONS]
 ```
 
