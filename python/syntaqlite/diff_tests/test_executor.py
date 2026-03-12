@@ -64,7 +64,7 @@ def execute_test(
         for flag in blueprint.cflags:
             cmd.extend(["--sqlite-cflag", flag])
     if subcommand:
-        cmd.append(subcommand)
+        cmd.extend(subcommand.split())
     t0 = time.monotonic()
     try:
         proc = subprocess.run(

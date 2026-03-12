@@ -89,7 +89,7 @@ syntaqlite fmt -i query.sql
 syntaqlite fmt -w 120 -k upper query.sql
 
 # Parse and inspect the AST
-echo "SELECT 1 + 2" | syntaqlite ast
+echo "SELECT 1 + 2" | syntaqlite parse --output ast
 
 # Validate SQL — catch unknown tables, columns, functions
 syntaqlite validate schema.sql

@@ -1,0 +1,11 @@
+[project]
+name = "comparison"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "shandy-sqlfmt>=0.29.0",
+    "sqlfluff>=4.0.4",
+    "sqlglot[c]>=29.0.1",
+    "sqlparse>=0.5.5",
+]

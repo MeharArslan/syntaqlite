@@ -1,0 +1,20 @@
+{
+  "name": "comparison",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "node-sql-parser": "^5.4.0",
+    "prettier": "^3.8.1",
+    "prettier-plugin-sql-cst": "^0.18.0",
+    "sql-lint": "^1.0.1",
+    "sql-parser-cst": "^0.38.2"
+  }
+}

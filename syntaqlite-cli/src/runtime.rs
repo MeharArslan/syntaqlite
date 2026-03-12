@@ -110,7 +110,9 @@ fn apply_version_cflags(
 
 fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<(), String> {
     match command {
-        Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(&d, &files)),
+        Command::Parse { files, output } => {
+            require_dialect(dialect).and_then(|d| cmd_parse(&d, &files, output))
+        }
         Command::Validate { files, lang } => {
             require_dialect(dialect).and_then(|d| cmd_validate(&d, &files, lang))
         }
@@ -167,34 +169,69 @@ fn process_files(
     Ok(())
 }
 
-fn cmd_ast(dialect: &AnyDialect, files: &[String]) -> Result<(), String> {
-    process_files(
-        files,
-        |source| cmd_ast_source(dialect, source, "<stdin>"),
-        |source, path, multi| {
+fn cmd_parse(
+    dialect: &AnyDialect,
+    files: &[String],
+    output: crate::ParseOutput,
+) -> Result<(), String> {
+    let mut total_stmts = 0u64;
+    let mut total_errors = 0u64;
+
+    let paths = expand_paths(files)?;
+
+    if paths.is_empty() {
+        let source = read_stdin()?;
+        let (s, e) = cmd_parse_source(dialect, &source, "<stdin>", output)?;
+        total_stmts += s;
+        total_errors += e;
+    } else {
+        let multi = paths.len() > 1;
+        for path in &paths {
+            let source =
+                fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
             let file = path.display().to_string();
-            if multi {
+            if multi && matches!(output, crate::ParseOutput::Ast) {
                 println!("==> {file} <==");
             }
-            cmd_ast_source(dialect, source, &file)
-        },
-    )
+            let (s, e) = cmd_parse_source(dialect, &source, &file, output)?;
+            total_stmts += s;
+            total_errors += e;
+        }
+    }
+
+    if matches!(output, crate::ParseOutput::Summary) {
+        println!("{total_stmts} statements parsed, {total_errors} errors");
+    }
+
+    if total_errors > 0 {
+        Err(format!("{total_errors} syntax error(s)"))
+    } else {
+        Ok(())
+    }
 }
 
-fn cmd_ast_source(dialect: &AnyDialect, source: &str, file: &str) -> Result<(), String> {
+/// Parse a single source. Returns (stmt_count, error_count).
+fn cmd_parse_source(
+    dialect: &AnyDialect,
+    source: &str,
+    file: &str,
+    output: crate::ParseOutput,
+) -> Result<(u64, u64), String> {
     let parser = AnyParser::new(dialect.deref().clone());
     let mut session = parser.parse(source);
-    let mut out = String::new();
+    let mut ast_out = String::new();
     let mut error_diags: Vec<Diagnostic> = Vec::new();
-    let mut count = 0;
+    let mut count = 0u64;
 
     loop {
         match session.next() {
             ParseOutcome::Ok(stmt) => {
-                if count > 0 {
-                    out.push_str("----\n");
+                if matches!(output, crate::ParseOutput::Ast) {
+                    if count > 0 {
+                        ast_out.push_str("----\n");
+                    }
+                    stmt.dump(&mut ast_out, 0);
                 }
-                stmt.dump(&mut out, 0);
                 count += 1;
             }
             ParseOutcome::Err(err) => {
@@ -212,16 +249,17 @@ fn cmd_ast_source(dialect: &AnyDialect, source: &str, file: &str) -> Result<(), 
         }
     }
 
-    print!("{out}");
-    if error_diags.is_empty() {
-        Ok(())
-    } else {
-        let n = error_diags.len();
+    if matches!(output, crate::ParseOutput::Ast) {
+        print!("{ast_out}");
+    }
+
+    let n_err = error_diags.len() as u64;
+    if !error_diags.is_empty() {
         DiagnosticRenderer::new(source, file)
             .render_diagnostics(&error_diags, &mut io::stderr())
             .ok();
-        Err(format!("{n} syntax error(s)"))
     }
+    Ok((count, n_err))
 }
 
 fn cmd_fmt(

@@ -54,7 +54,7 @@ def parse_sql(sql: str) -> str:
     Args:
         sql: The SQL to parse.
     """
-    result = _run(["ast"], sql)
+    result = _run(["parse", "-o", "ast"], sql)
     if result.returncode != 0:
         return f"Error: {result.stderr.strip()}"
     return result.stdout
@@ -69,7 +69,7 @@ def validate_sql(sql: str) -> str:
     Args:
         sql: The SQL to validate.
     """
-    result = _run(["ast"], sql)
+    result = _run(["parse"], sql)
     errors = result.stderr.strip()
     response = {
         "valid": result.returncode == 0 and not errors,

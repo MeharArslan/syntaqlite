@@ -1,0 +1,1 @@
+SELECT UNKNOWN_FUNC(id) FROM users;

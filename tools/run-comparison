@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Run the competitive comparison and optionally write markdown to docs.
+#
+# Usage:
+#   tools/run-comparison                       # terminal output, all categories
+#   tools/run-comparison validator             # terminal output, one category
+#   tools/run-comparison --markdown            # write markdown to web/docs/content/reference/
+#   tools/run-comparison --markdown validator  # write one category to docs
+
+set -euo pipefail
+DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$DIR/.." && pwd)"
+DOCS_DIR="$REPO/web/docs/content/reference"
+RUNNER="$REPO/python/syntaqlite/comparison/run.py"
+
+output_mode="terminal"
+categories=()
+
+for arg in "$@"; do
+    case "$arg" in
+        --markdown|-m)
+            output_mode="markdown"
+            ;;
+        *)
+            categories+=("$arg")
+            ;;
+    esac
+done
+
+if [ "$output_mode" = "markdown" ]; then
+    outfile="$DOCS_DIR/comparison.md"
+    mkdir -p "$DOCS_DIR"
+
+    # Zola frontmatter
+    frontmatter='+++
+title = "Competitive Comparison"
+weight = 10
++++
+'
+
+    echo "Running comparison (markdown mode)..."
+    echo "Output: $outfile"
+    echo ""
+
+    python3 "$RUNNER" --output markdown --output-file "$outfile.tmp" "${categories[@]+"${categories[@]}"}"
+
+    # Prepend Zola frontmatter
+    printf '%s' "$frontmatter" > "$outfile"
+    cat "$outfile.tmp" >> "$outfile"
+    rm -f "$outfile.tmp"
+
+    echo ""
+    echo "Written to $outfile"
+else
+    python3 "$RUNNER" "${categories[@]+"${categories[@]}"}"
+fi

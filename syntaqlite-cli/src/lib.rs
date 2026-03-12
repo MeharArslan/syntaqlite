@@ -6,13 +6,21 @@
     reason = "bin crate; internal lib shim exists only to support integration tests"
 )]
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[cfg(feature = "builtin-sqlite")]
 mod runtime;
 
 #[cfg(feature = "builtin-sqlite")]
 mod codegen;
+
+#[derive(Clone, Copy, ValueEnum)]
+pub(crate) enum ParseOutput {
+    /// Print statement/error counts (compact, for benchmarks)
+    Summary,
+    /// Print the full AST
+    Ast,
+}
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
@@ -46,11 +54,14 @@ pub(crate) struct Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Command {
-    /// Parse SQL and print the AST
+    /// Parse SQL and report results
     #[cfg(feature = "builtin-sqlite")]
-    Ast {
+    Parse {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
+        /// Output format
+        #[arg(short, long, value_enum, default_value_t = ParseOutput::Summary)]
+        output: ParseOutput,
     },
     /// Format SQL
     #[cfg(feature = "builtin-sqlite")]
