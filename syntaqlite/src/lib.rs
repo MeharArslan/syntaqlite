@@ -43,8 +43,8 @@ pub use fmt::{FormatConfig, FormatError, KeywordCase};
 pub use lsp::LspServer;
 #[cfg(feature = "validation")]
 pub use semantic::{
-    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Help, SemanticAnalyzer,
-    SemanticModel, Severity, SourceContext, ValidationConfig,
+    Catalog, Diagnostic, DiagnosticMessage, Help, SemanticAnalyzer, SemanticModel, Severity,
+    ValidationConfig,
 };
 #[cfg(feature = "sqlite")]
 pub use sqlite::dialect::Dialect;

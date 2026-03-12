@@ -27,8 +27,6 @@ pub use catalog::Catalog;
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 #[cfg(feature = "validation")]
 pub use model::SemanticModel;
-#[cfg(feature = "validation")]
-pub use render::{DiagnosticRenderer, SourceContext};
 
 /// Whether statements are being analyzed (editing a file) or executed
 /// (running sequentially in a session).

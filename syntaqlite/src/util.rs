@@ -6,6 +6,8 @@
 use std::io::{self, Write};
 
 pub use crate::sqlite::cflags::SqliteFlag;
+#[cfg(feature = "validation")]
+pub use crate::semantic::render::{DiagnosticRenderer, SourceContext};
 pub use syntaqlite_syntax::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVersion};
 
 /// Full set of `SQLite` compile-time compatibility flags.

@@ -11,9 +11,10 @@ use std::path::PathBuf;
 use clap::ValueEnum;
 use syntaqlite::AnyDialect;
 use syntaqlite::any::{AnyParser, ParseOutcome};
+use syntaqlite::util::DiagnosticRenderer;
 use syntaqlite::{
-    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, FormatConfig, FormatError,
-    Formatter, KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,
+    Catalog, Diagnostic, DiagnosticMessage, FormatConfig, FormatError, Formatter, KeywordCase,
+    SemanticAnalyzer, Severity, ValidationConfig,
 };
 
 use super::{Cli, Command};
