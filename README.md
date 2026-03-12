@@ -1,54 +1,29 @@
-# syntaqlite: syntatic tools for SQLite
+# syntaqlite
 
-Suite of developer oriented libraries and tools for working with SQLite SQL: tokenizer, parser, formatter, validator, and language server (LSP).
+[![CI](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml/badge.svg)](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/syntaqlite)](https://crates.io/crates/syntaqlite)
+[![VS Code](https://img.shields.io/visual-studio-marketplace/v/syntaqlite.syntaqlite)](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)
 
-There are [many](https://sqlglot.com/sqlglot.html) [libraries](https://www.sqlfluff.com/) [out](https://github.com/apache/datafusion-sqlparser-rs)
-which do some/most/all of what syntaqlite does. So why decide to write _yet another_ library instead of contributing to an existing one?
+A parser, formatter, validator, and language server for SQLite SQL — built directly from SQLite's own tokenizer and grammar rules. If SQLite accepts it, syntaqlite parses it identically.
 
-Fundamentally, the fundamental design principles of syntaqlite is _very different_ to anything I could find:
+**[Docs](https://docs.syntaqlite.com)** · **[Playground](https://playground.syntaqlite.com)** · **[VS Code Extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)** · **[MCP Server](integrations/mcp/README.md)**
 
-Most SQL tools parse a subset of SQL, or invent their own grammar, or handle SQLite as an afterthought. syntaqlite takes a different approach: it uses SQLite's own tokenizer and grammar rules directly. The parser doesn't approximate SQLite — it _is_ SQLite's grammar, compiled into a reusable library.
+## Why syntaqlite
 
-This means every quirk, every edge case, every syntax extension that SQLite supports works correctly from day one. CTEs, window functions, upsert, `RETURNING`, generated columns, `WITHOUT ROWID` — if SQLite parses it, syntaqlite parses it identically.
+Most SQL tools parse a subset of SQL, invent their own grammar, or handle SQLite as an afterthought. syntaqlite uses SQLite's own tokenizer and grammar rules directly — the parser doesn't approximate SQLite, it _is_ SQLite's grammar compiled into a reusable library.
 
-## Why
+Every quirk, every edge case, every syntax extension that SQLite supports works correctly from day one. CTEs, window functions, upsert, `RETURNING`, generated columns, `WITHOUT ROWID` — if SQLite parses it, syntaqlite parses it.
 
-syntaqlite grew out of 8+ years of maintaining [PerfettoSQL](https://perfetto.dev/docs/analysis/perfetto-sql-syntax) and scaling it to 100K+ line SQL codebases where generic SQL tooling consistently falls short. We needed a foundation that didn't just "mostly work" — it had to be identical to the engine.
+syntaqlite grew out of 8+ years of maintaining [PerfettoSQL](https://perfetto.dev/docs/analysis/perfetto-sql-syntax) and scaling it to 100K+ line SQL codebases where generic SQL tooling consistently falls short.
 
-If you write SQL for SQLite, you've probably hit one of these:
+## Features
 
-- **Formatting** — you want consistent SQL style across a project, but generic SQL formatters mangle SQLite-specific syntax or produce output that doesn't feel like SQL at all.
-- **Validation** — you want to catch typos in table and column names before runtime, not after your app ships.
-- **Parsing** — you need a real parse tree for code generation, migration tooling, or static analysis — not a regex or a half-working grammar.
-- **Editor support** — you want diagnostics, completions, and formatting in your editor, but existing SQL extensions don't understand SQLite well.
-
-syntaqlite solves all of these with a single foundation: SQLite's own grammar.
-
-## Design principles
-
-- **Reliability** — uses SQLite's own tokenizer and grammar rules; verified by running the full SQLite test suite through the parser. <!-- TODO: add XX% parity number -->
-- **Speed** — zero-copy tokenizer, arena-allocated parser, reusable across inputs. The formatter is built on Wadler-Lindig pretty-printing.
-- **Portability** — no runtime dependencies beyond the C and Rust standard libraries. Runs natively, in WASM, and as a shared library.
-- **Extensibility** — the grammar system supports database engines that extend SQLite's syntax (like [PerfettoSQL](https://perfetto.dev/docs/analysis/perfetto-sql-syntax)'s `CREATE PERFETTO MACRO`). Define custom grammar rules, AST nodes, and formatting recipes, then load your dialect as a shared library at runtime.
-
-## SQLite version and flag support
-
-SQLite isn't one fixed language — syntax changes between releases, and compile-time flags enable optional features. syntaqlite tracks this: pin the parser to a specific SQLite version, or enable compile-time flags to match your exact build.
-
-```bash
-# Parse as SQLite 3.47.0 (reject syntax added in later versions)
-syntaqlite fmt --sqlite-version 3.47.0 query.sql
-
-# Enable optional syntax from compile-time flags
-syntaqlite validate --sqlite-cflag SQLITE_ENABLE_ORDERED_SET_AGGREGATES query.sql
-```
-
-This matters in practice. If your production SQLite is compiled without `SQLITE_ENABLE_MATH_FUNCTIONS`, syntaqlite can flag calls to `sin()` or `log()` as errors — before they reach production.
-
-## Non-goals
-
-- **Other SQL engines** — syntaqlite is SQLite-only, by design. The depth of integration with SQLite's grammar is what makes it reliable; trying to also handle PostgreSQL or MySQL would undermine that.
-- **Runtime errors** — syntaqlite catches what `sqlite3_prepare` would catch: syntax errors, unknown tables, unknown columns, unknown functions. It does not try to catch data-dependent errors like division by zero or type mismatches — SQLite's dynamic typing makes that largely impossible to do statically.
+- **Format** — consistent SQL style across a project; Wadler-Lindig pretty-printing that understands SQLite syntax
+- **Validate** — catch unknown tables, columns, and functions before runtime, not after your app ships
+- **Parse** — full parse trees for code generation, migration tooling, or static analysis
+- **LSP** — diagnostics, completions, and formatting in any editor
+- **WASM** — runs in the browser; powers the [interactive playground](https://playground.syntaqlite.com)
+- **Version-aware** — pin to a specific SQLite version or enable compile-time flags to match your exact build
 
 ## Install
 
@@ -98,6 +73,18 @@ syntaqlite validate schema.sql
 syntaqlite validate --experimental-lang python app.py
 ```
 
+## SQLite version and flag support
+
+SQLite isn't one fixed language — syntax changes between releases, and compile-time flags enable optional features. syntaqlite tracks this: pin the parser to a specific SQLite version, or enable flags to match your exact build.
+
+```bash
+# Parse as SQLite 3.47.0 (reject syntax added in later versions)
+syntaqlite fmt --sqlite-version 3.47.0 query.sql
+
+# Enable optional syntax from compile-time flags
+syntaqlite validate --sqlite-cflag SQLITE_ENABLE_ORDERED_SET_AGGREGATES query.sql
+```
+
 ## Editor integration
 
 **VS Code** — install the [syntaqlite extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite) from the marketplace. Provides diagnostics, formatting, and completions out of the box.
@@ -122,22 +109,6 @@ See the [MCP server docs](integrations/mcp/README.md) for per-client configurati
 syntaqlite lsp
 ```
 
-## Embedded language support (experimental)
-
-SQL lives inside other languages — Python strings, TypeScript template literals, query builders. syntaqlite can extract SQL from host language source files and provide validation, diagnostics, and LSP support directly inside those strings, including best-effort handling of template interpolations.
-
-Python and TypeScript are supported today.
-
-```bash
-syntaqlite validate --experimental-lang python app.py
-```
-
-## Architecture
-
-The parser and tokenizer are written in C, directly wrapping SQLite's own grammar. Everything else — formatter, validator, LSP — is written in Rust with C bindings available.
-
-The split is intentional. The C parser is as portable as SQLite itself: it can run inside database engines, embedded systems, or anywhere SQLite runs. The Rust layer moves fast for developer tooling where the standard library and the crate ecosystem matter.
-
 ## Use as a library
 
 **Rust**
@@ -153,11 +124,13 @@ syntaqlite = { version = "0.1", features = ["fmt"] }
 npm install @syntaqlite/js
 ```
 
-**C** — the parser, tokenizer, formatter, and validator all have C APIs. See the [C API documentation](TODO) for details.
+**C** — the parser, tokenizer, formatter, and validator all have C APIs. See the [C API docs](https://docs.syntaqlite.com/reference/c-api/) for details.
 
-## Try it
+## Architecture
 
-The [interactive playground](https://lalitmaganti.github.io/syntaqlite/) runs entirely in your browser via WASM — no install needed.
+The parser and tokenizer are written in C, directly wrapping SQLite's own grammar. Everything else — formatter, validator, LSP — is written in Rust with C bindings available.
+
+The split is intentional. The C parser is as portable as SQLite itself: it can run inside database engines, embedded systems, or anywhere SQLite runs. The Rust layer moves fast for developer tooling where the standard library and the crate ecosystem matter.
 
 ## Building from source
 
@@ -165,6 +138,10 @@ The [interactive playground](https://lalitmaganti.github.io/syntaqlite/) runs en
 tools/install-build-deps
 tools/cargo build
 ```
+
+## Contributing
+
+See the [contributing guide](https://docs.syntaqlite.com/contributing/) for architecture overview and testing instructions.
 
 ## License
 

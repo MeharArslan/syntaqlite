@@ -41,8 +41,8 @@ export class Header implements m.ClassComponent<Attrs> {
           m(HelpTooltip, {
             ariaLabel: "Dialect requirements help",
             text: "Dialects must be SQLite-based.",
-            linkHref: "https://github.com/LalitMaganti/syntaqlite/tree/main/docs",
-            linkLabel: "TODO: docs",
+            linkHref: "https://docs.syntaqlite.com/guides/custom-dialects/",
+            linkLabel: "Custom dialects docs",
           }),
           // Desktop dialect switcher
           m("div.sq-dialect-switcher", [
@@ -237,8 +237,8 @@ export class Header implements m.ClassComponent<Attrs> {
                       className: "sq-dialect-popover__help-tooltip",
                       ariaLabel: "Custom dialect generation help",
                       text: "Custom dialect modules must be generated from a SQLite-based dialect build.",
-                      linkHref: "https://github.com/LalitMaganti/syntaqlite/tree/main/docs",
-                      linkLabel: "TODO: how to generate these",
+                      linkHref: "https://docs.syntaqlite.com/guides/custom-dialects/",
+                      linkLabel: "Custom dialects docs",
                     }),
                   ]),
                   this.customError
