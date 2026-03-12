@@ -211,10 +211,8 @@ impl CatalogLayerContents {
     /// # Example
     ///
     /// ```
-    /// # use syntaqlite::{
-    /// #     Catalog, CatalogLayer, FunctionCategory, AritySpec,
-    /// #     SemanticAnalyzer, ValidationConfig,
-    /// # };
+    /// # use syntaqlite::{Catalog, CatalogLayer, SemanticAnalyzer, ValidationConfig};
+    /// # use syntaqlite::semantic::{FunctionCategory, AritySpec};
     /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
     /// let db = catalog.layer_mut(CatalogLayer::Database);
     ///

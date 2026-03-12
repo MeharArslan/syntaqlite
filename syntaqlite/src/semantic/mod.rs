@@ -1,7 +1,46 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Semantic analysis: catalog, engine, single-pass analyzer, and rendering.
+//! Semantic analysis and validation.
+//!
+//! Validates SQL against a known database schema — resolving table, column,
+//! and function references and producing structured [`Diagnostic`] values with
+//! byte-offset spans and "did you mean?" suggestions.
+//!
+//! The most commonly used types ([`SemanticAnalyzer`], [`Catalog`],
+//! [`CatalogLayer`], [`Diagnostic`], [`Severity`], [`ValidationConfig`]) are
+//! re-exported at the crate root. This module also provides:
+//!
+//! - [`SemanticModel`] — the result of a single analysis pass.
+//! - [`DiagnosticMessage`] — structured message variants for pattern matching.
+//! - [`Help`] — "did you mean?" suggestion attached to a diagnostic.
+//! - [`AnalysisMode`] — document vs. execute mode for DDL accumulation.
+//! - [`CatalogLayerContents`] — the data stored in a single catalog layer.
+//! - [`AritySpec`], [`FunctionCategory`] — function metadata for catalog
+//!   registration.
+//!
+//! # Example
+//!
+//! ```
+//! use syntaqlite::semantic::{
+//!     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig,
+//!     DiagnosticMessage,
+//! };
+//!
+//! let mut analyzer = SemanticAnalyzer::new();
+//! let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
+//! catalog.layer_mut(CatalogLayer::Database)
+//!     .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+//!
+//! let model = analyzer.analyze(
+//!     "SELECT id, nme FROM users",
+//!     &catalog,
+//!     &ValidationConfig::default(),
+//! );
+//!
+//! // "nme" is close to "name" — expect a diagnostic with a suggestion.
+//! assert!(!model.diagnostics().is_empty());
+//! ```
 
 #[cfg(feature = "validation")]
 pub(crate) mod analyzer;

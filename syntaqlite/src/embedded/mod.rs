@@ -11,7 +11,7 @@
 //! with macro-call placeholders (`HOLE_PLACEHOLDER`), runs validation via
 //! [`SemanticAnalyzer`](crate::SemanticAnalyzer) with `macro_fallback` enabled,
 //! and maps diagnostic offsets back to host-file positions. The parser records a
-//! [`MacroRegion`](crate::MacroRegion) for each hole, which is used to filter
+//! [`MacroRegion`](crate::parse::MacroRegion) for each hole, which is used to filter
 //! diagnostics that would otherwise reference the placeholder.
 //!
 //! Language-specific extractors live in submodules:
@@ -189,8 +189,7 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// # // Requires the `experimental-embedded` and `sqlite` features.
+/// ```
 /// use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python};
 ///
 /// let python_source = r#"db.execute(f"SELECT id, name FROM users WHERE age > {min_age}")"#;

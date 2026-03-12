@@ -16,7 +16,7 @@
 /// You typically obtain diagnostics from [`SemanticModel::diagnostics`] after
 /// calling [`SemanticAnalyzer::analyze`].
 ///
-/// [`SemanticModel::diagnostics`]: crate::SemanticModel::diagnostics
+/// [`SemanticModel::diagnostics`]: crate::semantic::SemanticModel::diagnostics
 /// [`SemanticAnalyzer::analyze`]: crate::SemanticAnalyzer::analyze
 ///
 /// # Example
@@ -98,7 +98,8 @@ impl Diagnostic {
 /// # Example
 ///
 /// ```
-/// # use syntaqlite::{SemanticAnalyzer, Catalog, ValidationConfig, DiagnosticMessage};
+/// # use syntaqlite::{SemanticAnalyzer, Catalog, ValidationConfig};
+/// # use syntaqlite::semantic::DiagnosticMessage;
 /// # let mut analyzer = SemanticAnalyzer::new();
 /// # let catalog = Catalog::new(syntaqlite::sqlite_dialect());
 /// # let config = ValidationConfig::default();

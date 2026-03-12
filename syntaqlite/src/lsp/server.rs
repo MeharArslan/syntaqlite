@@ -57,10 +57,10 @@ use crate::semantic::diagnostics::Severity;
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// // Requires the `lsp` feature. Blocks on stdin/stdout.
+/// ```no_run
 /// use syntaqlite::lsp::LspServer;
 ///
+/// // Blocks on stdin/stdout — typically launched by an editor.
 /// LspServer::run(syntaqlite::sqlite_dialect()).expect("LSP server failed");
 /// ```
 pub struct LspServer;

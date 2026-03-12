@@ -218,7 +218,7 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first"));
     let grammar = (*dialect).clone();
     let parser =
-        syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::ParserConfig::default());
+        syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::parse::ParserConfig::default());
     let mut session = parser.parse(&source);
     let mut nodes: Vec<serde_json::Value> = Vec::new();
     loop {

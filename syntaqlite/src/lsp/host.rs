@@ -73,8 +73,7 @@ fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, user_catalo
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// // Requires the `lsp` feature.
+/// ```
 /// use syntaqlite::lsp::LspHost;
 ///
 /// let mut host = LspHost::new(); // SQLite dialect by default

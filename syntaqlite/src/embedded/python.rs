@@ -17,8 +17,7 @@ use super::{EmbeddedFragment, HOLE_PLACEHOLDER, Hole, starts_with_sql_keyword};
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// # // Requires the `experimental-embedded` feature.
+/// ```
 /// use syntaqlite::embedded::extract_python;
 ///
 /// let source = r#"

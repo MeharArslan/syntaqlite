@@ -12,9 +12,11 @@ use clap::ValueEnum;
 use syntaqlite::any::AnyDialect;
 use syntaqlite::any::{AnyParser, ParseOutcome};
 use syntaqlite::util::DiagnosticRenderer;
+use syntaqlite::fmt::FormatError;
+use syntaqlite::semantic::DiagnosticMessage;
 use syntaqlite::{
-    Catalog, Diagnostic, DiagnosticMessage, FormatConfig, FormatError, Formatter, KeywordCase,
-    SemanticAnalyzer, Severity, ValidationConfig,
+    Catalog, Diagnostic, FormatConfig, Formatter, KeywordCase, SemanticAnalyzer, Severity,
+    ValidationConfig,
 };
 
 use super::{Cli, Command};

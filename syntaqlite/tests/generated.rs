@@ -169,7 +169,8 @@ fn comment_between_columns() {
 #[test]
 fn debug_multi_stmt_comments() {
     // Log exactly which comments each statement sees from the parser.
-    use syntaqlite::{ParseOutcome, Parser, ParserConfig};
+    use syntaqlite::parse::ParserConfig;
+    use syntaqlite::{ParseOutcome, Parser};
     for source in [
         "SELECT 1;\n-- between\nSELECT 2",
         "SELECT 1; -- after first\nSELECT 2",

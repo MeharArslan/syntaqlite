@@ -22,11 +22,11 @@ fn formatter_with_flags(flags: SqliteFlags) -> Formatter {
     Formatter::with_dialect_config(dialect, &FormatConfig::default())
 }
 
-fn format_with_flags(sql: &str, flags: SqliteFlags) -> Result<String, syntaqlite::FormatError> {
+fn format_with_flags(sql: &str, flags: SqliteFlags) -> Result<String, syntaqlite::fmt::FormatError> {
     formatter_with_flags(flags).format(sql)
 }
 
-fn format_default(sql: &str) -> Result<String, syntaqlite::FormatError> {
+fn format_default(sql: &str) -> Result<String, syntaqlite::fmt::FormatError> {
     format_with_flags(sql, SqliteFlags::default())
 }
 

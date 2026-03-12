@@ -36,11 +36,16 @@
 //! }
 //! ```
 //!
+//! See the [`parse`] module for additional types like
+//! [`IncrementalParseSession`](parse::IncrementalParseSession),
+//! [`ParserConfig`](parse::ParserConfig), and
+//! [`ParserToken`](parse::ParserToken).
+//!
 //! # Validation
 //!
 //! Use [`SemanticAnalyzer`] to check SQL against a known schema. The analyzer
-//! produces a [`SemanticModel`] containing structured [`Diagnostic`] values
-//! with byte-offset spans and "did you mean?" suggestions.
+//! produces a [`SemanticModel`](semantic::SemanticModel) containing structured
+//! [`Diagnostic`] values with byte-offset spans and "did you mean?" suggestions.
 //!
 //! ```rust
 //! use syntaqlite::{
@@ -86,37 +91,6 @@
 //! See [`FormatConfig`] for all available options (line width, indent width,
 //! keyword casing, semicolons).
 //!
-//! # Advanced
-//!
-//! ## Tokenizing
-//!
-//! Use [`Tokenizer`](crate::Tokenizer) to break SQL source text into [`Token`](crate::Token)s:
-//!
-//! ```rust
-//! let tokenizer = syntaqlite::Tokenizer::new();
-//! for token in tokenizer.tokenize("SELECT 1") {
-//!     println!("{:?}: {:?}", token.token_type(), token.text());
-//! }
-//! ```
-//!
-//! ## Incremental Parsing
-//!
-//! Use [`IncrementalParseSession`](crate::IncrementalParseSession) when SQL arrives token-by-token
-//! (for example in editors and completion engines):
-//!
-//! ```rust
-//! use syntaqlite::{Parser, TokenType};
-//!
-//! let parser = Parser::new();
-//! let mut session = parser.incremental_parse("SELECT 1");
-//!
-//! assert!(session.feed_token(TokenType::Select, 0..6).is_none());
-//! assert!(session.feed_token(TokenType::Integer, 7..8).is_none());
-//!
-//! let stmt = session.finish().and_then(Result::ok).unwrap();
-//! let _ = stmt.root();
-//! ```
-//!
 //! # Features
 //!
 //! - `sqlite` *(default)*: enables the built-in `SQLite` grammar, [`Dialect`],
@@ -144,16 +118,16 @@
 //! - Use [`any`] when grammar choice happens at runtime or crosses
 //!   FFI/plugin boundaries.
 
-// Temporarily disabled during refactor except for formatter dependency chain.
+// ── Modules ─────────────────────────────────────────────────────────────────
+
 #[cfg(feature = "fmt")]
 pub mod dialect;
 
 #[cfg(feature = "fmt")]
-pub(crate) mod fmt;
+pub mod fmt;
 
-// Incrementally re-enabled during refactor.
 #[cfg(feature = "validation")]
-pub(crate) mod semantic;
+pub mod semantic;
 
 // `sqlite` module is always present; individual sub-modules are gated inside it.
 pub(crate) mod sqlite;
@@ -170,18 +144,29 @@ pub mod lsp;
 #[cfg(feature = "experimental-embedded")]
 pub mod embedded;
 
-// ── Public API ────────────────────────────────────────────────────────────────
+pub mod util;
 
+// ── Primary re-exports (crate root convenience) ─────────────────────────────
+
+// Parsing essentials.
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_syntax::{
+    ParseErrorKind, ParseOutcome, Parser, Token, TokenType, Tokenizer,
+};
+
+// Formatting essentials.
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
-pub use fmt::{FormatConfig, FormatError, KeywordCase};
+pub use fmt::{FormatConfig, KeywordCase};
+
+// Validation essentials.
 #[cfg(feature = "validation")]
 pub use semantic::{
-    AnalysisMode, AritySpec, Catalog, CatalogLayer, CatalogLayerContents, Diagnostic,
-    DiagnosticMessage, FunctionCategory, Help, SemanticAnalyzer, SemanticModel, Severity,
-    ValidationConfig,
+    Catalog, CatalogLayer, Diagnostic, SemanticAnalyzer, Severity, ValidationConfig,
 };
+
+// Dialect.
 #[cfg(feature = "sqlite")]
 pub use sqlite::dialect::Dialect;
 /// Returns the built-in `SQLite` dialect handle.
@@ -193,21 +178,51 @@ pub fn sqlite_dialect() -> Dialect {
     Dialect::new()
 }
 
-pub mod util;
+// ── Parsing module ──────────────────────────────────────────────────────────
 
-// Shared parser utility types used across both `any` and `typed` modules.
-#[doc(inline)]
-pub use syntaqlite_syntax::any::MacroRegion;
-#[doc(inline)]
-pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
-
-// SQLite parser, tokenizer, and token types re-exported for direct use.
-#[cfg(feature = "sqlite")]
-#[doc(inline)]
-pub use syntaqlite_syntax::{
-    IncrementalParseSession, ParseError, ParseErrorKind, ParseOutcome, ParseSession,
-    ParsedStatement, Parser, ParserToken, Token, TokenType, Tokenizer,
-};
+/// Tokenizer, parser, and related types for `SQLite` SQL.
+///
+/// The most commonly used types ([`Parser`](crate::Parser),
+/// [`Tokenizer`](crate::Tokenizer), [`Token`](crate::Token),
+/// [`TokenType`](crate::TokenType), [`ParseOutcome`](crate::ParseOutcome),
+/// [`ParseErrorKind`](crate::ParseErrorKind)) are re-exported at the crate
+/// root for convenience. This module provides the full set, including:
+///
+/// - [`IncrementalParseSession`](self::parse::IncrementalParseSession) — feed
+///   tokens one at a time (useful for editors and completion engines).
+/// - [`ParserConfig`](self::parse::ParserConfig) — optional parser behaviour
+///   knobs.
+/// - [`ParserToken`](self::parse::ParserToken) — per-token metadata from a
+///   parsed statement.
+/// - [`ParserTokenFlags`](self::parse::ParserTokenFlags) — parser-inferred
+///   semantic flags for individual tokens.
+/// - [`CommentKind`](self::parse::CommentKind) — SQL comment style.
+/// - [`MacroRegion`](self::parse::MacroRegion) — byte range of a macro-call
+///   placeholder (used by the embedded SQL extractor).
+///
+/// # Example
+///
+/// ```
+/// use syntaqlite::parse::{Parser, ParseOutcome, ParseErrorKind, ParserConfig};
+///
+/// // Use ParserConfig to tweak parser behaviour.
+/// let config = ParserConfig::default();
+/// let parser = Parser::with_config(&config);
+/// let mut session = parser.parse("SELECT 1");
+/// match session.next() {
+///     ParseOutcome::Ok(stmt) => assert!(stmt.root().is_some()),
+///     _ => panic!("expected successful parse"),
+/// }
+/// ```
+pub mod parse {
+    #[cfg(feature = "sqlite")]
+    pub use syntaqlite_syntax::{
+        IncrementalParseSession, ParseError, ParseErrorKind, ParseOutcome, ParseSession,
+        ParsedStatement, Parser, ParserToken, Token, TokenType, Tokenizer,
+    };
+    pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
+    pub use syntaqlite_syntax::any::MacroRegion;
+}
 
 /// Type-erased (grammar-agnostic) parser and tokenizer types.
 pub mod any {

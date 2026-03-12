@@ -15,17 +15,13 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! // Requires the `lsp` feature.
-//! use syntaqlite::lsp::{LspHost, LspServer};
+//! ```
+//! use syntaqlite::lsp::LspHost;
 //!
 //! // Programmatic usage — embed in your own tool:
 //! let mut host = LspHost::new();
 //! host.update_document("file:///q.sql", 1, "SELECT 1;".into());
 //! let tokens = host.semantic_tokens_encoded("file:///q.sql", None);
-//!
-//! // Turnkey stdio server — launch from an editor:
-//! // LspServer::run(syntaqlite::sqlite_dialect()).unwrap();
 //! ```
 
 /// Semantic token type names in legend-index order, for use in LSP

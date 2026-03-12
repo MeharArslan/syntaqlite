@@ -12,7 +12,8 @@
 #![cfg(all(feature = "sqlite", feature = "validation"))]
 
 use syntaqlite::util::{SqliteFlag, SqliteFlags};
-use syntaqlite::{Catalog, DiagnosticMessage, SemanticAnalyzer, ValidationConfig, sqlite_dialect};
+use syntaqlite::semantic::DiagnosticMessage;
+use syntaqlite::{Catalog, SemanticAnalyzer, ValidationConfig, sqlite_dialect};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

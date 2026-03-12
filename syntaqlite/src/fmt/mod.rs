@@ -3,14 +3,28 @@
 
 //! SQL formatter.
 //!
-//! Formats SQL source text using a bytecode interpreter driven by
-//! per-node formatting instructions compiled from `.synq` definitions.
-//! Layout selection is handled by a Wadler-style document renderer in
-//! [`doc`](self::doc), using `group`/`line`/`softline` primitives.
-//! The high-level entry point is [`Formatter`](crate::Formatter);
-//! configuration types are re-exported at the crate root as
-//! [`FormatConfig`](crate::FormatConfig) and
-//! [`KeywordCase`](crate::KeywordCase).
+//! Pretty-prints SQL source text with consistent style. The formatter parses
+//! each statement, runs a bytecode interpreter over the AST, and renders the
+//! result with a Wadler-style document renderer.
+//!
+//! The most commonly used types ([`Formatter`], [`FormatConfig`],
+//! [`KeywordCase`]) are re-exported at the crate root. This module also
+//! provides [`FormatError`], returned when a statement fails to parse during
+//! formatting.
+//!
+//! # Example
+//!
+//! ```
+//! use syntaqlite::fmt::{Formatter, FormatConfig, KeywordCase};
+//!
+//! let mut fmt = Formatter::with_config(
+//!     &FormatConfig::default()
+//!         .with_keyword_case(KeywordCase::Lower)
+//!         .with_indent_width(4),
+//! );
+//! let output = fmt.format("SELECT 1").unwrap();
+//! assert!(output.starts_with("select"));
+//! ```
 
 mod comment;
 mod doc;
@@ -19,6 +33,8 @@ mod doc;
 pub(crate) mod ffi;
 pub(crate) mod formatter;
 mod interpret;
+
+pub use formatter::Formatter;
 
 // ── Config types (formerly config.rs) ────────────────────────────────────
 
