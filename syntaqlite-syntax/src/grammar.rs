@@ -46,7 +46,7 @@ pub enum TokenCategory {
     /// SQL keyword (SELECT, FROM, WHERE, …)
     Keyword,
     /// Bind parameter or session variable (`:name`, `@var`, `?`)
-    Variable,
+    Parameter,
     /// String literal or blob literal
     String,
     /// Numeric literal
@@ -77,7 +77,7 @@ impl From<ffi::CTokenCategory> for TokenCategory {
             ffi::CTokenCategory::Operator => Self::Operator,
             ffi::CTokenCategory::Punctuation => Self::Punctuation,
             ffi::CTokenCategory::Comment => Self::Comment,
-            ffi::CTokenCategory::Variable => Self::Variable,
+            ffi::CTokenCategory::Variable => Self::Parameter,
             ffi::CTokenCategory::Function => Self::Function,
             ffi::CTokenCategory::Type => Self::Type,
             ffi::CTokenCategory::Other => Self::Other,

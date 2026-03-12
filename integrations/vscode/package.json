@@ -34,7 +34,7 @@
       {
         "language": "sqlite",
         "scopeName": "source.sql.sqlite",
-        "path": "./syntaxes/sql.tmLanguage.json"
+        "path": "./syntaxes/sqlite.tmLanguage.json"
       }
     ],
     "commands": [

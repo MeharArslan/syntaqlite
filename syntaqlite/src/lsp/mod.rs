@@ -15,16 +15,16 @@
 /// Semantic token type names in legend-index order, for use in LSP
 /// `SemanticTokensLegend` and Monaco provider registration.
 pub(crate) const SEMANTIC_TOKEN_LEGEND: &[&str] = &[
-    "keyword",     // 0 — TokenCategory::Keyword
-    "variable",    // 1 — TokenCategory::Variable
-    "string",      // 2 — TokenCategory::String
-    "number",      // 3 — TokenCategory::Number
-    "operator",    // 4 — TokenCategory::Operator
-    "comment",     // 5 — TokenCategory::Comment
-    "punctuation", // 6 — TokenCategory::Punctuation
-    "identifier",  // 7 — TokenCategory::Identifier
-    "function",    // 8 — TokenCategory::Function
-    "type",        // 9 — TokenCategory::Type
+    "keyword",   // 0 — TokenCategory::Keyword
+    "parameter", // 1 — TokenCategory::Parameter  (bind params: :name, @var, ?)
+    "string",    // 2 — TokenCategory::String
+    "number",    // 3 — TokenCategory::Number
+    "operator",  // 4 — TokenCategory::Operator    (skipped at encode time)
+    "comment",   // 5 — TokenCategory::Comment
+    "operator",  // 6 — TokenCategory::Punctuation (skipped at encode time)
+    "variable",  // 7 — TokenCategory::Identifier
+    "function",  // 8 — TokenCategory::Function
+    "type",      // 9 — TokenCategory::Type
 ];
 
 // Public API starts here.

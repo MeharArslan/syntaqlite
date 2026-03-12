@@ -382,7 +382,10 @@ fn encode_semantic_tokens(
         if tok.offset < range_start || tok.offset >= range_end {
             continue;
         }
-        if tok.category == TokenCategory::Other {
+        if matches!(
+            tok.category,
+            TokenCategory::Other | TokenCategory::Operator | TokenCategory::Punctuation
+        ) {
             continue;
         }
 

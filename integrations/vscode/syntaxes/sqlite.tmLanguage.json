@@ -1,0 +1,6 @@
+{
+  "scopeName": "source.sql.sqlite",
+  "name": "SQLite",
+  "comment": "Minimal stub — semantic highlighting is provided by the LSP server. TextMate patterns are intentionally empty.",
+  "patterns": []
+}
