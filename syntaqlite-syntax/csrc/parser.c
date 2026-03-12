@@ -426,7 +426,7 @@ static int record_and_feed(SyntaqliteParser* p,
                            uint32_t cur_offset,
                            uint32_t cur_len) {
   uint32_t tidx = 0xFFFFFFFF;
-  if (p->collect_tokens && cur_type != SYNTAQLITE_TK_SEMI) {
+  if (p->collect_tokens) {
     SyntaqliteParserToken tp = {cur_offset, cur_len, cur_type, 0};
     syntaqlite_vec_push(&p->tokens, tp, p->mem);
     tidx = syntaqlite_vec_len(&p->tokens) - 1;
@@ -994,9 +994,9 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
     return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
 
-  // Capture non-whitespace, non-comment, non-semicolon token positions.
+  // Capture non-whitespace, non-comment token positions.
   uint32_t tidx = 0xFFFFFFFF;
-  if (p->collect_tokens && text && token_type != SYNTAQLITE_TK_SEMI) {
+  if (p->collect_tokens && text) {
     uint32_t tok_offset = (uint32_t)(text - p->source);
     SyntaqliteParserToken tp = {tok_offset, len, token_type, 0};
     syntaqlite_vec_push(&p->tokens, tp, p->mem);

@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use syntaqlite_syntax::ParserConfig;
 use syntaqlite_syntax::any::{
     AnyNodeId, AnyParseError, AnyParsedStatement, AnyParser, AnyTokenType, FieldValue, NodeFields,
-    ParseOutcome,
+    ParseOutcome, TokenCategory,
 };
 
 use crate::dialect::AnyDialect;
@@ -166,12 +166,14 @@ impl SemanticAnalyzer {
         // which would trigger a multi-GiB allocation and SIGKILL.
         let mut last_expected: Vec<AnyTokenType> = Vec::new();
 
-        for tok in stmt_tokens {
+        for (i, tok) in stmt_tokens.iter().enumerate() {
             let span = tok.offset..(tok.offset + tok.length);
             if cursor_p.feed_token(tok.token_type, span).is_some() {
+                let qualifier = detect_qualifier(source, &stmt_tokens[..=i], &self.dialect);
                 return CompletionInfo {
                     tokens: last_expected,
                     context: CompletionContext::from_parser(cursor_p.completion_context()),
+                    qualifier,
                 };
             }
             last_expected.clear();
@@ -190,9 +192,12 @@ impl SemanticAnalyzer {
             }
         }
 
+        let qualifier = detect_qualifier(source, stmt_tokens, &self.dialect);
+
         CompletionInfo {
             tokens: last_expected,
             context,
+            qualifier,
         }
     }
 
@@ -299,6 +304,38 @@ impl Default for SemanticAnalyzer {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// If the last two tokens in `tokens` are `identifier DOT`, return the
+/// identifier text as the qualifier. This is used to detect `table.` prefixes
+/// for qualified column completion.
+fn detect_qualifier(
+    source: &str,
+    tokens: &[StoredToken],
+    dialect: &AnyDialect,
+) -> Option<String> {
+    if tokens.len() < 2 {
+        return None;
+    }
+    let dot_tok = &tokens[tokens.len() - 1];
+    let ident_tok = &tokens[tokens.len() - 2];
+
+    // The DOT must be a single-character punctuation token.
+    if dot_tok.length != 1
+        || source.as_bytes().get(dot_tok.offset) != Some(&b'.')
+    {
+        return None;
+    }
+
+    // The token before the DOT must be an identifier (use raw category,
+    // not classify_token, since parser flags may reclassify it).
+    let cat = dialect.token_category(ident_tok.token_type);
+    if cat != TokenCategory::Identifier {
+        return None;
+    }
+
+    let name = &source[ident_tok.offset..ident_tok.offset + ident_tok.length];
+    Some(name.to_string())
+}
 
 fn format_arity(name: &str, arity: AritySpec) -> String {
     match arity {
@@ -2197,5 +2234,27 @@ mod tests {
         let candidates = vec!["users".to_string()];
         let s = best_suggestion("xyzzy", &candidates, 2);
         assert!(s.is_none());
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "sqlite")]
+mod detect_qualifier_test {
+    use super::*;
+    use crate::semantic::model::StoredToken;
+
+    #[test]
+    fn test_detect_qualifier_basic() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let source = "SELECT t1.";
+        let id_type = AnyTokenType::from(syntaqlite_syntax::TokenType::Id);
+        let dot_type = AnyTokenType::from(syntaqlite_syntax::TokenType::Dot);
+
+        let tokens = vec![
+            StoredToken { offset: 7, length: 2, token_type: id_type, flags: Default::default() },
+            StoredToken { offset: 9, length: 1, token_type: dot_type, flags: Default::default() },
+        ];
+        let result = detect_qualifier(source, &tokens, &dialect);
+        assert_eq!(result.as_deref(), Some("t1"));
     }
 }

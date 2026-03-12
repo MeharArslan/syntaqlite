@@ -59,7 +59,7 @@ impl LspServer {
             hover_provider: Some(HoverProviderCapability::Simple(true)),
             document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
             completion_provider: Some(CompletionOptions {
-                trigger_characters: Some(vec![" ".into(), "\n".into(), "\t".into(), ";".into()]),
+                trigger_characters: Some(vec![" ".into(), ".".into(), "\n".into(), "\t".into(), ";".into()]),
                 ..Default::default()
             }),
             signature_help_provider: Some(SignatureHelpOptions {
@@ -160,11 +160,10 @@ impl LspServer {
                         kind: Some(match entry.kind {
                             CompletionKind::Keyword => CompletionItemKind::KEYWORD,
                             CompletionKind::Function => CompletionItemKind::FUNCTION,
+                            CompletionKind::Table => CompletionItemKind::STRUCT,
+                            CompletionKind::Column => CompletionItemKind::FIELD,
                         }),
-                        detail: Some(match entry.kind {
-                            CompletionKind::Keyword => "keyword".into(),
-                            CompletionKind::Function => "function".into(),
-                        }),
+                        detail: Some(entry.kind.as_str().into()),
                         ..Default::default()
                     })
                     .collect();

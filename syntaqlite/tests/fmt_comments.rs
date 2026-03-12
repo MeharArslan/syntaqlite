@@ -92,8 +92,8 @@ fn debug_comment_token_offsets() {
                 if stmt_num == 0 {
                     assert_eq!(
                         tokens.len(),
-                        2,
-                        "stmt 0 should have exactly 2 tokens (SELECT, 1)"
+                        3,
+                        "stmt 0 should have exactly 3 tokens (SELECT, 1, ;)"
                     );
                     assert_eq!(comments.len(), 0, "stmt 0 should have no comments");
                 }
@@ -101,8 +101,8 @@ fn debug_comment_token_offsets() {
                 if stmt_num == 1 {
                     assert_eq!(
                         tokens.len(),
-                        4,
-                        "stmt 1 should have 4 tokens (select, 1, from, slice)"
+                        5,
+                        "stmt 1 should have 5 tokens (select, 1, from, slice, ;)"
                     );
                     assert_eq!(
                         comments.len(),

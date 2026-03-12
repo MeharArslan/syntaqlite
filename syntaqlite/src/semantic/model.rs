@@ -71,6 +71,8 @@ pub(crate) struct CompletionInfo {
     pub tokens: Vec<AnyTokenType>,
     /// Semantic context (expression vs table-ref).
     pub context: CompletionContext,
+    /// If the cursor follows `qualifier DOT`, this is the qualifier text.
+    pub qualifier: Option<String>,
 }
 
 // ── Resolved symbols ──────────────────────────────────────────────────────────

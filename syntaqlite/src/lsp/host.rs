@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
+use syntaqlite_syntax::any::TokenCategory;
 use syntaqlite_syntax::util::is_suggestable_keyword;
 
 use crate::dialect::AnyDialect;
@@ -190,6 +190,7 @@ impl LspHost {
             return CompletionInfo {
                 tokens: Vec::new(),
                 context: super::CompletionContext::Unknown,
+                qualifier: None,
             };
         };
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
@@ -207,10 +208,6 @@ impl LspHost {
         let mut seen: HashSet<String> = HashSet::new();
         let mut items: Vec<CompletionEntry> = Vec::new();
 
-        let expects_identifier = expected_set.iter().any(|&tok| {
-            self.dialect.token_category(AnyTokenType::from_raw(tok)) == TokenCategory::Identifier
-        });
-
         for entry in self.dialect.keywords() {
             let code = u32::from(entry.token_type());
             if !expected_set.contains(&code) || !is_suggestable_keyword(entry.keyword()) {
@@ -224,16 +221,44 @@ impl LspHost {
             }
         }
 
-        let show_functions = expects_identifier
-            && matches!(
-                info.context,
-                super::CompletionContext::Expression | super::CompletionContext::Unknown
-            );
+        let catalog = self.analyzer.catalog();
 
-        if show_functions {
-            for name in self.available_function_names() {
+        // When the cursor follows `qualifier.`, only suggest columns from that
+        // table — no keywords, functions, or other tables.
+        if let Some(ref qualifier) = info.qualifier {
+            items.clear();
+            seen.clear();
+            for name in catalog.all_column_names(Some(qualifier)) {
                 if seen.insert(name.clone()) {
-                    items.push(CompletionEntry::new(name, CompletionKind::Function));
+                    items.push(CompletionEntry::new(name, CompletionKind::Column));
+                }
+            }
+            return items;
+        }
+
+        match info.context {
+            super::CompletionContext::TableRef => {
+                for name in catalog.all_relation_names() {
+                    if seen.insert(name.clone()) {
+                        items.push(CompletionEntry::new(name, CompletionKind::Table));
+                    }
+                }
+            }
+            super::CompletionContext::Expression | super::CompletionContext::Unknown => {
+                for name in catalog.all_function_names() {
+                    if seen.insert(name.clone()) {
+                        items.push(CompletionEntry::new(name, CompletionKind::Function));
+                    }
+                }
+                for name in catalog.all_column_names(None) {
+                    if seen.insert(name.clone()) {
+                        items.push(CompletionEntry::new(name, CompletionKind::Column));
+                    }
+                }
+                for name in catalog.all_relation_names() {
+                    if seen.insert(name.clone()) {
+                        items.push(CompletionEntry::new(name, CompletionKind::Table));
+                    }
                 }
             }
         }
@@ -585,6 +610,7 @@ mod tests {
     use syntaqlite_syntax::TokenType;
 
     use super::LspHost;
+    use crate::lsp::CompletionKind;
     use crate::semantic::Catalog;
     use crate::semantic::ValidationConfig;
     use crate::semantic::catalog::{AritySpec, CatalogLayer, FunctionCategory};
@@ -913,4 +939,66 @@ mod tests {
             "expected an error-severity diagnostic, got: {diags:?}"
         );
     }
+
+    #[test]
+    fn completion_on_suggested_after_join_target() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FROM slice JOIN thread ";
+        host.open_document(uri, 1, sql.to_string());
+        let items = host.completion_items(uri, sql.len());
+        let labels: Vec<&str> = items.iter().map(|e| e.label.as_str()).collect();
+        assert!(labels.contains(&"ON"), "ON should be suggested, got: {labels:?}");
+    }
+
+    #[test]
+    fn completion_qualifier_detected_after_dot() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE t1 (a INT, b TEXT);\nCREATE TABLE t2 (c INT);\nSELECT t1.";
+        host.open_document(uri, 1, sql.to_string());
+        let info = host.completion_info_at_offset(uri, sql.len());
+        assert_eq!(info.qualifier.as_deref(), Some("t1"),
+            "should detect t1 as qualifier, got: {:?}", info.qualifier);
+    }
+
+    #[test]
+    fn completion_qualified_column_only_from_table() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE t1 (a INT, b TEXT);\nCREATE TABLE t2 (c INT);\nSELECT t1.";
+        host.open_document(uri, 1, sql.to_string());
+        let items = host.completion_items(uri, sql.len());
+        let labels: Vec<&str> = items.iter().map(|e| e.label.as_str()).collect();
+        assert!(labels.contains(&"a"), "should suggest column a");
+        assert!(labels.contains(&"b"), "should suggest column b");
+        assert!(!labels.contains(&"c"), "should NOT suggest column c from t2");
+        assert!(items.iter().all(|e| e.kind == CompletionKind::Column),
+            "all items should be columns, got: {labels:?}");
+    }
+
+    #[test]
+    fn completion_tables_after_from() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT);\nSELECT * FROM ";
+        host.open_document(uri, 1, sql.to_string());
+        let items = host.completion_items(uri, sql.len());
+        let labels: Vec<&str> = items.iter().map(|e| e.label.as_str()).collect();
+        assert!(labels.contains(&"users"), "should suggest table users, got: {labels:?}");
+    }
+
+    #[test]
+    fn completion_columns_after_select() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT, name TEXT);\nSELECT ";
+        host.open_document(uri, 1, sql.to_string());
+        let items = host.completion_items(uri, sql.len());
+        let labels: Vec<&str> = items.iter().map(|e| e.label.as_str()).collect();
+        assert!(labels.contains(&"id"), "should suggest column id");
+        assert!(labels.contains(&"name"), "should suggest column name");
+        assert!(labels.contains(&"abs"), "should suggest function abs");
+    }
 }
+

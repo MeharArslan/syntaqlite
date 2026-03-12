@@ -477,6 +477,24 @@ mod tests {
     }
 
     #[test]
+    fn parser_collect_tokens_includes_semi() {
+        let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
+        let mut session = parser.parse("SELECT 1;");
+
+        let statement = match session.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("statement is missing"),
+            ParseOutcome::Err(err) => panic!("statement should parse: {err}"),
+        };
+
+        let token_types: Vec<_> = statement.tokens().map(|t| t.token_type()).collect();
+        assert!(
+            token_types.contains(&TokenType::Semi),
+            "Semi token should be in collected tokens, got: {token_types:?}"
+        );
+    }
+
+    #[test]
     fn parser_allows_only_one_live_session() {
         let parser = Parser::new();
         let session = parser.parse("SELECT 1;");

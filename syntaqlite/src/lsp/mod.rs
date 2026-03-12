@@ -66,6 +66,10 @@ pub enum CompletionKind {
     Keyword,
     /// A built-in or user-defined function.
     Function,
+    /// A table or view name.
+    Table,
+    /// A column name.
+    Column,
 }
 
 impl CompletionKind {
@@ -74,6 +78,8 @@ impl CompletionKind {
         match self {
             Self::Keyword => "keyword",
             Self::Function => "function",
+            Self::Table => "table",
+            Self::Column => "column",
         }
     }
 }
