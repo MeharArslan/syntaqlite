@@ -28,6 +28,7 @@ impl serde_core::ser::Serialize for syntaqlite::Severity
 impl syntaqlite::Catalog
 impl syntaqlite::DiagnosticMessage
 impl syntaqlite::Dialect
+impl syntaqlite::FormatError
 impl syntaqlite::Formatter
 impl syntaqlite::LspServer
 impl syntaqlite::SemanticAnalyzer
@@ -42,6 +43,7 @@ impl syntaqlite::lsp::LspHost
 impl syntaqlite::util::SqliteFlag
 impl syntaqlite::util::SqliteFlags
 impl<'a> syntaqlite::DiagnosticRenderer<'a>
+pub const syntaqlite::embedded::HOLE_PLACEHOLDER: &str
 pub enum syntaqlite::DiagnosticMessage
 pub enum syntaqlite::Help
 pub enum syntaqlite::KeywordCase
@@ -70,6 +72,7 @@ pub fn syntaqlite::Dialect::with_cflags(self, flags: syntaqlite::util::SqliteFla
 pub fn syntaqlite::Dialect::with_version(self, version: syntaqlite_syntax::util::SqliteVersion) -> Self
 pub fn syntaqlite::FormatConfig::default() -> Self
 pub fn syntaqlite::FormatError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite::FormatError::render(&self, out: &mut impl std::io::Write, source: &str, file: &str) -> std::io::error::Result<()>
 pub fn syntaqlite::Formatter::default() -> Self
 pub fn syntaqlite::Formatter::format(&mut self, source: &str) -> core::result::Result<alloc::string::String, syntaqlite::FormatError>
 pub fn syntaqlite::Formatter::format_parsed(&mut self, erased: syntaqlite_syntax::parser::AnyParsedStatement<'_>) -> alloc::string::String
@@ -201,7 +204,6 @@ pub syntaqlite::embedded::EmbeddedFragment::holes: alloc::vec::Vec<syntaqlite::e
 pub syntaqlite::embedded::EmbeddedFragment::sql_range: core::ops::range::Range<usize>
 pub syntaqlite::embedded::EmbeddedFragment::sql_text: alloc::string::String
 pub syntaqlite::embedded::Hole::host_range: core::ops::range::Range<usize>
-pub syntaqlite::embedded::Hole::placeholder: alloc::string::String
 pub syntaqlite::embedded::Hole::sql_offset: usize
 pub syntaqlite::lsp::CompletionKind::Function
 pub syntaqlite::lsp::CompletionKind::Keyword

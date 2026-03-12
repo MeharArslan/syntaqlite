@@ -368,6 +368,7 @@ pub unsafe extern "C" fn syntaqlite_validator_render_diagnostics(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn syntaqlite_string_destroy(s: *mut c_char) {
     if !s.is_null() {
+        // SAFETY: `s` was allocated by `CString::into_raw` in a `syntaqlite_*` function.
         drop(unsafe { CString::from_raw(s) });
     }
 }
@@ -379,11 +380,15 @@ mod tests {
 
     /// Helper: analyze SQL via FFI and return the diagnostic count.
     unsafe fn analyze(v: *mut SyntaqliteValidator, sql: &str) -> u32 {
-        unsafe { syntaqlite_validator_analyze(v, sql.as_ptr().cast(), sql.len() as u32) }
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe {
+            syntaqlite_validator_analyze(v, sql.as_ptr().cast(), u32::try_from(sql.len()).unwrap())
+        }
     }
 
     /// Helper: read the i-th diagnostic message as a Rust string.
     unsafe fn diag_msg(v: *const SyntaqliteValidator, i: usize) -> String {
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe {
             let ptr = syntaqlite_validator_diagnostics(v);
             assert!(!ptr.is_null());
@@ -394,8 +399,9 @@ mod tests {
 
     /// Helper: render diagnostics and return as a Rust string.
     unsafe fn render(v: *mut SyntaqliteValidator, file: Option<&CStr>) -> String {
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe {
-            let file_ptr = file.map_or(std::ptr::null(), |f| f.as_ptr());
+            let file_ptr = file.map_or(std::ptr::null(), CStr::as_ptr);
             let ptr = syntaqlite_validator_render_diagnostics(v, file_ptr);
             assert!(!ptr.is_null());
             CStr::from_ptr(ptr).to_str().unwrap().to_owned()
@@ -408,11 +414,13 @@ mod tests {
     fn create_and_destroy() {
         let v = syntaqlite_validator_create_sqlite();
         assert!(!v.is_null());
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
     #[test]
     fn null_destroy_is_noop() {
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(std::ptr::null_mut()) };
     }
 
@@ -421,10 +429,14 @@ mod tests {
     #[test]
     fn valid_sql_produces_no_diagnostics() {
         let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT 1") };
         assert_eq!(n, 0);
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         assert_eq!(unsafe { syntaqlite_validator_diagnostic_count(v) }, 0);
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         assert!(unsafe { syntaqlite_validator_diagnostics(v) }.is_null());
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -433,9 +445,11 @@ mod tests {
     #[test]
     fn unknown_table_produces_diagnostic() {
         let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT id FROM no_such_table") };
         assert!(n > 0, "expected at least one diagnostic");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let msg = unsafe { diag_msg(v, 0) };
         assert!(
             msg.contains("no_such_table"),
@@ -443,6 +457,7 @@ mod tests {
         );
 
         // Severity should be warning (default non-strict mode).
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
         assert_eq!(d.severity, SEVERITY_WARNING);
 
@@ -450,6 +465,7 @@ mod tests {
         assert!(d.start_offset < d.end_offset);
         assert!((d.end_offset as usize) <= "SELECT id FROM no_such_table".len());
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -460,6 +476,7 @@ mod tests {
         let v = syntaqlite_validator_create_sqlite();
 
         // Before adding: diagnostic.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT id FROM users") };
         assert!(n > 0);
 
@@ -473,12 +490,15 @@ mod tests {
             columns: cols.as_ptr(),
             column_count: 2,
         };
-        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
 
         // After adding: clean.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT id FROM users") };
         assert_eq!(n, 0, "table should be resolved after add_tables");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -492,12 +512,15 @@ mod tests {
             columns: std::ptr::null(),
             column_count: 0,
         };
-        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
 
         // Any column reference should be accepted (unknown-columns table).
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT anything, goes FROM events") };
         assert_eq!(n, 0);
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -513,20 +536,24 @@ mod tests {
             columns: cols.as_ptr(),
             column_count: 1,
         };
-        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT nonexistent FROM users") };
         assert!(
             n > 0,
             "referencing a bad column should produce a diagnostic"
         );
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let msg = unsafe { diag_msg(v, 0) };
         assert!(
             msg.contains("nonexistent"),
             "should mention the column: {msg}"
         );
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -542,14 +569,19 @@ mod tests {
             columns: std::ptr::null(),
             column_count: 0,
         };
-        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         assert_eq!(unsafe { analyze(v, "SELECT 1 FROM users") }, 0);
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_reset_catalog(v) };
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT 1 FROM users") };
         assert!(n > 0, "table should be gone after reset");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -558,15 +590,19 @@ mod tests {
     #[test]
     fn execute_mode_accumulates_ddl() {
         let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_set_mode(v, 1) }; // Execute
 
         // CREATE TABLE in one call...
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { analyze(v, "CREATE TABLE t(x)") };
 
         // ...visible in the next call.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT x FROM t") };
         assert_eq!(n, 0, "DDL should persist in execute mode");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -575,10 +611,13 @@ mod tests {
         let v = syntaqlite_validator_create_sqlite();
         // Document mode is the default (mode=0).
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { analyze(v, "CREATE TABLE t(x)") };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT x FROM t") };
         assert!(n > 0, "DDL should NOT persist in document mode");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -589,15 +628,20 @@ mod tests {
         let v = syntaqlite_validator_create_sqlite();
 
         // First call: diagnostics.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n1 = unsafe { analyze(v, "SELECT 1 FROM bad_table") };
         assert!(n1 > 0);
 
         // Second call: clean.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n2 = unsafe { analyze(v, "SELECT 1") };
         assert_eq!(n2, 0);
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         assert_eq!(unsafe { syntaqlite_validator_diagnostic_count(v) }, 0);
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         assert!(unsafe { syntaqlite_validator_diagnostics(v) }.is_null());
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -606,10 +650,12 @@ mod tests {
     #[test]
     fn render_diagnostics_with_file_label() {
         let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT 1 FROM bad") };
         assert!(n > 0);
 
         let file = CString::new("test.sql").unwrap();
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let rendered = unsafe { render(v, Some(&file)) };
 
         assert!(
@@ -629,28 +675,34 @@ mod tests {
     #[test]
     fn render_diagnostics_with_null_file_uses_default() {
         let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { analyze(v, "SELECT 1 FROM bad") };
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let rendered = unsafe { render(v, None) };
         assert!(
             rendered.contains("<input>"),
             "should use default label: {rendered}"
         );
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
     #[test]
     fn render_diagnostics_empty_when_no_errors() {
         let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { analyze(v, "SELECT 1") };
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let rendered = unsafe { render(v, None) };
         assert!(
             rendered.is_empty(),
             "should be empty for clean SQL: {rendered}"
         );
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -666,16 +718,20 @@ mod tests {
             columns: cols.as_ptr(),
             column_count: 1,
         };
-        unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
 
         // Two bad columns in one query.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let n = unsafe { analyze(v, "SELECT bad1, bad2 FROM t") };
         assert!(n >= 2, "expected at least 2 diagnostics, got {n}");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let rendered = unsafe { render(v, None) };
         assert!(rendered.contains("bad1"), "should mention bad1: {rendered}");
         assert!(rendered.contains("bad2"), "should mention bad2: {rendered}");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -684,16 +740,21 @@ mod tests {
         let v = syntaqlite_validator_create_sqlite();
 
         // Render with one error.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { analyze(v, "SELECT 1 FROM alpha") };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let r1 = unsafe { render(v, None) };
         assert!(r1.contains("alpha"));
 
         // Render with a different error — previous render is replaced.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { analyze(v, "SELECT 1 FROM beta") };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let r2 = unsafe { render(v, None) };
         assert!(r2.contains("beta"));
         assert!(!r2.contains("alpha"), "old render should be gone: {r2}");
 
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
 
@@ -701,6 +762,7 @@ mod tests {
 
     #[test]
     fn string_destroy_null_is_noop() {
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_string_destroy(std::ptr::null_mut()) };
     }
 }

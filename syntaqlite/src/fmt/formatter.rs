@@ -409,7 +409,7 @@ fn drain_gap_comments<'a>(
 ///
 /// Only matches at the *innermost* node that fully contains the macro.
 /// If the child node has inline enum/flag fields with non-default values,
-/// it likely carries additional keywords (e.g. `FOLLOWING` in a FrameBound)
+/// it likely carries additional keywords (e.g. `FOLLOWING` in a `FrameBound`)
 /// and should format normally — the inner expression handler will emit
 /// the verbatim text at the appropriate level.
 pub(crate) fn try_macro_verbatim<'a>(
@@ -458,8 +458,8 @@ pub(crate) fn try_macro_verbatim<'a>(
     None
 }
 
-/// Raw LP/RP token type values from the SQLite tokenizer. These are stable
-/// across all dialects built on the SQLite grammar.
+/// Raw LP/RP token type values from the `SQLite` tokenizer. These are stable
+/// across all dialects built on the `SQLite` grammar.
 const TK_LP: u32 = 113;
 const TK_RP: u32 = 115;
 
@@ -543,8 +543,9 @@ fn reindent_macro<'a>(
         // Leading `)` chars reduce indent for this line. Safe to count raw
         // characters here: a `)` at position 0 of trimmed text is always an
         // actual RP token (strings start with `'`, comments with `--`/`/*`).
-        let leading_close = trimmed.bytes().take_while(|&b| b == b')').count() as i32;
-        let indent = (line_depth - leading_close).max(0) as i16 * 2;
+        let leading_close =
+            i32::try_from(trimmed.bytes().take_while(|&b| b == b')').count()).unwrap_or(i32::MAX);
+        let indent = i16::try_from((line_depth - leading_close).max(0) * 2).unwrap_or(i16::MAX);
 
         if first {
             // Content on same line as "!(" — keep inline.

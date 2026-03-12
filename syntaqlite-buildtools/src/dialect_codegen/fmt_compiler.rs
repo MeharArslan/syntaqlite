@@ -199,7 +199,7 @@ struct PrecTableBuilder {
     /// Flat `(prec, group_and_flags)` pairs, one per variant of annotated enums
     /// or one for fixed-prec nodes. The `group_and_flags` byte packs:
     /// - bits 0-6: group value (0x7F = no group)
-    /// - bit 7: paren_boundary flag
+    /// - bit 7: `paren_boundary` flag
     data: Vec<u8>,
     /// Map: enum type name or node name → base index into `data` (in entry units).
     bases: HashMap<String, u16>,
@@ -213,7 +213,7 @@ impl PrecTableBuilder {
         }
     }
 
-    /// Encode group + paren_boundary into a single byte.
+    /// Encode group + `paren_boundary` into a single byte.
     fn encode_group(group: u8, is_boundary: bool) -> u8 {
         if is_boundary { group | 0x80 } else { group }
     }
@@ -239,7 +239,7 @@ impl PrecTableBuilder {
             .collect();
         let group_map: HashMap<&str, u8> =
             fmt_group.iter().map(|(v, g)| (v.as_str(), *g)).collect();
-        let boundary_set: HashSet<&str> = fmt_paren_boundary.iter().map(|v| v.as_str()).collect();
+        let boundary_set: HashSet<&str> = fmt_paren_boundary.iter().map(String::as_str).collect();
 
         for variant in variants {
             let prec = prec_map.get(variant.as_str()).copied().unwrap_or(0);
@@ -734,6 +734,41 @@ pub(crate) struct CompiledFmt {
     pub expr_meta: Vec<u32>,
 }
 
+/// Build the precedence table from enum and node annotations.
+fn build_prec_table(items: &[&Item]) -> PrecTableBuilder {
+    let mut builder = PrecTableBuilder::new();
+    for item in items {
+        if let Item::Enum {
+            name,
+            variants,
+            fmt_precedence,
+            fmt_group,
+            fmt_paren_boundary,
+        } = item
+        {
+            builder.add_enum(
+                name,
+                variants,
+                fmt_precedence,
+                fmt_group,
+                fmt_paren_boundary,
+            );
+        }
+    }
+    for item in items {
+        if let Item::Node {
+            name,
+            fmt_precedence: Some(prec),
+            fmt_group,
+            ..
+        } = item
+        {
+            builder.add_fixed(name, *prec, fmt_group.unwrap_or(0xFF));
+        }
+    }
+    builder
+}
+
 /// Compile all items into the intermediate representation shared by both emitters.
 /// Uses the model's `all_items()` to include both base and extension items, and
 /// `node_like_items()` for the correct total tag count.
@@ -756,39 +791,7 @@ pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCo
         })
         .collect();
 
-    // Build precedence table from enum annotations.
-    let mut prec_table_builder = PrecTableBuilder::new();
-    for item in &items {
-        if let Item::Enum {
-            name,
-            variants,
-            fmt_precedence,
-            fmt_group,
-            fmt_paren_boundary,
-        } = item
-        {
-            prec_table_builder.add_enum(
-                name,
-                variants,
-                fmt_precedence,
-                fmt_group,
-                fmt_paren_boundary,
-            );
-        }
-    }
-
-    // Add node-level fixed precedence entries.
-    for item in &items {
-        if let Item::Node {
-            name,
-            fmt_precedence: Some(prec),
-            fmt_group,
-            ..
-        } = item
-        {
-            prec_table_builder.add_fixed(name, *prec, fmt_group.unwrap_or(0xFF));
-        }
-    }
+    let prec_table_builder = build_prec_table(&items);
 
     let mut env = FmtCompileEnv {
         strings: StringTable::new(),

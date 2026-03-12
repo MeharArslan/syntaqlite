@@ -714,7 +714,7 @@ impl Formatter {
     }
 }
 
-/// Decode a packed group_and_flags byte: bits 0-6 = group, bit 7 = paren_boundary.
+/// Decode a packed `group_and_flags` byte: bits 0-6 = group, bit 7 = `paren_boundary`.
 /// Group value 0x7F means "no group".
 #[inline]
 fn decode_group(group_and_flags: u8) -> (u8, bool) {
@@ -728,7 +728,7 @@ fn decode_group(group_and_flags: u8) -> (u8, bool) {
 /// Compares the parent's operator precedence/group with the child's (if the
 /// child tag has expr-meta). Also wraps list children (ExprList-as-expression).
 ///
-/// The `parent_group_and_flags` byte packs group (bits 0-6) and paren_boundary
+/// The `parent_group_and_flags` byte packs group (bits 0-6) and `paren_boundary`
 /// (bit 7). Group 0x7F means "no group".
 fn child_prec_action(
     ctx: &FmtCtx,

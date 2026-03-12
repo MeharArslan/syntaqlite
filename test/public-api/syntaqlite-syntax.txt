@@ -25,6 +25,7 @@
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::GeneratedColumnStorage
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::IsOp
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::JoinType
+#[repr(u32)] pub enum syntaqlite_syntax::nodes::LikeKeyword
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::LiteralType
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::Materialized
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::NodeTag
@@ -343,6 +344,7 @@ impl syntaqlite_syntax::nodes::JoinClauseId
 impl syntaqlite_syntax::nodes::JoinPrefixId
 impl syntaqlite_syntax::nodes::JoinType
 impl syntaqlite_syntax::nodes::LikeExprId
+impl syntaqlite_syntax::nodes::LikeKeyword
 impl syntaqlite_syntax::nodes::LimitClauseId
 impl syntaqlite_syntax::nodes::LiteralId
 impl syntaqlite_syntax::nodes::LiteralType
@@ -1288,12 +1290,14 @@ pub fn syntaqlite_syntax::nodes::JoinType::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::LikeExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::LikeExpr<'a>::escape(&self) -> core::option::Option<syntaqlite_syntax::nodes::Expr<'a>>
 pub fn syntaqlite_syntax::nodes::LikeExpr<'a>::from_result(stmt_result: &'a syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
+pub fn syntaqlite_syntax::nodes::LikeExpr<'a>::keyword(&self) -> syntaqlite_syntax::nodes::LikeKeyword
 pub fn syntaqlite_syntax::nodes::LikeExpr<'a>::negated(&self) -> bool
 pub fn syntaqlite_syntax::nodes::LikeExpr<'a>::node_id(&self) -> syntaqlite_syntax::nodes::LikeExprId
 pub fn syntaqlite_syntax::nodes::LikeExpr<'a>::operand(&self) -> core::option::Option<syntaqlite_syntax::nodes::Expr<'a>>
 pub fn syntaqlite_syntax::nodes::LikeExpr<'a>::pattern(&self) -> core::option::Option<syntaqlite_syntax::nodes::Expr<'a>>
 pub fn syntaqlite_syntax::nodes::LikeExprId::from(n: syntaqlite_syntax::nodes::LikeExpr<'a>) -> Self
 pub fn syntaqlite_syntax::nodes::LikeExprId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
+pub fn syntaqlite_syntax::nodes::LikeKeyword::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::LimitClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::LimitClause<'a>::from_result(stmt_result: &'a syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::LimitClause<'a>::limit(&self) -> core::option::Option<syntaqlite_syntax::nodes::Expr<'a>>
@@ -2040,10 +2044,10 @@ pub syntaqlite_syntax::any::TokenCategory::Keyword
 pub syntaqlite_syntax::any::TokenCategory::Number
 pub syntaqlite_syntax::any::TokenCategory::Operator
 pub syntaqlite_syntax::any::TokenCategory::Other
+pub syntaqlite_syntax::any::TokenCategory::Parameter
 pub syntaqlite_syntax::any::TokenCategory::Punctuation
 pub syntaqlite_syntax::any::TokenCategory::String
 pub syntaqlite_syntax::any::TokenCategory::Type
-pub syntaqlite_syntax::any::TokenCategory::Variable
 pub syntaqlite_syntax::nodes::AlterOp::AddColumn = 3
 pub syntaqlite_syntax::nodes::AlterOp::DropColumn = 2
 pub syntaqlite_syntax::nodes::AlterOp::RenameColumn = 1
@@ -2156,6 +2160,10 @@ pub syntaqlite_syntax::nodes::JoinType::NaturalInner = 6
 pub syntaqlite_syntax::nodes::JoinType::NaturalLeft = 7
 pub syntaqlite_syntax::nodes::JoinType::NaturalRight = 8
 pub syntaqlite_syntax::nodes::JoinType::Right = 3
+pub syntaqlite_syntax::nodes::LikeKeyword::Glob = 1
+pub syntaqlite_syntax::nodes::LikeKeyword::Like = 0
+pub syntaqlite_syntax::nodes::LikeKeyword::Match = 2
+pub syntaqlite_syntax::nodes::LikeKeyword::Regexp = 3
 pub syntaqlite_syntax::nodes::LiteralType::Blob = 3
 pub syntaqlite_syntax::nodes::LiteralType::Current = 5
 pub syntaqlite_syntax::nodes::LiteralType::Float = 1

@@ -181,7 +181,7 @@ fn cmd_parse(
 
     if paths.is_empty() {
         let source = read_stdin()?;
-        let (s, e) = cmd_parse_source(dialect, &source, "<stdin>", output)?;
+        let (s, e) = cmd_parse_source(dialect, &source, "<stdin>", output);
         total_stmts += s;
         total_errors += e;
     } else {
@@ -193,7 +193,7 @@ fn cmd_parse(
             if multi && matches!(output, crate::ParseOutput::Ast) {
                 println!("==> {file} <==");
             }
-            let (s, e) = cmd_parse_source(dialect, &source, &file, output)?;
+            let (s, e) = cmd_parse_source(dialect, &source, &file, output);
             total_stmts += s;
             total_errors += e;
         }
@@ -210,13 +210,13 @@ fn cmd_parse(
     }
 }
 
-/// Parse a single source. Returns (stmt_count, error_count).
+/// Parse a single source. Returns `(stmt_count, error_count)`.
 fn cmd_parse_source(
     dialect: &AnyDialect,
     source: &str,
     file: &str,
     output: crate::ParseOutput,
-) -> Result<(u64, u64), String> {
+) -> (u64, u64) {
     let parser = AnyParser::new(dialect.deref().clone());
     let mut session = parser.parse(source);
     let mut ast_out = String::new();
@@ -259,7 +259,7 @@ fn cmd_parse_source(
             .render_diagnostics(&error_diags, &mut io::stderr())
             .ok();
     }
-    Ok((count, n_err))
+    (count, n_err)
 }
 
 fn cmd_fmt(

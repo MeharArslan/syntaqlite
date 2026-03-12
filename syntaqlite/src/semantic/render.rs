@@ -41,16 +41,18 @@ impl<'a> DiagnosticRenderer<'a> {
             Severity::Hint => "hint",
         };
         let message = diag.message.to_string();
-        let help = diag.help.as_ref().map(|h| h.to_string());
+        let help = diag.help.as_ref().map(ToString::to_string);
         render_source_error(
             out,
-            self.source,
-            self.file,
-            severity,
-            &message,
-            diag.start_offset,
-            diag.end_offset,
-            help.as_deref(),
+            &crate::util::SourceError {
+                source: self.source,
+                file: self.file,
+                severity,
+                message: &message,
+                start_offset: diag.start_offset,
+                end_offset: diag.end_offset,
+                help: help.as_deref(),
+            },
         )
     }
 

@@ -114,7 +114,7 @@ fn macro_multiline_reindented() {
         "    )\n",
     );
     let mut fmt = syntaqlite::Formatter::new();
-    let out = fmt.format(input).unwrap();
+    let out = fmt.format(input).expect("format failed");
     eprintln!("=== actual ===\n{out}=== end ===");
     assert_eq!(
         out,
@@ -144,7 +144,7 @@ fn macro_parens_in_strings_ignored() {
         ")\n",
     );
     let mut fmt = syntaqlite::Formatter::new();
-    let out = fmt.format(input).unwrap();
+    let out = fmt.format(input).expect("format failed");
     eprintln!("=== actual ===\n{out}=== end ===");
     assert_eq!(
         out,
@@ -178,7 +178,7 @@ fn macro_with_function_calls() {
         ")\n",
     );
     let mut fmt = syntaqlite::Formatter::new();
-    let out = fmt.format(input).unwrap();
+    let out = fmt.format(input).expect("format failed");
     eprintln!("=== actual ===\n{out}=== end ===");
     assert_eq!(
         out,
@@ -215,7 +215,7 @@ fn macro_comma_separated_args() {
         "  )\n",
     );
     let mut fmt = syntaqlite::Formatter::new();
-    let out = fmt.format(input).unwrap();
+    let out = fmt.format(input).expect("format failed");
     eprintln!("=== actual ===\n{out}=== end ===");
     assert_eq!(
         out,
@@ -238,7 +238,7 @@ fn macro_comma_separated_args() {
 fn macro_in_frame_bound_preserves_following() {
     let input = "SELECT count() OVER (ORDER BY ts RANGE BETWEEN CURRENT ROW AND my_macro!(x) FOLLOWING) FROM t;\n";
     let mut fmt = syntaqlite::Formatter::new();
-    let out = fmt.format(input).unwrap();
+    let out = fmt.format(input).expect("format failed");
     eprintln!("=== actual ===\n{out}=== end ===");
     assert!(
         out.contains("FOLLOWING"),
@@ -250,7 +250,7 @@ fn macro_in_frame_bound_preserves_following() {
 fn macro_single_line_preserved() {
     let input = "SELECT foo!(1 + 2), 3\n";
     let mut fmt = syntaqlite::Formatter::new();
-    let out = fmt.format(input).unwrap();
+    let out = fmt.format(input).expect("format failed");
     eprintln!("=== actual ===\n{out}=== end ===");
     assert_eq!(out, "SELECT foo!(1 + 2), 3;\n");
 }

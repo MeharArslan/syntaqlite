@@ -58,6 +58,9 @@ pub struct FormatError {
 
 impl FormatError {
     /// Render this error as a rustc-style snippet to `out`.
+    ///
+    /// # Errors
+    /// Returns `Err` if writing to `out` fails.
     pub fn render(
         &self,
         out: &mut impl std::io::Write,
@@ -68,13 +71,15 @@ impl FormatError {
         let end = start + self.length.unwrap_or(0);
         crate::util::render_source_error(
             out,
-            source,
-            file,
-            "error",
-            &self.message,
-            start,
-            end,
-            None,
+            &crate::util::SourceError {
+                source,
+                file,
+                severity: "error",
+                message: &self.message,
+                start_offset: start,
+                end_offset: end,
+                help: None,
+            },
         )
     }
 }
