@@ -14,9 +14,10 @@ use syntaqlite::any::{AnyParser, ParseOutcome};
 use syntaqlite::util::DiagnosticRenderer;
 use syntaqlite::fmt::FormatError;
 use syntaqlite::semantic::DiagnosticMessage;
+use syntaqlite::fmt::KeywordCase;
+use syntaqlite::semantic::Severity;
 use syntaqlite::{
-    Catalog, Diagnostic, FormatConfig, Formatter, KeywordCase, SemanticAnalyzer, Severity,
-    ValidationConfig,
+    Catalog, Diagnostic, FormatConfig, Formatter, SemanticAnalyzer, ValidationConfig,
 };
 
 use super::{Cli, Command};

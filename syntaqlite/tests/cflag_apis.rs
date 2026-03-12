@@ -210,7 +210,7 @@ fn lsp_diagnostics_no_parse_error_without_omit_windowfunc() {
     let parse_errors: Vec<_> = diags
         .iter()
         .filter(|d| {
-            matches!(d.severity(), syntaqlite::Severity::Error)
+            matches!(d.severity(), syntaqlite::semantic::Severity::Error)
                 && d.message().to_string().contains("syntax")
         })
         .collect();

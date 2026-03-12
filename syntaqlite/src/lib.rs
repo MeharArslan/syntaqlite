@@ -20,7 +20,8 @@
 //! Use [`Parser`](crate::Parser) to parse SQL source text into a typed AST:
 //!
 //! ```rust
-//! use syntaqlite::{Parser, ParseOutcome, ParseErrorKind};
+//! use syntaqlite::parse::ParseErrorKind;
+//! use syntaqlite::{Parser, ParseOutcome};
 //!
 //! let parser = Parser::new();
 //! let mut session = parser.parse("SELECT 1; SELECT 2");
@@ -48,8 +49,9 @@
 //! [`Diagnostic`] values with byte-offset spans and "did you mean?" suggestions.
 //!
 //! ```rust
+//! use syntaqlite::semantic::CatalogLayer;
 //! use syntaqlite::{
-//!     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, sqlite_dialect,
+//!     SemanticAnalyzer, Catalog, ValidationConfig, sqlite_dialect,
 //! };
 //!
 //! let mut analyzer = SemanticAnalyzer::new();
@@ -76,7 +78,8 @@
 //! renders the result with a Wadler-style pretty-printer.
 //!
 //! ```rust
-//! # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
+//! # use syntaqlite::fmt::KeywordCase;
+//! # use syntaqlite::{Formatter, FormatConfig};
 //! let mut fmt = Formatter::with_config(
 //!     &FormatConfig::default()
 //!         .with_keyword_case(KeywordCase::Lower)
@@ -94,9 +97,9 @@
 //! # Features
 //!
 //! - `sqlite` *(default)*: enables the built-in `SQLite` grammar, [`Dialect`],
-//!   and re-exports [`Parser`](crate::Parser), [`Tokenizer`](crate::Tokenizer), and typed AST [`nodes`].
+//!   and re-exports [`Parser`](crate::Parser), [`Tokenizer`](parse::Tokenizer), and typed AST [`nodes`].
 //! - `fmt` *(default)*: enables [`Formatter`], [`FormatConfig`], and
-//!   [`KeywordCase`].
+//!   [`KeywordCase`](fmt::KeywordCase).
 //! - `validation` *(default)*: enables [`SemanticAnalyzer`], [`Catalog`],
 //!   [`Diagnostic`], and related types.
 //! - `lsp`: enables [`LspServer`](lsp::LspServer) and [`lsp::LspHost`] for editor integration.
@@ -108,7 +111,7 @@
 //!
 //! # Choosing an API
 //!
-//! - Use [`Parser`](crate::Parser) and [`Tokenizer`](crate::Tokenizer) for parsing and tokenizing SQL.
+//! - Use [`Parser`](crate::Parser) and [`Tokenizer`](parse::Tokenizer) for parsing and tokenizing SQL.
 //! - Use [`SemanticAnalyzer`] + [`Catalog`] when you need to validate SQL
 //!   against a database schema (table/column/function resolution).
 //! - Use [`Formatter`] when you need to pretty-print or normalize SQL text.
@@ -148,53 +151,32 @@ pub mod util;
 
 // ── Primary re-exports (crate root convenience) ─────────────────────────────
 
-// Parsing essentials.
-#[doc(inline)]
-#[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::ParseErrorKind;
-#[doc(inline)]
-#[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::ParseOutcome;
+// Parsing — only the two types needed to parse and consume results.
 #[doc(inline)]
 #[cfg(feature = "sqlite")]
 pub use syntaqlite_syntax::Parser;
 #[doc(inline)]
 #[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::Token;
-#[doc(inline)]
-#[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::TokenType;
-#[doc(inline)]
-#[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::Tokenizer;
+pub use syntaqlite_syntax::ParseOutcome;
 
-// Formatting essentials.
+// Formatting — the formatter and its config.
 #[doc(inline)]
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[doc(inline)]
 #[cfg(feature = "fmt")]
 pub use fmt::FormatConfig;
-#[doc(inline)]
-#[cfg(feature = "fmt")]
-pub use fmt::KeywordCase;
 
-// Validation essentials.
+// Validation — the core types needed for a validation pass.
 #[doc(inline)]
 #[cfg(feature = "validation")]
 pub use semantic::Catalog;
-#[doc(inline)]
-#[cfg(feature = "validation")]
-pub use semantic::CatalogLayer;
 #[doc(inline)]
 #[cfg(feature = "validation")]
 pub use semantic::Diagnostic;
 #[doc(inline)]
 #[cfg(feature = "validation")]
 pub use semantic::SemanticAnalyzer;
-#[doc(inline)]
-#[cfg(feature = "validation")]
-pub use semantic::Severity;
 #[doc(inline)]
 #[cfg(feature = "validation")]
 pub use semantic::ValidationConfig;
@@ -216,11 +198,9 @@ pub fn sqlite_dialect() -> Dialect {
 
 /// Tokenizer, parser, and related types for `SQLite` SQL.
 ///
-/// The most commonly used types ([`Parser`](crate::Parser),
-/// [`Tokenizer`](crate::Tokenizer), [`Token`](crate::Token),
-/// [`TokenType`](crate::TokenType), [`ParseOutcome`](crate::ParseOutcome),
-/// [`ParseErrorKind`](crate::ParseErrorKind)) are re-exported at the crate
-/// root for convenience. This module provides the full set, including:
+/// [`Parser`](crate::Parser) and [`ParseOutcome`](crate::ParseOutcome) are
+/// re-exported at the crate root for convenience. This module provides the
+/// full set, including:
 ///
 /// - [`IncrementalParseSession`](self::parse::IncrementalParseSession) — feed
 ///   tokens one at a time (useful for editors and completion engines).

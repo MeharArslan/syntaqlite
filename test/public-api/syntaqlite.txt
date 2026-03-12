@@ -22,9 +22,9 @@ impl core::ops::deref::Deref for syntaqlite::any::AnyDialect
 impl core::ops::deref::DerefMut for syntaqlite::Dialect
 impl core::ops::deref::DerefMut for syntaqlite::any::AnyDialect
 impl serde_core::ser::Serialize for syntaqlite::Diagnostic
-impl serde_core::ser::Serialize for syntaqlite::Severity
 impl serde_core::ser::Serialize for syntaqlite::semantic::DiagnosticMessage
 impl serde_core::ser::Serialize for syntaqlite::semantic::Help
+impl serde_core::ser::Serialize for syntaqlite::semantic::Severity
 impl syntaqlite::Catalog
 impl syntaqlite::Diagnostic
 impl syntaqlite::Dialect
@@ -49,9 +49,6 @@ impl syntaqlite::util::SqliteFlag
 impl syntaqlite::util::SqliteFlags
 impl<'a> syntaqlite::util::DiagnosticRenderer<'a>
 pub const syntaqlite::embedded::HOLE_PLACEHOLDER: &str
-pub enum syntaqlite::CatalogLayer
-pub enum syntaqlite::KeywordCase
-pub enum syntaqlite::Severity
 pub enum syntaqlite::fmt::KeywordCase
 pub enum syntaqlite::lsp::CompletionKind
 pub enum syntaqlite::semantic::AnalysisMode
@@ -61,8 +58,8 @@ pub enum syntaqlite::semantic::DiagnosticMessage
 pub enum syntaqlite::semantic::FunctionCategory
 pub enum syntaqlite::semantic::Help
 pub enum syntaqlite::semantic::Severity
-pub fn syntaqlite::Catalog::layer(&self, which: syntaqlite::CatalogLayer) -> &syntaqlite::semantic::CatalogLayerContents
-pub fn syntaqlite::Catalog::layer_mut(&mut self, which: syntaqlite::CatalogLayer) -> &mut syntaqlite::semantic::CatalogLayerContents
+pub fn syntaqlite::Catalog::layer(&self, which: syntaqlite::semantic::CatalogLayer) -> &syntaqlite::semantic::CatalogLayerContents
+pub fn syntaqlite::Catalog::layer_mut(&mut self, which: syntaqlite::semantic::CatalogLayer) -> &mut syntaqlite::semantic::CatalogLayerContents
 pub fn syntaqlite::Catalog::new(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>) -> Self
 pub fn syntaqlite::Catalog::new_connection(&mut self)
 pub fn syntaqlite::Catalog::new_database(&mut self)
@@ -70,9 +67,9 @@ pub fn syntaqlite::Catalog::new_document(&mut self)
 pub fn syntaqlite::Diagnostic::end_offset(&self) -> usize
 pub fn syntaqlite::Diagnostic::help(&self) -> core::option::Option<&syntaqlite::semantic::Help>
 pub fn syntaqlite::Diagnostic::message(&self) -> &syntaqlite::semantic::DiagnosticMessage
-pub fn syntaqlite::Diagnostic::new(start_offset: usize, end_offset: usize, message: syntaqlite::semantic::DiagnosticMessage, severity: syntaqlite::Severity, help: core::option::Option<syntaqlite::semantic::Help>) -> Self
+pub fn syntaqlite::Diagnostic::new(start_offset: usize, end_offset: usize, message: syntaqlite::semantic::DiagnosticMessage, severity: syntaqlite::semantic::Severity, help: core::option::Option<syntaqlite::semantic::Help>) -> Self
 pub fn syntaqlite::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
-pub fn syntaqlite::Diagnostic::severity(&self) -> syntaqlite::Severity
+pub fn syntaqlite::Diagnostic::severity(&self) -> syntaqlite::semantic::Severity
 pub fn syntaqlite::Diagnostic::start_offset(&self) -> usize
 pub fn syntaqlite::Dialect::default() -> Self
 pub fn syntaqlite::Dialect::deref(&self) -> &syntaqlite::any::AnyDialect
@@ -93,7 +90,6 @@ pub fn syntaqlite::SemanticAnalyzer::new() -> Self
 pub fn syntaqlite::SemanticAnalyzer::set_mode(&mut self, mode: syntaqlite::semantic::AnalysisMode)
 pub fn syntaqlite::SemanticAnalyzer::with_dialect(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>) -> Self
 pub fn syntaqlite::SemanticAnalyzer::with_mode(self, mode: syntaqlite::semantic::AnalysisMode) -> Self
-pub fn syntaqlite::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::any::AnyDialect::cflags(&self) -> syntaqlite::util::SqliteFlags
 pub fn syntaqlite::any::AnyDialect::deref(&self) -> &syntaqlite_syntax::grammar::AnyGrammar
 pub fn syntaqlite::any::AnyDialect::deref_mut(&mut self) -> &mut syntaqlite_syntax::grammar::AnyGrammar
@@ -155,8 +151,9 @@ pub fn syntaqlite::semantic::Help::fmt(&self, f: &mut core::fmt::Formatter<'_>) 
 pub fn syntaqlite::semantic::Help::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::semantic::SemanticModel::diagnostics(&self) -> &[syntaqlite::Diagnostic]
 pub fn syntaqlite::semantic::SemanticModel::source(&self) -> &str
+pub fn syntaqlite::semantic::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::semantic::ValidationConfig::default() -> Self
-pub fn syntaqlite::semantic::ValidationConfig::severity(&self) -> syntaqlite::Severity
+pub fn syntaqlite::semantic::ValidationConfig::severity(&self) -> syntaqlite::semantic::Severity
 pub fn syntaqlite::semantic::ValidationConfig::strict_schema(&self) -> bool
 pub fn syntaqlite::semantic::ValidationConfig::suggestion_threshold(&self) -> usize
 pub fn syntaqlite::semantic::ValidationConfig::with_strict_schema(self, strict: bool) -> Self
@@ -211,16 +208,6 @@ pub struct syntaqlite::semantic::SemanticModel
 pub struct syntaqlite::semantic::ValidationConfig
 pub struct syntaqlite::util::DiagnosticRenderer<'a>
 pub struct syntaqlite::util::SqliteFlags(_)
-pub syntaqlite::CatalogLayer::Connection
-pub syntaqlite::CatalogLayer::Database
-pub syntaqlite::CatalogLayer::Dialect
-pub syntaqlite::CatalogLayer::Document
-pub syntaqlite::KeywordCase::Lower
-pub syntaqlite::KeywordCase::Upper
-pub syntaqlite::Severity::Error
-pub syntaqlite::Severity::Hint
-pub syntaqlite::Severity::Info
-pub syntaqlite::Severity::Warning
 pub syntaqlite::fmt::KeywordCase::Lower
 pub syntaqlite::fmt::KeywordCase::Upper
 pub syntaqlite::lsp::CompletionKind::Column
@@ -307,9 +294,7 @@ pub type syntaqlite::Dialect::Target = syntaqlite::any::AnyDialect
 pub type syntaqlite::any::AnyDialect::Target = syntaqlite_syntax::grammar::AnyGrammar
 pub type syntaqlite::util::SourceContext<'a> = syntaqlite::util::DiagnosticRenderer<'a>
 pub unsafe fn syntaqlite::any::AnyDialect::from_c_dialect_ptr(ptr: *const syntaqlite::any::ffi::CDialectTemplate) -> Self
-pub use syntaqlite::ParseErrorKind
 pub use syntaqlite::ParseOutcome
-pub use syntaqlite::TokenType
 pub use syntaqlite::any::<<syntaqlite_syntax::any::*>>
 pub use syntaqlite::nodes::<<syntaqlite_syntax::nodes::*>>
 pub use syntaqlite::parse::CommentKind

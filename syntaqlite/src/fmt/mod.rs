@@ -42,7 +42,8 @@ pub use formatter::Formatter;
 /// Controls how SQL keywords are cased in formatted output.
 ///
 /// ```rust
-/// # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
+/// # use syntaqlite::fmt::KeywordCase;
+/// # use syntaqlite::{Formatter, FormatConfig};
 /// let mut fmt = Formatter::with_config(
 ///     &FormatConfig::default().with_keyword_case(KeywordCase::Lower),
 /// );
@@ -73,7 +74,8 @@ pub enum KeywordCase {
 /// Use the builder methods (`with_*`) to customize:
 ///
 /// ```rust
-/// # use syntaqlite::{FormatConfig, KeywordCase};
+/// # use syntaqlite::fmt::KeywordCase;
+/// # use syntaqlite::FormatConfig;
 /// let config = FormatConfig::default()
 ///     .with_line_width(120)
 ///     .with_indent_width(4)

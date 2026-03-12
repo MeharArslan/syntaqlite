@@ -5,7 +5,8 @@
 
 use syntaqlite::nodes::Stmt;
 use syntaqlite::parse::ParserConfig;
-use syntaqlite::{ParseOutcome, Parser, TokenType};
+use syntaqlite::parse::TokenType;
+use syntaqlite::{ParseOutcome, Parser};
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.

@@ -25,7 +25,8 @@
 
 use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
 use syntaqlite::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVersion};
-use syntaqlite::{ParseOutcome, TokenType};
+use syntaqlite::parse::TokenType;
+use syntaqlite::ParseOutcome;
 
 const fn tk(t: TokenType) -> u32 {
     t as u32

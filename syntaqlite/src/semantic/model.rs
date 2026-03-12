@@ -118,8 +118,9 @@ pub(crate) struct Resolution {
 ///
 /// ```
 /// # use syntaqlite::{
-/// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, Severity,
+/// #     SemanticAnalyzer, Catalog, ValidationConfig,
 /// # };
+/// # use syntaqlite::semantic::{CatalogLayer, Severity};
 /// let mut analyzer = SemanticAnalyzer::new();
 /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
 /// catalog

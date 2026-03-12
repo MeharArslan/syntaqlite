@@ -22,7 +22,8 @@
 /// # Example
 ///
 /// ```
-/// # use syntaqlite::{SemanticAnalyzer, Catalog, ValidationConfig, Severity};
+/// # use syntaqlite::semantic::Severity;
+/// # use syntaqlite::{SemanticAnalyzer, Catalog, ValidationConfig};
 /// # let mut analyzer = SemanticAnalyzer::new();
 /// # let catalog = Catalog::new(syntaqlite::sqlite_dialect());
 /// # let config = ValidationConfig::default();

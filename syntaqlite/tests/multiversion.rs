@@ -24,7 +24,8 @@
 
 use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
 use syntaqlite::util::SqliteVersion;
-use syntaqlite::{ParseOutcome, TokenType};
+use syntaqlite::parse::TokenType;
+use syntaqlite::ParseOutcome;
 
 /// Shorthand: convert a `TokenType` variant to its raw u32 value.
 const fn tk(t: TokenType) -> u32 {

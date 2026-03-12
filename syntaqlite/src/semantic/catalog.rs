@@ -147,7 +147,8 @@ impl CatalogLayerContents {
     /// # Example
     ///
     /// ```
-    /// # use syntaqlite::{Catalog, CatalogLayer};
+    /// # use syntaqlite::semantic::CatalogLayer;
+    /// # use syntaqlite::Catalog;
     /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
     /// let db = catalog.layer_mut(CatalogLayer::Database);
     ///
@@ -183,7 +184,8 @@ impl CatalogLayerContents {
     /// # Example
     ///
     /// ```
-    /// # use syntaqlite::{Catalog, CatalogLayer};
+    /// # use syntaqlite::semantic::CatalogLayer;
+    /// # use syntaqlite::Catalog;
     /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
     /// catalog
     ///     .layer_mut(CatalogLayer::Database)
@@ -211,7 +213,8 @@ impl CatalogLayerContents {
     /// # Example
     ///
     /// ```
-    /// # use syntaqlite::{Catalog, CatalogLayer, SemanticAnalyzer, ValidationConfig};
+    /// # use syntaqlite::semantic::CatalogLayer;
+    /// # use syntaqlite::{Catalog, SemanticAnalyzer, ValidationConfig};
     /// # use syntaqlite::semantic::{FunctionCategory, AritySpec};
     /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
     /// let db = catalog.layer_mut(CatalogLayer::Database);
@@ -377,7 +380,8 @@ const FIXED_LAYER_COUNT: usize = 4;
 /// and call `insert_*` methods on the returned [`CatalogLayerContents`]:
 ///
 /// ```
-/// # use syntaqlite::{Catalog, CatalogLayer};
+/// # use syntaqlite::semantic::CatalogLayer;
+/// # use syntaqlite::Catalog;
 /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
 ///
 /// // Register a table with known columns.
@@ -406,7 +410,8 @@ impl Catalog {
     /// # Example
     ///
     /// ```
-    /// # use syntaqlite::{Catalog, CatalogLayer};
+    /// # use syntaqlite::semantic::CatalogLayer;
+    /// # use syntaqlite::Catalog;
     /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
     ///
     /// catalog

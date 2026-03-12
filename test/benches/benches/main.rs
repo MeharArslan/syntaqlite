@@ -138,7 +138,7 @@ fn bench_tokenizer(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let tok = syntaqlite::Tokenizer::new();
+            let tok = syntaqlite::parse::Tokenizer::new();
             b.iter(|| {
                 let cursor = tok.tokenize(black_box(sql));
                 for item in cursor {

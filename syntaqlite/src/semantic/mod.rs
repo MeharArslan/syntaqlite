@@ -107,7 +107,8 @@ pub enum AnalysisMode {
 /// # Example
 ///
 /// ```
-/// # use syntaqlite::{ValidationConfig, Severity};
+/// # use syntaqlite::semantic::Severity;
+/// # use syntaqlite::ValidationConfig;
 /// // Default: warnings + suggestions within edit distance 2.
 /// let config = ValidationConfig::default();
 /// assert_eq!(config.severity(), Severity::Warning);

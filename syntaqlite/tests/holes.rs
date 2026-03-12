@@ -13,7 +13,7 @@
 use syntaqlite::Parser;
 
 mod tk {
-    use syntaqlite::TokenType;
+    use syntaqlite::parse::TokenType;
     pub(crate) const SELECT: TokenType = TokenType::Select;
     pub(crate) const STAR: TokenType = TokenType::Star;
     pub(crate) const FROM: TokenType = TokenType::From;

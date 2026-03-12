@@ -1,7 +1,8 @@
 #![cfg(all(feature = "fmt", feature = "sqlite"))]
 //! Integration tests for public formatter keyword-case configuration.
 
-use syntaqlite::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite::fmt::KeywordCase;
+use syntaqlite::{FormatConfig, Formatter};
 
 #[test]
 fn keyword_case_upper() {

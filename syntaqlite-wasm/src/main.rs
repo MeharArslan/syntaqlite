@@ -11,7 +11,8 @@ use serde::Serialize;
 use syntaqlite::lsp::LspHost;
 use syntaqlite::util::{SqliteFlag, SqliteFlags, SqliteVersion};
 use syntaqlite::any::AnyDialect;
-use syntaqlite::{FormatConfig, Formatter, KeywordCase, ValidationConfig};
+use syntaqlite::fmt::KeywordCase;
+use syntaqlite::{FormatConfig, Formatter, ValidationConfig};
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };

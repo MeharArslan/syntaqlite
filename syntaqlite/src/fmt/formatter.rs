@@ -32,7 +32,8 @@ use crate::dialect::AnyDialect;
 /// # Custom configuration
 ///
 /// ```rust
-/// # use syntaqlite::{Formatter, FormatConfig, KeywordCase};
+/// # use syntaqlite::fmt::KeywordCase;
+/// # use syntaqlite::{Formatter, FormatConfig};
 /// let config = FormatConfig::default()
 ///     .with_keyword_case(KeywordCase::Lower)
 ///     .with_semicolons(false);

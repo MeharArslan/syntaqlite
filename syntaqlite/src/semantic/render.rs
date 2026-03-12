@@ -28,8 +28,9 @@ use crate::util::render_source_error;
 ///
 /// ```
 /// # use syntaqlite::{
-/// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig,
+/// #     SemanticAnalyzer, Catalog, ValidationConfig,
 /// # };
+/// # use syntaqlite::semantic::CatalogLayer;
 /// # use syntaqlite::util::DiagnosticRenderer;
 /// let mut analyzer = SemanticAnalyzer::new();
 /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());

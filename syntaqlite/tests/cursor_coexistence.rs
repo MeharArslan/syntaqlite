@@ -8,7 +8,8 @@
 //! session it produced.
 
 use syntaqlite::parse::{IncrementalParseSession, ParseSession};
-use syntaqlite::{ParseOutcome, Parser, Tokenizer};
+use syntaqlite::parse::Tokenizer;
+use syntaqlite::{ParseOutcome, Parser};
 
 // ── Parser + ParseSession coexistence ────────────────────────────────────
 
@@ -45,7 +46,7 @@ fn parser_reuse_after_session_drop() {
 
 #[test]
 fn parser_and_incremental_session_coexist() {
-    use syntaqlite::TokenType;
+    use syntaqlite::parse::TokenType;
 
     struct S {
         _parser: Parser,
@@ -66,7 +67,7 @@ fn parser_and_incremental_session_coexist() {
 
 #[test]
 fn parser_incremental_reuse_after_session_drop() {
-    use syntaqlite::TokenType;
+    use syntaqlite::parse::TokenType;
 
     let parser = Parser::new();
     {

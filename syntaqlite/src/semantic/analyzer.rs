@@ -39,8 +39,9 @@ use super::{AnalysisMode, ValidationConfig};
 ///
 /// ```
 /// # use syntaqlite::{
-/// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, Severity,
+/// #     SemanticAnalyzer, Catalog, ValidationConfig,
 /// # };
+/// # use syntaqlite::semantic::{CatalogLayer, Severity};
 /// // 1. Create analyzer (reusable across many inputs).
 /// let mut analyzer = SemanticAnalyzer::new();
 ///
@@ -138,8 +139,9 @@ impl SemanticAnalyzer {
     ///
     /// ```
     /// # use syntaqlite::{
-    /// #     SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig, Severity,
+    /// #     SemanticAnalyzer, Catalog, ValidationConfig,
     /// # };
+    /// # use syntaqlite::semantic::{CatalogLayer, Severity};
     /// let mut analyzer = SemanticAnalyzer::new();
     /// let mut catalog = Catalog::new(syntaqlite::sqlite_dialect());
     /// catalog

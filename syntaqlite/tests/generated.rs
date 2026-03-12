@@ -4,7 +4,8 @@
 //! Integration tests exercising the formatter with various SQL patterns.
 
 use syntaqlite::util::{SqliteFlag, SqliteFlags};
-use syntaqlite::{FormatConfig, Formatter, KeywordCase, sqlite_dialect};
+use syntaqlite::fmt::KeywordCase;
+use syntaqlite::{FormatConfig, Formatter, sqlite_dialect};
 
 fn format_sql(sql: &str) -> String {
     format_sql_with(sql, &FormatConfig::default())
