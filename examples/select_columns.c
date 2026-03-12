@@ -74,6 +74,19 @@ static void span_to_str(SyntaqliteParser* p,
   buf[n] = '\0';
 }
 
+// Extract text from an IdentName node (used for alias, column_name, etc.).
+static void ident_to_str(SyntaqliteParser* p,
+                         uint32_t ident_id,
+                         char* buf,
+                         int buf_size) {
+  const SyntaqliteIdentName* ident =
+      SYNTAQLITE_NODE(p, SyntaqliteIdentName, ident_id);
+  if (ident)
+    span_to_str(p, ident->source, buf, buf_size);
+  else
+    buf[0] = '\0';
+}
+
 static void str_lower(char* s) {
   for (; *s; s++)
     *s = (char)tolower((unsigned char)*s);
@@ -138,8 +151,8 @@ static void collect_from_sources(SyntaqliteParser* p,
       const SyntaqliteTableRef* ref = &node->table_ref;
       TableSource* ts = &out->items[out->count++];
       span_to_str(p, ref->table_name, ts->name, sizeof(ts->name));
-      if (syntaqlite_span_is_present(ref->alias))
-        span_to_str(p, ref->alias, ts->alias, sizeof(ts->alias));
+      if (syntaqlite_node_is_present(ref->alias))
+        ident_to_str(p, ref->alias, ts->alias, sizeof(ts->alias));
       else
         snprintf(ts->alias, sizeof(ts->alias), "%s", ts->name);
 
@@ -164,7 +177,7 @@ static void collect_from_sources(SyntaqliteParser* p,
       const SyntaqliteSubqueryTableSource* sub = &node->subquery_table_source;
       TableSource* ts = &out->items[out->count++];
       snprintf(ts->name, sizeof(ts->name), "(subquery)");
-      span_to_str(p, sub->alias, ts->alias, sizeof(ts->alias));
+      ident_to_str(p, sub->alias, ts->alias, sizeof(ts->alias));
       ColumnList cols = {0};
       resolve_stmt_columns(p, sub->select, schema, &cols);
       ts->column_count = cols.count;
@@ -307,8 +320,8 @@ static void resolve_select_columns(SyntaqliteParser* p,
   SYNTAQLITE_LIST_FOREACH(p, SyntaqliteResultColumn, rc, select->columns) {
     if (rc->flags.bits.star) {
       char qualifier[128] = {0};
-      if (syntaqlite_span_is_present(rc->alias))
-        span_to_str(p, rc->alias, qualifier, sizeof(qualifier));
+      if (syntaqlite_node_is_present(rc->alias))
+        ident_to_str(p, rc->alias, qualifier, sizeof(qualifier));
 
       if (qualifier[0] == '\0') {
         int expanded = 0;
@@ -348,8 +361,8 @@ static void resolve_select_columns(SyntaqliteParser* p,
     }
 
     char name[128];
-    if (syntaqlite_span_is_present(rc->alias)) {
-      span_to_str(p, rc->alias, name, sizeof(name));
+    if (syntaqlite_node_is_present(rc->alias)) {
+      ident_to_str(p, rc->alias, name, sizeof(name));
     } else {
       expr_name(p, rc->expr, name, sizeof(name));
     }
@@ -436,8 +449,8 @@ static int process_statement(SyntaqliteParser* p,
         Column cols[64];
         int count = 0;
         SYNTAQLITE_LIST_FOREACH(p, SyntaqliteColumnDef, col_def, ct->columns) {
-          span_to_str(p, col_def->column_name, cols[count].name,
-                      sizeof(cols[count].name));
+          ident_to_str(p, col_def->column_name, cols[count].name,
+                       sizeof(cols[count].name));
           snprintf(cols[count].source_table, sizeof(cols[count].source_table),
                    "%s", table_name);
           count++;
@@ -525,34 +538,32 @@ int main(int argc, char** argv) {
     sql = buf;
   }
 
-  SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
+  SyntaqliteParser* p = syntaqlite_parser_create(NULL);
   syntaqlite_parser_reset(p, sql, (uint32_t)strlen(sql));
 
   Schema schema = {0};
-  SyntaqliteParseResult result;
   int stmt_num = 0;
 
-  while ((result = syntaqlite_parser_next(p)).root != SYNTAQLITE_NULL_NODE) {
-    if (result.error) {
-      fprintf(stderr, "parse error: %s\n",
-              result.error_msg ? result.error_msg : "unknown");
+  for (;;) {
+    int32_t rc = syntaqlite_parser_next(p);
+    if (rc == SYNTAQLITE_PARSE_DONE)
+      break;
+    if (rc == SYNTAQLITE_PARSE_ERROR) {
+      const char* msg = syntaqlite_result_error_msg(p);
+      fprintf(stderr, "parse error: %s\n", msg ? msg : "unknown");
       syntaqlite_parser_destroy(p);
       return 1;
     }
 
+    uint32_t root = syntaqlite_result_root(p);
     stmt_num++;
     if (stmt_num > 1)
       printf("\n");
-    process_statement(p, result.root, &schema);
+    process_statement(p, root, &schema);
   }
 
   if (stmt_num == 0) {
-    if (result.error) {
-      fprintf(stderr, "parse error: %s\n",
-              result.error_msg ? result.error_msg : "unknown");
-    } else {
-      fprintf(stderr, "error: no SQL statement provided\n");
-    }
+    fprintf(stderr, "error: no SQL statement provided\n");
     syntaqlite_parser_destroy(p);
     return 1;
   }

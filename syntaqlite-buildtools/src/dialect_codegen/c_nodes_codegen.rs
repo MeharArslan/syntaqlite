@@ -197,6 +197,8 @@ impl AstModel<'_> {
         w.newline();
         w.line("namespace syntaqlite {");
         w.newline();
+        w.line("template <typename T> struct NodeTag { static constexpr bool kHasTag = false; };");
+        w.newline();
         for item in self.node_like_items() {
             let name = item.name();
             let cname = c_type_name(name);

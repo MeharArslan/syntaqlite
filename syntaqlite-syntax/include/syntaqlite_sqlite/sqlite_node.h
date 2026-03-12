@@ -1634,6 +1634,11 @@ syntaqlite_table_source_as_join_prefix(const SyntaqliteTableSource* node) {
 
 namespace syntaqlite {
 
+template <typename T>
+struct NodeTag {
+  static constexpr bool kHasTag = false;
+};
+
 template <>
 struct NodeTag<SyntaqliteAggregateFunctionCall> {
   static constexpr bool kHasTag = true;

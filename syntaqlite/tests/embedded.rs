@@ -6,7 +6,9 @@
 
 #![cfg(feature = "embedded")]
 
-use syntaqlite::embedded::{EmbeddedAnalyzer, HOLE_PLACEHOLDER, extract_python, extract_typescript};
+use syntaqlite::embedded::{
+    EmbeddedAnalyzer, HOLE_PLACEHOLDER, extract_python, extract_typescript,
+};
 
 fn analyzer() -> EmbeddedAnalyzer {
     EmbeddedAnalyzer::new(syntaqlite::sqlite_dialect())

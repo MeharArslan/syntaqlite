@@ -4,7 +4,7 @@
 // select_columns: parse SQL and resolve output columns, expanding * using
 // schema knowledge from CREATE TABLE / CREATE VIEW / CTEs.
 //
-// This is an example / test of the syntaqlite C++ API ergonomics.
+// This is an example / test of the syntaqlite C API used from C++.
 
 #include <cstdio>
 #include <cstdlib>
@@ -15,13 +15,23 @@
 
 #include "syntaqlite_sqlite.h"
 
-using syntaqlite::IsPresent;
-
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-// Extract a std::string from a string_view.
-static std::string Str(std::string_view sv) {
-  return {sv.data(), sv.size()};
+// Extract a std::string from a SyntaqliteSourceSpan.
+static std::string SpanText(SyntaqliteParser* p, SyntaqliteSourceSpan span) {
+  uint32_t len;
+  const char* text = syntaqlite_span_text(p, span, &len);
+  if (!text)
+    return {};
+  return {text, len};
+}
+
+// Extract a std::string from an IdentName node ID.
+static std::string IdentText(SyntaqliteParser* p, uint32_t ident_id) {
+  const auto* ident = SYNTAQLITE_NODE(p, SyntaqliteIdentName, ident_id);
+  if (!ident)
+    return {};
+  return SpanText(p, ident->source);
 }
 
 // Case-insensitive string for table name lookups.
@@ -45,11 +55,11 @@ using Schema = std::unordered_map<std::string, std::vector<Column>>;
 // ── Forward declarations ────────────────────────────────────────────────
 
 static std::vector<Column> ResolveSelectColumns(
-    const syntaqlite::Parser& p,
+    SyntaqliteParser* p,
     const SyntaqliteSelectStmt* select,
     const Schema& schema);
 
-static std::vector<Column> ResolveStmtColumns(const syntaqlite::Parser& p,
+static std::vector<Column> ResolveStmtColumns(SyntaqliteParser* p,
                                               uint32_t stmt_id,
                                               const Schema& schema);
 
@@ -61,19 +71,21 @@ struct TableSource {
   std::vector<Column> columns;  // resolved columns for this source
 };
 
-static void CollectFromSources(const syntaqlite::Parser& p,
+static void CollectFromSources(SyntaqliteParser* p,
                                uint32_t from_id,
                                const Schema& schema,
                                std::vector<TableSource>& out) {
-  const auto* node = p.Node<SyntaqliteTableSource>(from_id);
+  const auto* node = SYNTAQLITE_NODE(p, SyntaqliteTableSource, from_id);
   if (!node)
     return;
 
   switch (node->tag) {
     case SYNTAQLITE_NODE_TABLE_REF: {
       const auto& ref = node->table_ref;
-      std::string name = Str(p.Text(ref.table_name));
-      std::string alias = IsPresent(ref.alias) ? Str(p.Text(ref.alias)) : name;
+      std::string name = SpanText(p, ref.table_name);
+      std::string alias = syntaqlite_node_is_present(ref.alias)
+                              ? IdentText(p, ref.alias)
+                              : name;
       std::vector<Column> cols;
       auto it = schema.find(Lower(name));
       if (it != schema.end()) {
@@ -87,7 +99,7 @@ static void CollectFromSources(const syntaqlite::Parser& p,
 
     case SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE: {
       const auto& sub = node->subquery_table_source;
-      std::string alias = Str(p.Text(sub.alias));
+      std::string alias = IdentText(p, sub.alias);
       auto cols = ResolveStmtColumns(p, sub.select, schema);
       for (auto& c : cols)
         c.source_table = alias;
@@ -119,21 +131,21 @@ static void CollectFromSources(const syntaqlite::Parser& p,
 // reference with an explicit table qualifier (e.g. u.name), use that. If it's
 // a bare column reference, search the FROM sources for the first table that
 // has a matching column name. For compound expressions, returns empty.
-static std::string ExprSource(const syntaqlite::Parser& p,
+static std::string ExprSource(SyntaqliteParser* p,
                               uint32_t expr_id,
                               const std::vector<TableSource>& sources) {
-  const auto* expr = p.Node<SyntaqliteExpr>(expr_id);
+  const auto* expr = SYNTAQLITE_NODE(p, SyntaqliteExpr, expr_id);
   if (!expr)
     return {};
 
   if (expr->tag == SYNTAQLITE_NODE_COLUMN_REF) {
     const auto& ref = expr->column_ref;
-    if (IsPresent(ref.table)) {
+    if (syntaqlite_span_is_present(ref.table)) {
       // Explicit qualifier: SELECT u.name → source is "u"
-      return Str(p.Text(ref.table));
+      return SpanText(p, ref.table);
     }
     // Bare column: search FROM sources for a match.
-    std::string col_name = Str(p.Text(ref.column));
+    std::string col_name = SpanText(p, ref.column);
     for (const auto& src : sources) {
       for (const auto& c : src.columns) {
         if (strcasecmp(c.name.c_str(), col_name.c_str()) == 0)
@@ -145,23 +157,23 @@ static std::string ExprSource(const syntaqlite::Parser& p,
 }
 
 // Try to infer a column name from an expression (for unnamed result columns).
-static std::string ExprName(const syntaqlite::Parser& p, uint32_t expr_id) {
-  const auto* expr = p.Node<SyntaqliteExpr>(expr_id);
+static std::string ExprName(SyntaqliteParser* p, uint32_t expr_id) {
+  const auto* expr = SYNTAQLITE_NODE(p, SyntaqliteExpr, expr_id);
   if (!expr)
     return "?";
 
   switch (expr->tag) {
     case SYNTAQLITE_NODE_COLUMN_REF:
-      return Str(p.Text(expr->column_ref.column));
+      return SpanText(p, expr->column_ref.column);
 
     case SYNTAQLITE_NODE_LITERAL:
-      return Str(p.Text(expr->literal.source));
+      return SpanText(p, expr->literal.source);
 
     case SYNTAQLITE_NODE_FUNCTION_CALL:
-      return Str(p.Text(expr->function_call.func_name)) + "(...)";
+      return SpanText(p, expr->function_call.func_name) + "(...)";
 
     case SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL:
-      return Str(p.Text(expr->aggregate_function_call.func_name)) + "(...)";
+      return SpanText(p, expr->aggregate_function_call.func_name) + "(...)";
 
     case SYNTAQLITE_NODE_CAST_EXPR:
       return "CAST(" + ExprName(p, expr->cast_expr.expr) + ")";
@@ -184,7 +196,7 @@ static std::string ExprName(const syntaqlite::Parser& p, uint32_t expr_id) {
 // ── Resolve SELECT columns ──────────────────────────────────────────────
 
 static std::vector<Column> ResolveSelectColumns(
-    const syntaqlite::Parser& p,
+    SyntaqliteParser* p,
     const SyntaqliteSelectStmt* select,
     const Schema& schema) {
   std::vector<Column> result;
@@ -193,15 +205,15 @@ static std::vector<Column> ResolveSelectColumns(
   std::vector<TableSource> sources;
   CollectFromSources(p, select->from_clause, schema, sources);
 
-  if (!IsPresent(select->columns))
+  if (!syntaqlite_node_is_present(select->columns))
     return result;
 
-  for (const auto* rc : p.List<SyntaqliteResultColumn>(select->columns)) {
+  SYNTAQLITE_LIST_FOREACH(p, SyntaqliteResultColumn, rc, select->columns) {
     if (rc->flags.bits.star) {
       // table.* or * — alias field holds the table qualifier if present.
       std::string qualifier;
-      if (IsPresent(rc->alias))
-        qualifier = Str(p.Text(rc->alias));
+      if (syntaqlite_node_is_present(rc->alias))
+        qualifier = IdentText(p, rc->alias);
 
       if (qualifier.empty()) {
         // SELECT * — expand all tables in FROM order.
@@ -239,8 +251,8 @@ static std::vector<Column> ResolveSelectColumns(
 
     // Regular column — use alias if present, otherwise infer from expr.
     std::string name;
-    if (IsPresent(rc->alias)) {
-      name = Str(p.Text(rc->alias));
+    if (syntaqlite_node_is_present(rc->alias)) {
+      name = IdentText(p, rc->alias);
     } else {
       name = ExprName(p, rc->expr);
     }
@@ -252,10 +264,10 @@ static std::vector<Column> ResolveSelectColumns(
 
 // ── Resolve any statement's columns ─────────────────────────────────────
 
-static std::vector<Column> ResolveStmtColumns(const syntaqlite::Parser& p,
+static std::vector<Column> ResolveStmtColumns(SyntaqliteParser* p,
                                               uint32_t stmt_id,
                                               const Schema& schema) {
-  const auto* stmt = p.Node<SyntaqliteStmt>(stmt_id);
+  const auto* stmt = SYNTAQLITE_NODE(p, SyntaqliteStmt, stmt_id);
   if (!stmt)
     return {};
 
@@ -267,15 +279,15 @@ static std::vector<Column> ResolveStmtColumns(const syntaqlite::Parser& p,
       const auto& with = stmt->with_clause;
       Schema local = schema;
 
-      for (const auto* cte : p.List<SyntaqliteCteDefinition>(with.ctes)) {
-        std::string cte_name = Lower(Str(p.Text(cte->cte_name)));
+      SYNTAQLITE_LIST_FOREACH(p, SyntaqliteCteDefinition, cte, with.ctes) {
+        std::string cte_name = Lower(SpanText(p, cte->cte_name));
 
-        if (IsPresent(cte->columns)) {
+        if (syntaqlite_node_is_present(cte->columns)) {
           // CTE has explicit column names.
           std::vector<Column> cols;
-          for (const auto* col_ref :
-               p.List<SyntaqliteColumnRef>(cte->columns)) {
-            cols.push_back({Str(p.Text(col_ref->column)), cte_name});
+          SYNTAQLITE_LIST_FOREACH(p, SyntaqliteColumnRef, col_ref,
+                                  cte->columns) {
+            cols.push_back({SpanText(p, col_ref->column), cte_name});
           }
           local[cte_name] = std::move(cols);
         } else {
@@ -303,26 +315,26 @@ static std::vector<Column> ResolveStmtColumns(const syntaqlite::Parser& p,
 
 // ── Process a top-level statement ───────────────────────────────────────
 
-static int ProcessStatement(const syntaqlite::Parser& p,
+static int ProcessStatement(SyntaqliteParser* p,
                             uint32_t root_id,
                             Schema& schema) {
-  const auto* stmt = p.Node<SyntaqliteStmt>(root_id);
+  const auto* stmt = SYNTAQLITE_NODE(p, SyntaqliteStmt, root_id);
   if (!stmt)
     return 0;
 
   switch (stmt->tag) {
     case SYNTAQLITE_NODE_CREATE_TABLE_STMT: {
       const auto& ct = stmt->create_table_stmt;
-      std::string table_name = Lower(Str(p.Text(ct.table_name)));
+      std::string table_name = Lower(SpanText(p, ct.table_name));
 
-      if (IsPresent(ct.columns)) {
+      if (syntaqlite_node_is_present(ct.columns)) {
         std::vector<Column> cols;
-        for (const auto* col_def : p.List<SyntaqliteColumnDef>(ct.columns)) {
-          cols.push_back({Str(p.Text(col_def->column_name)), table_name});
+        SYNTAQLITE_LIST_FOREACH(p, SyntaqliteColumnDef, col_def, ct.columns) {
+          cols.push_back({IdentText(p, col_def->column_name), table_name});
         }
         schema[table_name] = std::move(cols);
         printf("registered table '%s'\n", table_name.c_str());
-      } else if (IsPresent(ct.as_select)) {
+      } else if (syntaqlite_node_is_present(ct.as_select)) {
         auto cols = ResolveStmtColumns(p, ct.as_select, schema);
         for (auto& c : cols)
           c.source_table = table_name;
@@ -334,13 +346,13 @@ static int ProcessStatement(const syntaqlite::Parser& p,
 
     case SYNTAQLITE_NODE_CREATE_VIEW_STMT: {
       const auto& cv = stmt->create_view_stmt;
-      std::string view_name = Lower(Str(p.Text(cv.view_name)));
+      std::string view_name = Lower(SpanText(p, cv.view_name));
 
-      if (IsPresent(cv.column_names)) {
+      if (syntaqlite_node_is_present(cv.column_names)) {
         std::vector<Column> cols;
-        for (const auto* col_ref :
-             p.List<SyntaqliteColumnRef>(cv.column_names)) {
-          cols.push_back({Str(p.Text(col_ref->column)), view_name});
+        SYNTAQLITE_LIST_FOREACH(p, SyntaqliteColumnRef, col_ref,
+                                cv.column_names) {
+          cols.push_back({SpanText(p, col_ref->column), view_name});
         }
         schema[view_name] = std::move(cols);
       } else {
@@ -391,38 +403,36 @@ int main(int argc, char** argv) {
     sql = buf;
   }
 
-  auto parser = syntaqlite::SqliteParser();
-  parser.Reset(sql, (uint32_t)strlen(sql));
+  SyntaqliteParser* p = syntaqlite_parser_create(nullptr);
+  syntaqlite_parser_reset(p, sql, (uint32_t)strlen(sql));
 
   Schema schema;
   int stmt_num = 0;
 
   for (;;) {
-    auto result = parser.Next();
-    if (!IsPresent(result.root)) {
-      if (result.error) {
-        fprintf(stderr, "parse error: %s\n",
-                result.error_msg ? result.error_msg : "unknown");
-        return 1;
-      }
+    int32_t rc = syntaqlite_parser_next(p);
+    if (rc == SYNTAQLITE_PARSE_DONE)
       break;
-    }
-    if (result.error) {
-      fprintf(stderr, "parse error: %s\n",
-              result.error_msg ? result.error_msg : "unknown");
+    if (rc == SYNTAQLITE_PARSE_ERROR) {
+      const char* msg = syntaqlite_result_error_msg(p);
+      fprintf(stderr, "parse error: %s\n", msg ? msg : "unknown");
+      syntaqlite_parser_destroy(p);
       return 1;
     }
 
+    uint32_t root = syntaqlite_result_root(p);
     stmt_num++;
     if (stmt_num > 1)
       printf("\n");
-    ProcessStatement(parser, result.root, schema);
+    ProcessStatement(p, root, schema);
   }
 
   if (stmt_num == 0) {
     fprintf(stderr, "error: no SQL statement provided\n");
+    syntaqlite_parser_destroy(p);
     return 1;
   }
 
+  syntaqlite_parser_destroy(p);
   return 0;
 }

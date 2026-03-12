@@ -166,9 +166,7 @@ pub unsafe extern "C" fn syntaqlite_formatter_output(
 /// `f` must be a valid pointer from `syntaqlite_formatter_create_*`.
 #[unsafe(no_mangle)]
 #[expect(clippy::cast_possible_truncation)]
-pub unsafe extern "C" fn syntaqlite_formatter_output_len(
-    f: *const SyntaqliteFormatter,
-) -> u32 {
+pub unsafe extern "C" fn syntaqlite_formatter_output_len(f: *const SyntaqliteFormatter) -> u32 {
     // SAFETY: caller guarantees `f` is valid.
     let f = unsafe { &*f };
     match &f.state().last_output {
@@ -273,7 +271,10 @@ mod tests {
         // error_msg must be NULL after success.
         assert!(unsafe { syntaqlite_formatter_error_msg(f) }.is_null());
         // output_len must match.
-        assert_eq!(unsafe { syntaqlite_formatter_output_len(f) } as usize, out.len());
+        assert_eq!(
+            unsafe { syntaqlite_formatter_output_len(f) } as usize,
+            out.len()
+        );
 
         unsafe { syntaqlite_formatter_destroy(f) };
     }
@@ -415,7 +416,10 @@ mod tests {
         let out = unsafe { format_ok(f, "SELECT column_a, column_b, column_c FROM my_table") };
         // With line_width=10, the formatter must break across multiple lines.
         let line_count = out.lines().count();
-        assert!(line_count > 1, "expected line breaks with narrow width: {out}");
+        assert!(
+            line_count > 1,
+            "expected line breaks with narrow width: {out}"
+        );
         unsafe { syntaqlite_formatter_destroy(f) };
     }
 }

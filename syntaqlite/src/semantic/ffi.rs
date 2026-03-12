@@ -176,7 +176,9 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
     state.last_source.clear();
     state.last_source.push_str(src);
     state.last_diagnostics.clear();
-    state.last_diagnostics.extend(model.diagnostics().iter().cloned());
+    state
+        .last_diagnostics
+        .extend(model.diagnostics().iter().cloned());
 
     // Reuse existing Vec capacity — clear + push avoids reallocating
     // on steady-state calls.
@@ -342,7 +344,9 @@ pub unsafe extern "C" fn syntaqlite_validator_render_diagnostics(
         "<input>"
     } else {
         // SAFETY: caller guarantees `file` is a valid NUL-terminated C string.
-        unsafe { CStr::from_ptr(file) }.to_str().unwrap_or("<input>")
+        unsafe { CStr::from_ptr(file) }
+            .to_str()
+            .unwrap_or("<input>")
     };
 
     let renderer = DiagnosticRenderer::new(&state.last_source, file_label);
@@ -512,10 +516,16 @@ mod tests {
         unsafe { syntaqlite_validator_add_tables(v, &table, 1) };
 
         let n = unsafe { analyze(v, "SELECT nonexistent FROM users") };
-        assert!(n > 0, "referencing a bad column should produce a diagnostic");
+        assert!(
+            n > 0,
+            "referencing a bad column should produce a diagnostic"
+        );
 
         let msg = unsafe { diag_msg(v, 0) };
-        assert!(msg.contains("nonexistent"), "should mention the column: {msg}");
+        assert!(
+            msg.contains("nonexistent"),
+            "should mention the column: {msg}"
+        );
 
         unsafe { syntaqlite_validator_destroy(v) };
     }
@@ -602,8 +612,14 @@ mod tests {
         let file = CString::new("test.sql").unwrap();
         let rendered = unsafe { render(v, Some(&file)) };
 
-        assert!(rendered.contains("test.sql"), "should contain file label: {rendered}");
-        assert!(rendered.contains("bad"), "should contain table name: {rendered}");
+        assert!(
+            rendered.contains("test.sql"),
+            "should contain file label: {rendered}"
+        );
+        assert!(
+            rendered.contains("bad"),
+            "should contain table name: {rendered}"
+        );
         assert!(
             rendered.contains("warning") || rendered.contains("error"),
             "should contain severity: {rendered}"
@@ -616,7 +632,10 @@ mod tests {
         unsafe { analyze(v, "SELECT 1 FROM bad") };
 
         let rendered = unsafe { render(v, None) };
-        assert!(rendered.contains("<input>"), "should use default label: {rendered}");
+        assert!(
+            rendered.contains("<input>"),
+            "should use default label: {rendered}"
+        );
 
         unsafe { syntaqlite_validator_destroy(v) };
     }
@@ -627,7 +646,10 @@ mod tests {
         unsafe { analyze(v, "SELECT 1") };
 
         let rendered = unsafe { render(v, None) };
-        assert!(rendered.is_empty(), "should be empty for clean SQL: {rendered}");
+        assert!(
+            rendered.is_empty(),
+            "should be empty for clean SQL: {rendered}"
+        );
 
         unsafe { syntaqlite_validator_destroy(v) };
     }

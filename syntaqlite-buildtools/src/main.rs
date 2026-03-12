@@ -55,6 +55,9 @@ enum Command {
     #[command(name = "analyze-versions")]
     AnalyzeVersions(AnalyzeVersionsArgs),
 
+    /// Produce a C amalgamation (single .h + .c pair) from the runtime and dialect source trees.
+    Amalgamate(AmalgamateArgs),
+
     /// Hidden subprocess entry point for the Lemon parser generator.
     #[command(hide = true)]
     Lemon {
@@ -143,6 +146,24 @@ struct AnalyzeVersionsArgs {
     output_dir: String,
 }
 
+// ── amalgamate ────────────────────────────────────────────────────────────────
+
+#[derive(clap::Args)]
+struct AmalgamateArgs {
+    /// Dialect name (e.g. "sqlite").
+    #[arg(long, required = true)]
+    dialect: String,
+    /// Directory containing runtime C sources (csrc/ and include/ subdirs).
+    #[arg(long, required = true)]
+    runtime_dir: String,
+    /// Directory containing dialect C sources (csrc/ and include/ subdirs).
+    #[arg(long, required = true)]
+    dialect_dir: String,
+    /// Output directory for the amalgamated .h and .c files.
+    #[arg(long, required = true)]
+    output_dir: String,
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 fn main() {
@@ -177,6 +198,27 @@ fn main() {
             output_dir: args.output_dir.clone(),
         }
         .run(),
+        Command::Amalgamate(args) => (|| -> Result<(), String> {
+            use std::path::Path;
+            let runtime = Path::new(&args.runtime_dir);
+            let dialect = Path::new(&args.dialect_dir);
+            let output = Path::new(&args.output_dir);
+            let out = syntaqlite_buildtools::amalgamate::amalgamate_full(
+                &args.dialect,
+                runtime,
+                dialect,
+            )?;
+            std::fs::create_dir_all(output).map_err(|e| format!("creating output dir: {e}"))?;
+            let h_path = output.join(format!("syntaqlite_{}.h", args.dialect));
+            let c_path = output.join(format!("syntaqlite_{}.c", args.dialect));
+            std::fs::write(&h_path, &out.header)
+                .map_err(|e| format!("writing {}: {e}", h_path.display()))?;
+            std::fs::write(&c_path, &out.source)
+                .map_err(|e| format!("writing {}: {e}", c_path.display()))?;
+            eprintln!("wrote {}", h_path.display());
+            eprintln!("wrote {}", c_path.display());
+            Ok(())
+        })(),
         Command::Lemon { args } => syntaqlite_buildtools::run_lemon(args),
         Command::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(args),
     };

@@ -126,6 +126,33 @@ jobs:
       - name: Run upstream SQLite validation tests
         run: tools/run-integration-tests --suite upstream-sqlite --validate
 
+  amalgamation:
+    name: Amalgamation build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache third_party
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+
+      - name: Install build dependencies
+        run: python3 tools/install-build-deps
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-amalg-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-amalg-${{ runner.os }}-
+
+      - name: Build amalgamation and compile examples
+        run: tools/build-amalgamation
+
   ui-tests:
     name: UI tests
     runs-on: ubuntu-latest

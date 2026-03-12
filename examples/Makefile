@@ -1,6 +1,6 @@
 ROOT := $(shell cd .. && pwd)
-RUNTIME := $(ROOT)/syntaqlite-sys
-DIALECT := $(ROOT)/syntaqlite-sys
+RUNTIME := $(ROOT)/syntaqlite-syntax
+DIALECT := $(ROOT)/syntaqlite-syntax
 
 CC := cc
 CXX := c++
@@ -15,22 +15,22 @@ AMALG_CFLAGS := \
 	-Wno-unused-parameter \
 	-Wno-comment
 
-CODEGEN := $(ROOT)/target/release/syntaqlite-codegen
+BUILDTOOLS := $(ROOT)/target/release/syntaqlite-buildtools
 
 .PHONY: all clean amalgamation
 
 all: select_columns select_columns_c
 
-# Generate amalgamation files from codegen.
-syntaqlite_sqlite.h syntaqlite_sqlite.c: $(CODEGEN)
-	$(CODEGEN) amalgamate \
+# Generate amalgamation files from buildtools.
+syntaqlite_sqlite.h syntaqlite_sqlite.c: $(BUILDTOOLS)
+	$(BUILDTOOLS) amalgamate \
 		--dialect sqlite \
 		--runtime-dir $(RUNTIME) \
 		--dialect-dir $(DIALECT) \
 		--output-dir .
 
-$(CODEGEN):
-	cargo build --release --manifest-path $(ROOT)/syntaqlite-codegen/Cargo.toml
+$(BUILDTOOLS):
+	cargo build --release --manifest-path $(ROOT)/syntaqlite-buildtools/Cargo.toml
 
 amalgamation: syntaqlite_sqlite.h syntaqlite_sqlite.c
 

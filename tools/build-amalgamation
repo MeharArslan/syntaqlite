@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Build the C amalgamation, compile the example programs, and smoke-test them.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+echo "==> Building syntaqlite-buildtools..."
+"$ROOT/tools/cargo" build --release -p syntaqlite-buildtools
+
+echo "==> Generating amalgamation..."
+"$ROOT/target/release/syntaqlite-buildtools" amalgamate \
+    --dialect sqlite \
+    --runtime-dir "$ROOT/syntaqlite-syntax" \
+    --dialect-dir "$ROOT/syntaqlite-syntax" \
+    --output-dir "$ROOT/examples"
+
+echo "==> Compiling amalgamation and examples..."
+make -C "$ROOT/examples" all
+
+echo "==> Smoke-testing select_columns_c..."
+echo "CREATE TABLE t(a, b, c); SELECT * FROM t;" \
+    | "$ROOT/examples/select_columns_c"
+
+echo "==> Smoke-testing select_columns (C++)..."
+echo "CREATE TABLE t(a, b, c); SELECT * FROM t;" \
+    | "$ROOT/examples/select_columns"
+
+echo "==> Amalgamation build succeeded."
