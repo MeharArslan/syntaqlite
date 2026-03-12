@@ -280,10 +280,10 @@ fn baseline_id_in_macro_region() {
         stmt.root().expect("expected root")
     );
 
-    // Format it to see the macro region preserved
-    let mut fmt = syntaqlite::Formatter::new();
-    let formatted = fmt.format_parsed(stmt.erase());
-    eprintln!("baseline formatted: {formatted}");
-
-    assert_eq!(formatted, "SELECT * FROM {table} WHERE id = 1");
+    // Verify macro region is recorded in the parsed statement.
+    let erased = stmt.erase();
+    let regions: Vec<_> = erased.macro_regions().collect();
+    assert_eq!(regions.len(), 1);
+    assert_eq!(regions[0].call_offset(), 14);
+    assert_eq!(regions[0].call_length(), 7);
 }

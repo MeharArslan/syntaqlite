@@ -10,16 +10,35 @@
 /// A diagnostic message associated with a source range.
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
+    pub(crate) start_offset: usize,
+    pub(crate) end_offset: usize,
+    pub(crate) message: DiagnosticMessage,
+    pub(crate) severity: Severity,
+    pub(crate) help: Option<Help>,
+}
+
+impl Diagnostic {
+    /// Create a new diagnostic.
+    pub fn new(
+        start_offset: usize,
+        end_offset: usize,
+        message: DiagnosticMessage,
+        severity: Severity,
+        help: Option<Help>,
+    ) -> Self {
+        Self { start_offset, end_offset, message, severity, help }
+    }
+
     /// Byte offset of the start of the diagnostic range.
-    pub start_offset: usize,
+    pub fn start_offset(&self) -> usize { self.start_offset }
     /// Byte offset of the end of the diagnostic range.
-    pub end_offset: usize,
+    pub fn end_offset(&self) -> usize { self.end_offset }
     /// Structured diagnostic message.
-    pub message: DiagnosticMessage,
+    pub fn message(&self) -> &DiagnosticMessage { &self.message }
     /// Severity level.
-    pub severity: Severity,
+    pub fn severity(&self) -> Severity { self.severity }
     /// Optional structured help attached to the diagnostic.
-    pub help: Option<Help>,
+    pub fn help(&self) -> Option<&Help> { self.help.as_ref() }
 }
 
 /// Structured diagnostic message.

@@ -53,11 +53,8 @@ pub enum AnalysisMode {
 /// Configuration for semantic validation.
 #[derive(Clone, Copy)]
 pub struct ValidationConfig {
-    /// When `true`, unresolved names are reported as errors.
-    /// When `false`, they are reported as warnings.
-    pub strict_schema: bool,
-    /// Maximum Levenshtein distance for "did you mean?" suggestions.
-    pub suggestion_threshold: usize,
+    strict_schema: bool,
+    suggestion_threshold: usize,
 }
 
 impl Default for ValidationConfig {
@@ -70,6 +67,16 @@ impl Default for ValidationConfig {
 }
 
 impl ValidationConfig {
+    /// Whether unresolved names are reported as errors (`true`) or warnings (`false`).
+    pub fn strict_schema(&self) -> bool {
+        self.strict_schema
+    }
+
+    /// Maximum Levenshtein distance for "did you mean?" suggestions.
+    pub fn suggestion_threshold(&self) -> usize {
+        self.suggestion_threshold
+    }
+
     /// Returns the effective diagnostic severity for unresolved schema names.
     pub fn severity(&self) -> Severity {
         if self.strict_schema {
@@ -77,5 +84,19 @@ impl ValidationConfig {
         } else {
             Severity::Warning
         }
+    }
+
+    /// Set whether unresolved names are reported as errors.
+    #[must_use]
+    pub fn with_strict_schema(mut self, strict: bool) -> Self {
+        self.strict_schema = strict;
+        self
+    }
+
+    /// Set the maximum Levenshtein distance for suggestions.
+    #[must_use]
+    pub fn with_suggestion_threshold(mut self, threshold: usize) -> Self {
+        self.suggestion_threshold = threshold;
+        self
     }
 }

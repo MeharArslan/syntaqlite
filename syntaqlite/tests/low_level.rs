@@ -134,8 +134,8 @@ fn macro_regions_recorded() {
 
     let regions: Vec<_> = stmt.erase().macro_regions().collect();
     assert_eq!(regions.len(), 1);
-    assert_eq!(regions[0].call_offset, 7);
-    assert_eq!(regions[0].call_length, 13);
+    assert_eq!(regions[0].call_offset(), 7);
+    assert_eq!(regions[0].call_length(), 13);
 }
 
 /// Nested macro regions are both recorded.
@@ -159,10 +159,10 @@ fn nested_macro_regions() {
 
     let regions: Vec<_> = stmt.erase().macro_regions().collect();
     assert_eq!(regions.len(), 2);
-    assert_eq!(regions[0].call_offset, 0);
-    assert_eq!(regions[0].call_length, 30);
-    assert_eq!(regions[1].call_offset, 10);
-    assert_eq!(regions[1].call_length, 5);
+    assert_eq!(regions[0].call_offset(), 0);
+    assert_eq!(regions[0].call_length(), 30);
+    assert_eq!(regions[1].call_offset(), 10);
+    assert_eq!(regions[1].call_length(), 5);
 }
 
 /// A macro that expands to a complete expression (single node) is well-aligned.

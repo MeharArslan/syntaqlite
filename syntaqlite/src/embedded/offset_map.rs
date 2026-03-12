@@ -32,17 +32,17 @@ impl OffsetMap {
     /// Build an offset map from an `EmbeddedFragment`.
     pub(crate) fn new(fragment: &EmbeddedFragment) -> Self {
         let segments = fragment
-            .holes
+            .holes()
             .iter()
             .map(|h| Segment {
-                sql_start: h.sql_offset,
+                sql_start: h.sql_offset(),
                 sql_len: HOLE_PLACEHOLDER.len(),
-                host_len: h.host_range.len(),
+                host_len: h.host_range().len(),
             })
             .collect();
 
         OffsetMap {
-            base_offset: fragment.sql_range.start,
+            base_offset: fragment.sql_range().start,
             segments,
         }
     }

@@ -21,8 +21,8 @@ fn simple_fstring_with_valid_sql() {
     let source = r#"query = f"SELECT * FROM users WHERE id = {uid}""#;
     let fragments = extract_python(source);
     assert_eq!(fragments.len(), 1);
-    assert_eq!(fragments[0].holes.len(), 1);
-    assert!(fragments[0].sql_text.contains(HOLE_PLACEHOLDER));
+    assert_eq!(fragments[0].holes().len(), 1);
+    assert!(fragments[0].sql_text().contains(HOLE_PLACEHOLDER));
 }
 
 #[test]
@@ -52,9 +52,9 @@ fn escaped_braces() {
     let source = r#"q = f"SELECT '{{literal}}' FROM t""#;
     let fragments = extract_python(source);
     assert_eq!(fragments.len(), 1);
-    assert_eq!(fragments[0].holes.len(), 0);
+    assert_eq!(fragments[0].holes().len(), 0);
     // `{{` becomes `{` in the SQL text.
-    assert!(fragments[0].sql_text.contains("{literal}"));
+    assert!(fragments[0].sql_text().contains("{literal}"));
 }
 
 #[test]
@@ -62,10 +62,10 @@ fn multiline_fstring() {
     let source = "q = f\"\"\"\nSELECT *\nFROM users\nWHERE id = {uid}\n\"\"\"";
     let fragments = extract_python(source);
     assert_eq!(fragments.len(), 1);
-    assert_eq!(fragments[0].holes.len(), 1);
+    assert_eq!(fragments[0].holes().len(), 1);
     assert!(
         fragments[0]
-            .sql_text
+            .sql_text()
             .contains("SELECT *\nFROM users\nWHERE id = ")
     );
 }
@@ -76,11 +76,11 @@ fn fstring_with_holes_in_multiple_positions() {
     let fragments = extract_python(source);
     assert_eq!(fragments.len(), 1);
     let f = &fragments[0];
-    assert_eq!(f.holes.len(), 4);
+    assert_eq!(f.holes().len(), 4);
     // All holes use the same constant placeholder.
-    for hole in &f.holes {
-        let end = hole.sql_offset + HOLE_PLACEHOLDER.len();
-        assert_eq!(&f.sql_text[hole.sql_offset..end], HOLE_PLACEHOLDER);
+    for hole in f.holes() {
+        let end = hole.sql_offset() + HOLE_PLACEHOLDER.len();
+        assert_eq!(&f.sql_text()[hole.sql_offset()..end], HOLE_PLACEHOLDER);
     }
 }
 
@@ -94,7 +94,7 @@ fn validate_simple_select_with_hole() {
 
     // Hole placeholders must not leak into diagnostics.
     for d in &diags {
-        let msg = d.message.to_string();
+        let msg = d.message().to_string();
         assert!(
             !msg.contains("__h__"),
             "hole placeholder leaked into diagnostic: {msg}"
@@ -109,7 +109,7 @@ fn validate_multiple_holes_no_placeholder_leaks() {
     let diags = analyzer().validate(&fragments);
 
     for d in &diags {
-        let msg = d.message.to_string();
+        let msg = d.message().to_string();
         assert!(!msg.contains("__h__"), "hole placeholder leaked: {msg}");
     }
 }
@@ -129,7 +129,7 @@ query = f"SELECT id, name FROM users WHERE id = {uid}"
     let diags = analyzer().validate(&fragments);
 
     for d in &diags {
-        let msg = d.message.to_string();
+        let msg = d.message().to_string();
         assert!(!msg.contains("__h__"), "hole placeholder leaked: {msg}");
     }
 }
@@ -145,11 +145,11 @@ fn validate_offsets_mapped_to_host_file() {
     // Should have a diagnostic about 'nonexistent'.
     let table_diag = diags
         .iter()
-        .find(|d| d.message.to_string().contains("nonexistent"));
+        .find(|d| d.message().to_string().contains("nonexistent"));
     if let Some(d) = table_diag {
         // The word "nonexistent" starts at offset 20 in the host source
         // (after `q = f"SELECT * FROM `).
-        let referenced = &source[d.start_offset..d.end_offset];
+        let referenced = &source[d.start_offset()..d.end_offset()];
         assert_eq!(referenced, "nonexistent");
     }
 }
@@ -161,8 +161,8 @@ fn ts_simple_template_literal_with_valid_sql() {
     let source = r"const q = `SELECT * FROM users WHERE id = ${uid}`;";
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 1);
-    assert_eq!(fragments[0].holes.len(), 1);
-    assert!(fragments[0].sql_text.contains(HOLE_PLACEHOLDER));
+    assert_eq!(fragments[0].holes().len(), 1);
+    assert!(fragments[0].sql_text().contains(HOLE_PLACEHOLDER));
 }
 
 #[test]
@@ -192,10 +192,10 @@ fn ts_multiline_template_literal() {
     let source = "const q = `\nSELECT *\nFROM users\nWHERE id = ${uid}\n`;";
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 1);
-    assert_eq!(fragments[0].holes.len(), 1);
+    assert_eq!(fragments[0].holes().len(), 1);
     assert!(
         fragments[0]
-            .sql_text
+            .sql_text()
             .contains("SELECT *\nFROM users\nWHERE id = ")
     );
 }
@@ -206,10 +206,10 @@ fn ts_template_with_multiple_holes() {
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 1);
     let f = &fragments[0];
-    assert_eq!(f.holes.len(), 4);
-    for hole in &f.holes {
-        let end = hole.sql_offset + HOLE_PLACEHOLDER.len();
-        assert_eq!(&f.sql_text[hole.sql_offset..end], HOLE_PLACEHOLDER);
+    assert_eq!(f.holes().len(), 4);
+    for hole in f.holes() {
+        let end = hole.sql_offset() + HOLE_PLACEHOLDER.len();
+        assert_eq!(&f.sql_text()[hole.sql_offset()..end], HOLE_PLACEHOLDER);
     }
 }
 
@@ -240,7 +240,7 @@ fn ts_validate_simple_select_with_hole() {
     let diags = analyzer().validate(&fragments);
 
     for d in &diags {
-        let msg = d.message.to_string();
+        let msg = d.message().to_string();
         assert!(
             !msg.contains("__h__"),
             "hole placeholder leaked into diagnostic: {msg}"
@@ -255,7 +255,7 @@ fn ts_validate_multiple_holes_no_placeholder_leaks() {
     let diags = analyzer().validate(&fragments);
 
     for d in &diags {
-        let msg = d.message.to_string();
+        let msg = d.message().to_string();
         assert!(!msg.contains("__h__"), "hole placeholder leaked: {msg}");
     }
 }
@@ -268,9 +268,9 @@ fn ts_validate_offsets_mapped_to_host_file() {
 
     let table_diag = diags
         .iter()
-        .find(|d| d.message.to_string().contains("nonexistent"));
+        .find(|d| d.message().to_string().contains("nonexistent"));
     if let Some(d) = table_diag {
-        let referenced = &source[d.start_offset..d.end_offset];
+        let referenced = &source[d.start_offset()..d.end_offset()];
         assert_eq!(referenced, "nonexistent");
     }
 }

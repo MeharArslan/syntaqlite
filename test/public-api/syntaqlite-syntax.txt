@@ -2030,10 +2030,10 @@ pub syntaqlite_syntax::any::FieldValue::Enum(u32)
 pub syntaqlite_syntax::any::FieldValue::Flags(u8)
 pub syntaqlite_syntax::any::FieldValue::NodeId(syntaqlite_syntax::any::AnyNodeId)
 pub syntaqlite_syntax::any::FieldValue::Span(&'a str)
-pub syntaqlite_syntax::any::KeywordEntry::keyword: &'static str
-pub syntaqlite_syntax::any::KeywordEntry::token_type: syntaqlite_syntax::any::AnyTokenType
-pub syntaqlite_syntax::any::MacroRegion::call_length: u32
-pub syntaqlite_syntax::any::MacroRegion::call_offset: u32
+pub fn syntaqlite_syntax::any::KeywordEntry::keyword(&self) -> &'static str
+pub fn syntaqlite_syntax::any::KeywordEntry::token_type(&self) -> syntaqlite_syntax::any::AnyTokenType
+pub fn syntaqlite_syntax::any::MacroRegion::call_length(&self) -> u32
+pub fn syntaqlite_syntax::any::MacroRegion::call_offset(&self) -> u32
 pub syntaqlite_syntax::any::ParseOutcome::Done
 pub syntaqlite_syntax::any::ParseOutcome::Err(E)
 pub syntaqlite_syntax::any::ParseOutcome::Ok(T)

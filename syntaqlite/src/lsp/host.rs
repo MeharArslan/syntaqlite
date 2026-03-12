@@ -39,7 +39,7 @@ fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, user_catalo
     let parse_diags = model
         .diagnostics()
         .iter()
-        .filter(|d| d.message.is_parse_error())
+        .filter(|d| d.message().is_parse_error())
         .cloned()
         .collect();
     doc.cached_parse_diags = Some(parse_diags);
@@ -212,13 +212,13 @@ impl LspHost {
         });
 
         for entry in self.dialect.keywords() {
-            let code = u32::from(entry.token_type);
-            if !expected_set.contains(&code) || !is_suggestable_keyword(entry.keyword) {
+            let code = u32::from(entry.token_type());
+            if !expected_set.contains(&code) || !is_suggestable_keyword(entry.keyword()) {
                 continue;
             }
-            if seen.insert(entry.keyword.to_string()) {
+            if seen.insert(entry.keyword().to_string()) {
                 items.push(CompletionEntry::new(
-                    entry.keyword.to_string(),
+                    entry.keyword().to_string(),
                     CompletionKind::Keyword,
                 ));
             }

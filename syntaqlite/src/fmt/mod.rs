@@ -35,52 +35,84 @@ pub enum KeywordCase {
 /// Configuration for the SQL formatter.
 #[derive(Debug, Clone)]
 pub struct FormatConfig {
-    /// Maximum line width before breaking. Default: 80.
-    pub line_width: usize,
-    /// Number of spaces per indentation level. Default: 2.
-    pub indent_width: usize,
-    /// How to case SQL keywords. Default: Upper.
-    pub keyword_case: KeywordCase,
-    /// Append semicolons after each statement. Default: true.
-    pub semicolons: bool,
+    line_width: usize,
+    indent_width: usize,
+    keyword_case: KeywordCase,
+    semicolons: bool,
+}
+
+impl FormatConfig {
+    /// Maximum line width before breaking.
+    pub fn line_width(&self) -> usize {
+        self.line_width
+    }
+
+    /// Number of spaces per indentation level.
+    pub fn indent_width(&self) -> usize {
+        self.indent_width
+    }
+
+    /// How SQL keywords are cased.
+    pub fn keyword_case(&self) -> KeywordCase {
+        self.keyword_case
+    }
+
+    /// Whether semicolons are appended after each statement.
+    pub fn semicolons(&self) -> bool {
+        self.semicolons
+    }
+
+    /// Set the maximum line width before breaking.
+    #[must_use]
+    pub fn with_line_width(mut self, width: usize) -> Self {
+        self.line_width = width;
+        self
+    }
+
+    /// Set the number of spaces per indentation level.
+    #[must_use]
+    pub fn with_indent_width(mut self, width: usize) -> Self {
+        self.indent_width = width;
+        self
+    }
+
+    /// Set how SQL keywords are cased.
+    #[must_use]
+    pub fn with_keyword_case(mut self, case: KeywordCase) -> Self {
+        self.keyword_case = case;
+        self
+    }
+
+    /// Set whether semicolons are appended after each statement.
+    #[must_use]
+    pub fn with_semicolons(mut self, semicolons: bool) -> Self {
+        self.semicolons = semicolons;
+        self
+    }
 }
 
 /// An error returned by [`crate::Formatter::format`] when a statement fails to parse.
 #[derive(Debug, Clone)]
 pub struct FormatError {
-    /// Human-readable error message.
-    pub message: String,
-    /// Byte offset of the error token in the source, if known.
-    pub offset: Option<usize>,
-    /// Byte length of the error token, if known.
-    pub length: Option<usize>,
+    message: String,
+    offset: Option<usize>,
+    length: Option<usize>,
 }
 
 impl FormatError {
-    /// Render this error as a rustc-style snippet to `out`.
-    ///
-    /// # Errors
-    /// Returns `Err` if writing to `out` fails.
-    pub fn render(
-        &self,
-        out: &mut impl std::io::Write,
-        source: &str,
-        file: &str,
-    ) -> std::io::Result<()> {
-        let start = self.offset.unwrap_or(0);
-        let end = start + self.length.unwrap_or(0);
-        crate::util::render_source_error(
-            out,
-            &crate::util::SourceError {
-                source,
-                file,
-                severity: "error",
-                message: &self.message,
-                start_offset: start,
-                end_offset: end,
-                help: None,
-            },
-        )
+    /// Human-readable error message.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Byte offset of the error token in the source, if known.
+    pub fn offset(&self) -> Option<usize> {
+        self.offset
+    }
+
+    /// Byte length of the error token, if known.
+    pub fn length(&self) -> Option<usize> {
+        self.length
     }
 }
 

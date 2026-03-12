@@ -75,7 +75,6 @@ pub fn syntaqlite::FormatError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> 
 pub fn syntaqlite::FormatError::render(&self, out: &mut impl std::io::Write, source: &str, file: &str) -> std::io::error::Result<()>
 pub fn syntaqlite::Formatter::default() -> Self
 pub fn syntaqlite::Formatter::format(&mut self, source: &str) -> core::result::Result<alloc::string::String, syntaqlite::FormatError>
-pub fn syntaqlite::Formatter::format_parsed(&mut self, erased: syntaqlite_syntax::parser::AnyParsedStatement<'_>) -> alloc::string::String
 pub fn syntaqlite::Formatter::new() -> syntaqlite::Formatter
 pub fn syntaqlite::Formatter::with_config(format_config: &syntaqlite::FormatConfig) -> syntaqlite::Formatter
 pub fn syntaqlite::Formatter::with_dialect_config(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>, format_config: &syntaqlite::FormatConfig) -> Self
@@ -163,11 +162,12 @@ pub struct syntaqlite::lsp::CompletionEntry
 pub struct syntaqlite::lsp::LspHost
 pub struct syntaqlite::lsp::LspServer
 pub struct syntaqlite::util::SqliteFlags(_)
-pub syntaqlite::Diagnostic::end_offset: usize
-pub syntaqlite::Diagnostic::help: core::option::Option<syntaqlite::Help>
-pub syntaqlite::Diagnostic::message: syntaqlite::DiagnosticMessage
-pub syntaqlite::Diagnostic::severity: syntaqlite::Severity
-pub syntaqlite::Diagnostic::start_offset: usize
+pub fn syntaqlite::Diagnostic::end_offset(&self) -> usize
+pub fn syntaqlite::Diagnostic::help(&self) -> core::option::Option<&syntaqlite::Help>
+pub fn syntaqlite::Diagnostic::message(&self) -> &syntaqlite::DiagnosticMessage
+pub fn syntaqlite::Diagnostic::new(start_offset: usize, end_offset: usize, message: syntaqlite::DiagnosticMessage, severity: syntaqlite::Severity, help: core::option::Option<syntaqlite::Help>) -> Self
+pub fn syntaqlite::Diagnostic::severity(&self) -> syntaqlite::Severity
+pub fn syntaqlite::Diagnostic::start_offset(&self) -> usize
 pub syntaqlite::DiagnosticMessage::CteColumnCountMismatch
 pub syntaqlite::DiagnosticMessage::CteColumnCountMismatch::actual: usize
 pub syntaqlite::DiagnosticMessage::CteColumnCountMismatch::declared: usize
@@ -184,13 +184,17 @@ pub syntaqlite::DiagnosticMessage::UnknownFunction
 pub syntaqlite::DiagnosticMessage::UnknownFunction::name: alloc::string::String
 pub syntaqlite::DiagnosticMessage::UnknownTable
 pub syntaqlite::DiagnosticMessage::UnknownTable::name: alloc::string::String
-pub syntaqlite::FormatConfig::indent_width: usize
-pub syntaqlite::FormatConfig::keyword_case: syntaqlite::KeywordCase
-pub syntaqlite::FormatConfig::line_width: usize
-pub syntaqlite::FormatConfig::semicolons: bool
-pub syntaqlite::FormatError::length: core::option::Option<usize>
-pub syntaqlite::FormatError::message: alloc::string::String
-pub syntaqlite::FormatError::offset: core::option::Option<usize>
+pub fn syntaqlite::FormatConfig::indent_width(&self) -> usize
+pub fn syntaqlite::FormatConfig::keyword_case(&self) -> syntaqlite::KeywordCase
+pub fn syntaqlite::FormatConfig::line_width(&self) -> usize
+pub fn syntaqlite::FormatConfig::semicolons(&self) -> bool
+pub fn syntaqlite::FormatConfig::with_indent_width(self, width: usize) -> Self
+pub fn syntaqlite::FormatConfig::with_keyword_case(self, case: syntaqlite::KeywordCase) -> Self
+pub fn syntaqlite::FormatConfig::with_line_width(self, width: usize) -> Self
+pub fn syntaqlite::FormatConfig::with_semicolons(self, semicolons: bool) -> Self
+pub fn syntaqlite::FormatError::length(&self) -> core::option::Option<usize>
+pub fn syntaqlite::FormatError::message(&self) -> &str
+pub fn syntaqlite::FormatError::offset(&self) -> core::option::Option<usize>
 pub syntaqlite::Help::Suggestion(alloc::string::String)
 pub syntaqlite::KeywordCase::Lower
 pub syntaqlite::KeywordCase::Upper
@@ -198,13 +202,15 @@ pub syntaqlite::Severity::Error
 pub syntaqlite::Severity::Hint
 pub syntaqlite::Severity::Info
 pub syntaqlite::Severity::Warning
-pub syntaqlite::ValidationConfig::strict_schema: bool
-pub syntaqlite::ValidationConfig::suggestion_threshold: usize
-pub syntaqlite::embedded::EmbeddedFragment::holes: alloc::vec::Vec<syntaqlite::embedded::Hole>
-pub syntaqlite::embedded::EmbeddedFragment::sql_range: core::ops::range::Range<usize>
-pub syntaqlite::embedded::EmbeddedFragment::sql_text: alloc::string::String
-pub syntaqlite::embedded::Hole::host_range: core::ops::range::Range<usize>
-pub syntaqlite::embedded::Hole::sql_offset: usize
+pub fn syntaqlite::ValidationConfig::strict_schema(&self) -> bool
+pub fn syntaqlite::ValidationConfig::suggestion_threshold(&self) -> usize
+pub fn syntaqlite::ValidationConfig::with_strict_schema(self, strict: bool) -> Self
+pub fn syntaqlite::ValidationConfig::with_suggestion_threshold(self, threshold: usize) -> Self
+pub fn syntaqlite::embedded::EmbeddedFragment::holes(&self) -> &[syntaqlite::embedded::Hole]
+pub fn syntaqlite::embedded::EmbeddedFragment::sql_range(&self) -> &core::ops::range::Range<usize>
+pub fn syntaqlite::embedded::EmbeddedFragment::sql_text(&self) -> &str
+pub fn syntaqlite::embedded::Hole::host_range(&self) -> &core::ops::range::Range<usize>
+pub fn syntaqlite::embedded::Hole::sql_offset(&self) -> usize
 pub syntaqlite::lsp::CompletionKind::Function
 pub syntaqlite::lsp::CompletionKind::Keyword
 pub syntaqlite::util::SqliteFlag::EnableBytecodeVtab = 27

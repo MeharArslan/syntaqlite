@@ -68,10 +68,7 @@ fn format_idempotent() {
 
 #[test]
 fn long_select_breaks() {
-    let config = FormatConfig {
-        line_width: 20,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_line_width(20);
     let result = format_sql_with(
         "SELECT column_one, column_two FROM very_long_table",
         &config,
@@ -114,10 +111,7 @@ fn update_with_order_by_limit() {
 
 #[test]
 fn insert_breaks_when_narrow() {
-    let config = FormatConfig {
-        line_width: 20,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_line_width(20);
     let result = format_sql_with("INSERT INTO t(a, b) VALUES(1, 2)", &config);
     assert_eq!(result, "INSERT INTO t(a, b)\nVALUES (1, 2)");
 }
@@ -126,10 +120,7 @@ fn insert_breaks_when_narrow() {
 
 #[test]
 fn insert_many_values_flat() {
-    let config = FormatConfig {
-        line_width: 40,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_line_width(40);
     let result = format_sql_with(
         "INSERT INTO t(a, b) VALUES(1, 2), (3, 4), (5, 6), (7, 8)",
         &config,
@@ -142,10 +133,7 @@ fn insert_many_values_flat() {
 
 #[test]
 fn insert_many_values_breaks() {
-    let config = FormatConfig {
-        line_width: 30,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_line_width(30);
     let result = format_sql_with(
         "INSERT INTO t(a, b) VALUES(1, 2), (3, 4), (5, 6), (7, 8)",
         &config,
@@ -160,10 +148,7 @@ fn insert_many_values_breaks() {
 
 #[test]
 fn comment_leading_before_column() {
-    let config = FormatConfig {
-        line_width: 20,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_line_width(20);
     assert_eq!(
         format_sql_with("SELECT\n  -- comment\n  a\nFROM t", &config),
         "SELECT\n  -- comment\n  a\nFROM t"
@@ -172,10 +157,7 @@ fn comment_leading_before_column() {
 
 #[test]
 fn comment_between_columns() {
-    let config = FormatConfig {
-        line_width: 20,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_line_width(20);
     assert_eq!(
         format_sql_with("SELECT\n  a,\n  -- about b\n  b\nFROM t", &config),
         "SELECT\n  a,\n  -- about b\n  b\nFROM t"
@@ -222,10 +204,7 @@ fn debug_multi_stmt_comments() {
 
 #[test]
 fn keyword_case_lower() {
-    let config = FormatConfig {
-        keyword_case: KeywordCase::Lower,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_keyword_case(KeywordCase::Lower);
     assert_eq!(
         format_sql_with("SELECT a FROM t", &config),
         "select a from t"
@@ -234,10 +213,7 @@ fn keyword_case_lower() {
 
 #[test]
 fn keyword_case_upper() {
-    let config = FormatConfig {
-        keyword_case: KeywordCase::Upper,
-        ..Default::default()
-    };
+    let config = FormatConfig::default().with_keyword_case(KeywordCase::Upper);
     assert_eq!(
         format_sql_with("select a from t", &config),
         "SELECT a FROM t"

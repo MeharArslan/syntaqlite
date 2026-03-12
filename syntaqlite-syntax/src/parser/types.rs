@@ -207,9 +207,20 @@ pub type AnyParserToken<'a> = TypedParserToken<'a, crate::grammar::AnyGrammar>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MacroRegion {
     /// Byte offset of the macro call in the original source.
-    pub call_offset: u32,
+    pub(crate) call_offset: u32,
     /// Byte length of the entire macro call.
-    pub call_length: u32,
+    pub(crate) call_length: u32,
+}
+
+impl MacroRegion {
+    /// Byte offset of the macro call in the original source.
+    pub fn call_offset(&self) -> u32 {
+        self.call_offset
+    }
+    /// Byte length of the entire macro call.
+    pub fn call_length(&self) -> u32 {
+        self.call_length
+    }
 }
 
 /// Parser's best guess about what kind of token fits next.

@@ -190,7 +190,7 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
     for d in model.diagnostics() {
         state
             .rendered_messages
-            .push(CString::new(d.message.to_string()).unwrap_or_default());
+            .push(CString::new(d.message().to_string()).unwrap_or_default());
     }
 
     // Second pass: build C structs pointing into rendered_messages.
@@ -200,10 +200,10 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
         .zip(state.rendered_messages.iter())
     {
         state.c_diagnostics.push(SyntaqliteDiagnostic {
-            severity: severity_to_c(d.severity),
+            severity: severity_to_c(d.severity()),
             message: msg.as_ptr(),
-            start_offset: d.start_offset as u32,
-            end_offset: d.end_offset as u32,
+            start_offset: d.start_offset() as u32,
+            end_offset: d.end_offset() as u32,
         });
     }
 

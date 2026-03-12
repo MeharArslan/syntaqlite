@@ -210,15 +210,15 @@ fn lsp_diagnostics_no_parse_error_without_omit_windowfunc() {
     let parse_errors: Vec<_> = diags
         .iter()
         .filter(|d| {
-            matches!(d.severity, syntaqlite::Severity::Error)
-                && d.message.to_string().contains("syntax")
+            matches!(d.severity(), syntaqlite::Severity::Error)
+                && d.message().to_string().contains("syntax")
         })
         .collect();
     // The query should parse without error; any diagnostics here would be semantic (unknown table).
     // We only care that the parser doesn't reject window function syntax.
     let has_parse_failures = diags.iter().any(|d| {
         // Parse errors come from the C parser and typically say "near X: syntax error"
-        d.message.to_string().contains("syntax error") || d.message.to_string().contains("parse")
+        d.message().to_string().contains("syntax error") || d.message().to_string().contains("parse")
     });
     let _ = parse_errors;
     assert!(

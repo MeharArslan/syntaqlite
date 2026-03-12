@@ -146,26 +146,19 @@ Input to extractor: full Python source text.
 Output: list of `EmbeddedSqlFragment`:
 
 ```rust
-pub struct EmbeddedSqlFragment {
-    /// Byte range of the SQL content within the host file
-    /// (excludes quotes and string prefix).
-    pub sql_range: Range<usize>,
+pub struct EmbeddedFragment { /* private fields */ }
 
-    /// The SQL text with holes replaced by placeholder tokens.
-    /// Not strictly necessary if we feed token-by-token.
-    pub sql_text: String,
-
-    /// Interpolation holes, in source order.
-    pub holes: Vec<Hole>,
+impl EmbeddedFragment {
+    pub fn sql_range(&self) -> &Range<usize>;  // byte range in host file
+    pub fn sql_text(&self) -> &str;            // SQL with holes replaced
+    pub fn holes(&self) -> &[Hole];            // interpolation holes
 }
 
-pub struct Hole {
-    /// Byte range of the entire interpolation expression in the host file
-    /// (e.g., `{user_id}` including braces).
-    pub host_range: Range<usize>,
+pub struct Hole { /* private fields */ }
 
-    /// Byte offset within the SQL text where this hole appears.
-    pub sql_offset: usize,
+impl Hole {
+    pub fn host_range(&self) -> &Range<usize>; // byte range in host file
+    pub fn sql_offset(&self) -> usize;         // offset within sql_text
 }
 ```
 

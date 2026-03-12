@@ -35,12 +35,10 @@ repeatedly and internal allocations are recycled.
 ```rust
 use syntaqlite::{Formatter, FormatConfig, KeywordCase};
 
-let config = FormatConfig {
-    line_width: 120,
-    indent_width: 4,
-    keyword_case: KeywordCase::Lower,
-    semicolons: true,
-};
+let config = FormatConfig::default()
+    .with_line_width(120)
+    .with_indent_width(4)
+    .with_keyword_case(KeywordCase::Lower);
 let mut fmt = Formatter::with_config(&config);
 let output = fmt.format("SELECT 1")?;
 ```

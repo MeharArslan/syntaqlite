@@ -34,14 +34,14 @@ impl<'a> DiagnosticRenderer<'a> {
     /// # Errors
     /// Returns `Err` if writing to `out` fails.
     pub fn render_diagnostic(&self, diag: &Diagnostic, out: &mut impl Write) -> io::Result<()> {
-        let severity = match diag.severity {
+        let severity = match diag.severity() {
             Severity::Error => "error",
             Severity::Warning => "warning",
             Severity::Info => "info",
             Severity::Hint => "hint",
         };
-        let message = diag.message.to_string();
-        let help = diag.help.as_ref().map(ToString::to_string);
+        let message = diag.message().to_string();
+        let help = diag.help().map(|h| h.to_string());
         render_source_error(
             out,
             &crate::util::SourceError {
@@ -49,8 +49,8 @@ impl<'a> DiagnosticRenderer<'a> {
                 file: self.file,
                 severity,
                 message: &message,
-                start_offset: diag.start_offset,
-                end_offset: diag.end_offset,
+                start_offset: diag.start_offset(),
+                end_offset: diag.end_offset(),
                 help: help.as_deref(),
             },
         )
@@ -67,7 +67,7 @@ impl<'a> DiagnosticRenderer<'a> {
     ) -> io::Result<bool> {
         let mut has_errors = false;
         for d in diags {
-            if d.severity == Severity::Error {
+            if d.severity() == Severity::Error {
                 has_errors = true;
             }
             self.render_diagnostic(d, out)?;

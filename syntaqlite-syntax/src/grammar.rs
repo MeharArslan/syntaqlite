@@ -439,9 +439,20 @@ impl TypedGrammar for AnyGrammar {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeywordEntry {
     /// The token type for this keyword.
-    pub token_type: AnyTokenType,
+    token_type: AnyTokenType,
     /// The keyword lexeme (e.g. `"SELECT"`, `"WHERE"`).
-    pub keyword: &'static str,
+    keyword: &'static str,
+}
+
+impl KeywordEntry {
+    /// The token type for this keyword.
+    pub fn token_type(&self) -> AnyTokenType {
+        self.token_type
+    }
+    /// The keyword lexeme (e.g. `"SELECT"`, `"WHERE"`).
+    pub fn keyword(&self) -> &'static str {
+        self.keyword
+    }
 }
 
 struct KeywordIter<'a> {

@@ -24,7 +24,7 @@ weight = 3
 | `Formatter::new()` | Create with SQLite dialect and default settings |
 | `Formatter::with_config(&FormatConfig)` | Create with custom config |
 | `fmt.format(sql) -> Result<String>` | Format SQL string |
-| `FormatConfig` | `line_width`, `indent_width`, `keyword_case`, `semicolons` |
+| `FormatConfig` | Builder: `with_line_width()`, `with_indent_width()`, `with_keyword_case()`, `with_semicolons()` |
 | `KeywordCase` | `Upper` or `Lower` |
 
 The formatter is reusable — call `format()` repeatedly. Internal allocations

@@ -249,19 +249,17 @@ pub extern "C" fn wasm_ast_json(ptr: u32, len: u32) -> i32 {
 
 fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
-    let config = FormatConfig {
-        line_width: if line_width == 0 {
+    let config = FormatConfig::default()
+        .with_line_width(if line_width == 0 {
             80
         } else {
             line_width as usize
-        },
-        keyword_case: match keyword_case {
+        })
+        .with_keyword_case(match keyword_case {
             2 => KeywordCase::Lower,
             _ => KeywordCase::Upper,
-        },
-        semicolons: semicolons != 0,
-        ..Default::default()
-    };
+        })
+        .with_semicolons(semicolons != 0);
     let dialect = try_wasm!(get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first"));
     let mut formatter = Formatter::with_dialect_config(dialect, &config);
     let sql = try_wasm!(formatter.format(&source).map_err(|e| e.to_string()));
@@ -596,15 +594,15 @@ fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
     let items: Vec<WasmFragment> = fragments
         .iter()
         .map(|f| WasmFragment {
-            start: f.sql_range.start,
-            end: f.sql_range.end,
-            sql: f.sql_text.clone(),
+            start: f.sql_range().start,
+            end: f.sql_range().end,
+            sql: f.sql_text().to_string(),
             holes: f
-                .holes
+                .holes()
                 .iter()
                 .map(|h| WasmHole {
-                    start: h.host_range.start,
-                    end: h.host_range.end,
+                    start: h.host_range().start,
+                    end: h.host_range().end,
                 })
                 .collect(),
         })

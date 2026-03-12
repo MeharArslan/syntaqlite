@@ -89,11 +89,14 @@ impl<'d> AnalysisHost<'d> {
 #### Result types
 
 ```rust
-pub struct Diagnostic {
-    pub start_offset: usize,   // byte offset
-    pub end_offset: usize,     // byte offset
-    pub message: String,
-    pub severity: Severity,
+pub struct Diagnostic { /* private fields */ }
+
+impl Diagnostic {
+    pub fn start_offset(&self) -> usize;
+    pub fn end_offset(&self) -> usize;
+    pub fn message(&self) -> &DiagnosticMessage;
+    pub fn severity(&self) -> Severity;
+    pub fn help(&self) -> Option<&Help>;
 }
 
 pub enum Severity { Error, Warning, Info, Hint }

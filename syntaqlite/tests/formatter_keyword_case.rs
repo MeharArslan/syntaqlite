@@ -5,10 +5,7 @@ use syntaqlite::{FormatConfig, Formatter, KeywordCase};
 
 #[test]
 fn keyword_case_upper() {
-    let cfg = FormatConfig {
-        keyword_case: KeywordCase::Upper,
-        ..FormatConfig::default()
-    };
+    let cfg = FormatConfig::default().with_keyword_case(KeywordCase::Upper);
     let mut fmt = Formatter::with_config(&cfg);
     let out = fmt
         .format("select 1")
@@ -18,10 +15,7 @@ fn keyword_case_upper() {
 
 #[test]
 fn keyword_case_lower() {
-    let cfg = FormatConfig {
-        keyword_case: KeywordCase::Lower,
-        ..FormatConfig::default()
-    };
+    let cfg = FormatConfig::default().with_keyword_case(KeywordCase::Lower);
     let mut fmt = Formatter::with_config(&cfg);
     let out = fmt
         .format("SELECT 1")

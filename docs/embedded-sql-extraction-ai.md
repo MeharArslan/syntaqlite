@@ -43,15 +43,19 @@ This means a thin TS plugin (~50 lines of glue) can send `EmbeddedSqlFragment` d
 Regardless of where extraction happens, the contract is the same:
 
 ```rust
-pub struct EmbeddedSqlFragment {
-    pub sql_range: Range<usize>,   // byte range of SQL content in host file
-    pub sql_text: String,          // SQL text with holes replaced
-    pub holes: Vec<Hole>,          // interpolation holes
+pub struct EmbeddedFragment { /* private fields */ }
+
+impl EmbeddedFragment {
+    pub fn sql_range(&self) -> &Range<usize>;  // byte range of SQL in host file
+    pub fn sql_text(&self) -> &str;            // SQL text with holes replaced
+    pub fn holes(&self) -> &[Hole];            // interpolation holes
 }
 
-pub struct Hole {
-    pub host_range: Range<usize>,  // byte range in host file (e.g., `{user_id}`)
-    pub sql_offset: usize,         // offset within sql_text
+pub struct Hole { /* private fields */ }
+
+impl Hole {
+    pub fn host_range(&self) -> &Range<usize>; // byte range in host file
+    pub fn sql_offset(&self) -> usize;         // offset within sql_text
 }
 ```
 

@@ -444,8 +444,8 @@ impl DiagnosticPublisher {
         // Collect all offsets and convert in a single O(n) pass.
         let mut offsets: Vec<usize> = Vec::with_capacity(diags.len() * 2);
         for d in &diags {
-            offsets.push(d.start_offset);
-            offsets.push(d.end_offset);
+            offsets.push(d.start_offset());
+            offsets.push(d.end_offset());
         }
         let map = SourcePositionMap::new(&source);
         let positions = map.offsets_to_positions(&offsets);
@@ -455,13 +455,13 @@ impl DiagnosticPublisher {
             .enumerate()
             .map(|(i, d)| lsp_types::Diagnostic {
                 range: Range::new(positions[i * 2], positions[i * 2 + 1]),
-                severity: Some(match d.severity {
+                severity: Some(match d.severity() {
                     Severity::Error => DiagnosticSeverity::ERROR,
                     Severity::Warning => DiagnosticSeverity::WARNING,
                     Severity::Info => DiagnosticSeverity::INFORMATION,
                     Severity::Hint => DiagnosticSeverity::HINT,
                 }),
-                message: d.message.to_string(),
+                message: d.message().to_string(),
                 source: Some("syntaqlite".to_string()),
                 ..Default::default()
             })

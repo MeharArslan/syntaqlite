@@ -45,11 +45,20 @@ use offset_map::OffsetMap;
 #[derive(Debug)]
 pub struct EmbeddedFragment {
     /// Byte range of the SQL content in the host file (excluding quotes).
-    pub sql_range: Range<usize>,
+    pub(crate) sql_range: Range<usize>,
     /// SQL text with holes replaced by placeholder identifiers.
-    pub sql_text: String,
+    pub(crate) sql_text: String,
     /// Information about each interpolation hole.
-    pub holes: Vec<Hole>,
+    pub(crate) holes: Vec<Hole>,
+}
+
+impl EmbeddedFragment {
+    /// Byte range of the SQL content in the host file (excluding quotes).
+    pub fn sql_range(&self) -> &Range<usize> { &self.sql_range }
+    /// SQL text with holes replaced by placeholder identifiers.
+    pub fn sql_text(&self) -> &str { &self.sql_text }
+    /// Information about each interpolation hole.
+    pub fn holes(&self) -> &[Hole] { &self.holes }
 }
 
 /// An interpolation hole (e.g. `{expr}` in a Python f-string, `${expr}` in JS).
@@ -60,9 +69,16 @@ pub struct EmbeddedFragment {
 #[derive(Debug)]
 pub struct Hole {
     /// Byte range of the hole expression in the host file.
-    pub host_range: Range<usize>,
+    pub(crate) host_range: Range<usize>,
     /// Byte offset in `sql_text` where the placeholder sits.
-    pub sql_offset: usize,
+    pub(crate) sql_offset: usize,
+}
+
+impl Hole {
+    /// Byte range of the hole expression in the host file.
+    pub fn host_range(&self) -> &Range<usize> { &self.host_range }
+    /// Byte offset in `sql_text` where the placeholder sits.
+    pub fn sql_offset(&self) -> usize { self.sql_offset }
 }
 
 /// Placeholder text inserted into `sql_text` for each interpolation hole.
@@ -195,10 +211,10 @@ impl EmbeddedAnalyzer {
             let offset_map = OffsetMap::new(fragment);
 
             for mut d in diags {
-                let Some(start) = offset_map.to_host(d.start_offset) else {
+                let Some(start) = offset_map.to_host(d.start_offset()) else {
                     continue;
                 };
-                let end = offset_map.to_host(d.end_offset).unwrap_or(start);
+                let end = offset_map.to_host(d.end_offset()).unwrap_or(start);
                 d.start_offset = start;
                 d.end_offset = end;
                 all_diags.push(d);
@@ -218,7 +234,7 @@ impl EmbeddedAnalyzer {
         fragment: &EmbeddedFragment,
     ) -> Vec<(usize, usize, TokenCategory)> {
         let mut analyzer = self.make_analyzer();
-        let model = analyzer.analyze(&fragment.sql_text, &self.catalog, &self.config);
+        let model = analyzer.analyze(fragment.sql_text(), &self.catalog, &self.config);
         analyzer
             .semantic_tokens(&model)
             .into_iter()
@@ -312,7 +328,7 @@ impl EmbeddedAnalyzer {
     /// Returns diagnostics with SQL-text byte offsets (not yet mapped to host).
     fn validate_fragment(&self, fragment: &EmbeddedFragment) -> Vec<Diagnostic> {
         let mut analyzer = self.make_analyzer();
-        let model = analyzer.analyze(&fragment.sql_text, &self.catalog, &self.config);
+        let model = analyzer.analyze(fragment.sql_text(), &self.catalog, &self.config);
         model.diagnostics().to_vec()
     }
 }
@@ -523,7 +539,7 @@ mod tests {
             .fragment_semantic_tokens(&fragments[0]);
         let datetime_tokens: Vec<_> = tokens
             .iter()
-            .filter(|(off, len, _)| &fragments[0].sql_text[*off..*off + *len] == "datetime")
+            .filter(|(off, len, _)| &fragments[0].sql_text()[*off..*off + *len] == "datetime")
             .collect();
         assert_eq!(
             datetime_tokens.len(),

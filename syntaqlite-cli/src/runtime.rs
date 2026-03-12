@@ -10,10 +10,10 @@ use std::path::PathBuf;
 
 use clap::ValueEnum;
 use syntaqlite::any::{AnyParser, ParseOutcome};
-use syntaqlite::{AnyDialect, FormatError};
+use syntaqlite::AnyDialect;
 use syntaqlite::{
-    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, FormatConfig, Formatter,
-    KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,
+    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, FormatConfig, FormatError,
+    Formatter, KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,
 };
 
 use super::{Cli, Command};
@@ -125,15 +125,13 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             in_place,
             semicolons,
         } => {
-            let config = FormatConfig {
-                line_width,
-                keyword_case: match keyword_case {
+            let config = FormatConfig::default()
+                .with_line_width(line_width)
+                .with_keyword_case(match keyword_case {
                     KeywordCasing::Upper => KeywordCase::Upper,
                     KeywordCasing::Lower => KeywordCase::Lower,
-                },
-                semicolons,
-                ..Default::default()
-            };
+                })
+                .with_semicolons(semicolons);
             require_dialect(dialect).and_then(|d| cmd_fmt(&d, &files, &config, in_place))
         }
         Command::Version => {
@@ -241,13 +239,13 @@ fn cmd_parse_source(
             ParseOutcome::Err(err) => {
                 let start = err.offset().unwrap_or(0);
                 let end = start + err.length().unwrap_or(0);
-                error_diags.push(Diagnostic {
-                    start_offset: start,
-                    end_offset: end,
-                    message: DiagnosticMessage::Other(err.message().to_string()),
-                    severity: Severity::Error,
-                    help: None,
-                });
+                error_diags.push(Diagnostic::new(
+                    start,
+                    end,
+                    DiagnosticMessage::Other(err.message().to_string()),
+                    Severity::Error,
+                    None,
+                ));
             }
             ParseOutcome::Done => break,
         }
@@ -280,7 +278,7 @@ fn cmd_fmt(
                 return Err("--in-place requires file arguments".to_string());
             }
             let out = format_source(dialect, source, config).map_err(|e| {
-                e.render(&mut io::stderr(), source, "<stdin>").ok();
+                render_format_error(&e, source, "<stdin>");
                 format!("<stdin>: {e}")
             })?;
             print!("{out}");
@@ -304,7 +302,7 @@ fn cmd_fmt(
                 }
                 Err(e) => {
                     let label = path.display().to_string();
-                    e.render(&mut io::stderr(), source, &label).ok();
+                    render_format_error(&e, source, &label);
                     errors.push(format!("{label}: {e}"));
                 }
             }
@@ -316,6 +314,21 @@ fn cmd_fmt(
         return Err(errors.join("\n"));
     }
     Ok(())
+}
+
+fn render_format_error(e: &FormatError, source: &str, file: &str) {
+    let start = e.offset().unwrap_or(0);
+    let end = start + e.length().unwrap_or(0);
+    let diag = Diagnostic::new(
+        start,
+        end,
+        DiagnosticMessage::Other(e.message().to_owned()),
+        Severity::Error,
+        None,
+    );
+    DiagnosticRenderer::new(source, file)
+        .render_diagnostic(&diag, &mut io::stderr())
+        .ok();
 }
 
 fn format_source(

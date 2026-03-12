@@ -32,11 +32,11 @@ fn analyze_default(sql: &str) -> Vec<syntaqlite::Diagnostic> {
 fn has_unknown_function(diags: &[syntaqlite::Diagnostic], name: &str) -> bool {
     diags
         .iter()
-        .any(|d| matches!(&d.message, DiagnosticMessage::UnknownFunction { name: n } if n == name))
+        .any(|d| matches!(d.message(), DiagnosticMessage::UnknownFunction { name: n } if n == name))
 }
 
 fn has_parse_error(diags: &[syntaqlite::Diagnostic]) -> bool {
-    diags.iter().any(|d| d.message.is_parse_error())
+    diags.iter().any(|d| d.message().is_parse_error())
 }
 
 // ── SQLITE_ENABLE_MATH_FUNCTIONS (cflag index 36) ────────────────────────────

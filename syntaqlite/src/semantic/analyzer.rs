@@ -584,7 +584,7 @@ impl<'a> ValidationPass<'a> {
         if !is_known {
             let mut candidates = self.catalog.all_relation_names();
             candidates.extend(self.catalog.all_table_function_names());
-            let suggestion = best_suggestion(name, &candidates, self.config.suggestion_threshold);
+            let suggestion = best_suggestion(name, &candidates, self.config.suggestion_threshold());
             self.diagnostics.push(Diagnostic {
                 start_offset: offset,
                 end_offset: offset + name.len(),
@@ -655,7 +655,7 @@ impl<'a> ValidationPass<'a> {
                 FunctionCheckResult::Unknown => {
                     let candidates = self.catalog.all_function_names();
                     let suggestion =
-                        best_suggestion(name, &candidates, self.config.suggestion_threshold);
+                        best_suggestion(name, &candidates, self.config.suggestion_threshold());
                     self.diagnostics.push(Diagnostic {
                         start_offset: offset,
                         end_offset: offset + name.len(),
@@ -719,7 +719,7 @@ impl<'a> ValidationPass<'a> {
                 let tbl = table.expect("qualifier present when TableFoundColumnMissing");
                 let candidates = self.catalog.all_column_names(Some(tbl));
                 let suggestion =
-                    best_suggestion(column, &candidates, self.config.suggestion_threshold);
+                    best_suggestion(column, &candidates, self.config.suggestion_threshold());
                 self.diagnostics.push(Diagnostic {
                     start_offset: offset,
                     end_offset: offset + column.len(),
@@ -740,7 +740,7 @@ impl<'a> ValidationPass<'a> {
                 }
                 let candidates = self.catalog.all_column_names(None);
                 let suggestion =
-                    best_suggestion(column, &candidates, self.config.suggestion_threshold);
+                    best_suggestion(column, &candidates, self.config.suggestion_threshold());
                 self.diagnostics.push(Diagnostic {
                     start_offset: offset,
                     end_offset: offset + column.len(),
@@ -1009,10 +1009,7 @@ mod tests {
     }
 
     fn strict() -> ValidationConfig {
-        ValidationConfig {
-            strict_schema: true,
-            suggestion_threshold: 2,
-        }
+        ValidationConfig::default().with_strict_schema(true)
     }
 
     fn lenient() -> ValidationConfig {
