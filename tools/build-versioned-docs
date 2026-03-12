@@ -49,17 +49,29 @@ for tag in $TAGS; do
   git -C "$REPO_ROOT" worktree remove --force "$worktree_dir" 2>/dev/null || true
 done
 
+# --- Find latest release tag (last in sort -V order) that was actually built ---
+LATEST=""
+for tag in $TAGS; do
+  if [ -d "$OUT_DIR/v$tag" ]; then
+    LATEST="$tag"
+  fi
+done
+
 # --- Generate versions.json ---
 echo "==> Generating versions.json"
 
+# main always first
 versions='['
 versions+='{"version":"main","path":"/main/","label":"main"}'
 
-# Add tags in reverse order (newest first)
+# Add tags in reverse order (newest first), mark latest
 for tag in $(echo "$TAGS" | tail -r 2>/dev/null || echo "$TAGS" | tac 2>/dev/null || true); do
-  # Only include tags that were actually built
   if [ -d "$OUT_DIR/v$tag" ]; then
-    versions+=",{\"version\":\"v$tag\",\"path\":\"/v$tag/\",\"label\":\"v$tag\"}"
+    if [ "$tag" = "$LATEST" ]; then
+      versions+=",{\"version\":\"v$tag\",\"path\":\"/v$tag/\",\"label\":\"v$tag (latest)\"}"
+    else
+      versions+=",{\"version\":\"v$tag\",\"path\":\"/v$tag/\",\"label\":\"v$tag\"}"
+    fi
   fi
 done
 versions+=']'
@@ -71,12 +83,18 @@ for dir in "$OUT_DIR"/*/; do
   cp "$OUT_DIR/versions.json" "$dir"
 done
 
-# --- Root redirect to /head/ ---
-cat > "$OUT_DIR/index.html" <<'REDIRECT'
+# --- Root redirect: latest release if available, otherwise main ---
+if [ -n "$LATEST" ]; then
+  REDIRECT_TARGET="/v$LATEST/"
+else
+  REDIRECT_TARGET="/main/"
+fi
+
+cat > "$OUT_DIR/index.html" <<REDIRECT
 <!DOCTYPE html>
 <html>
-<head><meta http-equiv="refresh" content="0;url=/main/"></head>
-<body><a href="/main/">Redirecting to docs...</a></body>
+<head><meta http-equiv="refresh" content="0;url=$REDIRECT_TARGET"></head>
+<body><a href="$REDIRECT_TARGET">Redirecting to docs...</a></body>
 </html>
 REDIRECT
 
