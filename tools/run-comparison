@@ -2,22 +2,125 @@
 # Run the competitive comparison and optionally write markdown to docs.
 #
 # Usage:
-#   tools/run-comparison                       # terminal output, all categories
-#   tools/run-comparison validator             # terminal output, one category
-#   tools/run-comparison --markdown            # write markdown to web/docs/content/reference/
-#   tools/run-comparison --markdown validator  # write one category to docs
+#   tools/run-comparison --setup                # install all competitor tools
+#   tools/run-comparison                        # terminal output, all categories
+#   tools/run-comparison validator              # terminal output, one category
+#   tools/run-comparison --markdown             # write markdown to web/docs/content/reference/
+#   tools/run-comparison --markdown validator   # write one category to docs
 
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$DIR/.." && pwd)"
 DOCS_DIR="$REPO/web/docs/content/reference"
 RUNNER="$REPO/python/syntaqlite/comparison/run.py"
+COMP_DIR="$REPO/tests/comparison"
+
+# ── Setup ──────────────────────────────────────────────────────────────
+
+do_setup() {
+    echo "==> Installing comparison dependencies..."
+    echo ""
+
+    # 1. npm local deps (sql-parser-cst, node-sql-parser, prettier, sql-lint)
+    echo "--- npm install (tests/comparison/) ---"
+    (cd "$COMP_DIR" && npm install)
+    echo ""
+
+    # 2. npm global tools (sql-formatter, sql-language-server)
+    echo "--- npm install global tools ---"
+    npm install -g sql-formatter sql-language-server
+    echo ""
+
+    # 3. Python deps via uv (sqlglot, sqlfluff, sqlfmt)
+    echo "--- uv sync (tests/comparison/) ---"
+    if ! command -v uv &>/dev/null; then
+        echo "ERROR: 'uv' not found. Install it: https://docs.astral.sh/uv/getting-started/installation/"
+        exit 1
+    fi
+    (cd "$COMP_DIR" && uv sync)
+    echo ""
+
+    # 4. Rust parser benchmarks (lemon-rs, sqlparser-rs)
+    echo "--- cargo build (tests/comparison/parser/) ---"
+    cargo build --release --manifest-path "$COMP_DIR/parser/Cargo.toml" --target-dir "$COMP_DIR/parser/target"
+    echo ""
+
+    # 5. Cargo-installed tools
+    echo "--- cargo install (sleek) ---"
+    cargo install sleek 2>/dev/null || true
+    echo ""
+
+    # 6. Homebrew tools
+    echo "--- brew install (sqruff, hyperfine) ---"
+    for tool in sqruff hyperfine; do
+        if ! command -v "$tool" &>/dev/null; then
+            brew install "$tool"
+        else
+            echo "$tool already installed"
+        fi
+    done
+    echo ""
+
+    # 7. Go tools (sqls)
+    echo "--- go install (sqls) ---"
+    if command -v go &>/dev/null; then
+        go install github.com/sqls-server/sqls@latest 2>/dev/null || true
+    else
+        echo "WARN: 'go' not found, skipping sqls install"
+    fi
+    echo ""
+
+    # 8. Build syntaqlite itself
+    echo "--- building syntaqlite CLI ---"
+    "$REPO/tools/cargo" build --release -p syntaqlite-cli
+    echo ""
+
+    echo "==> Setup complete."
+}
+
+# ── Preflight check ───────────────────────────────────────────────────
+
+check_deps() {
+    local missing=()
+
+    # syntaqlite binary
+    [ -x "$REPO/target/release/syntaqlite" ] || missing+=("syntaqlite (run: tools/cargo build --release -p syntaqlite-cli)")
+
+    # Rust parser binaries
+    [ -x "$COMP_DIR/parser/target/release/lemon-rs-parse" ] || missing+=("lemon-rs-parse (run: cargo build --release --manifest-path tests/comparison/parser/Cargo.toml)")
+    [ -x "$COMP_DIR/parser/target/release/sqlparser-parse" ] || missing+=("sqlparser-parse")
+
+    # npm local deps
+    [ -d "$COMP_DIR/node_modules/sql-parser-cst" ] || missing+=("sql-parser-cst (run: cd tests/comparison && npm install)")
+    [ -d "$COMP_DIR/node_modules/node-sql-parser" ] || missing+=("node-sql-parser")
+
+    # Global/PATH tools
+    command -v sql-formatter &>/dev/null || missing+=("sql-formatter (run: npm install -g sql-formatter)")
+    command -v hyperfine &>/dev/null || missing+=("hyperfine (run: brew install hyperfine)")
+    command -v uv &>/dev/null || missing+=("uv (install: https://docs.astral.sh/uv/)")
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "ERROR: Missing comparison dependencies:" >&2
+        for dep in "${missing[@]}"; do
+            echo "  - $dep" >&2
+        done
+        echo "" >&2
+        echo "Run 'tools/run-comparison --setup' to install all dependencies." >&2
+        exit 1
+    fi
+}
+
+# ── Main ───────────────────────────────────────────────────────────────
 
 output_mode="terminal"
 categories=()
 
 for arg in "$@"; do
     case "$arg" in
+        --setup)
+            do_setup
+            exit 0
+            ;;
         --markdown|-m)
             output_mode="markdown"
             ;;
@@ -26,6 +129,8 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+check_deps
 
 if [ "$output_mode" = "markdown" ]; then
     summary_file="$DOCS_DIR/comparison.md"

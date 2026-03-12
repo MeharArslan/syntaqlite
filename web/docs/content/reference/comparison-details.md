@@ -66,58 +66,58 @@ Legend: **PASS** = correctly parses valid SQL, **FAIL** = rejects valid SQL, **F
 
 | Test                                   | sqlite3 | syntaqlite | lemon-rs | sql-parser-cst | sqlglot[c] | sqlfluff | sqlparser-rs | node-sql-parser |
 | -------------------------------------- | :-----: | :--------: | :------: | :------------: | :--------: | :------: | :----------: | :-------------: |
-| T01: Multi ON CONFLICT UPSERT + RETURN |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T02: Recursive CTE + MATERIALIZED / NO |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T03: CREATE TABLE STRICT + WITHOUT ROW |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T04: UPDATE FROM + INDEXED BY          |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T05: CREATE TRIGGER + RAISE + WHEN + F |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T06: FILTER clause + IIF + NULLS LAST  |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T07: ATTACH DATABASE                   |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T08: INSERT OR REPLACE                 |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T09: CREATE VIRTUAL TABLE (FTS5)       |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T10: PRAGMA                            |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T11: EXPLAIN QUERY PLAN                |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T12: ALTER TABLE DROP COLUMN           |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T13: ALTER TABLE RENAME COLUMN         |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T14: REINDEX                           |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T15: Window frame RANGE BETWEEN        |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T16: CREATE INDEX with WHERE (partial  |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T17: REPLACE statement                 |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T18: Nested window functions + EXCLUDE |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T19: GLOB and LIKE with ESCAPE         |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T20: INSERT with multiple VALUES + ON  |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T21: Complex subquery expressions      |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T22: ANALYZE                           |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T23: SAVEPOINT / RELEASE / ROLLBACK TO |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T24: DROP TABLE IF EXISTS              |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T25: CREATE TABLE AS SELECT            |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T26: DETACH DATABASE                   |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T27: UPSERT with complex expressions i |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T28: WITH (non-recursive) + DELETE ... |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T29: UPDATE ... RETURNING              |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T30: RIGHT JOIN + IS DISTINCT FROM     |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T31: FULL OUTER JOIN                   |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T32: JSON -> and ->> operators         |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T33: Numeric literals with underscores |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T34: Multiple WINDOW definitions + nth |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T35: HAVING without GROUP BY (3.39+)   |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T36: IS NOT DISTINCT FROM in complex e |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T37: Blob literals + CAST chains       |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T38: GENERATED ALWAYS AS (VIRTUAL vs S |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T39: Deeply nested CTE + compound SELE |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
-| T40: Window GROUPS frame + EXCLUDE TIE |   OK    |    PASS    |   FAIL   |      FAIL      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
+| T01: Multi ON CONFLICT UPSERT + RETURN |   OK    |    PASS    |   PASS   |      PASS      |    FAIL    |   FAIL   |     FAIL     |      FAIL       |
+| T02: Recursive CTE + MATERIALIZED / NO |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     FAIL     |      FAIL       |
+| T03: CREATE TABLE STRICT + WITHOUT ROW |   OK    |    PASS    |   PASS   |      PASS      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
+| T04: UPDATE FROM + INDEXED BY          |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     FAIL     |      FAIL       |
+| T05: CREATE TRIGGER + RAISE + WHEN + F |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     FAIL     |      PASS       |
+| T06: FILTER clause + IIF + NULLS LAST  |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T07: ATTACH DATABASE                   |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     PASS     |      PASS       |
+| T08: INSERT OR REPLACE                 |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T09: CREATE VIRTUAL TABLE (FTS5)       |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     FAIL     |      FAIL       |
+| T10: PRAGMA                            |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T11: EXPLAIN QUERY PLAN                |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     PASS     |      FAIL       |
+| T12: ALTER TABLE DROP COLUMN           |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T13: ALTER TABLE RENAME COLUMN         |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T14: REINDEX                           |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     FAIL     |      FAIL       |
+| T15: Window frame RANGE BETWEEN        |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T16: CREATE INDEX with WHERE (partial  |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T17: REPLACE statement                 |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T18: Nested window functions + EXCLUDE |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     FAIL     |      FAIL       |
+| T19: GLOB and LIKE with ESCAPE         |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     FAIL     |      FAIL       |
+| T20: INSERT with multiple VALUES + ON  |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T21: Complex subquery expressions      |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T22: ANALYZE                           |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     FAIL     |      FAIL       |
+| T23: SAVEPOINT / RELEASE / ROLLBACK TO |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     PASS     |      FAIL       |
+| T24: DROP TABLE IF EXISTS              |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T25: CREATE TABLE AS SELECT            |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T26: DETACH DATABASE                   |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   FAIL   |     FAIL     |      FAIL       |
+| T27: UPSERT with complex expressions i |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T28: WITH (non-recursive) + DELETE ... |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     FAIL     |      FAIL       |
+| T29: UPDATE ... RETURNING              |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T30: RIGHT JOIN + IS DISTINCT FROM     |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T31: FULL OUTER JOIN                   |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T32: JSON -> and ->> operators         |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T33: Numeric literals with underscores |   OK    |    PASS    |   PASS   |      FAIL      |    FAIL    |   FAIL   |     FAIL     |      FAIL       |
+| T34: Multiple WINDOW definitions + nth |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T35: HAVING without GROUP BY (3.39+)   |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T36: IS NOT DISTINCT FROM in complex e |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T37: Blob literals + CAST chains       |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      PASS       |
+| T38: GENERATED ALWAYS AS (VIRTUAL vs S |   OK    |    PASS    |   PASS   |      PASS      |    FAIL    |   PASS   |     PASS     |      PASS       |
+| T39: Deeply nested CTE + compound SELE |   OK    |    PASS    |   PASS   |      PASS      |    PASS    |   PASS   |     PASS     |      FAIL       |
+| T40: Window GROUPS frame + EXCLUDE TIE |   OK    |    PASS    |   PASS   |      PASS      |    FAIL    |   PASS   |     FAIL     |      FAIL       |
 
 ### Scoreboard
 
 | Tool            | Correct                           | Rejects Valid | Accepts Invalid |
 | --------------- | --------------------------------- | ------------: | --------------: |
 | syntaqlite      | 40/40 (100%) ████████████████████ |             - |               - |
-| sqlfluff        | 40/40 (100%) ████████████████████ |             - |               - |
-| lemon-rs        | 0/40 (0%)                         |            40 |               - |
-| sql-parser-cst  | 0/40 (0%)                         |            40 |               - |
-| sqlglot[c]      | 0/40 (0%)                         |            40 |               - |
-| sqlparser-rs    | 0/40 (0%)                         |            40 |               - |
-| node-sql-parser | 0/40 (0%)                         |            40 |               - |
+| lemon-rs        | 40/40 (100%) ████████████████████ |             - |               - |
+| sql-parser-cst  | 39/40 (97%) ███████████████████   |             1 |               - |
+| sqlglot[c]      | 35/40 (87%) █████████████████     |             5 |               - |
+| sqlfluff        | 29/40 (72%) ██████████████        |            11 |               - |
+| sqlparser-rs    | 26/40 (65%) █████████████         |            14 |               - |
+| node-sql-parser | 15/40 (37%) ███████               |            25 |               - |
 
 ## Parse Speed
 
@@ -128,14 +128,26 @@ Legend: **PASS** = correctly parses valid SQL, **FAIL** = rejects valid SQL, **F
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.8 ± 0.7 | 1.6 | 24.4 | 1.00 |
+| `syntaqlite` | 1.7 ± 0.1 | 1.6 | 4.0 | 1.16 ± 0.09 |
+| `lemon-rs` | 1.5 ± 0.1 | 1.4 | 2.4 | 1.00 |
+| `sql-parser-cst` | 75.7 ± 2.8 | 72.9 | 91.1 | 51.58 ± 2.96 |
+| `sqlglot[c]` | 86.3 ± 8.2 | 81.8 | 124.0 | 58.80 ± 6.16 |
+| `sqlparser-rs` | 1.8 ± 0.2 | 1.7 | 4.9 | 1.25 ± 0.13 |
+| `node-sql-parser` | 77.5 ± 12.4 | 71.7 | 144.3 | 52.84 ± 8.80 |
+| `sqlfluff` | 474.3 ± 19.0 | 448.2 | 511.8 | 323.24 ± 19.32 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.6 ± 0.3 | 2.4 | 7.3 | 1.00 |
+| `syntaqlite` | 2.7 ± 0.5 | 2.4 | 12.0 | 1.00 |
+| `lemon-rs` | 4.2 ± 0.1 | 4.0 | 5.0 | 1.58 ± 0.32 |
+| `sql-parser-cst` | 142.8 ± 4.7 | 139.8 | 162.0 | 53.69 ± 10.79 |
+| `sqlglot[c]` | 181.8 ± 1.7 | 179.6 | 184.5 | 68.33 ± 13.56 |
+| `sqlparser-rs` | 11.0 ± 0.4 | 10.4 | 13.5 | 4.15 ± 0.84 |
+| `node-sql-parser` | 153.9 ± 2.4 | 150.9 | 159.8 | 57.84 ± 11.50 |
+| `sqlfluff` | 260.3 ± 13.2 | 253.2 | 298.6 | 97.86 ± 20.02 |
 
 
 
@@ -196,69 +208,77 @@ For each formatter: does the formatted output still pass real SQLite?
 
 | Test                                   | syntaqlite | prettier-cst | sql-formatter | sqlglot[c] |  sleek  |  sqruff |
 | -------------------------------------- | :--------: | :----------: | :-----------: | :--------: | :-----: | :-----: |
-| T01: Multi ON CONFLICT UPSERT + RETURN |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T02: Recursive CTE + MATERIALIZED / NO |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T03: CREATE TABLE STRICT + WITHOUT ROW |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T04: UPDATE FROM + INDEXED BY          |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T05: CREATE TRIGGER + RAISE + WHEN + F |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T06: FILTER clause + IIF + NULLS LAST  |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T07: ATTACH DATABASE                   |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T08: INSERT OR REPLACE                 |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T09: CREATE VIRTUAL TABLE (FTS5)       |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T10: PRAGMA                            |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T11: EXPLAIN QUERY PLAN                |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T12: ALTER TABLE DROP COLUMN           |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T13: ALTER TABLE RENAME COLUMN         |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T14: REINDEX                           |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T15: Window frame RANGE BETWEEN        |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T16: CREATE INDEX with WHERE (partial  |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T17: REPLACE statement                 |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T18: Nested window functions + EXCLUDE |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T19: GLOB and LIKE with ESCAPE         |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T20: INSERT with multiple VALUES + ON  |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T21: Complex subquery expressions      |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T22: ANALYZE                           |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T23: SAVEPOINT / RELEASE / ROLLBACK TO |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T24: DROP TABLE IF EXISTS              |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T25: CREATE TABLE AS SELECT            |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T26: DETACH DATABASE                   |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T27: UPSERT with complex expressions i |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T28: WITH (non-recursive) + DELETE ... |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T29: UPDATE ... RETURNING              |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T30: RIGHT JOIN + IS DISTINCT FROM     |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T31: FULL OUTER JOIN                   |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T32: JSON -> and ->> operators         |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    | CORRUPT |
+| T01: Multi ON CONFLICT UPSERT + RETURN |     OK     |      OK      |      OK       |    FAIL    |   OK    |   OK    |
+| T02: Recursive CTE + MATERIALIZED / NO |     OK     |      OK      |      OK       |  CORRUPT   |   OK    |   OK    |
+| T03: CREATE TABLE STRICT + WITHOUT ROW |     OK     |      OK      |      OK       |    FAIL    |   OK    |   OK    |
+| T04: UPDATE FROM + INDEXED BY          |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T05: CREATE TRIGGER + RAISE + WHEN + F |     OK     |      OK      |      OK       |  CORRUPT   |   OK    |   OK    |
+| T06: FILTER clause + IIF + NULLS LAST  |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T07: ATTACH DATABASE                   |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T08: INSERT OR REPLACE                 |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T09: CREATE VIRTUAL TABLE (FTS5)       |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T10: PRAGMA                            |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T11: EXPLAIN QUERY PLAN                |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T12: ALTER TABLE DROP COLUMN           |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T13: ALTER TABLE RENAME COLUMN         |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T14: REINDEX                           |     OK     |      OK      |      OK       |  CORRUPT   |   OK    |   OK    |
+| T15: Window frame RANGE BETWEEN        |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T16: CREATE INDEX with WHERE (partial  |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T17: REPLACE statement                 |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T18: Nested window functions + EXCLUDE |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T19: GLOB and LIKE with ESCAPE         |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T20: INSERT with multiple VALUES + ON  |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T21: Complex subquery expressions      |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T22: ANALYZE                           |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T23: SAVEPOINT / RELEASE / ROLLBACK TO |     OK     |      OK      |      OK       |  CORRUPT   |   OK    |   OK    |
+| T24: DROP TABLE IF EXISTS              |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T25: CREATE TABLE AS SELECT            |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T26: DETACH DATABASE                   |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T27: UPSERT with complex expressions i |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T28: WITH (non-recursive) + DELETE ... |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T29: UPDATE ... RETURNING              |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T30: RIGHT JOIN + IS DISTINCT FROM     |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T31: FULL OUTER JOIN                   |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T32: JSON -> and ->> operators         |     OK     |      OK      |      OK       |     OK     |   OK    | CORRUPT |
 | T33: Numeric literals with underscores |     OK     |     FAIL     |     FAIL      |    FAIL    | CORRUPT |   OK    |
-| T34: Multiple WINDOW definitions + nth |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T35: HAVING without GROUP BY (3.39+)   |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T36: IS NOT DISTINCT FROM in complex e |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T37: Blob literals + CAST chains       |     OK     |     FAIL     |     FAIL      |    FAIL    | CORRUPT |   OK    |
-| T38: GENERATED ALWAYS AS (VIRTUAL vs S |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    | CORRUPT |
-| T39: Deeply nested CTE + compound SELE |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
-| T40: Window GROUPS frame + EXCLUDE TIE |     OK     |     FAIL     |     FAIL      |    FAIL    |   OK    |   OK    |
+| T34: Multiple WINDOW definitions + nth |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T35: HAVING without GROUP BY (3.39+)   |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T36: IS NOT DISTINCT FROM in complex e |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T37: Blob literals + CAST chains       |     OK     |      OK      |      OK       |     OK     | CORRUPT |   OK    |
+| T38: GENERATED ALWAYS AS (VIRTUAL vs S |     OK     |      OK      |      OK       |    FAIL    |   OK    | CORRUPT |
+| T39: Deeply nested CTE + compound SELE |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T40: Window GROUPS frame + EXCLUDE TIE |     OK     |      OK      |      OK       |    FAIL    |   OK    |   OK    |
 
 ### Scoreboard
 
 | Tool          | Formats | SQLite OK | Corrupt |
 | ------------- | ------: | --------: | ------: |
 | syntaqlite    |   40/40 |     40/40 |       0 |
-| prettier-cst  |    0/40 |      0/40 |       0 |
-| sql-formatter |    0/40 |      0/40 |       0 |
-| sqlglot[c]    |    0/40 |      0/40 |       0 |
+| prettier-cst  |   39/40 |     39/40 |       0 |
+| sql-formatter |   39/40 |     39/40 |       0 |
+| sqlglot[c]    |   35/40 |     31/40 |       4 |
 | sleek         |   40/40 |     38/40 |       2 |
 | sqruff        |   40/40 |     38/40 |       2 |
 
 ### Corruption Details
 
-| Tool   | Test                                                               | Error                                                        |
-| ------ | ------------------------------------------------------------------ | ------------------------------------------------------------ |
-| sqruff | T32: JSON -> and ->> operators                                     | Error: in prepare, near ">": syntax error
+| Tool       | Test                                                               | Error                                                        |
+| ---------- | ------------------------------------------------------------------ | ------------------------------------------------------------ |
+| sqlglot[c] | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | Error: in prepare, no such column: x
+  LIZED (   VALUES      |
+| sqlglot[c] | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | Error: in prepare, near "SELECT": syntax error
+  yees', OLD. |
+| sqlglot[c] | T14: REINDEX                                                       | Error: in prepare, near "AS": syntax error
+  REINDEX AS idx_ |
+| sqlglot[c] | T23: SAVEPOINT / RELEASE / ROLLBACK TO                             | Error: in prepare, near "AS": syntax error
+  SAVEPOINT AS my |
+| sqruff     | T32: JSON -> and ->> operators                                     | Error: in prepare, near ">": syntax error
   EXPLAIN SELECT   |
-| sleek  | T33: Numeric literals with underscores                             | Error: in prepare, near "AS": syntax error
+| sleek      | T33: Numeric literals with underscores                             | Error: in prepare, near "AS": syntax error
   EXPLAIN SELECT  |
-| sleek  | T37: Blob literals + CAST chains                                   | Error: in prepare, near "AS": syntax error
+| sleek      | T37: Blob literals + CAST chains                                   | Error: in prepare, near "AS": syntax error
   EXPLAIN SELECT  |
-| sqruff | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | Error: in prepare, near "|": syntax error
+| sqruff     | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | Error: in prepare, near "|": syntax error
   abel TEXT GENERA |
 
 ## Format Speed
@@ -270,23 +290,33 @@ For each formatter: does the formatted output still pass real SQLite?
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.8 ± 0.1 | 1.7 | 3.2 | 1.00 |
+| `syntaqlite` | 1.9 ± 0.1 | 1.7 | 3.0 | 1.00 |
+| `prettier-cst` | 423.2 ± 23.0 | 395.2 | 472.0 | 226.26 ± 19.82 |
+| `sql-formatter` | 78.2 ± 4.7 | 74.9 | 95.8 | 41.78 ± 3.82 |
+| `sqlglot[c]` | 89.1 ± 1.4 | 86.3 | 92.0 | 47.63 ± 3.36 |
+| `sleek` | 8.7 ± 0.7 | 7.7 | 13.1 | 4.64 ± 0.51 |
+| `sqruff` | 40.2 ± 0.9 | 38.9 | 42.9 | 21.48 ± 1.55 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 4.9 ± 0.6 | 4.7 | 14.4 | 1.00 |
+| `syntaqlite` | 5.0 ± 0.2 | 4.7 | 6.4 | 1.00 |
+| `prettier-cst` | 585.4 ± 22.8 | 555.5 | 614.2 | 118.21 ± 6.63 |
+| `sql-formatter` | 202.4 ± 6.9 | 195.1 | 216.1 | 40.87 ± 2.16 |
+| `sqlglot[c]` | 262.7 ± 1.6 | 260.2 | 265.8 | 53.04 ± 2.16 |
+| `sleek` | 27.0 ± 0.6 | 25.9 | 29.6 | 5.44 ± 0.25 |
+| `sqruff` | 3366.2 ± 137.9 | 3158.8 | 3490.6 | 679.67 ± 39.03 |
 
 
 ### Slow Tools (single timed run)
 
-| Tool          | Time |
-| ------------- | ---: |
-| sqlfmt (1x)   | 10ms |
-| sqlfmt (30x)  |  8ms |
-| sqlfluff (1x) |  7ms |
+| Tool          |  Time |
+| ------------- | ----: |
+| sqlfmt (1x)   | 522ms |
+| sqlfmt (30x)  | 313ms |
+| sqlfluff (1x) | 187ms |
 
 
 # Validator Comparison
@@ -325,12 +355,12 @@ Static semantic analysis — offline, no database needed. Finds **both** errors 
 
 ```
 error: table 'monthly_stats' has 2 values for 3 columns
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmp761p3gzh.sql:29:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpqzdko0xi.sql:29:3
    |
 29 |   monthly_stats(month, revenue, order_count) AS (
    |   ^~~~~~~~~~~~~
 warning: unknown function 'ROUDN'
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmp761p3gzh.sql:41:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpqzdko0xi.sql:41:3
    |
 41 |   ROUDN(ms.revenue / ms.order_count, 2) AS avg_order
    |   ^~~~~
@@ -358,7 +388,7 @@ Runtime via LSP — wraps sqlite3, same single error:
 Structural checks only:
 
 ```
-/var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmp558yozg0.sql:1 sql-lint was unable to lint the following query "WITH...
+/var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpnv0fbs3q.sql:1 sql-lint was unable to lint the following query "WITH...
 ```
 
 ## Error Detection Accuracy
@@ -410,20 +440,20 @@ Schema: `users`, `orders`, `products`, `order_items`. Ground truth: sqlite3.
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.9 ± 0.2 | 1.8 | 4.3 | 1.00 |
-| `sqlite3` | 5.3 ± 1.9 | 4.2 | 27.1 | 2.73 ± 1.04 |
-| `sqlite-runner-lsp` | 10053.7 ± 11.6 | 10041.2 | 10072.9 | 5175.61 ± 551.14 |
-| `sql-lint` | 489.6 ± 25.1 | 459.2 | 534.1 | 252.06 ± 29.80 |
+| `syntaqlite` | 2.0 ± 0.2 | 1.8 | 3.5 | 1.00 |
+| `sqlite3` | 4.9 ± 0.5 | 4.1 | 7.4 | 2.40 ± 0.34 |
+| `sqlite-runner-lsp` | 10062.5 ± 11.3 | 10041.4 | 10073.1 | 4972.36 ± 492.26 |
+| `sql-lint` | 351.8 ± 9.2 | 343.0 | 374.0 | 173.85 ± 17.80 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 6.8 ± 0.2 | 6.5 | 9.1 | 1.00 |
-| `sqlite3` | 9.5 ± 0.5 | 8.9 | 13.6 | 1.40 ± 0.08 |
-| `sqlite-runner-lsp` | 10072.3 ± 3.0 | 10069.9 | 10077.4 | 1487.39 ± 46.78 |
-| `sql-lint` | 752.2 ± 152.0 | 569.1 | 898.5 | 111.08 ± 22.71 |
+| `syntaqlite` | 7.4 ± 0.6 | 6.9 | 14.3 | 1.00 |
+| `sqlite3` | 10.0 ± 0.5 | 9.2 | 13.9 | 1.35 ± 0.13 |
+| `sqlite-runner-lsp` | 10069.4 ± 11.8 | 10055.6 | 10088.1 | 1365.78 ± 107.71 |
+| `sql-lint` | 379.7 ± 4.8 | 373.5 | 388.6 | 51.51 ± 4.11 |
 
 
 
@@ -477,8 +507,8 @@ Time to start server, send document, receive diagnostics, and exit:
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 39.2 ± 5.8 | 34.4 | 63.9 | 1.00 |
-| `sqls` | 10059.2 ± 7.9 | 10053.2 | 10071.7 | 256.41 ± 37.86 |
-| `sql-language-server` | 659.1 ± 25.3 | 640.3 | 702.7 | 16.80 ± 2.56 |
+| `syntaqlite` | 32.2 ± 1.0 | 30.1 | 35.2 | 1.00 |
+| `sqls` | 10055.0 ± 14.0 | 10040.8 | 10071.4 | 312.71 ± 9.26 |
+| `sql-language-server` | 471.0 ± 3.1 | 465.4 | 474.5 | 14.65 ± 0.44 |
 
 

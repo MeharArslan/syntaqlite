@@ -16,12 +16,12 @@ SQLite SQL tooling landscape. See [detailed results](@/reference/comparison-deta
 | Tool            | Correct                           | Rejects Valid | Accepts Invalid |
 | --------------- | --------------------------------- | ------------: | --------------: |
 | syntaqlite      | 40/40 (100%) ████████████████████ |             - |               - |
-| sqlfluff        | 40/40 (100%) ████████████████████ |             - |               - |
-| lemon-rs        | 0/40 (0%)                         |            40 |               - |
-| sql-parser-cst  | 0/40 (0%)                         |            40 |               - |
-| sqlglot[c]      | 0/40 (0%)                         |            40 |               - |
-| sqlparser-rs    | 0/40 (0%)                         |            40 |               - |
-| node-sql-parser | 0/40 (0%)                         |            40 |               - |
+| lemon-rs        | 40/40 (100%) ████████████████████ |             - |               - |
+| sql-parser-cst  | 39/40 (97%) ███████████████████   |             1 |               - |
+| sqlglot[c]      | 35/40 (87%) █████████████████     |             5 |               - |
+| sqlfluff        | 29/40 (72%) ██████████████        |            11 |               - |
+| sqlparser-rs    | 26/40 (65%) █████████████         |            14 |               - |
+| node-sql-parser | 15/40 (37%) ███████               |            25 |               - |
 
 ## Speed
 
@@ -29,14 +29,26 @@ SQLite SQL tooling landscape. See [detailed results](@/reference/comparison-deta
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.8 ± 0.7 | 1.6 | 24.4 | 1.00 |
+| `syntaqlite` | 1.7 ± 0.1 | 1.6 | 4.0 | 1.16 ± 0.09 |
+| `lemon-rs` | 1.5 ± 0.1 | 1.4 | 2.4 | 1.00 |
+| `sql-parser-cst` | 75.7 ± 2.8 | 72.9 | 91.1 | 51.58 ± 2.96 |
+| `sqlglot[c]` | 86.3 ± 8.2 | 81.8 | 124.0 | 58.80 ± 6.16 |
+| `sqlparser-rs` | 1.8 ± 0.2 | 1.7 | 4.9 | 1.25 ± 0.13 |
+| `node-sql-parser` | 77.5 ± 12.4 | 71.7 | 144.3 | 52.84 ± 8.80 |
+| `sqlfluff` | 474.3 ± 19.0 | 448.2 | 511.8 | 323.24 ± 19.32 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.6 ± 0.3 | 2.4 | 7.3 | 1.00 |
+| `syntaqlite` | 2.7 ± 0.5 | 2.4 | 12.0 | 1.00 |
+| `lemon-rs` | 4.2 ± 0.1 | 4.0 | 5.0 | 1.58 ± 0.32 |
+| `sql-parser-cst` | 142.8 ± 4.7 | 139.8 | 162.0 | 53.69 ± 10.79 |
+| `sqlglot[c]` | 181.8 ± 1.7 | 179.6 | 184.5 | 68.33 ± 13.56 |
+| `sqlparser-rs` | 11.0 ± 0.4 | 10.4 | 13.5 | 4.15 ± 0.84 |
+| `node-sql-parser` | 153.9 ± 2.4 | 150.9 | 159.8 | 57.84 ± 11.50 |
+| `sqlfluff` | 260.3 ± 13.2 | 253.2 | 298.6 | 97.86 ± 20.02 |
 
 
 # Formatter
@@ -48,9 +60,9 @@ Round-trip correctness (format then validate with sqlite3) and speed.
 | Tool          | Formats | SQLite OK | Corrupt |
 | ------------- | ------: | --------: | ------: |
 | syntaqlite    |   40/40 |     40/40 |       0 |
-| prettier-cst  |    0/40 |      0/40 |       0 |
-| sql-formatter |    0/40 |      0/40 |       0 |
-| sqlglot[c]    |    0/40 |      0/40 |       0 |
+| prettier-cst  |   39/40 |     39/40 |       0 |
+| sql-formatter |   39/40 |     39/40 |       0 |
+| sqlglot[c]    |   35/40 |     31/40 |       4 |
 | sleek         |   40/40 |     38/40 |       2 |
 | sqruff        |   40/40 |     38/40 |       2 |
 
@@ -60,14 +72,24 @@ Round-trip correctness (format then validate with sqlite3) and speed.
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.8 ± 0.1 | 1.7 | 3.2 | 1.00 |
+| `syntaqlite` | 1.9 ± 0.1 | 1.7 | 3.0 | 1.00 |
+| `prettier-cst` | 423.2 ± 23.0 | 395.2 | 472.0 | 226.26 ± 19.82 |
+| `sql-formatter` | 78.2 ± 4.7 | 74.9 | 95.8 | 41.78 ± 3.82 |
+| `sqlglot[c]` | 89.1 ± 1.4 | 86.3 | 92.0 | 47.63 ± 3.36 |
+| `sleek` | 8.7 ± 0.7 | 7.7 | 13.1 | 4.64 ± 0.51 |
+| `sqruff` | 40.2 ± 0.9 | 38.9 | 42.9 | 21.48 ± 1.55 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 4.9 ± 0.6 | 4.7 | 14.4 | 1.00 |
+| `syntaqlite` | 5.0 ± 0.2 | 4.7 | 6.4 | 1.00 |
+| `prettier-cst` | 585.4 ± 22.8 | 555.5 | 614.2 | 118.21 ± 6.63 |
+| `sql-formatter` | 202.4 ± 6.9 | 195.1 | 216.1 | 40.87 ± 2.16 |
+| `sqlglot[c]` | 262.7 ± 1.6 | 260.2 | 265.8 | 53.04 ± 2.16 |
+| `sleek` | 27.0 ± 0.6 | 25.9 | 29.6 | 5.44 ± 0.25 |
+| `sqruff` | 3366.2 ± 137.9 | 3158.8 | 3490.6 | 679.67 ± 39.03 |
 
 
 # Validator
@@ -102,20 +124,20 @@ Query with 2 errors: CTE declares 3 columns but SELECT produces 2, and typo `ROU
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.9 ± 0.2 | 1.8 | 4.3 | 1.00 |
-| `sqlite3` | 5.3 ± 1.9 | 4.2 | 27.1 | 2.73 ± 1.04 |
-| `sqlite-runner-lsp` | 10053.7 ± 11.6 | 10041.2 | 10072.9 | 5175.61 ± 551.14 |
-| `sql-lint` | 489.6 ± 25.1 | 459.2 | 534.1 | 252.06 ± 29.80 |
+| `syntaqlite` | 2.0 ± 0.2 | 1.8 | 3.5 | 1.00 |
+| `sqlite3` | 4.9 ± 0.5 | 4.1 | 7.4 | 2.40 ± 0.34 |
+| `sqlite-runner-lsp` | 10062.5 ± 11.3 | 10041.4 | 10073.1 | 4972.36 ± 492.26 |
+| `sql-lint` | 351.8 ± 9.2 | 343.0 | 374.0 | 173.85 ± 17.80 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 6.8 ± 0.2 | 6.5 | 9.1 | 1.00 |
-| `sqlite3` | 9.5 ± 0.5 | 8.9 | 13.6 | 1.40 ± 0.08 |
-| `sqlite-runner-lsp` | 10072.3 ± 3.0 | 10069.9 | 10077.4 | 1487.39 ± 46.78 |
-| `sql-lint` | 752.2 ± 152.0 | 569.1 | 898.5 | 111.08 ± 22.71 |
+| `syntaqlite` | 7.4 ± 0.6 | 6.9 | 14.3 | 1.00 |
+| `sqlite3` | 10.0 ± 0.5 | 9.2 | 13.9 | 1.35 ± 0.13 |
+| `sqlite-runner-lsp` | 10069.4 ± 11.8 | 10055.6 | 10088.1 | 1365.78 ± 107.71 |
+| `sql-lint` | 379.7 ± 4.8 | 373.5 | 388.6 | 51.51 ± 4.11 |
 
 
 # LSP
@@ -146,7 +168,7 @@ Time to start server, send document, receive diagnostics, and exit:
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 39.2 ± 5.8 | 34.4 | 63.9 | 1.00 |
-| `sqls` | 10059.2 ± 7.9 | 10053.2 | 10071.7 | 256.41 ± 37.86 |
-| `sql-language-server` | 659.1 ± 25.3 | 640.3 | 702.7 | 16.80 ± 2.56 |
+| `syntaqlite` | 32.2 ± 1.0 | 30.1 | 35.2 | 1.00 |
+| `sqls` | 10055.0 ± 14.0 | 10040.8 | 10071.4 | 312.71 ± 9.26 |
+| `sql-language-server` | 471.0 ± 3.1 | 465.4 | 474.5 | 14.65 ± 0.44 |
 
