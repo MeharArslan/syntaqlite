@@ -13,8 +13,9 @@ pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
 // ── Semantic role types (re-exported from syntaqlite-common) ─────────────────
 
-#[doc(inline)]
-pub use syntaqlite_common::roles::{FIELD_ABSENT, FieldIdx, FlagSpec, RelationKind, SemanticRole};
+pub(crate) use syntaqlite_common::roles::{FIELD_ABSENT, SemanticRole};
+#[cfg(test)]
+use syntaqlite_common::roles::{FieldIdx, FlagSpec};
 
 // ── Function catalog types ────────────────────────────────────────────────────
 
@@ -442,7 +443,7 @@ mod tests {
 /// External dialect crates and WASM side modules use the types here to hand a
 /// dialect template pointer to [`AnyDialect::from_c_dialect_ptr`]. No other
 /// callers should depend on these types.
-pub mod ffi {
+pub(crate) mod ffi {
     use syntaqlite_syntax::any::AnyGrammar;
 
     use crate::dialect::SemanticRole;

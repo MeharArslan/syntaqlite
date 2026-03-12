@@ -1,6 +1,6 @@
-#[repr(C)] pub struct syntaqlite::dialect::ffi::CDialectTemplate
+#[repr(C)] pub struct syntaqlite::any::ffi::CDialectTemplate
 #[repr(u32)] pub enum syntaqlite::util::SqliteFlag
-impl core::convert::From<syntaqlite::Dialect> for syntaqlite::dialect::AnyDialect
+impl core::convert::From<syntaqlite::Dialect> for syntaqlite::any::AnyDialect
 impl core::convert::From<syntaqlite::util::SqliteFlags> for syntaqlite_syntax::util::SqliteSyntaxFlags
 impl core::convert::From<syntaqlite_syntax::util::SqliteSyntaxFlags> for syntaqlite::util::SqliteFlags
 impl core::default::Default for syntaqlite::Dialect
@@ -13,14 +13,14 @@ impl core::error::Error for syntaqlite::fmt::FormatError
 impl core::fmt::Display for syntaqlite::fmt::FormatError
 impl core::fmt::Display for syntaqlite::semantic::DiagnosticMessage
 impl core::fmt::Display for syntaqlite::semantic::Help
-impl core::marker::Send for syntaqlite::dialect::AnyDialect
-impl core::marker::Send for syntaqlite::dialect::ffi::CDialectTemplate
-impl core::marker::Sync for syntaqlite::dialect::AnyDialect
-impl core::marker::Sync for syntaqlite::dialect::ffi::CDialectTemplate
+impl core::marker::Send for syntaqlite::any::AnyDialect
+impl core::marker::Send for syntaqlite::any::ffi::CDialectTemplate
+impl core::marker::Sync for syntaqlite::any::AnyDialect
+impl core::marker::Sync for syntaqlite::any::ffi::CDialectTemplate
 impl core::ops::deref::Deref for syntaqlite::Dialect
-impl core::ops::deref::Deref for syntaqlite::dialect::AnyDialect
+impl core::ops::deref::Deref for syntaqlite::any::AnyDialect
 impl core::ops::deref::DerefMut for syntaqlite::Dialect
-impl core::ops::deref::DerefMut for syntaqlite::dialect::AnyDialect
+impl core::ops::deref::DerefMut for syntaqlite::any::AnyDialect
 impl serde_core::ser::Serialize for syntaqlite::Diagnostic
 impl serde_core::ser::Serialize for syntaqlite::Severity
 impl serde_core::ser::Serialize for syntaqlite::semantic::DiagnosticMessage
@@ -30,8 +30,7 @@ impl syntaqlite::Diagnostic
 impl syntaqlite::Dialect
 impl syntaqlite::Formatter
 impl syntaqlite::SemanticAnalyzer
-impl syntaqlite::dialect::AnyDialect
-impl syntaqlite::dialect::TypedDialect for syntaqlite::Dialect
+impl syntaqlite::any::AnyDialect
 impl syntaqlite::embedded::EmbeddedAnalyzer
 impl syntaqlite::embedded::EmbeddedFragment
 impl syntaqlite::embedded::Hole
@@ -45,6 +44,7 @@ impl syntaqlite::semantic::CatalogLayerContents
 impl syntaqlite::semantic::DiagnosticMessage
 impl syntaqlite::semantic::SemanticModel
 impl syntaqlite::semantic::ValidationConfig
+impl syntaqlite::typed::TypedDialect for syntaqlite::Dialect
 impl syntaqlite::util::SqliteFlag
 impl syntaqlite::util::SqliteFlags
 impl<'a> syntaqlite::util::DiagnosticRenderer<'a>
@@ -63,7 +63,7 @@ pub enum syntaqlite::semantic::Help
 pub enum syntaqlite::semantic::Severity
 pub fn syntaqlite::Catalog::layer(&self, which: syntaqlite::CatalogLayer) -> &syntaqlite::semantic::CatalogLayerContents
 pub fn syntaqlite::Catalog::layer_mut(&mut self, which: syntaqlite::CatalogLayer) -> &mut syntaqlite::semantic::CatalogLayerContents
-pub fn syntaqlite::Catalog::new(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>) -> Self
+pub fn syntaqlite::Catalog::new(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>) -> Self
 pub fn syntaqlite::Catalog::new_connection(&mut self)
 pub fn syntaqlite::Catalog::new_database(&mut self)
 pub fn syntaqlite::Catalog::new_document(&mut self)
@@ -75,9 +75,9 @@ pub fn syntaqlite::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, 
 pub fn syntaqlite::Diagnostic::severity(&self) -> syntaqlite::Severity
 pub fn syntaqlite::Diagnostic::start_offset(&self) -> usize
 pub fn syntaqlite::Dialect::default() -> Self
-pub fn syntaqlite::Dialect::deref(&self) -> &syntaqlite::dialect::AnyDialect
-pub fn syntaqlite::Dialect::deref_mut(&mut self) -> &mut syntaqlite::dialect::AnyDialect
-pub fn syntaqlite::Dialect::erase(self) -> syntaqlite::dialect::AnyDialect
+pub fn syntaqlite::Dialect::deref(&self) -> &syntaqlite::any::AnyDialect
+pub fn syntaqlite::Dialect::deref_mut(&mut self) -> &mut syntaqlite::any::AnyDialect
+pub fn syntaqlite::Dialect::erase(self) -> syntaqlite::any::AnyDialect
 pub fn syntaqlite::Dialect::grammar(&self) -> syntaqlite_syntax::sqlite::grammar::Grammar
 pub fn syntaqlite::Dialect::new() -> Self
 pub fn syntaqlite::Dialect::with_cflags(self, flags: syntaqlite::util::SqliteFlags) -> Self
@@ -86,24 +86,24 @@ pub fn syntaqlite::Formatter::default() -> Self
 pub fn syntaqlite::Formatter::format(&mut self, source: &str) -> core::result::Result<alloc::string::String, syntaqlite::fmt::FormatError>
 pub fn syntaqlite::Formatter::new() -> syntaqlite::Formatter
 pub fn syntaqlite::Formatter::with_config(format_config: &syntaqlite::fmt::FormatConfig) -> syntaqlite::Formatter
-pub fn syntaqlite::Formatter::with_dialect_config(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>, format_config: &syntaqlite::fmt::FormatConfig) -> Self
+pub fn syntaqlite::Formatter::with_dialect_config(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>, format_config: &syntaqlite::fmt::FormatConfig) -> Self
 pub fn syntaqlite::SemanticAnalyzer::analyze(&mut self, source: &str, user_catalog: &syntaqlite::Catalog, config: &syntaqlite::semantic::ValidationConfig) -> syntaqlite::semantic::SemanticModel
 pub fn syntaqlite::SemanticAnalyzer::default() -> Self
 pub fn syntaqlite::SemanticAnalyzer::new() -> Self
 pub fn syntaqlite::SemanticAnalyzer::set_mode(&mut self, mode: syntaqlite::semantic::AnalysisMode)
-pub fn syntaqlite::SemanticAnalyzer::with_dialect(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>) -> Self
+pub fn syntaqlite::SemanticAnalyzer::with_dialect(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>) -> Self
 pub fn syntaqlite::SemanticAnalyzer::with_mode(self, mode: syntaqlite::semantic::AnalysisMode) -> Self
 pub fn syntaqlite::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
-pub fn syntaqlite::dialect::AnyDialect::cflags(&self) -> syntaqlite::util::SqliteFlags
-pub fn syntaqlite::dialect::AnyDialect::deref(&self) -> &syntaqlite_syntax::grammar::AnyGrammar
-pub fn syntaqlite::dialect::AnyDialect::deref_mut(&mut self) -> &mut syntaqlite_syntax::grammar::AnyGrammar
-pub fn syntaqlite::dialect::AnyDialect::from(d: syntaqlite::Dialect) -> syntaqlite::dialect::AnyDialect
-pub fn syntaqlite::dialect::AnyDialect::grammar(&self) -> &syntaqlite_syntax::grammar::AnyGrammar
-pub fn syntaqlite::dialect::AnyDialect::syntax_cflags(&self) -> syntaqlite_syntax::util::SqliteSyntaxFlags
-pub fn syntaqlite::dialect::AnyDialect::version(&self) -> syntaqlite_syntax::util::SqliteVersion
-pub fn syntaqlite::dialect::AnyDialect::with_cflags(self, flags: syntaqlite::util::SqliteFlags) -> Self
-pub fn syntaqlite::dialect::AnyDialect::with_version(self, version: syntaqlite_syntax::util::SqliteVersion) -> Self
-pub fn syntaqlite::embedded::EmbeddedAnalyzer::new(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>) -> Self
+pub fn syntaqlite::any::AnyDialect::cflags(&self) -> syntaqlite::util::SqliteFlags
+pub fn syntaqlite::any::AnyDialect::deref(&self) -> &syntaqlite_syntax::grammar::AnyGrammar
+pub fn syntaqlite::any::AnyDialect::deref_mut(&mut self) -> &mut syntaqlite_syntax::grammar::AnyGrammar
+pub fn syntaqlite::any::AnyDialect::from(d: syntaqlite::Dialect) -> syntaqlite::any::AnyDialect
+pub fn syntaqlite::any::AnyDialect::grammar(&self) -> &syntaqlite_syntax::grammar::AnyGrammar
+pub fn syntaqlite::any::AnyDialect::syntax_cflags(&self) -> syntaqlite_syntax::util::SqliteSyntaxFlags
+pub fn syntaqlite::any::AnyDialect::version(&self) -> syntaqlite_syntax::util::SqliteVersion
+pub fn syntaqlite::any::AnyDialect::with_cflags(self, flags: syntaqlite::util::SqliteFlags) -> Self
+pub fn syntaqlite::any::AnyDialect::with_version(self, version: syntaqlite_syntax::util::SqliteVersion) -> Self
+pub fn syntaqlite::embedded::EmbeddedAnalyzer::new(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>) -> Self
 pub fn syntaqlite::embedded::EmbeddedAnalyzer::semantic_tokens_encoded(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment], source: &str) -> alloc::vec::Vec<u32>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer::validate(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment]) -> alloc::vec::Vec<syntaqlite::Diagnostic>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer::with_catalog(self, catalog: syntaqlite::Catalog) -> Self
@@ -142,8 +142,8 @@ pub fn syntaqlite::lsp::LspHost::set_session_context(&mut self, ctx: syntaqlite:
 pub fn syntaqlite::lsp::LspHost::set_session_context_from_ddl(&mut self, ddl: &str) -> core::result::Result<(), alloc::vec::Vec<alloc::string::String>>
 pub fn syntaqlite::lsp::LspHost::set_session_context_from_json(&mut self, json: &str) -> core::result::Result<(), alloc::string::String>
 pub fn syntaqlite::lsp::LspHost::update_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
-pub fn syntaqlite::lsp::LspHost::with_dialect(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>) -> Self
-pub fn syntaqlite::lsp::LspServer::run(dialect: impl core::convert::Into<syntaqlite::dialect::AnyDialect>) -> core::result::Result<(), alloc::boxed::Box<(dyn core::error::Error + core::marker::Sync + core::marker::Send)>>
+pub fn syntaqlite::lsp::LspHost::with_dialect(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>) -> Self
+pub fn syntaqlite::lsp::LspServer::run(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>) -> core::result::Result<(), alloc::boxed::Box<(dyn core::error::Error + core::marker::Sync + core::marker::Send)>>
 pub fn syntaqlite::semantic::CatalogLayerContents::insert_function_overload(&mut self, name: impl core::convert::Into<alloc::string::String>, category: syntaqlite::semantic::FunctionCategory, arity: syntaqlite::semantic::AritySpec)
 pub fn syntaqlite::semantic::CatalogLayerContents::insert_table(&mut self, name: impl core::convert::Into<alloc::string::String>, columns: core::option::Option<alloc::vec::Vec<alloc::string::String>>, without_rowid: bool)
 pub fn syntaqlite::semantic::CatalogLayerContents::insert_table_function(&mut self, name: impl core::convert::Into<alloc::string::String>, arity: syntaqlite::semantic::AritySpec, output_columns: alloc::vec::Vec<alloc::string::String>)
@@ -177,8 +177,7 @@ pub fn syntaqlite::util::SqliteFlags::without(self, flag: syntaqlite::util::Sqli
 pub fn syntaqlite_syntax::util::SqliteSyntaxFlags::from(flags: syntaqlite::util::SqliteFlags) -> Self
 pub mod syntaqlite
 pub mod syntaqlite::any
-pub mod syntaqlite::dialect
-pub mod syntaqlite::dialect::ffi
+pub mod syntaqlite::any::ffi
 pub mod syntaqlite::embedded
 pub mod syntaqlite::fmt
 pub mod syntaqlite::lsp
@@ -195,7 +194,6 @@ pub struct syntaqlite::Formatter
 pub struct syntaqlite::SemanticAnalyzer
 pub struct syntaqlite::ValidationConfig
 pub struct syntaqlite::any::AnyDialect
-pub struct syntaqlite::dialect::AnyDialect
 pub struct syntaqlite::embedded::EmbeddedAnalyzer
 pub struct syntaqlite::embedded::EmbeddedFragment
 pub struct syntaqlite::embedded::Hole
@@ -304,21 +302,15 @@ pub syntaqlite::util::SqliteFlag::OmitView = 17
 pub syntaqlite::util::SqliteFlag::OmitVirtualtable = 18
 pub syntaqlite::util::SqliteFlag::OmitWindowfunc = 19
 pub syntaqlite::util::SqliteFlag::Soundex = 41
-pub trait syntaqlite::dialect::TypedDialect: core::convert::Into<syntaqlite::dialect::AnyDialect> + core::clone::Clone + 'static
-pub trait syntaqlite::typed::TypedDialect: core::convert::Into<syntaqlite::dialect::AnyDialect> + core::clone::Clone + 'static
-pub type syntaqlite::Dialect::Target = syntaqlite::dialect::AnyDialect
-pub type syntaqlite::dialect::AnyDialect::Target = syntaqlite_syntax::grammar::AnyGrammar
+pub trait syntaqlite::typed::TypedDialect: core::convert::Into<syntaqlite::any::AnyDialect> + core::clone::Clone + 'static
+pub type syntaqlite::Dialect::Target = syntaqlite::any::AnyDialect
+pub type syntaqlite::any::AnyDialect::Target = syntaqlite_syntax::grammar::AnyGrammar
 pub type syntaqlite::util::SourceContext<'a> = syntaqlite::util::DiagnosticRenderer<'a>
-pub unsafe fn syntaqlite::dialect::AnyDialect::from_c_dialect_ptr(ptr: *const syntaqlite::dialect::ffi::CDialectTemplate) -> Self
+pub unsafe fn syntaqlite::any::AnyDialect::from_c_dialect_ptr(ptr: *const syntaqlite::any::ffi::CDialectTemplate) -> Self
 pub use syntaqlite::ParseErrorKind
 pub use syntaqlite::ParseOutcome
 pub use syntaqlite::TokenType
 pub use syntaqlite::any::<<syntaqlite_syntax::any::*>>
-pub use syntaqlite::dialect::FIELD_ABSENT
-pub use syntaqlite::dialect::FieldIdx
-pub use syntaqlite::dialect::FlagSpec
-pub use syntaqlite::dialect::RelationKind
-pub use syntaqlite::dialect::SemanticRole
 pub use syntaqlite::nodes::<<syntaqlite_syntax::nodes::*>>
 pub use syntaqlite::parse::CommentKind
 pub use syntaqlite::parse::IncrementalParseSession

@@ -71,7 +71,7 @@ fn rebuild_dialect_from_ptr() {
     let cflags = SQLITE_CFLAGS.with(|c| *c.borrow());
     // SAFETY: ptr was validated in run_set_dialect when it was stored.
     let dialect = unsafe {
-        AnyDialect::from_c_dialect_ptr(ptr as *const syntaqlite::dialect::ffi::CDialectTemplate)
+        AnyDialect::from_c_dialect_ptr(ptr as *const syntaqlite::any::ffi::CDialectTemplate)
     }
     .with_version(version)
     .with_cflags(cflags);

@@ -121,7 +121,7 @@
 // ── Modules ─────────────────────────────────────────────────────────────────
 
 #[cfg(feature = "fmt")]
-pub mod dialect;
+pub(crate) mod dialect;
 
 #[cfg(feature = "fmt")]
 pub mod fmt;
@@ -269,6 +269,13 @@ pub mod any {
     #[doc(inline)]
     #[cfg(feature = "fmt")]
     pub use crate::dialect::AnyDialect;
+
+    /// C-ABI types for loading external dialect plugins.
+    #[cfg(feature = "fmt")]
+    pub mod ffi {
+        #[doc(inline)]
+        pub use crate::dialect::ffi::CDialectTemplate;
+    }
 }
 
 /// Typed (grammar-parameterized) parser and tokenizer infrastructure.
