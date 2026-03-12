@@ -149,24 +149,58 @@ pub mod util;
 // ── Primary re-exports (crate root convenience) ─────────────────────────────
 
 // Parsing essentials.
+#[doc(inline)]
 #[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::{
-    ParseErrorKind, ParseOutcome, Parser, Token, TokenType, Tokenizer,
-};
+pub use syntaqlite_syntax::ParseErrorKind;
+#[doc(inline)]
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_syntax::ParseOutcome;
+#[doc(inline)]
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_syntax::Parser;
+#[doc(inline)]
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_syntax::Token;
+#[doc(inline)]
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_syntax::TokenType;
+#[doc(inline)]
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_syntax::Tokenizer;
 
 // Formatting essentials.
+#[doc(inline)]
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
+#[doc(inline)]
 #[cfg(feature = "fmt")]
-pub use fmt::{FormatConfig, KeywordCase};
+pub use fmt::FormatConfig;
+#[doc(inline)]
+#[cfg(feature = "fmt")]
+pub use fmt::KeywordCase;
 
 // Validation essentials.
+#[doc(inline)]
 #[cfg(feature = "validation")]
-pub use semantic::{
-    Catalog, CatalogLayer, Diagnostic, SemanticAnalyzer, Severity, ValidationConfig,
-};
+pub use semantic::Catalog;
+#[doc(inline)]
+#[cfg(feature = "validation")]
+pub use semantic::CatalogLayer;
+#[doc(inline)]
+#[cfg(feature = "validation")]
+pub use semantic::Diagnostic;
+#[doc(inline)]
+#[cfg(feature = "validation")]
+pub use semantic::SemanticAnalyzer;
+#[doc(inline)]
+#[cfg(feature = "validation")]
+pub use semantic::Severity;
+#[doc(inline)]
+#[cfg(feature = "validation")]
+pub use semantic::ValidationConfig;
 
 // Dialect.
+#[doc(inline)]
 #[cfg(feature = "sqlite")]
 pub use sqlite::dialect::Dialect;
 /// Returns the built-in `SQLite` dialect handle.
@@ -215,27 +249,34 @@ pub fn sqlite_dialect() -> Dialect {
 /// }
 /// ```
 pub mod parse {
+    #[doc(inline)]
     #[cfg(feature = "sqlite")]
     pub use syntaqlite_syntax::{
         IncrementalParseSession, ParseError, ParseErrorKind, ParseOutcome, ParseSession,
         ParsedStatement, Parser, ParserToken, Token, TokenType, Tokenizer,
     };
+    #[doc(inline)]
     pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
+    #[doc(inline)]
     pub use syntaqlite_syntax::any::MacroRegion;
 }
 
 /// Type-erased (grammar-agnostic) parser and tokenizer types.
 pub mod any {
+    #[doc(inline)]
     pub use syntaqlite_syntax::any::*;
 
+    #[doc(inline)]
     #[cfg(feature = "fmt")]
     pub use crate::dialect::AnyDialect;
 }
 
 /// Typed (grammar-parameterized) parser and tokenizer infrastructure.
 pub mod typed {
+    #[doc(inline)]
     pub use syntaqlite_syntax::typed::*;
 
+    #[doc(inline)]
     #[cfg(feature = "fmt")]
     pub use crate::dialect::TypedDialect;
 }
@@ -243,5 +284,6 @@ pub mod typed {
 /// Generated typed AST nodes for the built-in `SQLite` grammar.
 #[cfg(feature = "sqlite")]
 pub mod nodes {
+    #[doc(inline)]
     pub use syntaqlite_syntax::nodes::*;
 }

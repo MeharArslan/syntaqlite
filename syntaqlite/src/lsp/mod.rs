@@ -40,7 +40,9 @@ pub(crate) const SEMANTIC_TOKEN_LEGEND: &[&str] = &[
 ];
 
 // Public API starts here.
+#[doc(inline)]
 pub use host::LspHost;
+#[doc(inline)]
 pub use server::LspServer;
 
 // Re-export shared types from semantic layer.

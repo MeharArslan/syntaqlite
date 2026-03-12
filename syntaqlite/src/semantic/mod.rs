@@ -59,11 +59,15 @@ pub(crate) mod render;
 
 // ── Public re-exports ─────────────────────────────────────────────────────────
 
+#[doc(inline)]
 #[cfg(feature = "validation")]
 pub use analyzer::SemanticAnalyzer;
+#[doc(inline)]
 #[cfg(feature = "validation")]
 pub use catalog::{AritySpec, Catalog, CatalogLayer, CatalogLayerContents, FunctionCategory};
+#[doc(inline)]
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
+#[doc(inline)]
 #[cfg(feature = "validation")]
 pub use model::SemanticModel;
 

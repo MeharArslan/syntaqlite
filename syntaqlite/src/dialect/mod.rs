@@ -13,6 +13,7 @@ pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
 // ── Semantic role types (re-exported from syntaqlite-common) ─────────────────
 
+#[doc(inline)]
 pub use syntaqlite_common::roles::{FIELD_ABSENT, FieldIdx, FlagSpec, RelationKind, SemanticRole};
 
 // ── Function catalog types ────────────────────────────────────────────────────

@@ -34,6 +34,7 @@ pub(crate) mod ffi;
 pub(crate) mod formatter;
 mod interpret;
 
+#[doc(inline)]
 pub use formatter::Formatter;
 
 // ── Config types (formerly config.rs) ────────────────────────────────────

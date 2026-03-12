@@ -22,7 +22,9 @@ pub(crate) mod offset_map;
 mod python;
 mod typescript;
 
+#[doc(inline)]
 pub use python::extract_python;
+#[doc(inline)]
 pub use typescript::extract_typescript;
 
 use std::ops::Range;
