@@ -15,7 +15,7 @@
 <body>
   <header>
     <nav>
-      <a href="/" class="site-title">syntaqlite</a>
+      <a href="{{ config.base_url }}" class="site-title">syntaqlite</a>
       <ul>
         <li><a href="{{ get_url(path='getting-started') }}">Getting started</a></li>
         <li><a href="{{ get_url(path='guides') }}">Guides</a></li>
@@ -23,6 +23,13 @@
         <li><a href="{{ get_url(path='contributing') }}">Contributing</a></li>
         <li><a href="{{ get_url(path='reference') }}">Reference</a></li>
       </ul>
+      <div class="version-switcher">
+        <button class="version-switcher__btn" id="version-btn">
+          <span id="version-label">main</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="version-switcher__menu" id="version-menu"></div>
+      </div>
       <div class="nav-icons">
         <a href="https://playground.syntaqlite.com" class="nav-icon nav-icon--labeled" title="Playground">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -64,6 +71,42 @@
         p.classList.toggle('active', p.getAttribute('data-tab') === tab);
       });
     }
+    // Version switcher
+    (function() {
+      var btn = document.getElementById('version-btn');
+      var menu = document.getElementById('version-menu');
+      var label = document.getElementById('version-label');
+      if (!btn || !menu || !label) return;
+
+      // Detect current version from URL path
+      var match = window.location.pathname.match(/^\/(main|v[^/]+)\//);
+      var current = match ? match[1] : 'main';
+      label.textContent = current;
+
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        menu.classList.toggle('open');
+      });
+
+      document.addEventListener('click', function() {
+        menu.classList.remove('open');
+      });
+
+      fetch('/versions.json')
+        .then(function(r) { return r.json(); })
+        .then(function(versions) {
+          menu.innerHTML = '';
+          versions.forEach(function(v) {
+            var a = document.createElement('a');
+            a.href = v.path;
+            a.textContent = v.label;
+            if (v.version === current) a.classList.add('active');
+            menu.appendChild(a);
+          });
+        })
+        .catch(function() {});
+    })();
+
     function toggleTheme() {
       var current = document.documentElement.getAttribute('data-theme') || 'dark';
       var next = current === 'dark' ? 'light' : 'dark';

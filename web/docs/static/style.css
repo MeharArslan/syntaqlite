@@ -123,6 +123,69 @@ header nav ul a:hover { color: var(--fg); }
   font-size: 0.85rem;
 }
 
+/* Version switcher */
+
+.version-switcher {
+  position: relative;
+}
+
+.version-switcher__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--font);
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.version-switcher__btn:hover {
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+
+.version-switcher__menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 120px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.25rem 0;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.version-switcher__menu.open {
+  display: block;
+}
+
+.version-switcher__menu a {
+  display: block;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color 0.1s, background 0.1s;
+}
+
+.version-switcher__menu a:hover {
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.version-switcher__menu a.active {
+  color: var(--accent);
+  font-weight: 500;
+}
+
 /* Theme toggle icon visibility */
 [data-theme="dark"] .icon-sun { display: block; }
 [data-theme="dark"] .icon-moon { display: none; }

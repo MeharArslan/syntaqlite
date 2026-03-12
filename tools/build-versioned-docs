@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+#
+# Build versioned docs for all release tags + HEAD.
+# Output: web/docs/public-versioned/
+#
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DOCS_DIR="$REPO_ROOT/web/docs"
+OUT_DIR="$DOCS_DIR/public-versioned"
+ZOLA="${ZOLA:-zola}"
+
+rm -rf "$OUT_DIR"
+mkdir -p "$OUT_DIR"
+
+# --- Build main docs (from current HEAD) ---
+echo "==> Building main docs"
+(cd "$DOCS_DIR" && "$ZOLA" build --base-url "/main/" --output-dir "$OUT_DIR/main")
+
+# --- Discover release tags (semver-like) ---
+TAGS=$(git -C "$REPO_ROOT" tag --list | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | sort -V || true)
+
+# --- Build docs for each release tag ---
+for tag in $TAGS; do
+  echo "==> Checking tag $tag"
+
+  # Check if docs exist at this tag
+  if ! git -C "$REPO_ROOT" cat-file -e "$tag:web/docs/config.toml" 2>/dev/null; then
+    echo "    SKIP: no web/docs/config.toml at tag $tag"
+    continue
+  fi
+
+  version_dir="$OUT_DIR/v$tag"
+  worktree_dir="$REPO_ROOT/.worktree-docs-$tag"
+
+  echo "    Building v$tag"
+  git -C "$REPO_ROOT" worktree add --detach "$worktree_dir" "$tag" 2>/dev/null || {
+    echo "    SKIP: could not create worktree for $tag"
+    continue
+  }
+
+  if (cd "$worktree_dir/web/docs" && "$ZOLA" build --base-url "/v$tag/" --output-dir "$version_dir") 2>&1; then
+    echo "    OK: v$tag"
+  else
+    echo "    WARN: zola build failed for tag $tag, skipping"
+    rm -rf "$version_dir"
+  fi
+
+  git -C "$REPO_ROOT" worktree remove --force "$worktree_dir" 2>/dev/null || true
+done
+
+# --- Generate versions.json ---
+echo "==> Generating versions.json"
+
+versions='['
+versions+='{"version":"main","path":"/main/","label":"main"}'
+
+# Add tags in reverse order (newest first)
+for tag in $(echo "$TAGS" | tail -r 2>/dev/null || echo "$TAGS" | tac 2>/dev/null || true); do
+  # Only include tags that were actually built
+  if [ -d "$OUT_DIR/v$tag" ]; then
+    versions+=",{\"version\":\"v$tag\",\"path\":\"/v$tag/\",\"label\":\"v$tag\"}"
+  fi
+done
+versions+=']'
+
+echo "$versions" > "$OUT_DIR/versions.json"
+
+# Copy versions.json into each subdirectory so relative fetches work
+for dir in "$OUT_DIR"/*/; do
+  cp "$OUT_DIR/versions.json" "$dir"
+done
+
+# --- Root redirect to /head/ ---
+cat > "$OUT_DIR/index.html" <<'REDIRECT'
+<!DOCTYPE html>
+<html>
+<head><meta http-equiv="refresh" content="0;url=/main/"></head>
+<body><a href="/main/">Redirecting to docs...</a></body>
+</html>
+REDIRECT
+
+echo "==> Done. Output in $OUT_DIR"

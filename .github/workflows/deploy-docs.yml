@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "web/docs/**"
+      - "tools/build-versioned-docs"
+    tags: ['**[0-9]+.[0-9]+.[0-9]+*']
   workflow_dispatch:
 
 concurrency:
@@ -16,15 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Zola
         run: |
           curl -sL https://github.com/getzola/zola/releases/download/v0.19.2/zola-v0.19.2-x86_64-unknown-linux-gnu.tar.gz | tar xz
           sudo mv zola /usr/local/bin/
 
-      - name: Build docs
-        working-directory: web/docs
-        run: zola build
+      - name: Build versioned docs
+        run: bash tools/build-versioned-docs
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
@@ -32,4 +35,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: syntaqlite-docs
-          directory: web/docs/public
+          directory: web/docs/public-versioned

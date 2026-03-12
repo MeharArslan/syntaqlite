@@ -1,12 +1,12 @@
-name: Deploy Playground
+name: Deploy Playground (Autopush)
 
 on:
   push:
-    tags: ['**[0-9]+.[0-9]+.[0-9]+*']
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: deploy-playground
+  group: deploy-playground-autopush
   cancel-in-progress: true
 
 jobs:
@@ -46,5 +46,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: syntaqlite-playground
+          projectName: syntaqlite-playground-autopush
           directory: web/playground/dist
