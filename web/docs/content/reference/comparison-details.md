@@ -128,26 +128,26 @@ Legend: **PASS** = correctly parses valid SQL, **FAIL** = rejects valid SQL, **F
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.7 ± 0.1 | 1.6 | 4.0 | 1.16 ± 0.09 |
-| `lemon-rs` | 1.5 ± 0.1 | 1.4 | 2.4 | 1.00 |
-| `sql-parser-cst` | 75.7 ± 2.8 | 72.9 | 91.1 | 51.58 ± 2.96 |
-| `sqlglot[c]` | 86.3 ± 8.2 | 81.8 | 124.0 | 58.80 ± 6.16 |
-| `sqlparser-rs` | 1.8 ± 0.2 | 1.7 | 4.9 | 1.25 ± 0.13 |
-| `node-sql-parser` | 77.5 ± 12.4 | 71.7 | 144.3 | 52.84 ± 8.80 |
-| `sqlfluff` | 474.3 ± 19.0 | 448.2 | 511.8 | 323.24 ± 19.32 |
+| `syntaqlite` | 1.7 ± 0.1 | 1.6 | 2.6 | 1.16 ± 0.11 |
+| `lemon-rs` | 1.5 ± 0.1 | 1.4 | 3.4 | 1.00 |
+| `sql-parser-cst` | 76.8 ± 2.2 | 72.7 | 83.1 | 51.08 ± 4.32 |
+| `sqlglot[c]` | 86.1 ± 3.1 | 82.9 | 95.5 | 57.22 ± 5.00 |
+| `sqlparser-rs` | 1.9 ± 0.2 | 1.7 | 4.9 | 1.27 ± 0.17 |
+| `node-sql-parser` | 75.9 ± 3.6 | 72.5 | 91.0 | 50.44 ± 4.68 |
+| `sqlfluff` | 465.7 ± 10.7 | 451.7 | 477.5 | 309.62 ± 25.58 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.7 ± 0.5 | 2.4 | 12.0 | 1.00 |
-| `lemon-rs` | 4.2 ± 0.1 | 4.0 | 5.0 | 1.58 ± 0.32 |
-| `sql-parser-cst` | 142.8 ± 4.7 | 139.8 | 162.0 | 53.69 ± 10.79 |
-| `sqlglot[c]` | 181.8 ± 1.7 | 179.6 | 184.5 | 68.33 ± 13.56 |
-| `sqlparser-rs` | 11.0 ± 0.4 | 10.4 | 13.5 | 4.15 ± 0.84 |
-| `node-sql-parser` | 153.9 ± 2.4 | 150.9 | 159.8 | 57.84 ± 11.50 |
-| `sqlfluff` | 260.3 ± 13.2 | 253.2 | 298.6 | 97.86 ± 20.02 |
+| `syntaqlite` | 2.8 ± 0.2 | 2.5 | 5.1 | 1.00 |
+| `lemon-rs` | 8.6 ± 4.4 | 4.2 | 48.9 | 3.12 ± 1.63 |
+| `sql-parser-cst` | 553.8 ± 132.6 | 424.4 | 720.2 | 200.59 ± 51.17 |
+| `sqlglot[c]` | 433.9 ± 158.0 | 295.6 | 745.2 | 157.17 ± 58.89 |
+| `sqlparser-rs` | 15.5 ± 3.3 | 12.3 | 34.1 | 5.61 ± 1.29 |
+| `node-sql-parser` | 166.2 ± 23.6 | 151.2 | 236.0 | 60.22 ± 10.06 |
+| `sqlfluff` | 271.3 ± 6.1 | 261.8 | 279.7 | 98.29 ± 8.94 |
 
 
 
@@ -290,33 +290,33 @@ For each formatter: does the formatted output still pass real SQLite?
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.9 ± 0.1 | 1.7 | 3.0 | 1.00 |
-| `prettier-cst` | 423.2 ± 23.0 | 395.2 | 472.0 | 226.26 ± 19.82 |
-| `sql-formatter` | 78.2 ± 4.7 | 74.9 | 95.8 | 41.78 ± 3.82 |
-| `sqlglot[c]` | 89.1 ± 1.4 | 86.3 | 92.0 | 47.63 ± 3.36 |
-| `sleek` | 8.7 ± 0.7 | 7.7 | 13.1 | 4.64 ± 0.51 |
-| `sqruff` | 40.2 ± 0.9 | 38.9 | 42.9 | 21.48 ± 1.55 |
+| `syntaqlite` | 1.9 ± 0.2 | 1.7 | 3.1 | 1.00 |
+| `prettier-cst` | 500.7 ± 97.1 | 398.6 | 725.9 | 257.45 ± 54.30 |
+| `sql-formatter` | 143.1 ± 64.0 | 86.0 | 341.3 | 73.59 ± 33.49 |
+| `sqlglot[c]` | 101.7 ± 13.0 | 89.3 | 151.5 | 52.31 ± 7.97 |
+| `sleek` | 9.2 ± 3.6 | 7.7 | 44.0 | 4.71 ± 1.90 |
+| `sqruff` | 41.4 ± 3.8 | 38.7 | 62.9 | 21.29 ± 2.63 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 5.0 ± 0.2 | 4.7 | 6.4 | 1.00 |
-| `prettier-cst` | 585.4 ± 22.8 | 555.5 | 614.2 | 118.21 ± 6.63 |
-| `sql-formatter` | 202.4 ± 6.9 | 195.1 | 216.1 | 40.87 ± 2.16 |
-| `sqlglot[c]` | 262.7 ± 1.6 | 260.2 | 265.8 | 53.04 ± 2.16 |
-| `sleek` | 27.0 ± 0.6 | 25.9 | 29.6 | 5.44 ± 0.25 |
-| `sqruff` | 3366.2 ± 137.9 | 3158.8 | 3490.6 | 679.67 ± 39.03 |
+| `syntaqlite` | 4.9 ± 0.2 | 4.7 | 5.8 | 1.00 |
+| `prettier-cst` | 561.5 ± 7.9 | 552.1 | 572.2 | 115.00 ± 4.00 |
+| `sql-formatter` | 213.9 ± 25.2 | 201.7 | 297.4 | 43.81 ± 5.34 |
+| `sqlglot[c]` | 273.2 ± 11.1 | 262.9 | 299.9 | 55.95 ± 2.88 |
+| `sleek` | 27.2 ± 0.5 | 26.2 | 28.6 | 5.58 ± 0.20 |
+| `sqruff` | 3585.0 ± 455.3 | 3240.4 | 4385.6 | 734.25 ± 96.14 |
 
 
 ### Slow Tools (single timed run)
 
 | Tool          |  Time |
 | ------------- | ----: |
-| sqlfmt (1x)   | 522ms |
-| sqlfmt (30x)  | 313ms |
-| sqlfluff (1x) | 187ms |
+| sqlfmt (1x)   | 265ms |
+| sqlfmt (30x)  | 304ms |
+| sqlfluff (1x) | 233ms |
 
 
 # Validator Comparison
@@ -353,14 +353,14 @@ LIMIT 12;
 
 Static semantic analysis — offline, no database needed. Finds **both** errors in one pass:
 
-```text
+```
 error: table 'monthly_stats' has 2 values for 3 columns
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpqzdko0xi.sql:29:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmp1e4h0drf.sql:29:3
    |
 29 |   monthly_stats(month, revenue, order_count) AS (
    |   ^~~~~~~~~~~~~
 warning: unknown function 'ROUDN'
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpqzdko0xi.sql:41:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmp1e4h0drf.sql:41:3
    |
 41 |   ROUDN(ms.revenue / ms.order_count, 2) AS avg_order
    |   ^~~~~
@@ -371,7 +371,7 @@ warning: unknown function 'ROUDN'
 
 Runtime execution — stops at first error:
 
-```text
+```
 Error: in prepare, table monthly_stats has 2 values for 3 columns
 ```
 
@@ -379,7 +379,7 @@ Error: in prepare, table monthly_stats has 2 values for 3 columns
 
 Runtime via LSP — wraps sqlite3, same single error:
 
-```text
+```
 (no diagnostics)
 ```
 
@@ -387,8 +387,8 @@ Runtime via LSP — wraps sqlite3, same single error:
 
 Structural checks only:
 
-```text
-/var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpnv0fbs3q.sql:1 sql-lint was unable to lint the following query "WITH...
+```
+/var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmp_e4wvap3.sql:1 sql-lint was unable to lint the following query "WITH...
 ```
 
 ## Error Detection Accuracy
@@ -440,20 +440,20 @@ Schema: `users`, `orders`, `products`, `order_items`. Ground truth: sqlite3.
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.0 ± 0.2 | 1.8 | 3.5 | 1.00 |
-| `sqlite3` | 4.9 ± 0.5 | 4.1 | 7.4 | 2.40 ± 0.34 |
-| `sqlite-runner-lsp` | 10062.5 ± 11.3 | 10041.4 | 10073.1 | 4972.36 ± 492.26 |
-| `sql-lint` | 351.8 ± 9.2 | 343.0 | 374.0 | 173.85 ± 17.80 |
+| `syntaqlite` | 2.1 ± 0.3 | 1.9 | 5.4 | 1.00 |
+| `sqlite3` | 8.5 ± 6.5 | 4.6 | 55.0 | 4.03 ± 3.15 |
+| `sqlite-runner-lsp` | 10063.6 ± 23.7 | 10042.4 | 10123.4 | 4771.48 ± 622.13 |
+| `sql-lint` | 368.9 ± 11.5 | 355.5 | 388.3 | 174.90 ± 23.44 |
 
 
 ### bench_30x.sql (30x)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 7.4 ± 0.6 | 6.9 | 14.3 | 1.00 |
-| `sqlite3` | 10.0 ± 0.5 | 9.2 | 13.9 | 1.35 ± 0.13 |
-| `sqlite-runner-lsp` | 10069.4 ± 11.8 | 10055.6 | 10088.1 | 1365.78 ± 107.71 |
-| `sql-lint` | 379.7 ± 4.8 | 373.5 | 388.6 | 51.51 ± 4.11 |
+| `syntaqlite` | 7.5 ± 0.3 | 7.1 | 9.6 | 1.00 |
+| `sqlite3` | 10.3 ± 0.6 | 9.6 | 12.8 | 1.37 ± 0.09 |
+| `sqlite-runner-lsp` | 10055.1 ± 9.6 | 10041.9 | 10068.7 | 1340.11 ± 51.33 |
+| `sql-lint` | 392.6 ± 10.7 | 382.0 | 413.5 | 52.33 ± 2.46 |
 
 
 
@@ -466,18 +466,18 @@ Feature testing for SQLite-aware language servers.
 Each server is started, sent a test file, and probed for completion, hover,
 diagnostics, and formatting. Results are from actual LSP responses.
 
-| Feature                |    syntaqlite   |      sqls     | sql-language-server  |
-| ---------------------- | :-------------: | :-----------: | :------------------: |
-| Completion             | Yes (150 items) | Yes (1 items) | Advertised (0 items) |
-| Hover                  |       No        |      Yes      |          No          |
-| Go to definition       |       No        |      Yes      |          No          |
-| Find references        |       No        |      No       |          No          |
-| Diagnostics: syntax    |       Yes       |      No       |         Yes          |
-| Diagnostics: semantic  |       Yes       |      No       |   No (style only)    |
-| Formatting             |       Yes       |      Yes      |          No          |
-| Rename                 |       No        |      Yes      |         Yes          |
-| Signature help         |       No        |      Yes      |          No          |
-| Requires DB connection |       No        |      Yes      |          No          |
+| Feature                |    syntaqlite   |      sqls     | sql-language-server |
+| ---------------------- | :-------------: | :-----------: | :-----------------: |
+| Completion             | Yes (129 items) | Yes (6 items) |   Yes (11 items)    |
+| Hover                  |       No        |      Yes      |         No          |
+| Go to definition       |       No        |      Yes      |         No          |
+| Find references        |       No        |      No       |         No          |
+| Diagnostics: syntax    |       Yes       |      No       |         Yes         |
+| Diagnostics: semantic  |       Yes       |      No       |   No (style only)   |
+| Formatting             |       Yes       |      Yes      |         No          |
+| Rename                 |       No        |      Yes      |         Yes         |
+| Signature help         |       No        |      Yes      |         No          |
+| Requires DB connection |       No        |      Yes      |         No          |
 
 ## Diagnostic Detail
 
@@ -485,19 +485,19 @@ What each server reports for `SELEC * FROM users;` (syntax error):
 
 ### syntaqlite
 
-```text
+```
 1:1 error syntax error near 'SELEC'
 ```
 
 ### sqls
 
-```text
+```
 (no diagnostics)
 ```
 
 ### sql-language-server
 
-```text
+```
 1:2 error Expected "$", "(", "--", "/*", "ALTER", "CREATE TABLE", "CREATE", "DELETE", "DROP TABLE", "DROP VIEW", "DROP", "INSERT", "REPLACE", "SELECT", "UPDATE", "WITH", "return", [ \t\n\r], or end of input but "S" found.
 ```
 
@@ -507,8 +507,8 @@ Time to start server, send document, receive diagnostics, and exit:
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 32.2 ± 1.0 | 30.1 | 35.2 | 1.00 |
-| `sqls` | 10055.0 ± 14.0 | 10040.8 | 10071.4 | 312.71 ± 9.26 |
-| `sql-language-server` | 471.0 ± 3.1 | 465.4 | 474.5 | 14.65 ± 0.44 |
+| `syntaqlite` | 47.7 ± 12.3 | 32.5 | 81.0 | 1.00 |
+| `sqls` | 10064.4 ± 19.4 | 10044.2 | 10090.9 | 211.19 ± 54.44 |
+| `sql-language-server` | 740.8 ± 239.4 | 504.6 | 1044.1 | 15.54 ± 6.43 |
 
 

@@ -178,20 +178,42 @@ async function runTests() {
     }
   }
 
-  // Test completion
+  // Test completion at multiple positions to find the best result.
+  // Different servers respond better at different cursor positions.
   if (!testFeature || testFeature === "completion") {
-    const compRes = await sendRequest("textDocument/completion", {
-      textDocument: { uri: fileUri },
-      position: { line: compLine, character: compCol },
-    });
-    if (compRes.error) {
-      results.completion = { supported: false, count: 0 };
-    } else if (compRes.result) {
-      const items = Array.isArray(compRes.result) ? compRes.result : (compRes.result.items || []);
-      results.completion = { supported: true, count: items.length };
-    } else {
-      results.completion = { supported: false, count: 0 };
+    const positions = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const selIdx = line.indexOf("SELECT");
+      if (selIdx >= 0) {
+        // After "SELECT " — column completions
+        positions.push({ line: i, character: selIdx + 7 });
+        const fromIdx = line.indexOf("FROM");
+        if (fromIdx > 0) {
+          // After "FROM " — table completions
+          positions.push({ line: i, character: fromIdx + 5 });
+        }
+        break;
+      }
     }
+    if (positions.length === 0) {
+      positions.push({ line: 0, character: 0 });
+    }
+
+    let bestCount = 0;
+    let supported = false;
+    for (const pos of positions) {
+      const compRes = await sendRequest("textDocument/completion", {
+        textDocument: { uri: fileUri },
+        position: pos,
+      });
+      if (!compRes.error && compRes.result) {
+        supported = true;
+        const items = Array.isArray(compRes.result) ? compRes.result : (compRes.result.items || []);
+        if (items.length > bestCount) bestCount = items.length;
+      }
+    }
+    results.completion = { supported, count: bestCount };
   }
 
   // Test hover

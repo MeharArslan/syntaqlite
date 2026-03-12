@@ -1439,6 +1439,15 @@ def generate_summary(results):
             dq_rows.append([name, d.get("approach", ""), f"{found}/2", finds_all, dym])
         _md_table_to(p, dq_headers, dq_rows, ['l', 'l', 'c', 'c', 'c'])
 
+        # Show actual diagnostic output from each tool
+        for name in ["syntaqlite", "sqlite3"]:
+            d = demo.get(name, {})
+            if d.get("output"):
+                p(f"\n**{name}**:\n")
+                p("```")
+                p(d["output"])
+                p("```")
+
         p("\n## Speed\n")
         bench_1x = _read_bench_md(r["bench_dir"], "bench_bench.sql.md")
         bench_30x = _read_bench_md(r["bench_dir"], "bench_bench_30x.sql.md")
