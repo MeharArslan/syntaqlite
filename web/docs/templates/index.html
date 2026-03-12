@@ -4,25 +4,223 @@
 
 {% block content %}
 <div class="home">
-  <h1>syntaqlite</h1>
-  <p class="tagline">Fast, accurate SQLite SQL parser, formatter, and language tools.</p>
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
 
-  <div class="quadrants">
-    <a href="{{ get_url(path='tutorials') }}" class="quadrant">
-      <h2>Tutorials</h2>
-      <p>Start here. Learn syntaqlite by doing.</p>
+  <h2>What it does</h2>
+
+  <div class="home-feature">
+    <h3>Format</h3>
+    <p>
+      Configurable line width, keyword casing, and indentation. The formatter
+      is deterministic — the same input always produces the same output.
+    </p>
+    <div class="home-example">
+      <div class="home-example__col">
+        <div class="home-example__label">Input</div>
+        <pre><code>select u.id, u.name, p.title
+from users u join posts p
+on u.id=p.user_id
+where u.active=1
+and p.published=true
+order by p.created_at desc
+limit 10</code></pre>
+      </div>
+      <div class="home-example__col">
+        <div class="home-example__label">Output</div>
+        <pre><code>SELECT u.id, u.name, p.title
+FROM users u
+  JOIN posts p ON u.id = p.user_id
+WHERE u.active = 1
+  AND p.published = true
+ORDER BY p.created_at DESC
+LIMIT 10;</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="home-feature">
+    <h3>Validate</h3>
+    <p>
+      Catches unknown tables, columns, and functions against your schema —
+      the same errors <code>sqlite3_prepare</code> would catch, but without
+      needing a database. Unlike <code>sqlite3</code>, syntaqlite finds
+      <strong>all</strong> errors in one pass and shows exactly where they are:
+    </p>
+    <pre><code>CREATE TABLE orders (id, status, total, created_at);
+
+WITH
+  monthly_stats(month, revenue, order_count) AS (
+    SELECT strftime('%Y-%m', o.created_at), SUM(o.total)
+    FROM orders o WHERE o.status = 'completed'
+    GROUP BY strftime('%Y-%m', o.created_at)
+  )
+SELECT ms.month, ms.revenue, ms.order_count,
+  ROUDN(ms.revenue / ms.order_count, 2) AS avg_order
+FROM monthly_stats ms;</code></pre>
+    <p class="home-example__note">Two errors: CTE declares 3 columns but the SELECT produces 2, and <code>ROUDN</code> is a typo for <code>ROUND</code>.</p>
+
+    <div class="home-example">
+      <div class="home-example__col">
+        <div class="home-example__label">sqlite3</div>
+        <pre class="home-diagnostic__output"><code>Error: in prepare, table monthly_stats
+has 2 values for 3 columns</code></pre>
+        <p class="home-example__note">Stops at first error. Misses the <code>ROUDN</code> typo entirely.</p>
+      </div>
+      <div class="home-example__col">
+        <div class="home-example__label">syntaqlite</div>
+        <pre class="home-diagnostic__output"><code><span class="diag-error">error</span>: table 'monthly_stats' has 2
+      values for 3 columns
+  |
+2 | monthly_stats(month, revenue,
+  | <span class="diag-underline">^~~~~~~~~~~~~</span>
+
+<span class="diag-warning">warning</span>: unknown function 'ROUDN'
+   |
+14 | ROUDN(ms.revenue / ms.order_count,
+   | <span class="diag-underline">^~~~~</span>
+   = <span class="diag-help">help: did you mean 'round'?</span></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="home-feature-grid">
+    <div class="home-feature">
+      <h3>Parse</h3>
+      <p>
+        Abstract syntax tree with side tables for tokens, comments, and
+        whitespace boundaries.
+      </p>
+      <pre><code>SelectStmt
+  columns:
+    ResultColumn
+      expr:
+        ColumnRef
+          column: "id"
+    ResultColumn
+      expr:
+        ColumnRef
+          column: "name"
+  from_clause:
+    TableRef
+      table_name: "users"
+  where_clause:
+    BinaryExpr
+      op: EQ
+      left:
+        ColumnRef
+          column: "active"
+      right:
+        Literal "1"</code></pre>
+    </div>
+    <div class="home-feature">
+      <h3>Editor integration</h3>
+      <p>
+        Built-in language server (LSP) with real-time diagnostics, format on
+        save, completions for keywords, functions, tables and columns, and
+        semantic syntax highlighting.
+      </p>
+      <pre><code># VS Code — install from the marketplace
+ext install syntaqlite.syntaqlite
+
+# Any editor — point your LSP client at:
+syntaqlite lsp</code></pre>
+    </div>
+  </div>
+
+  <h2>Design principles</h2>
+
+  <ul>
+    <li>
+      <strong>Reliability</strong> — uses SQLite's own tokenizer and grammar
+      rules, verified by running the full SQLite test suite through the parser.
+    </li>
+    <li>
+      <strong>Speed</strong> — parses 3,500 lines of SQL in 2.6ms, formats in
+      4.9ms, validates in 7.3ms. Faster than <code>sqlite3</code> itself for
+      validation. Zero-copy tokenizer, arena-allocated parser, Wadler-Lindig
+      formatter — all allocations are reused across inputs.
+    </li>
+    <li>
+      <strong>Portability</strong> — no runtime dependencies beyond the C and
+      Rust standard libraries. Runs natively, in WASM, and as a shared library.
+    </li>
+    <li>
+      <strong>Extensibility</strong> — the grammar system supports database
+      engines that extend SQLite's syntax. Define custom grammar rules, AST
+      nodes, and formatting recipes, then load your dialect as a shared library
+      at runtime.
+    </li>
+  </ul>
+
+  <p>
+    syntaqlite grew out of 8+ years of maintaining
+    <a href="https://perfetto.dev/docs/analysis/perfetto-sql-syntax">PerfettoSQL</a>
+    and scaling it to 100K+ line SQL codebases. See the
+    <a href="{{ get_url(path='reference/comparison') }}">comparison</a> for how it
+    stacks up against other tools.
+  </p>
+
+  <h2>What it does not do</h2>
+
+  <ul>
+    <li>
+      It does not support other SQL engines. syntaqlite is SQLite-only by
+      design — this is what allows it to use the real grammar rather than a
+      lowest-common-denominator subset.
+    </li>
+    <li>
+      It does not do runtime type checking. It catches what
+      <code>sqlite3_prepare</code> catches (syntax errors, unknown names),
+      not data-dependent errors like division by zero or type mismatches.
+    </li>
+  </ul>
+
+  <h2>Get started</h2>
+
+  <p>Pick your starting point:</p>
+
+  <div class="entry-cards">
+    <a href="https://syntaqlite.com" class="entry-card entry-card--playground">
+      <span class="entry-card__title">Try it without installing</span>
+      <span class="entry-card__desc">Open the playground — format, validate, and parse SQL directly in your browser.</span>
     </a>
-    <a href="{{ get_url(path='how-to') }}" class="quadrant">
-      <h2>How-to guides</h2>
-      <p>Step-by-step guides for specific tasks.</p>
+    <a href="{{ get_url(path='getting-started/vscode') }}" class="entry-card">
+      <span class="entry-card__title">VS Code</span>
+      <span class="entry-card__desc">Install the extension — diagnostics, formatting, and completions out of the box.</span>
     </a>
-    <a href="{{ get_url(path='reference') }}" class="quadrant">
-      <h2>Reference</h2>
-      <p>API and configuration reference.</p>
+    <a href="{{ get_url(path='getting-started/claude-code') }}" class="entry-card">
+      <span class="entry-card__title">Claude Code</span>
+      <span class="entry-card__desc">Plugin and MCP server for Claude Code, Claude Desktop, Cursor, Windsurf.</span>
     </a>
-    <a href="{{ get_url(path='explanation') }}" class="quadrant">
-      <h2>Explanation</h2>
-      <p>Background, concepts, and design decisions.</p>
+    <a href="{{ get_url(path='getting-started/cli') }}" class="entry-card">
+      <span class="entry-card__title">Command line</span>
+      <span class="entry-card__desc">Install the CLI for formatting, validation, CI, and scripting.</span>
+    </a>
+    <a href="{{ get_url(path='getting-started/other-editors') }}" class="entry-card">
+      <span class="entry-card__title">Other editors</span>
+      <span class="entry-card__desc">Neovim, Helix, or any editor with LSP support.</span>
+    </a>
+  </div>
+
+  <h2>Further reading</h2>
+
+  <div class="entry-cards">
+    <a href="{{ get_url(path='guides') }}" class="entry-card">
+      <span class="entry-card__title">Guides</span>
+      <span class="entry-card__desc">CI integration, version pinning, custom dialects.</span>
+    </a>
+    <a href="{{ get_url(path='integrating') }}" class="entry-card">
+      <span class="entry-card__title">Integrating</span>
+      <span class="entry-card__desc">Rust and C APIs for embedding.</span>
+    </a>
+    <a href="{{ get_url(path='contributing') }}" class="entry-card">
+      <span class="entry-card__title">Contributing</span>
+      <span class="entry-card__desc">Architecture, testing, how the project works.</span>
+    </a>
+    <a href="{{ get_url(path='reference') }}" class="entry-card">
+      <span class="entry-card__title">Reference</span>
+      <span class="entry-card__desc">CLI flags and config options.</span>
     </a>
   </div>
 </div>

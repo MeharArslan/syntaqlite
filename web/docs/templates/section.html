@@ -4,14 +4,11 @@
 
 {% block sidebar %}
 <aside>
-  <h3>{{ section.title }}</h3>
+  <h3><a href="{{ section.permalink }}">{{ section.title }}</a></h3>
   <ul>
     {% for page in section.pages %}
     <li>
-      <a href="{{ page.permalink }}"
-         {% if page.permalink == current_url %}class="active"{% endif %}>
-        {{ page.title }}
-      </a>
+      <a href="{{ page.permalink }}">{{ page.title }}</a>
     </li>
     {% endfor %}
   </ul>
@@ -20,17 +17,19 @@
 
 {% block content %}
 <article>
-  <h1>{{ section.title }}</h1>
   {{ section.content | safe }}
 
   {% if section.pages %}
-  <ul class="page-list">
+  <div class="section-pages">
     {% for page in section.pages %}
-    <li><a href="{{ page.permalink }}">{{ page.title }}</a>
-      {% if page.description %}<span>— {{ page.description }}</span>{% endif %}
-    </li>
+    <a href="{{ page.permalink }}" class="section-page-link">
+      <span class="section-page-link__title">{{ page.title }}</span>
+      {% if page.description %}
+      <span class="section-page-link__desc">{{ page.description }}</span>
+      {% endif %}
+    </a>
     {% endfor %}
-  </ul>
+  </div>
   {% endif %}
 </article>
 {% endblock content %}
