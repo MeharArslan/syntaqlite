@@ -263,6 +263,7 @@ impl LspHost {
             }
         }
 
+        items.sort_by(|a, b| a.kind().sort_priority().cmp(&b.kind().sort_priority()));
         items
     }
 
@@ -999,6 +1000,37 @@ mod tests {
         assert!(labels.contains(&"id"), "should suggest column id");
         assert!(labels.contains(&"name"), "should suggest column name");
         assert!(labels.contains(&"abs"), "should suggest function abs");
+    }
+
+    #[test]
+    fn completion_columns_sorted_before_functions_in_expression() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE slice (id INT, name TEXT);\n\
+                   CREATE TABLE thread (tid INT, parent INT);\n\
+                   SELECT slice.id, thread.tid\nFROM slice\nJOIN thread ON ";
+        host.open_document(uri, 1, sql.to_string());
+        let items = host.completion_items(uri, sql.len());
+
+        // Find the first column and first function in the list.
+        let first_column_pos = items.iter().position(|e| e.kind() == CompletionKind::Column);
+        let first_function_pos = items.iter().position(|e| e.kind() == CompletionKind::Function);
+
+        assert!(
+            first_column_pos.is_some(),
+            "should have column completions"
+        );
+        assert!(
+            first_function_pos.is_some(),
+            "should have function completions"
+        );
+        assert!(
+            first_column_pos.unwrap() < first_function_pos.unwrap(),
+            "columns should appear before functions after ON, \
+             first column at {}, first function at {}",
+            first_column_pos.unwrap(),
+            first_function_pos.unwrap(),
+        );
     }
 }
 

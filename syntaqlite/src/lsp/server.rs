@@ -156,14 +156,19 @@ impl LspServer {
                     .completion_items(uri_str, offset)
                     .into_iter()
                     .map(|entry| CompletionItem {
-                        label: entry.label.clone(),
-                        kind: Some(match entry.kind {
+                        label: entry.label().to_string(),
+                        sort_text: Some(format!(
+                            "{}_{}",
+                            entry.kind().sort_priority(),
+                            entry.label()
+                        )),
+                        kind: Some(match entry.kind() {
                             CompletionKind::Keyword => CompletionItemKind::KEYWORD,
                             CompletionKind::Function => CompletionItemKind::FUNCTION,
                             CompletionKind::Table => CompletionItemKind::STRUCT,
                             CompletionKind::Column => CompletionItemKind::FIELD,
                         }),
-                        detail: Some(entry.kind.as_str().into()),
+                        detail: Some(entry.kind().as_str().into()),
                         ..Default::default()
                     })
                     .collect();

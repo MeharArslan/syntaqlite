@@ -82,6 +82,17 @@ impl CompletionKind {
             Self::Column => "column",
         }
     }
+
+    /// Sort priority (lower = shown first). Columns and tables are more
+    /// relevant than functions in most expression contexts.
+    pub fn sort_priority(self) -> u8 {
+        match self {
+            Self::Column => 0,
+            Self::Table => 1,
+            Self::Keyword => 2,
+            Self::Function => 3,
+        }
+    }
 }
 
 mod host;
