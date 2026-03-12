@@ -499,7 +499,11 @@ def run_parser_comparison():
             print(open(bench_md).read())
         print()
 
-    return tallies
+    return {
+        "tallies": tallies,
+        "total": total,
+        "bench_dir": parse_dir,
+    }
 
 
 # ─── FORMATTER CATEGORY ──────────────────────────────────────────────
@@ -692,6 +696,14 @@ def run_formatter_comparison():
     md_table(["Tool", "Time"], slow_rows, ['l', 'r'])
     print()
 
+    return {
+        "tallies": tallies,
+        "total": total,
+        "n_valid": n_valid,
+        "corruption_details": corruption_details,
+        "bench_dir": fmt_bench_dir,
+    }
+
 
 # ─── VALIDATOR CATEGORY ──────────────────────────────────────────────
 
@@ -781,21 +793,42 @@ def run_validator_comparison():
     print(demo_query.strip())
     print("```\n")
 
+    # Collect diagnostic quality results for each tool
+    demo_diagnostics = {}
+
     # syntaqlite
     t = _tmpfile(schema_preamble + demo_query)
     _, out, err = run(f"'{SYNQ}' validate '{t}'")
     os.unlink(t)
+    synq_output = (out + err).strip()
+    synq_errors = len([l for l in synq_output.split('\n') if l.strip().startswith(('error:', 'warning:'))])
+    demo_diagnostics["syntaqlite"] = {
+        "output": synq_output,
+        "errors_found": synq_errors,
+        "finds_all": synq_errors >= 2,
+        "did_you_mean": "did you mean" in synq_output.lower(),
+        "approach": "static semantic",
+        "description": "Static semantic analysis — offline, no database needed. Finds **both** errors in one pass:",
+    }
     print(f"### syntaqlite\n")
-    print(f"Static semantic analysis — offline, no database needed. Finds **both** errors in one pass:\n")
+    print(f"{demo_diagnostics['syntaqlite']['description']}\n")
     print("```")
-    for line in (out + err).strip().split('\n'):
+    for line in synq_output.split('\n'):
         print(line)
     print("```\n")
 
     # sqlite3
     _, sqlite_err = validate_sql_with_sqlite(demo_query.rstrip().rstrip(';'))
+    demo_diagnostics["sqlite3"] = {
+        "output": sqlite_err.strip() if sqlite_err else "",
+        "errors_found": 1 if sqlite_err else 0,
+        "finds_all": False,
+        "did_you_mean": False,
+        "approach": "runtime execution",
+        "description": "Runtime execution — stops at first error:",
+    }
     print(f"### sqlite3\n")
-    print(f"Runtime execution — stops at first error:\n")
+    print(f"{demo_diagnostics['sqlite3']['description']}\n")
     print("```")
     if sqlite_err:
         print(sqlite_err.strip())
@@ -805,31 +838,46 @@ def run_validator_comparison():
     t = _tmpfile(schema_preamble + demo_query)
     _, out, err = run(f"node '{LSP_VALIDATE}' node '{SQLITE_RUNNER_LSP}' --stdio -- '{t}'")
     os.unlink(t)
-    print(f"### sqlite-runner-lsp\n")
-    print(f"Runtime via LSP — wraps sqlite3, same single error:\n")
     combined = (out + err).strip()
+    has_diag = combined and "no diagnostics" not in combined
+    demo_diagnostics["sqlite-runner-lsp"] = {
+        "output": combined if has_diag else "(no diagnostics)",
+        "errors_found": 1 if has_diag else 0,
+        "finds_all": False,
+        "did_you_mean": False,
+        "approach": "runtime via LSP",
+        "description": "Runtime via LSP — wraps sqlite3, same single error:",
+    }
+    print(f"### sqlite-runner-lsp\n")
+    print(f"{demo_diagnostics['sqlite-runner-lsp']['description']}\n")
     print("```")
-    if combined and "no diagnostics" not in combined:
-        print(combined)
-    else:
-        print("(no diagnostics)")
+    print(demo_diagnostics["sqlite-runner-lsp"]["output"])
     print("```\n")
 
     # sql-lint
     t = _tmpfile(demo_query)
     _, out, err = run(f"npx sql-lint '{t}'")
     os.unlink(t)
-    print(f"### sql-lint\n")
-    print(f"Structural checks only:\n")
     combined = (out + err).strip()
-    print("```")
-    if combined and ("sql-lint" in combined.lower() or "error" in combined.lower()):
+    has_lint = combined and ("sql-lint" in combined.lower() or "error" in combined.lower())
+    lint_output = ""
+    if has_lint:
         short = combined.split('\n')[0]
         if len(short) > 120:
             short = short[:120] + "..."
-        print(short)
-    else:
-        print("(no diagnostics)")
+        lint_output = short
+    demo_diagnostics["sql-lint"] = {
+        "output": lint_output if has_lint else "(no diagnostics)",
+        "errors_found": 0,
+        "finds_all": False,
+        "did_you_mean": False,
+        "approach": "structural checks",
+        "description": "Structural checks only:",
+    }
+    print(f"### sql-lint\n")
+    print(f"{demo_diagnostics['sql-lint']['description']}\n")
+    print("```")
+    print(demo_diagnostics["sql-lint"]["output"])
     print("```\n")
 
     # ── Correctness — error detection on edge cases ──
@@ -1009,6 +1057,13 @@ def run_validator_comparison():
         if os.path.exists(bench_md):
             print(open(bench_md).read())
         print()
+
+    return {
+        "tallies": tallies,
+        "total": total,
+        "demo_diagnostics": demo_diagnostics,
+        "bench_dir": val_dir,
+    }
 
 
 # ─── LSP CATEGORY ────────────────────────────────────────────────────
@@ -1257,6 +1312,214 @@ def run_lsp_comparison():
         print(open(bench_md).read())
     print()
 
+    return {
+        "all_results": all_results,
+        "feature_rows": feature_rows,
+        "tool_names": tool_names,
+        "bench_dir": lsp_dir,
+    }
+
+
+# ─── SUMMARY GENERATOR ──────────────────────────────────────────────
+
+def _read_bench_md(bench_dir, filename):
+    """Read a hyperfine benchmark markdown file and return its content."""
+    path = os.path.join(bench_dir, filename)
+    if os.path.exists(path):
+        return open(path).read().strip()
+    return None
+
+
+def generate_summary(results):
+    """Generate the summary comparison page from structured results."""
+    lines = []
+    p = lines.append
+
+    p("# syntaqlite — Competitive Comparison\n")
+    p("SQLite SQL tooling landscape. See [detailed results](@/reference/comparison-details.md) "
+      "for per-statement breakdowns, corruption details, and diagnostic examples.\n")
+
+    # ── Parser ──
+    if "parser" in results:
+        r = results["parser"]
+        tallies = r["tallies"]
+        total = r["total"]
+
+        p("\n# Parser\n")
+        p(f"{total} test statements covering obscure SQLite syntax, validated against sqlite3 "
+          "as ground truth.\n")
+
+        p("## Accuracy\n")
+        ranked = sorted(tallies.items(), key=lambda x: (-x[1]["correct"], x[1]["reject_valid"]))
+        sb_headers = ["Tool", "Correct", "Rejects Valid", "Accepts Invalid"]
+        sb_rows = []
+        for name, t in ranked:
+            pct = t["correct"] * 100 // total
+            bar = "█" * (t["correct"] * 20 // total)
+            rv = str(t['reject_valid']) if t['reject_valid'] > 0 else "-"
+            ai = str(t['accept_invalid']) if t['accept_invalid'] > 0 else "-"
+            sb_rows.append([name, f"{t['correct']}/{total} ({pct}%) {bar}", rv, ai])
+        _md_table_to(p, sb_headers, sb_rows, ['l', 'l', 'r', 'r'])
+
+        p("\n## Speed\n")
+        bench_1x = _read_bench_md(r["bench_dir"], "bench_bench.sql.md")
+        bench_30x = _read_bench_md(r["bench_dir"], "bench_bench_30x.sql.md")
+        if bench_1x:
+            p("### bench.sql (1x)\n")
+            p(bench_1x)
+            p("")
+        if bench_30x:
+            p("\n### bench_30x.sql (30x)\n")
+            p(bench_30x)
+            p("")
+
+    # ── Formatter ──
+    if "formatter" in results:
+        r = results["formatter"]
+        tallies = r["tallies"]
+        total = r["total"]
+        n_valid = r["n_valid"]
+
+        p("\n# Formatter\n")
+        p("Round-trip correctness (format then validate with sqlite3) and speed.\n")
+
+        p("## Accuracy\n")
+        sb_rows = []
+        for tn in FORMATTER_NAMES:
+            t = tallies[tn]
+            sb_rows.append([tn, f"{t['format_ok']}/{total}", f"{t['sqlite_ok']}/{n_valid}", str(t['corrupted'])])
+        _md_table_to(p, ["Tool", "Formats", "SQLite OK", "Corrupt"], sb_rows, ['l', 'r', 'r', 'r'])
+
+        p("\n## Speed\n")
+        bench_1x = _read_bench_md(r["bench_dir"], "bench_bench.sql.md")
+        bench_30x = _read_bench_md(r["bench_dir"], "bench_bench_30x.sql.md")
+        if bench_1x:
+            p("### bench.sql (1x)\n")
+            p(bench_1x)
+            p("")
+        if bench_30x:
+            p("\n### bench_30x.sql (30x)\n")
+            p(bench_30x)
+            p("")
+
+    # ── Validator ──
+    if "validator" in results:
+        r = results["validator"]
+        tallies = r["tallies"]
+        total = r["total"]
+        demo = r["demo_diagnostics"]
+
+        p("\n# Validator\n")
+        p("Error detection accuracy and diagnostic quality.\n")
+
+        p("## Accuracy\n")
+        p(f"Schema: `users`, `orders`, `products`, `order_items`. Ground truth: sqlite3.\n")
+        ranked = sorted(tallies.items(), key=lambda x: (-x[1]["correct"], x[1]["fn"]))
+        sb_rows = []
+        for name, t in ranked:
+            approach = next(a for n, a, _ in VALIDATOR_TOOLS if n == name)
+            pct = t["correct"] * 100 // total
+            bar = "█" * (t["correct"] * 20 // total)
+            fn_str = str(t["fn"]) if t["fn"] > 0 else "-"
+            fp_str = str(t["fp"]) if t["fp"] > 0 else "-"
+            sb_rows.append([name, approach, f"{t['correct']}/{total} {bar}", fn_str, fp_str])
+        _md_table_to(p, ["Tool", "Approach", "Correct", "Missed", "FP"], sb_rows, ['l', 'l', 'l', 'r', 'r'])
+
+        # Diagnostic quality comparison table
+        p("\n## Diagnostic Quality\n")
+        p("Query with 2 errors: CTE declares 3 columns but SELECT produces 2, "
+          "and typo `ROUDN` instead of `ROUND`.\n")
+        dq_headers = ["Tool", "Approach", "Errors Found", "Finds All", "Did-you-mean"]
+        dq_rows = []
+        for name in ["syntaqlite", "sqlite3", "sqlite-runner-lsp", "sql-lint"]:
+            d = demo.get(name, {})
+            found = d.get("errors_found", 0)
+            finds_all = "Yes" if d.get("finds_all") else "No"
+            dym = "Yes" if d.get("did_you_mean") else "No"
+            dq_rows.append([name, d.get("approach", ""), f"{found}/2", finds_all, dym])
+        _md_table_to(p, dq_headers, dq_rows, ['l', 'l', 'c', 'c', 'c'])
+
+        p("\n## Speed\n")
+        bench_1x = _read_bench_md(r["bench_dir"], "bench_bench.sql.md")
+        bench_30x = _read_bench_md(r["bench_dir"], "bench_bench_30x.sql.md")
+        if bench_1x:
+            p("### bench.sql (1x)\n")
+            p(bench_1x)
+            p("")
+        if bench_30x:
+            p("\n### bench_30x.sql (30x)\n")
+            p(bench_30x)
+            p("")
+
+    # ── LSP ──
+    if "lsp" in results:
+        r = results["lsp"]
+
+        p("\n# LSP\n")
+        p("Feature testing for SQLite-aware language servers.\n")
+
+        p("## Features\n")
+        p("Each server is started, sent a test file, and probed for completion, hover,\n"
+          "diagnostics, and formatting. Results are from actual LSP responses.\n")
+        feat_headers = ["Feature"] + r["tool_names"]
+        feat_align = ['l'] + ['c'] * len(r["tool_names"])
+        # Strip ANSI from feature_rows (they may have color codes from terminal mode)
+        clean_rows = []
+        for row in r["feature_rows"]:
+            clean_rows.append([re.sub(r'\033\[[0-9;]*m', '', str(c)) for c in row])
+        _md_table_to(p, feat_headers, clean_rows, feat_align)
+
+        p("\n## Startup + Response Speed\n")
+        p("Time to start server, send document, receive diagnostics, and exit:\n")
+        bench = _read_bench_md(r["bench_dir"], "bench.md")
+        if bench:
+            p(bench)
+            p("")
+
+    return "\n".join(lines) + "\n"
+
+
+def _md_table_to(emit, headers, rows, align=None):
+    """Write a markdown table using an emit function (like list.append)."""
+    cols = len(headers)
+    if align is None:
+        align = ['l'] * cols
+    widths = [len(h) for h in headers]
+    for row in rows:
+        for i, cell in enumerate(row):
+            plain = re.sub(r'\033\[[0-9;]*m', '', str(cell))
+            widths[i] = max(widths[i], len(plain))
+    hdr = '| ' + ' | '.join(
+        h.ljust(widths[i]) if align[i] == 'l' else h.rjust(widths[i]) if align[i] == 'r' else h.center(widths[i])
+        for i, h in enumerate(headers)
+    ) + ' |'
+    sep_parts = []
+    for i in range(cols):
+        if align[i] == 'r':
+            sep_parts.append('-' * (widths[i] - 1) + ':')
+        elif align[i] == 'c':
+            sep_parts.append(':' + '-' * (widths[i] - 2) + ':')
+        else:
+            sep_parts.append('-' * widths[i])
+    sep = '| ' + ' | '.join(sep_parts) + ' |'
+    emit(hdr)
+    emit(sep)
+    for row in rows:
+        cells = []
+        for i, cell in enumerate(row):
+            s = str(cell)
+            plain = re.sub(r'\033\[[0-9;]*m', '', s)
+            pad = widths[i] - len(plain)
+            if align[i] == 'r':
+                cells.append(' ' * pad + s)
+            elif align[i] == 'c':
+                lp = pad // 2
+                rp = pad - lp
+                cells.append(' ' * lp + s + ' ' * rp)
+            else:
+                cells.append(s + ' ' * pad)
+        emit('| ' + ' | '.join(cells) + ' |')
+
 
 # ─── ANSI stripping ─────────────────────────────────────────────────
 
@@ -1277,7 +1540,9 @@ if __name__ == "__main__":
     parser.add_argument("--output", choices=["terminal", "markdown"], default="terminal",
                         help="Output format: terminal (colored) or markdown (plain, for docs)")
     parser.add_argument("--output-file", type=str, default=None,
-                        help="Write output to file instead of stdout")
+                        help="Write detailed output to file instead of stdout")
+    parser.add_argument("--summary-file", type=str, default=None,
+                        help="Write summary output to file (markdown mode only)")
     args = parser.parse_args()
 
     # For markdown output, suppress ANSI colors and optionally redirect to file
@@ -1301,14 +1566,15 @@ if __name__ == "__main__":
     print(f"# syntaqlite — Competitive Comparison\n")
     print(f"SQLite SQL tooling landscape.\n")
 
+    comparison_results = {}
     if "parser" in args.categories:
-        run_parser_comparison()
+        comparison_results["parser"] = run_parser_comparison()
     if "formatter" in args.categories:
-        run_formatter_comparison()
+        comparison_results["formatter"] = run_formatter_comparison()
     if "validator" in args.categories:
-        run_validator_comparison()
+        comparison_results["validator"] = run_validator_comparison()
     if "lsp" in args.categories:
-        run_lsp_comparison()
+        comparison_results["lsp"] = run_lsp_comparison()
 
     if args.output == "markdown":
         import builtins
@@ -1317,6 +1583,13 @@ if __name__ == "__main__":
         if args.output_file:
             with open(args.output_file, 'w') as f:
                 f.write(full_output)
-            print(f"\nWritten to {args.output_file}", file=sys.stderr)
+            print(f"\nWritten detailed to {args.output_file}", file=sys.stderr)
         else:
             sys.stdout.write(full_output)
+
+        # Generate and write summary
+        if args.summary_file:
+            summary = generate_summary(comparison_results)
+            with open(args.summary_file, 'w') as f:
+                f.write(summary)
+            print(f"Written summary to {args.summary_file}", file=sys.stderr)

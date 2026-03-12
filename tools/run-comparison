@@ -28,29 +28,43 @@ for arg in "$@"; do
 done
 
 if [ "$output_mode" = "markdown" ]; then
-    outfile="$DOCS_DIR/comparison.md"
+    summary_file="$DOCS_DIR/comparison.md"
+    detail_file="$DOCS_DIR/comparison-details.md"
     mkdir -p "$DOCS_DIR"
 
-    # Zola frontmatter
-    frontmatter='+++
+    summary_frontmatter='+++
 title = "Competitive Comparison"
 weight = 10
 +++
 '
+    detail_frontmatter='+++
+title = "Comparison Details"
+weight = 11
++++
+'
 
     echo "Running comparison (markdown mode)..."
-    echo "Output: $outfile"
+    echo "Summary: $summary_file"
+    echo "Details: $detail_file"
     echo ""
 
-    python3 "$RUNNER" --output markdown --output-file "$outfile.tmp" "${categories[@]+"${categories[@]}"}"
+    python3 "$RUNNER" --output markdown \
+        --output-file "$detail_file.tmp" \
+        --summary-file "$summary_file.tmp" \
+        "${categories[@]+"${categories[@]}"}"
 
-    # Prepend Zola frontmatter
-    printf '%s' "$frontmatter" > "$outfile"
-    cat "$outfile.tmp" >> "$outfile"
-    rm -f "$outfile.tmp"
+    # Prepend Zola frontmatter to both files
+    printf '%s' "$summary_frontmatter" > "$summary_file"
+    cat "$summary_file.tmp" >> "$summary_file"
+    rm -f "$summary_file.tmp"
+
+    printf '%s' "$detail_frontmatter" > "$detail_file"
+    cat "$detail_file.tmp" >> "$detail_file"
+    rm -f "$detail_file.tmp"
 
     echo ""
-    echo "Written to $outfile"
+    echo "Written to $summary_file"
+    echo "Written to $detail_file"
 else
     python3 "$RUNNER" "${categories[@]+"${categories[@]}"}"
 fi
