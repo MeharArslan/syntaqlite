@@ -22,11 +22,10 @@ use lsp_types::request::{
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
     Hover, HoverContents, HoverProviderCapability, InitializeParams, MarkupContent, MarkupKind,
-    ParameterInformation, ParameterLabel, Position, PositionEncodingKind, Range,
-    SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
-    SignatureHelp, SignatureHelpOptions, SignatureInformation, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit, Uri,
+    ParameterInformation, ParameterLabel, Position, PositionEncodingKind, Range, SemanticTokenType,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp, SignatureHelpOptions,
+    SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
 };
 
 use crate::dialect::AnyDialect;
@@ -197,7 +196,9 @@ impl LspServer {
 
         match host.hover_info(uri_str, offset) {
             Some((text, tok_offset, tok_length)) => {
-                let source = host.document_source(uri_str).unwrap();
+                let source = host
+                    .document_source(uri_str)
+                    .expect("document must exist for hover");
                 let map = SourcePositionMap::new(source);
                 let positions = map.offsets_to_positions(&[tok_offset, tok_offset + tok_length]);
                 let range = Range::new(positions[0], positions[1]);

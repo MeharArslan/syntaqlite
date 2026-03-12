@@ -23,7 +23,11 @@ pub(crate) enum ParseOutput {
 }
 
 #[derive(Parser)]
-#[command(name = "syntaqlite", about = "SQL formatting and analysis tools", version)]
+#[command(
+    name = "syntaqlite",
+    about = "SQL formatting and analysis tools",
+    version
+)]
 pub(crate) struct Cli {
     /// Path to a shared library (.so/.dylib/.dll) providing a dialect.
     #[cfg(feature = "builtin-sqlite")]

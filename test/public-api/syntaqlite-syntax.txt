@@ -281,6 +281,8 @@ impl syntaqlite_syntax::any::AnyNodeId
 impl syntaqlite_syntax::any::AnyNodeTag
 impl syntaqlite_syntax::any::AnyTokenType
 impl syntaqlite_syntax::any::FieldMeta<'_>
+impl syntaqlite_syntax::any::KeywordEntry
+impl syntaqlite_syntax::any::MacroRegion
 impl syntaqlite_syntax::nodes::AggregateFunctionCallFlags
 impl syntaqlite_syntax::nodes::AggregateFunctionCallId
 impl syntaqlite_syntax::nodes::AlterOp
@@ -914,6 +916,10 @@ pub fn syntaqlite_syntax::any::FieldMeta<'_>::display_name(&self, idx: usize) ->
 pub fn syntaqlite_syntax::any::FieldMeta<'_>::kind(&self) -> syntaqlite_syntax::any::FieldKind
 pub fn syntaqlite_syntax::any::FieldMeta<'_>::name(&self) -> &'static str
 pub fn syntaqlite_syntax::any::FieldMeta<'_>::offset(&self) -> u16
+pub fn syntaqlite_syntax::any::KeywordEntry::keyword(&self) -> &'static str
+pub fn syntaqlite_syntax::any::KeywordEntry::token_type(&self) -> syntaqlite_syntax::any::AnyTokenType
+pub fn syntaqlite_syntax::any::MacroRegion::call_length(&self) -> u32
+pub fn syntaqlite_syntax::any::MacroRegion::call_offset(&self) -> u32
 pub fn syntaqlite_syntax::any::NodeFields<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::any::NodeFields<'a>::index(&self, idx: usize) -> &syntaqlite_syntax::any::FieldValue<'a>
 pub fn syntaqlite_syntax::any::NodeFields<'a>::is_empty(&self) -> bool
@@ -2030,10 +2036,6 @@ pub syntaqlite_syntax::any::FieldValue::Enum(u32)
 pub syntaqlite_syntax::any::FieldValue::Flags(u8)
 pub syntaqlite_syntax::any::FieldValue::NodeId(syntaqlite_syntax::any::AnyNodeId)
 pub syntaqlite_syntax::any::FieldValue::Span(&'a str)
-pub fn syntaqlite_syntax::any::KeywordEntry::keyword(&self) -> &'static str
-pub fn syntaqlite_syntax::any::KeywordEntry::token_type(&self) -> syntaqlite_syntax::any::AnyTokenType
-pub fn syntaqlite_syntax::any::MacroRegion::call_length(&self) -> u32
-pub fn syntaqlite_syntax::any::MacroRegion::call_offset(&self) -> u32
 pub syntaqlite_syntax::any::ParseOutcome::Done
 pub syntaqlite_syntax::any::ParseOutcome::Err(E)
 pub syntaqlite_syntax::any::ParseOutcome::Ok(T)

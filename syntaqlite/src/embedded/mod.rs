@@ -54,11 +54,17 @@ pub struct EmbeddedFragment {
 
 impl EmbeddedFragment {
     /// Byte range of the SQL content in the host file (excluding quotes).
-    pub fn sql_range(&self) -> &Range<usize> { &self.sql_range }
+    pub fn sql_range(&self) -> &Range<usize> {
+        &self.sql_range
+    }
     /// SQL text with holes replaced by placeholder identifiers.
-    pub fn sql_text(&self) -> &str { &self.sql_text }
+    pub fn sql_text(&self) -> &str {
+        &self.sql_text
+    }
     /// Information about each interpolation hole.
-    pub fn holes(&self) -> &[Hole] { &self.holes }
+    pub fn holes(&self) -> &[Hole] {
+        &self.holes
+    }
 }
 
 /// An interpolation hole (e.g. `{expr}` in a Python f-string, `${expr}` in JS).
@@ -76,9 +82,13 @@ pub struct Hole {
 
 impl Hole {
     /// Byte range of the hole expression in the host file.
-    pub fn host_range(&self) -> &Range<usize> { &self.host_range }
+    pub fn host_range(&self) -> &Range<usize> {
+        &self.host_range
+    }
     /// Byte offset in `sql_text` where the placeholder sits.
-    pub fn sql_offset(&self) -> usize { self.sql_offset }
+    pub fn sql_offset(&self) -> usize {
+        self.sql_offset
+    }
 }
 
 /// Placeholder text inserted into `sql_text` for each interpolation hole.

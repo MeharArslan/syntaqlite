@@ -41,7 +41,7 @@ impl<'a> DiagnosticRenderer<'a> {
             Severity::Hint => "hint",
         };
         let message = diag.message().to_string();
-        let help = diag.help().map(|h| h.to_string());
+        let help = diag.help().map(ToString::to_string);
         render_source_error(
             out,
             &crate::util::SourceError {

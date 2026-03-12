@@ -9,8 +9,8 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use clap::ValueEnum;
-use syntaqlite::any::{AnyParser, ParseOutcome};
 use syntaqlite::AnyDialect;
+use syntaqlite::any::{AnyParser, ParseOutcome};
 use syntaqlite::{
     Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, FormatConfig, FormatError,
     Formatter, KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,

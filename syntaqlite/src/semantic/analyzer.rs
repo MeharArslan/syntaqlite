@@ -638,10 +638,8 @@ impl<'a> ValidationPass<'a> {
                             FunctionCategory::Aggregate => "aggregate function",
                             FunctionCategory::Window => "window function",
                         };
-                        let arity_strs: Vec<String> = arities
-                            .iter()
-                            .map(|a| format_arity(name, *a))
-                            .collect();
+                        let arity_strs: Vec<String> =
+                            arities.iter().map(|a| format_arity(name, *a)).collect();
                         self.resolutions.push(Resolution {
                             start: offset,
                             end: offset + name.len(),

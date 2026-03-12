@@ -10,21 +10,21 @@ fn formatter() -> syntaqlite::Formatter {
 #[test]
 fn macro_call_emitted_verbatim() {
     let mut fmt = formatter();
-    let out = fmt.format("SELECT foo!(1 + 2), 3").unwrap();
+    let out = fmt.format("SELECT foo!(1 + 2), 3").expect("format failed");
     assert_eq!(out, "SELECT foo!(1 + 2), 3;\n");
 }
 
 #[test]
 fn macro_multi_node_emitted_once() {
     let mut fmt = formatter();
-    let out = fmt.format("SELECT macro!(a, b)").unwrap();
+    let out = fmt.format("SELECT macro!(a, b)").expect("format failed");
     assert_eq!(out, "SELECT macro!(a, b);\n");
 }
 
 #[test]
 fn macro_multi_node_no_extra_separator() {
     let mut fmt = formatter();
-    let out = fmt.format("SELECT foo!(a, b), c").unwrap();
+    let out = fmt.format("SELECT foo!(a, b), c").expect("format failed");
     assert_eq!(out, "SELECT foo!(a, b), c;\n");
 }
 
@@ -185,6 +185,6 @@ fn macro_single_line_preserved() {
 #[test]
 fn no_macro_regions_formats_normally() {
     let mut fmt = formatter();
-    let out = fmt.format("SELECT  1+2,  3").unwrap();
+    let out = fmt.format("SELECT  1+2,  3").expect("format failed");
     assert_eq!(out, "SELECT 1 + 2, 3;\n");
 }

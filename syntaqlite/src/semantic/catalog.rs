@@ -714,8 +714,7 @@ impl Catalog {
         let category = set
             .overloads
             .first()
-            .map(|ov| ov.category)
-            .unwrap_or(FunctionCategory::Scalar);
+            .map_or(FunctionCategory::Scalar, |ov| ov.category);
         let arities: Vec<AritySpec> = set.overloads.iter().map(|ov| ov.arity).collect();
         Some((category, arities))
     }

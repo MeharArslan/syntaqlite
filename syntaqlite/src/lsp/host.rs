@@ -305,8 +305,12 @@ impl LspHost {
 
     // ── Hover ──────────────────────────────────────────────────────────────────
 
-    /// Hover information at a byte offset: returns (hover_text, token_offset, token_length).
-    pub(crate) fn hover_info(&mut self, uri: &str, offset: usize) -> Option<(String, usize, usize)> {
+    /// Hover information at a byte offset: returns (`hover_text`, `token_offset`, `token_length`).
+    pub(crate) fn hover_info(
+        &mut self,
+        uri: &str,
+        offset: usize,
+    ) -> Option<(String, usize, usize)> {
         let doc = self.documents.get_mut(uri)?;
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         let model = doc.model.as_ref().expect("ensure_model sets model");
@@ -325,12 +329,8 @@ impl LspHost {
     // ── Signature help ────────────────────────────────────────────────────────
 
     /// Signature help at a byte offset: finds enclosing function call and returns
-    /// (function_name, active_parameter, overloads).
-    pub(crate) fn signature_help(
-        &mut self,
-        uri: &str,
-        offset: usize,
-    ) -> Option<SignatureHelpInfo> {
+    /// (`function_name`, `active_parameter`, overloads).
+    pub(crate) fn signature_help(&mut self, uri: &str, offset: usize) -> Option<SignatureHelpInfo> {
         let doc = self.documents.get_mut(uri)?;
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         let model = doc.model.as_ref().expect("ensure_model sets model");
@@ -470,10 +470,7 @@ pub(crate) struct SignatureHelpInfo {
 fn format_resolved_hover(symbol: &ResolvedSymbol) -> String {
     match symbol {
         ResolvedSymbol::Table { name, columns } => match columns {
-            Some(cols) => format!(
-                "**table** `{name}`\n\n```\n{}\n```",
-                cols.join(", ")
-            ),
+            Some(cols) => format!("**table** `{name}`\n\n```\n{}\n```", cols.join(", ")),
             None => format!("**table** `{name}`"),
         },
         ResolvedSymbol::Column {
@@ -494,9 +491,7 @@ fn format_resolved_hover(symbol: &ResolvedSymbol) -> String {
             format!("**column** in `{table}`\n\n{}", col_list.join(", "))
         }
         ResolvedSymbol::Function {
-            category,
-            arities,
-            ..
+            category, arities, ..
         } => {
             format!("**{category}**\n\n```\n{}\n```", arities.join("\n"))
         }
@@ -533,9 +528,8 @@ fn find_enclosing_call(
                     // (only whitespace between).
                     let between = &before[func_token.offset + func_token.length..paren_offset];
                     if between.trim().is_empty() {
-                        let name =
-                            before[func_token.offset..func_token.offset + func_token.length]
-                                .to_string();
+                        let name = before[func_token.offset..func_token.offset + func_token.length]
+                            .to_string();
                         return Some((name, commas));
                     }
                     return None;

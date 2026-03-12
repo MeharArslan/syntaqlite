@@ -26,8 +26,10 @@ impl serde_core::ser::Serialize for syntaqlite::DiagnosticMessage
 impl serde_core::ser::Serialize for syntaqlite::Help
 impl serde_core::ser::Serialize for syntaqlite::Severity
 impl syntaqlite::Catalog
+impl syntaqlite::Diagnostic
 impl syntaqlite::DiagnosticMessage
 impl syntaqlite::Dialect
+impl syntaqlite::FormatConfig
 impl syntaqlite::FormatError
 impl syntaqlite::Formatter
 impl syntaqlite::LspServer
@@ -37,6 +39,8 @@ impl syntaqlite::ValidationConfig
 impl syntaqlite::dialect::AnyDialect
 impl syntaqlite::dialect::TypedDialect for syntaqlite::Dialect
 impl syntaqlite::embedded::EmbeddedAnalyzer
+impl syntaqlite::embedded::EmbeddedFragment
+impl syntaqlite::embedded::Hole
 impl syntaqlite::lsp::CompletionEntry
 impl syntaqlite::lsp::CompletionKind
 impl syntaqlite::lsp::LspHost
@@ -55,7 +59,13 @@ pub fn syntaqlite::Catalog::new(dialect: impl core::convert::Into<syntaqlite::di
 pub fn syntaqlite::Catalog::new_connection(&mut self)
 pub fn syntaqlite::Catalog::new_database(&mut self)
 pub fn syntaqlite::Catalog::new_document(&mut self)
+pub fn syntaqlite::Diagnostic::end_offset(&self) -> usize
+pub fn syntaqlite::Diagnostic::help(&self) -> core::option::Option<&syntaqlite::Help>
+pub fn syntaqlite::Diagnostic::message(&self) -> &syntaqlite::DiagnosticMessage
+pub fn syntaqlite::Diagnostic::new(start_offset: usize, end_offset: usize, message: syntaqlite::DiagnosticMessage, severity: syntaqlite::Severity, help: core::option::Option<syntaqlite::Help>) -> Self
 pub fn syntaqlite::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::Diagnostic::severity(&self) -> syntaqlite::Severity
+pub fn syntaqlite::Diagnostic::start_offset(&self) -> usize
 pub fn syntaqlite::DiagnosticMessage::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite::DiagnosticMessage::is_parse_error(&self) -> bool
 pub fn syntaqlite::DiagnosticMessage::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
@@ -71,8 +81,18 @@ pub fn syntaqlite::Dialect::new() -> Self
 pub fn syntaqlite::Dialect::with_cflags(self, flags: syntaqlite::util::SqliteFlags) -> Self
 pub fn syntaqlite::Dialect::with_version(self, version: syntaqlite_syntax::util::SqliteVersion) -> Self
 pub fn syntaqlite::FormatConfig::default() -> Self
+pub fn syntaqlite::FormatConfig::indent_width(&self) -> usize
+pub fn syntaqlite::FormatConfig::keyword_case(&self) -> syntaqlite::KeywordCase
+pub fn syntaqlite::FormatConfig::line_width(&self) -> usize
+pub fn syntaqlite::FormatConfig::semicolons(&self) -> bool
+pub fn syntaqlite::FormatConfig::with_indent_width(self, width: usize) -> Self
+pub fn syntaqlite::FormatConfig::with_keyword_case(self, case: syntaqlite::KeywordCase) -> Self
+pub fn syntaqlite::FormatConfig::with_line_width(self, width: usize) -> Self
+pub fn syntaqlite::FormatConfig::with_semicolons(self, semicolons: bool) -> Self
 pub fn syntaqlite::FormatError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite::FormatError::render(&self, out: &mut impl std::io::Write, source: &str, file: &str) -> std::io::error::Result<()>
+pub fn syntaqlite::FormatError::length(&self) -> core::option::Option<usize>
+pub fn syntaqlite::FormatError::message(&self) -> &str
+pub fn syntaqlite::FormatError::offset(&self) -> core::option::Option<usize>
 pub fn syntaqlite::Formatter::default() -> Self
 pub fn syntaqlite::Formatter::format(&mut self, source: &str) -> core::result::Result<alloc::string::String, syntaqlite::FormatError>
 pub fn syntaqlite::Formatter::new() -> syntaqlite::Formatter
@@ -92,6 +112,10 @@ pub fn syntaqlite::SemanticModel::source(&self) -> &str
 pub fn syntaqlite::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::ValidationConfig::default() -> Self
 pub fn syntaqlite::ValidationConfig::severity(&self) -> syntaqlite::Severity
+pub fn syntaqlite::ValidationConfig::strict_schema(&self) -> bool
+pub fn syntaqlite::ValidationConfig::suggestion_threshold(&self) -> usize
+pub fn syntaqlite::ValidationConfig::with_strict_schema(self, strict: bool) -> Self
+pub fn syntaqlite::ValidationConfig::with_suggestion_threshold(self, threshold: usize) -> Self
 pub fn syntaqlite::dialect::AnyDialect::cflags(&self) -> syntaqlite::util::SqliteFlags
 pub fn syntaqlite::dialect::AnyDialect::deref(&self) -> &syntaqlite_syntax::grammar::AnyGrammar
 pub fn syntaqlite::dialect::AnyDialect::deref_mut(&mut self) -> &mut syntaqlite_syntax::grammar::AnyGrammar
@@ -106,6 +130,11 @@ pub fn syntaqlite::embedded::EmbeddedAnalyzer::semantic_tokens_encoded(&self, fr
 pub fn syntaqlite::embedded::EmbeddedAnalyzer::validate(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment]) -> alloc::vec::Vec<syntaqlite::Diagnostic>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer::with_catalog(self, catalog: syntaqlite::Catalog) -> Self
 pub fn syntaqlite::embedded::EmbeddedAnalyzer::with_config(self, config: syntaqlite::ValidationConfig) -> Self
+pub fn syntaqlite::embedded::EmbeddedFragment::holes(&self) -> &[syntaqlite::embedded::Hole]
+pub fn syntaqlite::embedded::EmbeddedFragment::sql_range(&self) -> &core::ops::range::Range<usize>
+pub fn syntaqlite::embedded::EmbeddedFragment::sql_text(&self) -> &str
+pub fn syntaqlite::embedded::Hole::host_range(&self) -> &core::ops::range::Range<usize>
+pub fn syntaqlite::embedded::Hole::sql_offset(&self) -> usize
 pub fn syntaqlite::embedded::extract_python(source: &str) -> alloc::vec::Vec<syntaqlite::embedded::EmbeddedFragment>
 pub fn syntaqlite::embedded::extract_typescript(source: &str) -> alloc::vec::Vec<syntaqlite::embedded::EmbeddedFragment>
 pub fn syntaqlite::lsp::CompletionEntry::kind(&self) -> syntaqlite::lsp::CompletionKind
@@ -162,12 +191,6 @@ pub struct syntaqlite::lsp::CompletionEntry
 pub struct syntaqlite::lsp::LspHost
 pub struct syntaqlite::lsp::LspServer
 pub struct syntaqlite::util::SqliteFlags(_)
-pub fn syntaqlite::Diagnostic::end_offset(&self) -> usize
-pub fn syntaqlite::Diagnostic::help(&self) -> core::option::Option<&syntaqlite::Help>
-pub fn syntaqlite::Diagnostic::message(&self) -> &syntaqlite::DiagnosticMessage
-pub fn syntaqlite::Diagnostic::new(start_offset: usize, end_offset: usize, message: syntaqlite::DiagnosticMessage, severity: syntaqlite::Severity, help: core::option::Option<syntaqlite::Help>) -> Self
-pub fn syntaqlite::Diagnostic::severity(&self) -> syntaqlite::Severity
-pub fn syntaqlite::Diagnostic::start_offset(&self) -> usize
 pub syntaqlite::DiagnosticMessage::CteColumnCountMismatch
 pub syntaqlite::DiagnosticMessage::CteColumnCountMismatch::actual: usize
 pub syntaqlite::DiagnosticMessage::CteColumnCountMismatch::declared: usize
@@ -184,17 +207,6 @@ pub syntaqlite::DiagnosticMessage::UnknownFunction
 pub syntaqlite::DiagnosticMessage::UnknownFunction::name: alloc::string::String
 pub syntaqlite::DiagnosticMessage::UnknownTable
 pub syntaqlite::DiagnosticMessage::UnknownTable::name: alloc::string::String
-pub fn syntaqlite::FormatConfig::indent_width(&self) -> usize
-pub fn syntaqlite::FormatConfig::keyword_case(&self) -> syntaqlite::KeywordCase
-pub fn syntaqlite::FormatConfig::line_width(&self) -> usize
-pub fn syntaqlite::FormatConfig::semicolons(&self) -> bool
-pub fn syntaqlite::FormatConfig::with_indent_width(self, width: usize) -> Self
-pub fn syntaqlite::FormatConfig::with_keyword_case(self, case: syntaqlite::KeywordCase) -> Self
-pub fn syntaqlite::FormatConfig::with_line_width(self, width: usize) -> Self
-pub fn syntaqlite::FormatConfig::with_semicolons(self, semicolons: bool) -> Self
-pub fn syntaqlite::FormatError::length(&self) -> core::option::Option<usize>
-pub fn syntaqlite::FormatError::message(&self) -> &str
-pub fn syntaqlite::FormatError::offset(&self) -> core::option::Option<usize>
 pub syntaqlite::Help::Suggestion(alloc::string::String)
 pub syntaqlite::KeywordCase::Lower
 pub syntaqlite::KeywordCase::Upper
@@ -202,15 +214,6 @@ pub syntaqlite::Severity::Error
 pub syntaqlite::Severity::Hint
 pub syntaqlite::Severity::Info
 pub syntaqlite::Severity::Warning
-pub fn syntaqlite::ValidationConfig::strict_schema(&self) -> bool
-pub fn syntaqlite::ValidationConfig::suggestion_threshold(&self) -> usize
-pub fn syntaqlite::ValidationConfig::with_strict_schema(self, strict: bool) -> Self
-pub fn syntaqlite::ValidationConfig::with_suggestion_threshold(self, threshold: usize) -> Self
-pub fn syntaqlite::embedded::EmbeddedFragment::holes(&self) -> &[syntaqlite::embedded::Hole]
-pub fn syntaqlite::embedded::EmbeddedFragment::sql_range(&self) -> &core::ops::range::Range<usize>
-pub fn syntaqlite::embedded::EmbeddedFragment::sql_text(&self) -> &str
-pub fn syntaqlite::embedded::Hole::host_range(&self) -> &core::ops::range::Range<usize>
-pub fn syntaqlite::embedded::Hole::sql_offset(&self) -> usize
 pub syntaqlite::lsp::CompletionKind::Function
 pub syntaqlite::lsp::CompletionKind::Keyword
 pub syntaqlite::util::SqliteFlag::EnableBytecodeVtab = 27

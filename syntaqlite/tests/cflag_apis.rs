@@ -218,7 +218,8 @@ fn lsp_diagnostics_no_parse_error_without_omit_windowfunc() {
     // We only care that the parser doesn't reject window function syntax.
     let has_parse_failures = diags.iter().any(|d| {
         // Parse errors come from the C parser and typically say "near X: syntax error"
-        d.message().to_string().contains("syntax error") || d.message().to_string().contains("parse")
+        d.message().to_string().contains("syntax error")
+            || d.message().to_string().contains("parse")
     });
     let _ = parse_errors;
     assert!(

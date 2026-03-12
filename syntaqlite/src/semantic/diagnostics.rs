@@ -26,19 +26,35 @@ impl Diagnostic {
         severity: Severity,
         help: Option<Help>,
     ) -> Self {
-        Self { start_offset, end_offset, message, severity, help }
+        Self {
+            start_offset,
+            end_offset,
+            message,
+            severity,
+            help,
+        }
     }
 
     /// Byte offset of the start of the diagnostic range.
-    pub fn start_offset(&self) -> usize { self.start_offset }
+    pub fn start_offset(&self) -> usize {
+        self.start_offset
+    }
     /// Byte offset of the end of the diagnostic range.
-    pub fn end_offset(&self) -> usize { self.end_offset }
+    pub fn end_offset(&self) -> usize {
+        self.end_offset
+    }
     /// Structured diagnostic message.
-    pub fn message(&self) -> &DiagnosticMessage { &self.message }
+    pub fn message(&self) -> &DiagnosticMessage {
+        &self.message
+    }
     /// Severity level.
-    pub fn severity(&self) -> Severity { self.severity }
+    pub fn severity(&self) -> Severity {
+        self.severity
+    }
     /// Optional structured help attached to the diagnostic.
-    pub fn help(&self) -> Option<&Help> { self.help.as_ref() }
+    pub fn help(&self) -> Option<&Help> {
+        self.help.as_ref()
+    }
 }
 
 /// Structured diagnostic message.
