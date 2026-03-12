@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 #![cfg_attr(test, expect(clippy::unwrap_used))]
+#![allow(rustdoc::redundant_explicit_links)]
 
 //! Fast, accurate SQL tooling for `SQLite` and its dialects.
 //!
@@ -16,7 +17,7 @@
 //!
 //! # Parsing
 //!
-//! Use [`Parser`] to parse SQL source text into a typed AST:
+//! Use [`Parser`](crate::Parser) to parse SQL source text into a typed AST:
 //!
 //! ```rust
 //! use syntaqlite::{Parser, ParseOutcome, ParseErrorKind};
@@ -89,7 +90,7 @@
 //!
 //! ## Tokenizing
 //!
-//! Use [`Tokenizer`] to break SQL source text into [`Token`]s:
+//! Use [`Tokenizer`](crate::Tokenizer) to break SQL source text into [`Token`](crate::Token)s:
 //!
 //! ```rust
 //! let tokenizer = syntaqlite::Tokenizer::new();
@@ -100,7 +101,7 @@
 //!
 //! ## Incremental Parsing
 //!
-//! Use [`IncrementalParseSession`] when SQL arrives token-by-token
+//! Use [`IncrementalParseSession`](crate::IncrementalParseSession) when SQL arrives token-by-token
 //! (for example in editors and completion engines):
 //!
 //! ```rust
@@ -119,7 +120,7 @@
 //! # Features
 //!
 //! - `sqlite` *(default)*: enables the built-in `SQLite` grammar, [`Dialect`],
-//!   and re-exports [`Parser`], [`Tokenizer`], and typed AST [`nodes`].
+//!   and re-exports [`Parser`](crate::Parser), [`Tokenizer`](crate::Tokenizer), and typed AST [`nodes`].
 //! - `fmt` *(default)*: enables [`Formatter`], [`FormatConfig`], and
 //!   [`KeywordCase`].
 //! - `validation` *(default)*: enables [`SemanticAnalyzer`], [`Catalog`],
@@ -133,7 +134,7 @@
 //!
 //! # Choosing an API
 //!
-//! - Use [`Parser`] and [`Tokenizer`] for parsing and tokenizing SQL.
+//! - Use [`Parser`](crate::Parser) and [`Tokenizer`](crate::Tokenizer) for parsing and tokenizing SQL.
 //! - Use [`SemanticAnalyzer`] + [`Catalog`] when you need to validate SQL
 //!   against a database schema (table/column/function resolution).
 //! - Use [`Formatter`] when you need to pretty-print or normalize SQL text.
@@ -195,11 +196,14 @@ pub fn sqlite_dialect() -> Dialect {
 pub mod util;
 
 // Shared parser utility types used across both `any` and `typed` modules.
+#[doc(inline)]
 pub use syntaqlite_syntax::any::MacroRegion;
+#[doc(inline)]
 pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
 
 // SQLite parser, tokenizer, and token types re-exported for direct use.
 #[cfg(feature = "sqlite")]
+#[doc(inline)]
 pub use syntaqlite_syntax::{
     IncrementalParseSession, ParseError, ParseErrorKind, ParseOutcome, ParseSession,
     ParsedStatement, Parser, ParserToken, Token, TokenType, Tokenizer,

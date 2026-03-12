@@ -97,7 +97,7 @@ impl Default for Tokenizer {
     }
 }
 
-/// Token emitted by [`Tokenizer`], including kind and source slice.
+/// Token emitted by [`Tokenizer`](crate::Tokenizer), including kind and source slice.
 ///
 /// Typical usage:
 ///
