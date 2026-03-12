@@ -1,4 +1,4 @@
-base_url = "https://docs.syntaqlite.com"
+base_url = "/"
 title = "syntaqlite"
 compile_sass = false
 generate_feeds = false
