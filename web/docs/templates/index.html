@@ -18,7 +18,7 @@
     <div class="home-example">
       <div class="home-example__col">
         <div class="home-example__label">Input</div>
-        <pre><code>select u.id, u.name, p.title
+        <pre><code class="language-sql">select u.id, u.name, p.title
 from users u join posts p
 on u.id=p.user_id
 where u.active=1
@@ -28,7 +28,7 @@ limit 10</code></pre>
       </div>
       <div class="home-example__col">
         <div class="home-example__label">Output</div>
-        <pre><code>SELECT u.id, u.name, p.title
+        <pre><code class="language-sql">SELECT u.id, u.name, p.title
 FROM users u
   JOIN posts p ON u.id = p.user_id
 WHERE u.active = 1
@@ -47,7 +47,7 @@ LIMIT 10;</code></pre>
       needing a database. Unlike <code>sqlite3</code>, syntaqlite finds
       <strong>all</strong> errors in one pass and shows exactly where they are:
     </p>
-    <pre><code>CREATE TABLE orders (id, status, total, created_at);
+    <pre><code class="language-sql">CREATE TABLE orders (id, status, total, created_at);
 
 WITH
   monthly_stats(month, revenue, order_count) AS (
@@ -120,7 +120,7 @@ has 2 values for 3 columns</code></pre>
         save, completions for keywords, functions, tables and columns, and
         semantic syntax highlighting.
       </p>
-      <pre><code># VS Code — install from the marketplace
+      <pre><code class="language-bash"># VS Code — install from the marketplace
 ext install syntaqlite.syntaqlite
 
 # Any editor — point your LSP client at:
@@ -224,4 +224,15 @@ syntaqlite lsp</code></pre>
     </a>
   </div>
 </div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css">
+<style>
+  /* Override Prism background to match site theme */
+  .home pre[class*="language-"], .home code[class*="language-"] {
+    background: var(--code-bg);
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-sql.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-shell-session.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
 {% endblock content %}
