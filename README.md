@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="web/docs/static/favicon.svg" width="80" height="80" alt="syntaqlite">
+</p>
+
 # syntaqlite
 
 [![CI](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml/badge.svg)](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml)
