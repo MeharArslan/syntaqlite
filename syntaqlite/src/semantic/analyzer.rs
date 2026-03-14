@@ -1234,10 +1234,20 @@ impl<'a> ValidationPass<'a> {
             );
 
             // Determine the CTE's column list and register it in the catalog.
+            let cte_key = binding.name.to_ascii_lowercase();
             let cols = if let Some(ref declared) = binding.declared_cols {
                 self.check_cte_column_count(stmt, binding.name, declared, binding.body_id);
+                // Record declared column definition offsets.
+                for col_name in declared {
+                    let col_offset = self.span_offset(col_name);
+                    let key = format!("{cte_key}.{}", col_name.to_ascii_lowercase());
+                    self.definition_offsets
+                        .insert(key, (col_offset, col_offset + col_name.len()));
+                }
                 Some(declared.iter().map(ToString::to_string).collect())
             } else {
+                // Record inferred column definition offsets from SELECT aliases.
+                self.record_select_column_offsets(stmt, binding.body_id, &cte_key);
                 binding
                     .body_id
                     .and_then(|id| columns_from_select(stmt, id, self.roles))
@@ -1247,6 +1257,51 @@ impl<'a> ValidationPass<'a> {
 
         self.visit_opt(stmt, Self::field_node_id(fields, body_idx));
         self.catalog.pop_query_scope();
+    }
+
+    /// Record definition offsets for columns inferred from a SELECT body.
+    ///
+    /// For `WITH foo AS (SELECT 1 AS a, 2 AS b)`, records offsets for the
+    /// alias names `a` and `b` so go-to-definition can jump to them.
+    fn record_select_column_offsets(
+        &mut self,
+        stmt: &AnyParsedStatement<'a>,
+        body_id: Option<AnyNodeId>,
+        table_key: &str,
+    ) {
+        let Some(body_id) = body_id else { return };
+        let Some((tag, fields)) = stmt.extract_fields(body_id) else { return };
+        let Some(&SemanticRole::Query { columns: cols_idx, .. }) =
+            self.roles.get(u32::from(tag) as usize)
+        else {
+            return;
+        };
+        let Some(list_id) = Self::field_node_id(&fields, cols_idx) else { return };
+        let Some(children) = stmt.list_children(list_id) else { return };
+
+        for &child_id in children {
+            if child_id.is_null() {
+                continue;
+            }
+            let Some((child_tag, child_fields)) = stmt.extract_fields(child_id) else {
+                continue;
+            };
+            let child_role = self
+                .roles
+                .get(u32::from(child_tag) as usize)
+                .copied()
+                .unwrap_or(SemanticRole::Transparent);
+            let SemanticRole::ResultColumn { alias: alias_idx, .. } = child_role else {
+                continue;
+            };
+            let alias_node = Self::field_node_id(&child_fields, alias_idx);
+            let alias_text = self.name_text(stmt, alias_node);
+            if !alias_text.is_empty() {
+                let off = self.span_offset(alias_text);
+                let key = format!("{table_key}.{}", alias_text.to_ascii_lowercase());
+                self.definition_offsets.insert(key, (off, off + alias_text.len()));
+            }
+        }
     }
 
     /// Extract CTE binding info from a node, or `None` if it's not a CTE.
@@ -1993,6 +2048,55 @@ mod tests {
         let b_offset = src.find('b').unwrap();
         let def = model.definition_at(b_offset);
         assert!(def.is_none(), "unknown column should have no definition");
+    }
+
+    // ── Go-to-definition: CTE columns ─────────────────────────────────────────
+
+    /// Go-to-definition on a CTE column (inferred from alias) should jump to the alias.
+    #[test]
+    fn definition_cte_column_inferred_from_alias() {
+        let src = "WITH foo AS (SELECT 1 AS a)\nSELECT a FROM foo;";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &lenient());
+
+        // Click on "a" in "SELECT a FROM foo"
+        let a_offset = src.find("SELECT a").unwrap() + "SELECT ".len();
+        let def = model.definition_at(a_offset);
+        assert!(
+            def.is_some(),
+            "CTE column 'a' should have a definition location"
+        );
+        let def = def.unwrap();
+        // Should point to "a" in "1 AS a" inside the CTE
+        let cte_a_offset = src.find("AS a").unwrap() + "AS ".len();
+        assert_eq!(
+            def.start, cte_a_offset,
+            "definition should point to alias in CTE body"
+        );
+    }
+
+    /// Go-to-definition on a CTE column (declared column list).
+    #[test]
+    fn definition_cte_column_from_declared_list() {
+        let src = "WITH foo(x) AS (SELECT 1)\nSELECT x FROM foo;";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &lenient());
+
+        let x_offset = src.find("SELECT x").unwrap() + "SELECT ".len();
+        let def = model.definition_at(x_offset);
+        assert!(
+            def.is_some(),
+            "CTE declared column 'x' should have a definition location"
+        );
+        let def = def.unwrap();
+        // Should point to "x" in "foo(x)"
+        let decl_x_offset = src.find("(x)").unwrap() + 1;
+        assert_eq!(
+            def.start, decl_x_offset,
+            "definition should point to declared column in CTE"
+        );
     }
 
     // ── Go-to-definition: cross-file schema ─────────────────────────────────────

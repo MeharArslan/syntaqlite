@@ -188,6 +188,8 @@ export async function activate(
     documentSelector: [
       { scheme: "file", language: "sql" },
       { scheme: "file", language: "sqlite" },
+      { scheme: "untitled", language: "sql" },
+      { scheme: "untitled", language: "sqlite" },
     ],
     outputChannel,
     initializationOptions: {
