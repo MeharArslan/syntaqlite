@@ -6,6 +6,8 @@
 use syntaqlite_syntax::ParserTokenFlags;
 use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
 
+use std::collections::HashMap;
+
 use super::diagnostics::Diagnostic;
 
 // ── Stored per-statement positions ───────────────────────────────────────────
@@ -159,6 +161,10 @@ pub struct SemanticModel {
     pub(crate) comments: Vec<StoredComment>,
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) resolutions: Vec<Resolution>,
+    /// Same-file definition offsets keyed by lowercase name (table) or
+    /// `table.column` (column). Used by find-references and rename to
+    /// locate definition sites within the document.
+    pub(crate) definition_offsets: HashMap<String, (usize, usize)>,
 }
 
 impl SemanticModel {
@@ -190,5 +196,61 @@ impl SemanticModel {
                 | ResolvedSymbol::Column { definition, .. } => definition.as_ref(),
                 _ => None,
             })
+    }
+
+    /// Find all resolutions in this model that match the given symbol identity.
+    pub(crate) fn references_matching(
+        &self,
+        kind: &SymbolIdentity,
+    ) -> Vec<(usize, usize)> {
+        self.resolutions
+            .iter()
+            .filter(|r| kind.matches(&r.symbol))
+            .map(|r| (r.start, r.end))
+            .collect()
+    }
+}
+
+/// Identity of a symbol for matching across resolutions (find-references / rename).
+#[derive(Debug)]
+pub(crate) enum SymbolIdentity {
+    Table(String),
+    Column { table: String, column: String },
+}
+
+impl SymbolIdentity {
+    /// Derive the identity from a `ResolvedSymbol`.
+    pub(crate) fn from_resolved(sym: &ResolvedSymbol) -> Option<Self> {
+        match sym {
+            ResolvedSymbol::Table { name, .. } => {
+                Some(SymbolIdentity::Table(name.to_ascii_lowercase()))
+            }
+            ResolvedSymbol::Column { column, table, .. } => Some(SymbolIdentity::Column {
+                table: table.to_ascii_lowercase(),
+                column: column.to_ascii_lowercase(),
+            }),
+            ResolvedSymbol::Function { .. } => None,
+        }
+    }
+
+    fn matches(&self, sym: &ResolvedSymbol) -> bool {
+        match (self, sym) {
+            (SymbolIdentity::Table(name), ResolvedSymbol::Table { name: n, .. }) => {
+                n.eq_ignore_ascii_case(name)
+            }
+            (
+                SymbolIdentity::Column { table, column },
+                ResolvedSymbol::Column { table: t, column: c, .. },
+            ) => t.eq_ignore_ascii_case(table) && c.eq_ignore_ascii_case(column),
+            _ => false,
+        }
+    }
+
+    /// Key into `definition_offsets` for this symbol.
+    pub(crate) fn definition_key(&self) -> String {
+        match self {
+            SymbolIdentity::Table(name) => name.clone(),
+            SymbolIdentity::Column { table, column } => format!("{table}.{column}"),
+        }
     }
 }

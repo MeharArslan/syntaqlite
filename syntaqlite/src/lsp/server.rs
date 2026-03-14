@@ -7,6 +7,7 @@
 // The `server` submodule is private; items here are only reachable via that re-export.
 #![allow(unreachable_pub)]
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -16,17 +17,18 @@ use lsp_types::notification::{
     Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    Completion, Formatting, GotoDefinition, HoverRequest, Request as _, SemanticTokensFullRequest,
-    SignatureHelpRequest,
+    Completion, Formatting, GotoDefinition, HoverRequest, PrepareRenameRequest, References,
+    Rename, Request as _, SemanticTokensFullRequest, SignatureHelpRequest,
 };
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
     GotoDefinitionResponse, Hover, HoverContents, HoverProviderCapability, InitializeParams,
     Location, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, Position,
-    PositionEncodingKind, Range, SemanticTokenType, SemanticTokensFullOptions,
-    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
-    SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp, SignatureHelpOptions,
-    SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
+    PositionEncodingKind, PrepareRenameResponse, Range, RenameOptions, SemanticTokenType,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp,
+    SignatureHelpOptions, SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextEdit, Uri, WorkspaceEdit,
 };
 
 use crate::dialect::AnyDialect;
@@ -54,6 +56,8 @@ use crate::semantic::diagnostics::Severity;
 /// - `textDocument/signatureHelp` (function arities)
 /// - `textDocument/semanticTokens/full`
 /// - `textDocument/formatting`
+/// - `textDocument/references` (find all references)
+/// - `textDocument/rename` + `textDocument/prepareRename`
 /// - `textDocument/publishDiagnostics` (parse + semantic errors)
 ///
 /// # Example
@@ -81,6 +85,11 @@ impl LspServer {
             position_encoding: Some(PositionEncodingKind::UTF16),
             text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
             definition_provider: Some(lsp_types::OneOf::Left(true)),
+            references_provider: Some(lsp_types::OneOf::Left(true)),
+            rename_provider: Some(lsp_types::OneOf::Right(RenameOptions {
+                prepare_provider: Some(true),
+                work_done_progress_options: Default::default(),
+            })),
             hover_provider: Some(HoverProviderCapability::Simple(true)),
             document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
             completion_provider: Some(CompletionOptions {
@@ -159,6 +168,9 @@ impl LspServer {
             SignatureHelpRequest::METHOD => Self::handle_signature_help(req, host),
             Formatting::METHOD => Self::handle_formatting(req, host),
             SemanticTokensFullRequest::METHOD => Self::handle_semantic_tokens(req, host),
+            References::METHOD => Self::handle_references(req, host),
+            PrepareRenameRequest::METHOD => Self::handle_prepare_rename(req, host),
+            Rename::METHOD => Self::handle_rename(req, host),
             _ => Response::new_err(
                 req.id,
                 lsp_server::ErrorCode::MethodNotFound as i32,
@@ -437,6 +449,152 @@ impl LspServer {
                 result_id: None,
                 data,
             }),
+        )
+    }
+
+    fn handle_references(req: Request, host: &mut LspHost) -> Response {
+        let params: lsp_types::ReferenceParams = match serde_json::from_value(req.params) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    e.to_string(),
+                );
+            }
+        };
+        let uri = params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+        let include_declaration = params.context.include_declaration;
+        let uri_str = uri.as_str();
+
+        let Some(source) = host.document_source(uri_str) else {
+            return Response::new_ok(req.id, Option::<Vec<Location>>::None);
+        };
+        let offset = SourcePositionMap::new(source).position_to_offset(position);
+
+        let refs = host.find_references(uri_str, offset, include_declaration);
+        if refs.is_empty() {
+            return Response::new_ok(req.id, Option::<Vec<Location>>::None);
+        }
+
+        let locations: Vec<Location> = refs
+            .into_iter()
+            .filter_map(|(ref_uri, start, end)| {
+                let source = if ref_uri == uri_str {
+                    host.document_source(&ref_uri)?.to_string()
+                } else if let Some(s) = host.document_source(&ref_uri) {
+                    s.to_string()
+                } else {
+                    let file_path = ref_uri.strip_prefix("file://")?;
+                    std::fs::read_to_string(file_path).ok()?
+                };
+                let range = offsets_to_range(&source, start, end);
+                let target_uri: Uri = ref_uri.parse().ok()?;
+                Some(Location { uri: target_uri, range })
+            })
+            .collect();
+
+        Response::new_ok(req.id, locations)
+    }
+
+    fn handle_prepare_rename(req: Request, host: &mut LspHost) -> Response {
+        let params: lsp_types::TextDocumentPositionParams =
+            match serde_json::from_value(req.params) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Response::new_err(
+                        req.id,
+                        lsp_server::ErrorCode::InvalidParams as i32,
+                        e.to_string(),
+                    );
+                }
+            };
+        let uri = params.text_document.uri;
+        let position = params.position;
+        let uri_str = uri.as_str();
+
+        let Some(source) = host.document_source(uri_str) else {
+            return Response::new_ok(req.id, Option::<PrepareRenameResponse>::None);
+        };
+        let offset = SourcePositionMap::new(source).position_to_offset(position);
+
+        let Some((start, end, placeholder)) = host.prepare_rename(uri_str, offset) else {
+            return Response::new_ok(req.id, Option::<PrepareRenameResponse>::None);
+        };
+
+        let source = host
+            .document_source(uri_str)
+            .expect("document must exist for prepare_rename")
+            .to_string();
+        let range = offsets_to_range(&source, start, end);
+        Response::new_ok(
+            req.id,
+            PrepareRenameResponse::RangeWithPlaceholder {
+                range,
+                placeholder,
+            },
+        )
+    }
+
+    fn handle_rename(req: Request, host: &mut LspHost) -> Response {
+        let params: lsp_types::RenameParams = match serde_json::from_value(req.params) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    e.to_string(),
+                );
+            }
+        };
+        let uri = params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+        let new_name = params.new_name;
+        let uri_str = uri.as_str();
+
+        let Some(source) = host.document_source(uri_str) else {
+            return Response::new_ok(req.id, Option::<WorkspaceEdit>::None);
+        };
+        let offset = SourcePositionMap::new(source).position_to_offset(position);
+
+        let edits_by_uri = host.rename(uri_str, offset, &new_name);
+        if edits_by_uri.is_empty() {
+            return Response::new_ok(req.id, Option::<WorkspaceEdit>::None);
+        }
+
+        let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
+        for (edit_uri, edits) in edits_by_uri {
+            let source = if edit_uri == uri_str {
+                host.document_source(&edit_uri)
+                    .unwrap_or_default()
+                    .to_string()
+            } else if let Some(s) = host.document_source(&edit_uri) {
+                s.to_string()
+            } else {
+                let file_path = edit_uri.strip_prefix("file://").unwrap_or(&edit_uri);
+                std::fs::read_to_string(file_path).unwrap_or_default()
+            };
+            let target_uri: Uri = match edit_uri.parse() {
+                Ok(u) => u,
+                Err(_) => continue,
+            };
+            let text_edits: Vec<TextEdit> = edits
+                .into_iter()
+                .map(|(start, end, text)| TextEdit {
+                    range: offsets_to_range(&source, start, end),
+                    new_text: text,
+                })
+                .collect();
+            changes.insert(target_uri, text_edits);
+        }
+
+        Response::new_ok(
+            req.id,
+            WorkspaceEdit {
+                changes: Some(changes),
+                ..Default::default()
+            },
         )
     }
 

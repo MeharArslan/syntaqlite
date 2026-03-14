@@ -13,7 +13,9 @@ use crate::semantic::Catalog;
 use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::diagnostics::Diagnostic;
-use crate::semantic::model::{ResolvedSymbol, SemanticModel, SemanticToken, StoredToken};
+use crate::semantic::model::{
+    ResolvedSymbol, SemanticModel, SemanticToken, StoredToken, SymbolIdentity,
+};
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind};
 
@@ -402,6 +404,151 @@ impl LspHost {
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let def = model.definition_at(offset)?;
         Some((def.file_uri.clone(), def.start, def.end))
+    }
+
+    // ── Find references ──────────────────────────────────────────────────────
+
+    /// Find all references to the symbol at `offset` across all open documents.
+    ///
+    /// Returns a list of `(uri, start, end)` tuples. When `include_declaration`
+    /// is true, the definition site (if known) is included in the results.
+    pub(crate) fn find_references(
+        &mut self,
+        uri: &str,
+        offset: usize,
+        include_declaration: bool,
+    ) -> Vec<(String, usize, usize)> {
+        // Identify the symbol at the cursor.
+        let identity = self.symbol_identity_at(uri, offset);
+        let Some(identity) = identity else {
+            return Vec::new();
+        };
+
+        let mut results = Vec::new();
+
+        // Collect matching resolutions from all open documents.
+        let uris: Vec<String> = self.documents.keys().cloned().collect();
+        for doc_uri in &uris {
+            let doc = self.documents.get_mut(doc_uri.as_str()).unwrap();
+            ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+            let model = doc.model.as_ref().expect("ensure_model sets model");
+            for (start, end) in model.references_matching(&identity) {
+                results.push((doc_uri.clone(), start, end));
+            }
+            if include_declaration {
+                let key = identity.definition_key();
+                if let Some(&(start, end)) = model.definition_offsets.get(&key) {
+                    // Avoid duplicates (definition might also be in resolutions).
+                    let already = results
+                        .iter()
+                        .any(|(u, s, e)| u == doc_uri && *s == start && *e == end);
+                    if !already {
+                        results.push((doc_uri.clone(), start, end));
+                    }
+                }
+            }
+        }
+
+        // Include external (schema) definition site if requested.
+        if include_declaration {
+            if let Some(def_site) = self.external_definition_site(&identity) {
+                let already = results
+                    .iter()
+                    .any(|(u, s, e)| *u == def_site.0 && *s == def_site.1 && *e == def_site.2);
+                if !already {
+                    results.push(def_site);
+                }
+            }
+        }
+
+        results
+    }
+
+    // ── Rename ──────────────────────────────────────────────────────────────
+
+    /// Check if the symbol at `offset` is renameable, returning `(start, end, current_name)`.
+    pub(crate) fn prepare_rename(
+        &mut self,
+        uri: &str,
+        offset: usize,
+    ) -> Option<(usize, usize, String)> {
+        let doc = self.documents.get_mut(uri)?;
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        let model = doc.model.as_ref().expect("ensure_model sets model");
+        let res = model
+            .resolutions
+            .iter()
+            .find(|r| offset >= r.start && offset < r.end)?;
+        let name = match &res.symbol {
+            ResolvedSymbol::Table { name, .. } => name.clone(),
+            ResolvedSymbol::Column { column, .. } => column.clone(),
+            ResolvedSymbol::Function { .. } => return None,
+        };
+        Some((res.start, res.end, name))
+    }
+
+    /// Rename the symbol at `offset` to `new_name` across all open documents.
+    ///
+    /// Returns a map of `uri -> Vec<(start, end, new_text)>` edits.
+    pub(crate) fn rename(
+        &mut self,
+        uri: &str,
+        offset: usize,
+        new_name: &str,
+    ) -> HashMap<String, Vec<(usize, usize, String)>> {
+        let refs = self.find_references(uri, offset, true);
+        let mut edits: HashMap<String, Vec<(usize, usize, String)>> = HashMap::new();
+        for (ref_uri, start, end) in refs {
+            edits
+                .entry(ref_uri)
+                .or_default()
+                .push((start, end, new_name.to_string()));
+        }
+        edits
+    }
+
+    // ── Symbol identity helpers ─────────────────────────────────────────────
+
+    /// Determine the symbol identity at `offset` — either from a resolution or
+    /// from a definition site (CREATE TABLE / column-def).
+    fn symbol_identity_at(&mut self, uri: &str, offset: usize) -> Option<SymbolIdentity> {
+        let doc = self.documents.get_mut(uri)?;
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        let model = doc.model.as_ref().expect("ensure_model sets model");
+
+        // First check resolutions (references in DML/queries).
+        if let Some(sym) = model.resolution_at(offset) {
+            return SymbolIdentity::from_resolved(sym);
+        }
+
+        // Fall back to definition_offsets (cursor on a CREATE TABLE name, etc).
+        for (key, &(start, end)) in &model.definition_offsets {
+            if offset >= start && offset < end {
+                return if let Some((table, col)) = key.split_once('.') {
+                    Some(SymbolIdentity::Column {
+                        table: table.to_string(),
+                        column: col.to_string(),
+                    })
+                } else {
+                    Some(SymbolIdentity::Table(key.clone()))
+                };
+            }
+        }
+        None
+    }
+
+    /// Look up an external (schema-file) definition site for a symbol from the catalog.
+    fn external_definition_site(&self, identity: &SymbolIdentity) -> Option<(String, usize, usize)> {
+        match identity {
+            SymbolIdentity::Table(name) => {
+                let site = self.user_catalog.relation_definition_site(name)?;
+                Some((site.file_uri.clone(), site.start, site.end))
+            }
+            SymbolIdentity::Column { table, column } => {
+                let site = self.user_catalog.column_definition_site(table, column)?;
+                Some((site.file_uri.clone(), site.start, site.end))
+            }
+        }
     }
 
     // ── Signature help ────────────────────────────────────────────────────────
@@ -1038,6 +1185,163 @@ mod tests {
             diags.iter().any(|d| d.severity == Severity::Error),
             "expected an error-severity diagnostic, got: {diags:?}"
         );
+    }
+
+    // ── Find-references tests ──────────────────────────────────────────────
+
+    #[test]
+    fn find_references_table_in_single_file() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT);\nSELECT * FROM users;\nDELETE FROM users;";
+        host.open_document(uri, 1, sql.to_string());
+
+        // Click on "users" in the SELECT statement.
+        let offset = sql.find("SELECT").unwrap() + "SELECT * FROM ".len();
+        let refs = host.find_references(uri, offset, false);
+        // Should find the two DML references (SELECT + DELETE), not the CREATE.
+        assert_eq!(refs.len(), 2, "expected 2 refs, got: {refs:?}");
+    }
+
+    #[test]
+    fn find_references_table_include_declaration() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT);\nSELECT * FROM users;\nDELETE FROM users;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let offset = sql.find("SELECT").unwrap() + "SELECT * FROM ".len();
+        let refs = host.find_references(uri, offset, true);
+        // Should find the two DML references + the CREATE TABLE definition.
+        assert_eq!(refs.len(), 3, "expected 3 refs (incl decl), got: {refs:?}");
+    }
+
+    #[test]
+    fn find_references_column_in_single_file() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE t (id INT, name TEXT);\nSELECT id FROM t;\nSELECT id, name FROM t;";
+        host.open_document(uri, 1, sql.to_string());
+
+        // Click on "id" in the first SELECT.
+        let offset = sql.find("SELECT id").unwrap() + "SELECT ".len();
+        let refs = host.find_references(uri, offset, false);
+        assert_eq!(refs.len(), 2, "expected 2 column refs, got: {refs:?}");
+    }
+
+    #[test]
+    fn find_references_cross_file() {
+        let schema = "CREATE TABLE orders (id INTEGER, total REAL);";
+        let file_uri = "file:///schema.sql";
+        let mut host = LspHost::new();
+        host.set_session_context_from_ddl(schema, Some(file_uri))
+            .unwrap();
+
+        let uri1 = "file:///a.sql";
+        let uri2 = "file:///b.sql";
+        host.open_document(uri1, 1, "SELECT * FROM orders;".to_string());
+        host.open_document(uri2, 1, "DELETE FROM orders;".to_string());
+
+        // Click on "orders" in a.sql.
+        let offset = "SELECT * FROM ".len();
+        let refs = host.find_references(uri1, offset, false);
+        assert_eq!(refs.len(), 2, "expected refs in both files, got: {refs:?}");
+        let uris: Vec<&str> = refs.iter().map(|r| r.0.as_str()).collect();
+        assert!(uris.contains(&uri1));
+        assert!(uris.contains(&uri2));
+    }
+
+    #[test]
+    fn find_references_cursor_on_definition() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT);\nSELECT * FROM users;";
+        host.open_document(uri, 1, sql.to_string());
+
+        // Click on "users" in CREATE TABLE — should still find the SELECT reference.
+        let offset = sql.find("users").unwrap();
+        let refs = host.find_references(uri, offset, false);
+        assert_eq!(refs.len(), 1, "expected 1 ref from definition site, got: {refs:?}");
+    }
+
+    #[test]
+    fn find_references_cursor_on_definition_include_declaration() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT);\nSELECT * FROM users;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let offset = sql.find("users").unwrap();
+        let refs = host.find_references(uri, offset, true);
+        assert_eq!(refs.len(), 2, "expected 2 refs (incl decl), got: {refs:?}");
+    }
+
+    // ── Rename tests ────────────────────────────────────────────────────────
+
+    #[test]
+    fn prepare_rename_returns_range_for_table() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT);\nSELECT * FROM users;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let offset = sql.find("SELECT").unwrap() + "SELECT * FROM ".len();
+        let result = host.prepare_rename(uri, offset);
+        assert!(result.is_some(), "expected rename range");
+        let (start, end, text) = result.unwrap();
+        assert_eq!(text, "users");
+        assert_eq!(&sql[start..end], "users");
+    }
+
+    #[test]
+    fn rename_table_in_single_file() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE users (id INT);\nSELECT * FROM users;\nDELETE FROM users;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let offset = sql.find("SELECT").unwrap() + "SELECT * FROM ".len();
+        let edits = host.rename(uri, offset, "accounts");
+        // Should produce edits for all 3 occurrences (definition + 2 refs).
+        let file_edits = edits.get(uri).expect("expected edits for test file");
+        assert_eq!(file_edits.len(), 3, "expected 3 edits, got: {file_edits:?}");
+        for (_, _, text) in file_edits {
+            assert_eq!(text.as_str(), "accounts");
+        }
+    }
+
+    #[test]
+    fn rename_column_in_single_file() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE t (id INT, name TEXT);\nSELECT id FROM t;\nSELECT id, name FROM t;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let offset = sql.find("SELECT id").unwrap() + "SELECT ".len();
+        let edits = host.rename(uri, offset, "user_id");
+        let file_edits = edits.get(uri).expect("expected edits for test file");
+        // 2 column refs + 1 definition = 3 edits.
+        assert_eq!(file_edits.len(), 3, "expected 3 edits, got: {file_edits:?}");
+    }
+
+    #[test]
+    fn rename_cross_file() {
+        let schema = "CREATE TABLE orders (id INTEGER, total REAL);";
+        let schema_uri = "file:///schema.sql";
+        let mut host = LspHost::new();
+        host.set_session_context_from_ddl(schema, Some(schema_uri))
+            .unwrap();
+
+        let uri1 = "file:///a.sql";
+        let uri2 = "file:///b.sql";
+        host.open_document(uri1, 1, "SELECT * FROM orders;".to_string());
+        host.open_document(uri2, 1, "DELETE FROM orders;".to_string());
+
+        let offset = "SELECT * FROM ".len();
+        let edits = host.rename(uri1, offset, "invoices");
+        // Should have edits in both open files.
+        assert!(edits.contains_key(uri1), "expected edits in a.sql");
+        assert!(edits.contains_key(uri2), "expected edits in b.sql");
     }
 
     #[test]

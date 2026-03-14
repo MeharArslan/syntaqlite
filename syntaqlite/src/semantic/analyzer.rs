@@ -361,6 +361,7 @@ impl SemanticAnalyzer {
             comments,
             diagnostics,
             resolutions,
+            definition_offsets,
         }
     }
 }
