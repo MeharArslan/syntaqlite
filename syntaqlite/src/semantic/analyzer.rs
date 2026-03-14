@@ -336,6 +336,7 @@ impl SemanticAnalyzer {
             if let Some((name, off)) = ddl_name_offset(&erased, root_id, &self.dialect) {
                 definition_offsets.insert(name, off);
             }
+            ddl_column_offsets(&erased, root_id, &self.dialect, &mut definition_offsets);
 
             ValidationPass::run(
                 &erased,
@@ -532,6 +533,10 @@ struct QueryScope {
 }
 
 impl QueryScope {
+    fn has_frames(&self) -> bool {
+        !self.frames.is_empty()
+    }
+
     fn push(&mut self) {
         self.frames.push(HashMap::new());
     }
@@ -646,6 +651,75 @@ fn ddl_name_offset(
     }
     let off = s.as_ptr() as usize - stmt.source().as_ptr() as usize;
     Some((s.to_ascii_lowercase(), (off, off + s.len())))
+}
+
+/// Extract column definition offsets from a `CREATE TABLE` DDL statement.
+///
+/// Populates `out` with `("table.column", (start, end))` entries for each
+/// column definition, enabling go-to-definition on column references.
+fn ddl_column_offsets(
+    stmt: &AnyParsedStatement<'_>,
+    root: AnyNodeId,
+    dialect: &AnyDialect,
+    out: &mut HashMap<String, (usize, usize)>,
+) {
+    let Some((tag, fields)) = stmt.extract_fields(root) else {
+        return;
+    };
+    let Some(&SemanticRole::DefineTable { name, columns, .. }) = dialect.roles().get(u32::from(tag) as usize) else {
+        return;
+    };
+    let table_name = match fields[name as usize] {
+        FieldValue::Span(s) if !s.is_empty() => s,
+        _ => return,
+    };
+    if columns == FIELD_ABSENT {
+        return;
+    }
+    let FieldValue::NodeId(col_list_id) = fields[columns as usize] else { return };
+    if col_list_id.is_null() {
+        return;
+    }
+    let Some(children) = stmt.list_children(col_list_id) else { return };
+    let source_start = stmt.source().as_ptr() as usize;
+
+    for &child_id in children {
+        if let Some((col_name, off)) = column_def_name_offset(stmt, child_id, dialect.roles(), source_start) {
+            let key = format!("{}.{}", table_name.to_ascii_lowercase(), col_name.to_ascii_lowercase());
+            out.insert(key, off);
+        }
+    }
+}
+
+/// Extract the name and source offset of a single `ColumnDef` node.
+fn column_def_name_offset<'a>(
+    stmt: &AnyParsedStatement<'a>,
+    node_id: AnyNodeId,
+    roles: &[SemanticRole],
+    source_start: usize,
+) -> Option<(&'a str, (usize, usize))> {
+    if node_id.is_null() {
+        return None;
+    }
+    let (tag, fields) = stmt.extract_fields(node_id)?;
+    let SemanticRole::ColumnDef { name: name_idx, .. } = roles.get(u32::from(tag) as usize)? else {
+        return None;
+    };
+    let FieldValue::NodeId(name_id) = fields[*name_idx as usize] else { return None };
+    if name_id.is_null() {
+        return None;
+    }
+    let (_, name_fields) = stmt.extract_fields(name_id)?;
+    // First non-empty span is the identifier text.
+    for j in 0..name_fields.len() {
+        if let FieldValue::Span(s) = name_fields[j]
+            && !s.is_empty()
+        {
+            let off = s.as_ptr() as usize - source_start;
+            return Some((s, (off, off + s.len())));
+        }
+    }
+    None
 }
 
 /// `SQLite`'s implicit rowid aliases.
@@ -973,6 +1047,11 @@ impl<'a> ValidationPass<'a> {
     }
 
     fn visit_column_ref(&mut self, fields: &NodeFields<'a>, column_idx: u8, table_idx: u8) {
+        // ColumnRef outside any query scope (e.g. ATTACH ... AS scratch)
+        // is just a bare identifier — skip validation.
+        if !self.scope.has_frames() {
+            return;
+        }
         let FieldValue::Span(column) = fields[column_idx as usize] else {
             return;
         };
@@ -991,6 +1070,12 @@ impl<'a> ValidationPass<'a> {
                 all_columns,
             } => {
                 if !resolved_table.is_empty() {
+                    let def_key =
+                        format!("{}.{}", resolved_table.to_ascii_lowercase(), column.to_ascii_lowercase());
+                    let definition = self
+                        .definition_offsets
+                        .get(&def_key)
+                        .map(|&(start, end)| DefinitionLocation { start, end });
                     self.resolutions.push(Resolution {
                         start: offset,
                         end: offset + column.len(),
@@ -998,6 +1083,7 @@ impl<'a> ValidationPass<'a> {
                             column: column.to_string(),
                             table: resolved_table,
                             all_columns,
+                            definition,
                         },
                     });
                 }
@@ -1901,6 +1987,47 @@ mod tests {
         let from_offset = src.find("nonexistent").unwrap();
         let def = model.definition_at(from_offset);
         assert!(def.is_none(), "unknown table should have no definition");
+    }
+
+    // ── Go-to-definition: columns ──────────────────────────────────────────────
+
+    /// Go-to-definition on a column ref should jump to the column in CREATE TABLE.
+    #[test]
+    fn definition_column_in_ddl_table() {
+        let src = "CREATE TABLE users (id INTEGER, name TEXT);\nSELECT name FROM users;";
+        let dialect = crate::sqlite::dialect::dialect();
+        let cat = Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);").0;
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(src, &cat, &strict());
+
+        // "name" in "SELECT name" should point to "name" in the CREATE TABLE
+        let select_name_offset = src.rfind("name").unwrap();
+        let def = model.definition_at(select_name_offset);
+        assert!(
+            def.is_some(),
+            "column 'name' should have a definition location"
+        );
+        let def = def.unwrap();
+        // The definition should point to "name" in the CREATE TABLE column list
+        let ddl_name_offset = src.find("name").unwrap();
+        assert_eq!(
+            def.start, ddl_name_offset,
+            "definition should point to column in DDL, not SELECT"
+        );
+    }
+
+    /// Go-to-definition on a column that doesn't exist should return None.
+    #[test]
+    fn definition_unknown_column_returns_none() {
+        let src = "CREATE TABLE t (a INT);\nSELECT b FROM t;";
+        let dialect = crate::sqlite::dialect::dialect();
+        let cat = Catalog::from_ddl(dialect, "CREATE TABLE t (a INT);").0;
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(src, &cat, &strict());
+
+        let b_offset = src.find('b').unwrap();
+        let def = model.definition_at(b_offset);
+        assert!(def.is_none(), "unknown column should have no definition");
     }
 
     // ── Analyzer: function validation ──────────────────────────────────────────
@@ -2821,6 +2948,23 @@ mod tests {
         assert!(
             col_errs.is_empty(),
             "WHERE referencing SELECT alias should not flag UnknownColumn, got: {col_errs:#?}"
+        );
+    }
+
+    /// ATTACH schema name is a bare identifier, not a column reference.
+    #[test]
+    fn attach_schema_name_no_unknown_column() {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze("ATTACH ':memory:' AS scratch", &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "ATTACH schema name should not flag UnknownColumn, got: {col_errs:#?}"
         );
     }
 

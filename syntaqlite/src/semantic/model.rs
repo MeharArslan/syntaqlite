@@ -99,6 +99,8 @@ pub(crate) enum ResolvedSymbol {
         column: String,
         table: String,
         all_columns: Vec<String>,
+        /// Where this column was defined (byte offsets), if known.
+        definition: Option<DefinitionLocation>,
     },
     /// A function call that resolved successfully.
     Function {
@@ -182,7 +184,8 @@ impl SemanticModel {
             .iter()
             .find(|r| offset >= r.start && offset < r.end)
             .and_then(|r| match &r.symbol {
-                ResolvedSymbol::Table { definition, .. } => definition.as_ref(),
+                ResolvedSymbol::Table { definition, .. }
+                | ResolvedSymbol::Column { definition, .. } => definition.as_ref(),
                 _ => None,
             })
     }

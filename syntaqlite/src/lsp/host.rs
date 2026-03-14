@@ -548,6 +548,7 @@ fn format_resolved_hover(symbol: &ResolvedSymbol) -> String {
             column,
             table,
             all_columns,
+            ..
         } => {
             let col_list: Vec<String> = all_columns
                 .iter()
