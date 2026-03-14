@@ -179,25 +179,25 @@ Legend: **PASS** = correctly parses valid SQL, **FAIL** = rejects valid SQL, **F
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.7 ± 0.8 | 1.6 | 31.1 | 1.17 ± 0.54 |
-| `lemon-rs` | 1.5 ± 0.1 | 1.4 | 2.0 | 1.00 |
-| `sql-parser-cst` | 75.1 ± 1.3 | 73.3 | 79.5 | 51.59 ± 2.70 |
-| `sqlglot[c]` | 84.9 ± 1.1 | 83.2 | 87.7 | 58.34 ± 2.97 |
-| `sqlparser-rs` | 1.8 ± 0.6 | 1.7 | 17.4 | 1.27 ± 0.39 |
-| `node-sql-parser` | 73.5 ± 1.1 | 71.2 | 75.7 | 50.52 ± 2.60 |
-| `sqlfluff` | 449.0 ± 2.5 | 446.1 | 454.2 | 308.48 ± 15.26 |
+| `syntaqlite` | 1.7 ± 0.1 | 1.6 | 2.1 | 1.15 ± 0.06 |
+| `lemon-rs` | 1.5 ± 0.1 | 1.4 | 2.2 | 1.00 |
+| `sql-parser-cst` | 75.3 ± 5.6 | 72.0 | 108.8 | 51.53 ± 4.39 |
+| `sqlglot[c]` | 83.9 ± 1.0 | 82.6 | 87.3 | 57.47 ± 2.50 |
+| `sqlparser-rs` | 1.8 ± 0.1 | 1.7 | 5.2 | 1.23 ± 0.10 |
+| `node-sql-parser` | 74.0 ± 5.5 | 71.4 | 106.8 | 50.63 ± 4.34 |
+| `sqlfluff` | 445.0 ± 2.7 | 439.5 | 447.5 | 304.66 ± 12.90 |
 
 ### bench_30x.sql (30×)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.6 ± 0.8 | 2.4 | 27.1 | 1.00 |
-| `lemon-rs` | 4.2 ± 0.4 | 4.0 | 13.2 | 1.62 ± 0.53 |
-| `sql-parser-cst` | 141.4 ± 1.5 | 138.9 | 144.0 | 54.31 ± 17.10 |
-| `sqlglot[c]` | 182.7 ± 1.1 | 180.8 | 185.7 | 70.17 ± 22.09 |
-| `sqlparser-rs` | 11.2 ± 2.1 | 10.5 | 45.8 | 4.30 ± 1.58 |
-| `node-sql-parser` | 150.2 ± 1.0 | 148.5 | 152.2 | 57.70 ± 18.16 |
-| `sqlfluff` | 254.0 ± 2.7 | 249.2 | 258.1 | 97.57 ± 30.72 |
+| `syntaqlite` | 2.6 ± 0.6 | 2.4 | 20.5 | 1.00 |
+| `lemon-rs` | 4.2 ± 1.0 | 4.0 | 29.7 | 1.64 ± 0.54 |
+| `sql-parser-cst` | 140.1 ± 1.2 | 138.2 | 142.6 | 54.28 ± 12.40 |
+| `sqlglot[c]` | 180.5 ± 1.5 | 178.5 | 183.8 | 69.96 ± 15.99 |
+| `sqlparser-rs` | 11.1 ± 2.4 | 10.4 | 33.7 | 4.30 ± 1.36 |
+| `node-sql-parser` | 149.2 ± 1.3 | 147.3 | 152.3 | 57.82 ± 13.21 |
+| `sqlfluff` | 6695.8 ± 304.1 | 6388.0 | 7052.6 | 2594.75 ± 604.22 |
 
 ---
 
@@ -252,29 +252,31 @@ Legend: **PASS** = correctly parses valid SQL, **FAIL** = rejects valid SQL, **F
 
 ## Round-trip validation
 
-For each formatter: does the formatted output still pass `sqlite3`?
+For each formatter: does the formatted output produce identical `EXPLAIN`
+bytecode to the original? This verifies semantic preservation, not just
+syntactic validity. "CORRUPT" means the bytecode differs or `EXPLAIN` fails.
 
 | Test                                   | syntaqlite | prettier-cst | sql-formatter | sqlglot[c] |  sleek  |  sqruff |
 | -------------------------------------- | :--------: | :----------: | :-----------: | :--------: | :-----: | :-----: |
-| T01: Multi ON CONFLICT UPSERT + RETURN |     OK     |      OK      |      OK       |    FAIL    |   OK    |   OK    |
-| T02: Recursive CTE + MATERIALIZED / NO |     OK     |      OK      |      OK       |  CORRUPT   |   OK    |   OK    |
+| T01: Multi ON CONFLICT UPSERT + RETURN |  CORRUPT   |      OK      |      OK       |    FAIL    |   OK    |   OK    |
+| T02: Recursive CTE + MATERIALIZED / NO |  CORRUPT   |   CORRUPT    |    CORRUPT    |  CORRUPT   | CORRUPT | CORRUPT |
 | T03: CREATE TABLE STRICT + WITHOUT ROW |     OK     |      OK      |      OK       |    FAIL    |   OK    |   OK    |
-| T04: UPDATE FROM + INDEXED BY          |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
-| T05: CREATE TRIGGER + RAISE + WHEN + F |     OK     |      OK      |      OK       |  CORRUPT   |   OK    |   OK    |
+| T04: UPDATE FROM + INDEXED BY          |  CORRUPT   |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T05: CREATE TRIGGER + RAISE + WHEN + F |  CORRUPT   |   CORRUPT    |    CORRUPT    |  CORRUPT   | CORRUPT | CORRUPT |
 | T06: FILTER clause + IIF + NULLS LAST  |     OK     |      OK      |      OK       |     OK     |   OK    |  FAIL   |
 | T07: ATTACH DATABASE                   |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T08: INSERT OR REPLACE                 |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
-| T09: CREATE VIRTUAL TABLE (FTS5)       |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T09: CREATE VIRTUAL TABLE (FTS5)       |     OK     |   CORRUPT    |    CORRUPT    |     OK     | CORRUPT | CORRUPT |
 | T10: PRAGMA                            |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T11: EXPLAIN QUERY PLAN                |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T12: ALTER TABLE DROP COLUMN           |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T13: ALTER TABLE RENAME COLUMN         |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T14: REINDEX                           |     OK     |      OK      |      OK       |  CORRUPT   |   OK    |   OK    |
 | T15: Window frame RANGE BETWEEN        |     OK     |      OK      |      OK       |     OK     |   OK    |  FAIL   |
-| T16: CREATE INDEX with WHERE (partial  |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T16: CREATE INDEX with WHERE (partial  |  CORRUPT   |   CORRUPT    |    CORRUPT    |  CORRUPT   | CORRUPT | CORRUPT |
 | T17: REPLACE statement                 |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T18: Nested window functions + EXCLUDE |     OK     |      OK      |      OK       |     OK     |   OK    |  FAIL   |
-| T19: GLOB and LIKE with ESCAPE         |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
+| T19: GLOB and LIKE with ESCAPE         |     OK     |      OK      |      OK       |     OK     | CORRUPT |   OK    |
 | T20: INSERT with multiple VALUES + ON  |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T21: Complex subquery expressions      |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T22: ANALYZE                           |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
@@ -287,13 +289,13 @@ For each formatter: does the formatted output still pass `sqlite3`?
 | T29: UPDATE ... RETURNING              |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T30: RIGHT JOIN + IS DISTINCT FROM     |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T31: FULL OUTER JOIN                   |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
-| T32: JSON -> and ->> operators         |     OK     |      OK      |      OK       |     OK     |   OK    | CORRUPT |
+| T32: JSON -> and ->> operators         |  CORRUPT   |      OK      |      OK       |     OK     |   OK    | CORRUPT |
 | T33: Numeric literals with underscores |     OK     |     FAIL     |     FAIL      |    FAIL    | CORRUPT |   OK    |
 | T34: Multiple WINDOW definitions + nth |     OK     |      OK      |      OK       |     OK     |   OK    |  FAIL   |
 | T35: HAVING without GROUP BY (3.39+)   |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T36: IS NOT DISTINCT FROM in complex e |     OK     |      OK      |      OK       |     OK     |   OK    |   OK    |
 | T37: Blob literals + CAST chains       |     OK     |      OK      |      OK       |     OK     | CORRUPT |   OK    |
-| T38: GENERATED ALWAYS AS (VIRTUAL vs S |     OK     |      OK      |      OK       |    FAIL    |   OK    | CORRUPT |
+| T38: GENERATED ALWAYS AS (VIRTUAL vs S |  CORRUPT   |   CORRUPT    |    CORRUPT    |    FAIL    | CORRUPT | CORRUPT |
 | T39: Deeply nested CTE + compound SELE |     OK     |      OK      |      OK       |     OK     |   OK    |  FAIL   |
 | T40: Window GROUPS frame + EXCLUDE TIE |     OK     |      OK      |      OK       |    FAIL    |   OK    |   OK    |
 
@@ -301,33 +303,55 @@ For each formatter: does the formatted output still pass `sqlite3`?
 
 | Tool          | Correct | Corrupt | Refused |
 | ------------- | ------: | ------: | ------: |
-| syntaqlite    |   40/40 |       - |       - |
-| prettier-cst  |   39/40 |       - |       1 |
-| sql-formatter |   39/40 |       - |       1 |
-| sqlglot[c]    |   31/40 |       4 |       5 |
-| sleek         |   38/40 |       2 |       - |
-| sqruff        |   33/40 |       2 |       5 |
+| syntaqlite    |   33/40 |       7 |       - |
+| prettier-cst  |   34/40 |       5 |       1 |
+| sql-formatter |   34/40 |       5 |       1 |
+| sqlglot[c]    |   30/40 |       5 |       5 |
+| sleek         |   32/40 |       8 |       - |
+| sqruff        |   29/40 |       6 |       5 |
 
 ### Corruption details
 
-| Tool       | Test                                                               | Error                                                        |
-| ---------- | ------------------------------------------------------------------ | ------------------------------------------------------------ |
-| sqlglot[c] | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | Error: in prepare, no such column: x
-  LIZED (   VALUES      |
-| sqlglot[c] | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | Error: in prepare, near "SELECT": syntax error
-  yees', OLD. |
-| sqlglot[c] | T14: REINDEX                                                       | Error: in prepare, near "AS": syntax error
+| Tool          | Test                                                               | Error                                                        |
+| ------------- | ------------------------------------------------------------------ | ------------------------------------------------------------ |
+| syntaqlite    | T01: Multi ON CONFLICT UPSERT + RETURNING                          | EXPLAIN bytecode differs from original                       |
+| syntaqlite    | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | EXPLAIN bytecode differs from original                       |
+| prettier-cst  | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | EXPLAIN bytecode differs from original                       |
+| sql-formatter | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | EXPLAIN bytecode differs from original                       |
+| sqlglot[c]    | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | EXPLAIN failed on formatted SQL                              |
+| sleek         | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | EXPLAIN bytecode differs from original                       |
+| sqruff        | T02: Recursive CTE + MATERIALIZED / NOT MATERIALIZED               | EXPLAIN bytecode differs from original                       |
+| syntaqlite    | T04: UPDATE FROM + INDEXED BY                                      | EXPLAIN bytecode differs from original                       |
+| syntaqlite    | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | EXPLAIN bytecode differs from original                       |
+| prettier-cst  | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | EXPLAIN bytecode differs from original                       |
+| sql-formatter | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | EXPLAIN bytecode differs from original                       |
+| sqlglot[c]    | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | EXPLAIN failed on formatted SQL                              |
+| sleek         | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | EXPLAIN bytecode differs from original                       |
+| sqruff        | T05: CREATE TRIGGER + RAISE + WHEN + FOR EACH ROW                  | EXPLAIN bytecode differs from original                       |
+| prettier-cst  | T09: CREATE VIRTUAL TABLE (FTS5)                                   | EXPLAIN bytecode differs from original                       |
+| sql-formatter | T09: CREATE VIRTUAL TABLE (FTS5)                                   | EXPLAIN bytecode differs from original                       |
+| sleek         | T09: CREATE VIRTUAL TABLE (FTS5)                                   | EXPLAIN bytecode differs from original                       |
+| sqruff        | T09: CREATE VIRTUAL TABLE (FTS5)                                   | EXPLAIN bytecode differs from original                       |
+| sqlglot[c]    | T14: REINDEX                                                       | Error: in prepare, near "AS": syntax error
   REINDEX AS idx_ |
-| sqlglot[c] | T23: SAVEPOINT / RELEASE / ROLLBACK TO                             | Error: in prepare, near "AS": syntax error
+| syntaqlite    | T16: CREATE INDEX with WHERE (partial index)                       | EXPLAIN bytecode differs from original                       |
+| prettier-cst  | T16: CREATE INDEX with WHERE (partial index)                       | EXPLAIN bytecode differs from original                       |
+| sql-formatter | T16: CREATE INDEX with WHERE (partial index)                       | EXPLAIN bytecode differs from original                       |
+| sqlglot[c]    | T16: CREATE INDEX with WHERE (partial index)                       | EXPLAIN bytecode differs from original                       |
+| sleek         | T16: CREATE INDEX with WHERE (partial index)                       | EXPLAIN bytecode differs from original                       |
+| sqruff        | T16: CREATE INDEX with WHERE (partial index)                       | EXPLAIN bytecode differs from original                       |
+| sleek         | T19: GLOB and LIKE with ESCAPE                                     | EXPLAIN bytecode differs from original                       |
+| sqlglot[c]    | T23: SAVEPOINT / RELEASE / ROLLBACK TO                             | Error: in prepare, near "AS": syntax error
   SAVEPOINT AS my |
-| sqruff     | T32: JSON -> and ->> operators                                     | Error: in prepare, near ">": syntax error
-  EXPLAIN SELECT   |
-| sleek      | T33: Numeric literals with underscores                             | Error: in prepare, near "AS": syntax error
-  EXPLAIN SELECT  |
-| sleek      | T37: Blob literals + CAST chains                                   | Error: in prepare, near "AS": syntax error
-  EXPLAIN SELECT  |
-| sqruff     | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | Error: in prepare, near "|": syntax error
-  abel TEXT GENERA |
+| syntaqlite    | T32: JSON -> and ->> operators                                     | EXPLAIN bytecode differs from original                       |
+| sqruff        | T32: JSON -> and ->> operators                                     | EXPLAIN failed on formatted SQL                              |
+| sleek         | T33: Numeric literals with underscores                             | EXPLAIN failed on formatted SQL                              |
+| sleek         | T37: Blob literals + CAST chains                                   | EXPLAIN failed on formatted SQL                              |
+| syntaqlite    | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | EXPLAIN bytecode differs from original                       |
+| prettier-cst  | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | EXPLAIN bytecode differs from original                       |
+| sql-formatter | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | EXPLAIN bytecode differs from original                       |
+| sleek         | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | EXPLAIN bytecode differs from original                       |
+| sqruff        | T38: GENERATED ALWAYS AS (VIRTUAL vs STORED) + complex expressions | EXPLAIN failed on formatted SQL                              |
 
 ## Speed details
 
@@ -338,32 +362,32 @@ For each formatter: does the formatted output still pass `sqlite3`?
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.8 ± 0.1 | 1.7 | 3.3 | 1.00 |
-| `prettier-cst` | 396.5 ± 8.5 | 388.9 | 416.1 | 217.05 ± 16.18 |
-| `sql-formatter` | 74.9 ± 1.2 | 72.5 | 78.1 | 41.01 ± 3.00 |
-| `sqlglot[c]` | 87.2 ± 1.5 | 85.2 | 92.6 | 47.75 ± 3.50 |
-| `sleek` | 8.3 ± 1.2 | 7.7 | 27.7 | 4.56 ± 0.75 |
-| `sqruff` | 39.8 ± 4.0 | 38.5 | 73.8 | 21.77 ± 2.67 |
+| `syntaqlite` | 1.8 ± 0.1 | 1.7 | 2.6 | 1.00 |
+| `prettier-cst` | 399.8 ± 20.0 | 386.7 | 456.2 | 219.84 ± 13.96 |
+| `sql-formatter` | 74.9 ± 1.1 | 72.3 | 77.9 | 41.19 ± 1.72 |
+| `sqlglot[c]` | 87.7 ± 2.0 | 85.3 | 94.2 | 48.20 ± 2.18 |
+| `sleek` | 8.7 ± 2.6 | 7.8 | 43.9 | 4.79 ± 1.44 |
+| `sqruff` | 43.6 ± 16.6 | 38.8 | 141.6 | 23.99 ± 9.18 |
 
 ### bench_30x.sql (30×)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 4.9 ± 0.1 | 4.7 | 5.5 | 1.00 |
-| `prettier-cst` | 542.3 ± 4.3 | 535.1 | 545.3 | 111.47 ± 2.33 |
-| `sql-formatter` | 200.3 ± 8.2 | 195.8 | 229.6 | 41.17 ± 1.87 |
-| `sqlglot[c]` | 264.5 ± 1.5 | 262.6 | 267.2 | 54.37 ± 1.10 |
-| `sleek` | 26.9 ± 0.4 | 26.1 | 27.9 | 5.52 ± 0.14 |
-| `sqruff` | 3286.7 ± 53.0 | 3226.0 | 3349.7 | 675.63 ± 17.01 |
+| `syntaqlite` | 5.2 ± 0.7 | 4.8 | 15.7 | 1.00 |
+| `prettier-cst` | 594.7 ± 74.5 | 541.4 | 721.4 | 115.37 ± 21.84 |
+| `sql-formatter` | 210.6 ± 24.4 | 195.5 | 271.2 | 40.85 ± 7.48 |
+| `sqlglot[c]` | 296.2 ± 51.9 | 264.2 | 414.7 | 57.47 ± 12.96 |
+| `sleek` | 28.5 ± 3.6 | 26.3 | 60.3 | 5.53 ± 1.05 |
+| `sqruff` | 4657.1 ± 815.3 | 3861.5 | 5994.5 | 903.47 ± 203.61 |
 
 
 ### Slow tools (single timed run)
 
 | Tool          |  Time |
 | ------------- | ----: |
-| sqlfmt (1x)   | 204ms |
-| sqlfmt (30x)  | 304ms |
-| sqlfluff (1x) | 224ms |
+| sqlfmt (1x)   | 206ms |
+| sqlfmt (30x)  | 381ms |
+| sqlfluff (1x) | 250ms |
 
 ---
 
@@ -401,12 +425,12 @@ Static semantic analysis — offline, no database needed. Finds **both** errors 
 
 ```
 error: table 'monthly_stats' has 2 values for 3 columns
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpvs13_h7h.sql:29:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpxhi61dqq.sql:29:3
    |
 29 |   monthly_stats(month, revenue, order_count) AS (
    |   ^~~~~~~~~~~~~
 warning: unknown function 'ROUDN'
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpvs13_h7h.sql:41:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpxhi61dqq.sql:41:3
    |
 41 |   ROUDN(ms.revenue / ms.order_count, 2) AS avg_order
    |   ^~~~~
@@ -434,7 +458,7 @@ Runtime via LSP — wraps sqlite3, same single error:
 Structural checks only:
 
 ```
-/var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpokfu_cg2.sql:1 sql-lint was unable to lint the following query "WITH...
+/var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmp11hfv30k.sql:1 sql-lint was unable to lint the following query "WITH...
 ```
 
 
@@ -487,19 +511,19 @@ Schema: `users`, `orders`, `products`, `order_items`. Ground truth: sqlite3.
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.1 ± 0.3 | 1.8 | 6.2 | 1.00 |
-| `sqlite3` | 5.0 ± 0.5 | 4.4 | 7.9 | 2.40 ± 0.37 |
-| `sqlite-runner-lsp` | 10071.4 ± 3.9 | 10063.7 | 10077.7 | 4833.40 ± 597.15 |
-| `sql-lint` | 348.6 ± 2.8 | 343.4 | 351.7 | 167.30 ± 20.71 |
+| `syntaqlite` | 2.1 ± 0.9 | 1.9 | 21.4 | 1.00 |
+| `sqlite3` | 4.9 ± 0.2 | 4.6 | 6.2 | 2.30 ± 0.93 |
+| `sqlite-runner-lsp` | 10050.2 ± 8.6 | 10041.9 | 10066.9 | 4708.90 ± 1896.03 |
+| `sql-lint` | 335.4 ± 7.4 | 327.3 | 348.1 | 157.15 ± 63.37 |
 
 ### bench_30x.sql (30×)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 8.7 ± 0.2 | 8.3 | 9.6 | 1.00 |
-| `sqlite3` | 10.3 ± 2.7 | 9.5 | 54.9 | 1.19 ± 0.31 |
-| `sqlite-runner-lsp` | 10074.5 ± 1.6 | 10072.6 | 10076.6 | 1160.54 ± 26.26 |
-| `sql-lint` | 374.4 ± 5.6 | 366.0 | 384.0 | 43.13 ± 1.17 |
+| `syntaqlite` | 8.6 ± 0.5 | 8.4 | 16.7 | 1.00 |
+| `sqlite3` | 10.2 ± 2.0 | 9.6 | 37.0 | 1.18 ± 0.24 |
+| `sqlite-runner-lsp` | 10071.4 ± 7.4 | 10065.4 | 10083.9 | 1165.82 ± 64.19 |
+| `sql-lint` | 365.5 ± 1.6 | 362.4 | 367.5 | 42.31 ± 2.34 |
 
 ---
 
@@ -552,6 +576,6 @@ Time to start server, send document, receive diagnostics, and exit:
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 32.6 ± 1.1 | 30.6 | 35.6 | 1.00 |
-| `sqls` | 10074.0 ± 3.8 | 10068.3 | 10078.0 | 309.00 ± 10.50 |
-| `sql-language-server` | 457.2 ± 4.7 | 449.4 | 462.1 | 14.02 ± 0.50 |
+| `syntaqlite` | 33.0 ± 0.9 | 30.4 | 35.0 | 1.00 |
+| `sqls` | 10065.0 ± 7.2 | 10052.6 | 10070.3 | 304.91 ± 8.47 |
+| `sql-language-server` | 469.7 ± 10.6 | 456.3 | 482.1 | 14.23 ± 0.51 |

@@ -138,11 +138,16 @@ def _validate_sql_with_sqlite(sql):
             os.unlink(tmp_db)
 
 
+# DDL bytecode includes string offsets that change with whitespace — skip bytecode
+# comparison for these and fall back to acceptance-only.
+NO_BYTECODE_PREFIXES = ('CREATE', 'ALTER', 'DROP', 'DETACH')
+
+
 def _get_explain_bytecode(sql):
     """Get EXPLAIN bytecode for SQL, or None if not applicable."""
     sql_stripped = sql.strip().rstrip(';').strip()
     upper = sql_stripped.upper()
-    if upper.startswith('DETACH') or any(upper.startswith(pfx) for pfx in NO_EXPLAIN_PREFIXES):
+    if any(upper.startswith(pfx) for pfx in NO_EXPLAIN_PREFIXES + NO_BYTECODE_PREFIXES):
         return None
     tmp_db = tempfile.mktemp(suffix=".db")
     shutil.copy2(BASE_DB, tmp_db)
@@ -478,7 +483,7 @@ def collect_parser():
             f"-n 'sqlglot[c]' '{UV} run --directory {DIR} python {parse_dir}/_parse_sqlglot.py {sqlfile}' "
             f"-n sqlparser-rs '{SQLPARSER_RS} {sqlfile}' "
             f"-n node-sql-parser 'node {parse_dir}/_parse_node.js {sqlfile}' "
-            f"-n sqlfluff '{UV} run --directory {DIR} sqlfluff parse {sqlfile} --dialect sqlite --large-file-skip-byte-limit 0' "
+            f"-n sqlfluff '{UV} run --directory {DIR} sqlfluff parse {sqlfile} --dialect sqlite' "
         )
         subprocess.run(cmd, shell=True, cwd=DIR)
 
