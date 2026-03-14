@@ -39,25 +39,29 @@ jobs:
         run: syntaqlite fmt --check "**/*.sql"
 ```
 
-## Pre-commit hook
+## Pre-push hook
 
-Add a git hook to format SQL before each commit:
+Add a git hook to check SQL formatting before each push:
 
 ```bash
 #!/bin/bash
-# .git/hooks/pre-commit
+# .git/hooks/pre-push
 
-sql_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.sql$')
-if [ -n "$sql_files" ]; then
-  echo "$sql_files" | xargs syntaqlite fmt -i
-  echo "$sql_files" | xargs git add
-fi
+failed=0
+for f in $(git diff --name-only origin/main --diff-filter=ACM | grep '\.sql$'); do
+  if ! diff -q <(syntaqlite fmt "$f") "$f" > /dev/null 2>&1; then
+    echo "Not formatted: $f"
+    failed=1
+  fi
+done
+
+exit $failed
 ```
 
 Make it executable:
 
 ```bash
-chmod +x .git/hooks/pre-commit
+chmod +x .git/hooks/pre-push
 ```
 
 ## Formatting at scale

@@ -614,7 +614,7 @@ impl LspHost {
         ddl: &str,
         file_uri: Option<&str>,
     ) -> Result<(), Vec<String>> {
-        let (catalog, errors) = Catalog::from_ddl(self.dialect.clone(), ddl, file_uri);
+        let (catalog, errors) = Catalog::from_ddl(self.dialect.clone(), &[(ddl, file_uri)]);
         self.set_session_context(catalog);
         if errors.is_empty() {
             Ok(())

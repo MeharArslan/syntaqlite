@@ -79,27 +79,46 @@ Options:
 
 ## Validate SQL
 
+Separate your schema (DDL) from the queries you want to check:
+
 ```bash
-syntaqlite validate schema.sql
+syntaqlite validate --schema schema.sql queries.sql
 ```
 
-If the file contains `CREATE TABLE` statements followed by queries, syntaqlite
-builds a schema from the DDL and validates the queries against it:
+Multiple schema files are supported — use `--schema` more than once or pass a
+glob:
+
+```bash
+syntaqlite validate --schema "db/*.sql" queries.sql
+```
+
+Example schema file (`schema.sql`):
 
 ```sql
 CREATE TABLE users (id INTEGER, name TEXT, email TEXT);
+```
 
+Example query file (`queries.sql`):
+
+```sql
 SELECT nme FROM users;
 ```
 
 ```text
 error: unknown column 'nme'
- --> schema.sql:3:8
+ --> queries.sql:1:8
   |
-3 | SELECT nme FROM users;
+1 | SELECT nme FROM users;
   |        ^^^
   |
   = help: did you mean 'name'?
+```
+
+You can also put DDL and queries in the same file (without `--schema`) for quick
+one-off checks:
+
+```bash
+echo "CREATE TABLE t (a INT); SELECT b FROM t;" | syntaqlite validate
 ```
 
 ### Embedded SQL (experimental)

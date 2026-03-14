@@ -96,6 +96,9 @@ pub(crate) enum Command {
     Validate {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
+        /// Schema DDL file(s) to load before validation (repeatable, supports globs)
+        #[arg(long)]
+        schema: Vec<String>,
         /// [experimental] Host language for embedded SQL extraction (python, typescript)
         #[arg(long = "experimental-lang")]
         lang: Option<runtime::HostLanguage>,

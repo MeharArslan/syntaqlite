@@ -43,15 +43,17 @@ syntaqlite validate [OPTIONS] [FILES...]
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--schema <FILE>` | | Schema DDL file(s) to load (repeatable, supports globs) |
 | `--experimental-lang <LANG>` | | Extract SQL from `python` or `typescript` source |
 | `--dialect <PATH>` | | Path to custom dialect shared library |
 | `--dialect-name <NAME>` | | Symbol name in dialect library |
 | `--sqlite-version <VER>` | `latest` | Target SQLite version |
 | `--sqlite-cflag <FLAG>` | | Enable a compile-time flag (repeatable) |
 
-The validator builds schema from `CREATE TABLE` / `CREATE VIEW` statements in
-the input, then checks queries against that schema. Diagnostics are printed to
-stderr in rustc-style format.
+When `--schema` is provided, the validator loads `CREATE TABLE` / `CREATE VIEW`
+statements from the schema files and checks the remaining input files against
+that schema. Without `--schema`, inline DDL in the input is used instead.
+Diagnostics are printed to stderr in rustc-style format.
 
 ## syntaqlite parse
 

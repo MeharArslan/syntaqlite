@@ -117,9 +117,11 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
         Command::Parse { files, output } => {
             require_dialect(dialect).and_then(|d| cmd_parse(&d, &files, output))
         }
-        Command::Validate { files, lang } => {
-            require_dialect(dialect).and_then(|d| cmd_validate(&d, &files, lang))
-        }
+        Command::Validate {
+            files,
+            schema,
+            lang,
+        } => require_dialect(dialect).and_then(|d| cmd_validate(&d, &files, &schema, lang)),
         Command::Lsp => require_dialect(dialect).and_then(|d| {
             syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
         }),
@@ -365,18 +367,50 @@ fn format_source(
     Formatter::with_dialect_config(dialect.clone(), config).format(source)
 }
 
+fn build_schema_catalog(
+    dialect: &AnyDialect,
+    schema_files: &[String],
+) -> Result<Catalog, String> {
+    if schema_files.is_empty() {
+        return Ok(Catalog::new(dialect.clone()));
+    }
+    let paths = expand_paths(schema_files)?;
+    let mut sources = Vec::new();
+    let mut uris = Vec::new();
+    for path in &paths {
+        let source =
+            fs::read_to_string(path).map_err(|e| format!("schema {}: {e}", path.display()))?;
+        uris.push(format!("file://{}", path.display()));
+        sources.push(source);
+    }
+    let pairs: Vec<(&str, Option<&str>)> = sources
+        .iter()
+        .zip(uris.iter())
+        .map(|(s, u)| (s.as_str(), Some(u.as_str())))
+        .collect();
+    let (catalog, errors) = Catalog::from_ddl(dialect.clone(), &pairs);
+    for err in &errors {
+        eprintln!("warning: schema: {err}");
+    }
+    Ok(catalog)
+}
+
 fn cmd_validate(
     dialect: &AnyDialect,
     files: &[String],
+    schema_files: &[String],
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
+    let schema_catalog = build_schema_catalog(dialect, schema_files)?;
     let config = ValidationConfig::default();
     let mut any_errors = false;
 
     let validate = |source: &str, file: &str| -> bool {
         match lang {
-            Some(lang) => validate_embedded_source(dialect, source, file, &config, lang),
-            None => validate_source(dialect, source, file, &config),
+            Some(lang) => {
+                validate_embedded_source(dialect, source, file, &config, lang, schema_files)
+            }
+            None => validate_source(dialect, source, file, &config, &schema_catalog),
         }
     };
 
@@ -411,10 +445,10 @@ fn validate_source(
     source: &str,
     file: &str,
     config: &ValidationConfig,
+    schema_catalog: &Catalog,
 ) -> bool {
-    let catalog = Catalog::new(dialect.clone());
     let mut analyzer = SemanticAnalyzer::with_dialect(dialect.clone());
-    let model = analyzer.analyze(source, &catalog, config);
+    let model = analyzer.analyze(source, schema_catalog, config);
     DiagnosticRenderer::new(source, file)
         .render_diagnostics(model.diagnostics(), &mut io::stderr())
         .unwrap_or(false)
@@ -426,6 +460,7 @@ fn validate_embedded_source(
     file: &str,
     config: &ValidationConfig,
     lang: HostLanguage,
+    schema_files: &[String],
 ) -> bool {
     let fragments = match lang {
         HostLanguage::Python => syntaqlite::embedded::extract_python(source),
@@ -436,7 +471,14 @@ fn validate_embedded_source(
         return false;
     }
 
-    let catalog = Catalog::new(dialect.clone());
+    // Build an owned catalog for the embedded analyzer.
+    let catalog = match build_schema_catalog(dialect, schema_files) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return true;
+        }
+    };
     let diags = syntaqlite::embedded::EmbeddedAnalyzer::new(dialect.clone())
         .with_catalog(catalog)
         .with_config(*config)

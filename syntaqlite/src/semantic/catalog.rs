@@ -493,37 +493,43 @@ impl Catalog {
 
     // ── Convenience constructors ──────────────────────────────────────────────
 
-    /// Parse DDL statements from `source` and populate the database layer.
+    /// Parse DDL statements from one or more sources and populate the database
+    /// layer.
+    ///
+    /// Each entry in `sources` is a `(sql_text, optional_file_uri)` pair.
+    /// All sources are accumulated into a single catalog so that tables
+    /// defined in earlier sources are visible to later ones.
     ///
     /// Returns `(catalog, errors)`. `errors` contains the human-readable
     /// message for each statement that failed to parse. Partial results from
     /// successfully parsed statements are always accumulated.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(
+    pub fn from_ddl(
         dialect: impl Into<AnyDialect>,
-        source: &str,
-        file_uri: Option<&str>,
+        sources: &[(&str, Option<&str>)],
     ) -> (Self, Vec<String>) {
         use syntaqlite_syntax::ParseOutcome;
         let dialect = dialect.into();
         let mut catalog = Catalog::new(dialect.clone());
         let mut errors: Vec<String> = Vec::new();
         let parser = syntaqlite_syntax::Parser::new();
-        let mut session = parser.parse(source);
-        loop {
-            let stmt = match session.next() {
-                ParseOutcome::Ok(stmt) => stmt,
-                ParseOutcome::Done => break,
-                ParseOutcome::Err(e) => {
-                    errors.push(e.message().to_string());
-                    continue;
-                }
-            };
-            let Some(root) = stmt.root() else { continue };
-            let root_id: AnyNodeId = root.node_id().into();
-            let erased = stmt.erase();
-            catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, &dialect);
-            catalog.record_ddl_definition_site(&erased, root_id, &dialect, file_uri);
+        for &(source, file_uri) in sources {
+            let mut session = parser.parse(source);
+            loop {
+                let stmt = match session.next() {
+                    ParseOutcome::Ok(stmt) => stmt,
+                    ParseOutcome::Done => break,
+                    ParseOutcome::Err(e) => {
+                        errors.push(e.message().to_string());
+                        continue;
+                    }
+                };
+                let Some(root) = stmt.root() else { continue };
+                let root_id: AnyNodeId = root.node_id().into();
+                let erased = stmt.erase();
+                catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, &dialect);
+                catalog.record_ddl_definition_site(&erased, root_id, &dialect, file_uri);
+            }
         }
         (catalog, errors)
     }
