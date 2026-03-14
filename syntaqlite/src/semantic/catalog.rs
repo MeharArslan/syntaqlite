@@ -725,13 +725,6 @@ impl Catalog {
             .any(|layer| layer.table_function(name).is_some())
     }
 
-    pub(crate) fn resolve_column(&self, table: Option<&str>, column: &str) -> ColumnResolution {
-        if let Some(tbl) = table {
-            return self.resolve_qualified_column(tbl, column);
-        }
-        self.resolve_unqualified_column(column)
-    }
-
     pub(crate) fn check_function(&self, name: &str, arg_count: usize) -> FunctionCheckResult {
         let set = self
             .all_layers_ordered()
@@ -752,27 +745,30 @@ impl Catalog {
         }
     }
 
-    /// Return the column list for a table or table-valued function.
+    /// Return the column list and WITHOUT ROWID flag for a table source.
     ///
-    /// - `Some(cols)` — found with a known column list.
-    /// - `None` — not found, or found but columns are unknown (suppress column errors).
-    ///
-    /// Used by the walker when registering a table reference in the query scope.
-    pub(crate) fn columns_for_table_source(&self, name: &str) -> Option<Vec<String>> {
+    /// Returns `(columns, without_rowid)`:
+    /// - `columns = Some(cols)` — known column list.
+    /// - `columns = None` — not found, or columns unknown (accept any ref).
+    /// - `without_rowid = true` — no implicit rowid/oid/_rowid_ column.
+    pub(crate) fn table_source_info(
+        &self,
+        name: &str,
+    ) -> (Option<Vec<String>>, bool) {
         for layer in self.all_layers_ordered() {
             if let Some(rel) = layer.relation(name) {
-                // None means unknown — pass that through so caller suppresses errors.
-                return rel.columns.clone();
+                return (rel.columns.clone(), rel.without_rowid);
             }
             if let Some(tf) = layer.table_function(name) {
-                return if tf.output_columns.is_empty() {
-                    None // unknown output columns
+                let cols = if tf.output_columns.is_empty() {
+                    None
                 } else {
                     Some(tf.output_columns.clone())
                 };
+                return (cols, false);
             }
         }
-        None // not found
+        (None, false)
     }
 
     // ── Enumeration (for fuzzy suggestions and completions) ───────────────────
@@ -853,78 +849,6 @@ impl Catalog {
         self.layers.iter().rev()
     }
 
-    fn resolve_qualified_column(&self, table: &str, column: &str) -> ColumnResolution {
-        for layer in self.all_layers_ordered() {
-            if let Some(rel) = layer.relation(table) {
-                let all_cols = rel.columns.clone().unwrap_or_default();
-                return match &rel.columns {
-                    Some(cols) if cols.iter().any(|c| c.eq_ignore_ascii_case(column)) => {
-                        ColumnResolution::Found {
-                            table: rel.name.clone(),
-                            all_columns: all_cols,
-                        }
-                    }
-                    Some(_) if is_implicit_rowid(column, rel) => ColumnResolution::Found {
-                        table: rel.name.clone(),
-                        all_columns: all_cols,
-                    },
-                    Some(_) => ColumnResolution::TableFoundColumnMissing,
-                    None => ColumnResolution::Found {
-                        table: rel.name.clone(),
-                        all_columns: all_cols,
-                    },
-                };
-            }
-        }
-        ColumnResolution::TableNotFound
-    }
-
-    fn resolve_unqualified_column(&self, column: &str) -> ColumnResolution {
-        let mut has_unknown = false;
-        for layer in self.all_layers_ordered() {
-            for rel in layer.relations.values() {
-                match &rel.columns {
-                    Some(cols) if cols.iter().any(|c| c.eq_ignore_ascii_case(column)) => {
-                        return ColumnResolution::Found {
-                            table: rel.name.clone(),
-                            all_columns: cols.clone(),
-                        };
-                    }
-                    Some(_) if is_implicit_rowid(column, rel) => {
-                        return ColumnResolution::Found {
-                            table: rel.name.clone(),
-                            all_columns: rel.columns.clone().unwrap_or_default(),
-                        };
-                    }
-                    Some(_) => {}
-                    None => has_unknown = true,
-                }
-            }
-        }
-        if has_unknown {
-            ColumnResolution::Found {
-                table: String::new(),
-                all_columns: Vec::new(),
-            }
-        } else {
-            ColumnResolution::NotFound
-        }
-    }
-}
-
-/// Check whether `column` is an implicit rowid alias (`rowid`, `oid`, `_rowid_`)
-/// that `SQLite` provides on every table unless it is declared WITHOUT ROWID.
-///
-/// A column by that name in the explicit column list shadows the implicit one,
-/// so this only returns `true` when the relation is NOT without-rowid and no
-/// explicit column matches.
-fn is_implicit_rowid(column: &str, rel: &RelationEntry) -> bool {
-    if rel.without_rowid {
-        return false;
-    }
-    column.eq_ignore_ascii_case("rowid")
-        || column.eq_ignore_ascii_case("oid")
-        || column.eq_ignore_ascii_case("_rowid_")
 }
 
 // ── DDL extraction helpers ────────────────────────────────────────────────────

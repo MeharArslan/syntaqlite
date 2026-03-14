@@ -3,7 +3,7 @@
 
 //! Single-pass semantic analysis engine.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use syntaqlite_syntax::ParserConfig;
 use syntaqlite_syntax::any::{
@@ -475,6 +475,167 @@ fn merge_expected_tokens(into: &mut Vec<AnyTokenType>, extra: Vec<AnyTokenType>)
 
 /// Per-statement validation pass.  Reads the dialect's [`SemanticRole`] table
 /// and dispatches node visits to role-specific handlers.
+// ── QueryScope ─────────────────────────────────────────────────────────────────
+
+/// Whether a table has an implicit rowid column.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RowIdPolicy {
+    /// Normal table — `rowid`, `oid`, `_rowid_` are valid implicit columns.
+    WithRowId,
+    /// WITHOUT ROWID table — no implicit rowid column exists.
+    WithoutRowId,
+}
+
+/// A table entry in the query scope.
+struct ActiveTable {
+    /// `None` = table exists but column list is unknown (accept any ref).
+    columns: Option<Vec<String>>,
+    rowid: RowIdPolicy,
+}
+
+/// Tracks which tables are "active" (in FROM/JOIN) for column resolution.
+///
+/// Completely separate from [`Catalog`] (schema-level).  The query scope
+/// answers: "given the tables in this SELECT's FROM clause, can we resolve
+/// this column reference?"
+///
+/// Frames are pushed/popped as we enter/leave SELECT statements, subqueries,
+/// and DML blocks.  Inner frames are searched first (supporting correlated
+/// subqueries).  CTE definitions are never stored here — CTEs only contribute
+/// columns when they appear in a FROM clause.
+#[derive(Default)]
+struct QueryScope {
+    frames: Vec<HashMap<String, ActiveTable>>,
+}
+
+impl QueryScope {
+    fn push(&mut self) {
+        self.frames.push(HashMap::new());
+    }
+
+    fn pop(&mut self) {
+        self.frames.pop();
+    }
+
+    /// Register a table (or alias) as active in the current scope frame.
+    fn add_table(
+        &mut self,
+        name: &str,
+        columns: Option<Vec<String>>,
+        rowid: RowIdPolicy,
+    ) {
+        if let Some(frame) = self.frames.last_mut() {
+            frame.insert(
+                name.to_ascii_lowercase(),
+                ActiveTable { columns, rowid },
+            );
+        }
+    }
+
+    /// Resolve a column reference against active FROM tables.
+    fn resolve_column(&self, table: Option<&str>, column: &str) -> ColumnResolution {
+        if let Some(tbl) = table {
+            self.resolve_qualified(tbl, column)
+        } else {
+            self.resolve_unqualified(column)
+        }
+    }
+
+    fn resolve_qualified(&self, table: &str, column: &str) -> ColumnResolution {
+        for frame in self.frames.iter().rev() {
+            if let Some(entry) = frame.get(&table.to_ascii_lowercase()) {
+                return match &entry.columns {
+                    Some(cs)
+                        if cs
+                            .iter()
+                            .any(|c: &String| c.eq_ignore_ascii_case(column)) =>
+                    {
+                        ColumnResolution::Found {
+                            table: table.to_string(),
+                            all_columns: cs.clone(),
+                        }
+                    }
+                    Some(cs) if entry.rowid == RowIdPolicy::WithRowId && is_rowid_alias(column) => {
+                        ColumnResolution::Found {
+                            table: table.to_string(),
+                            all_columns: cs.clone(),
+                        }
+                    }
+                    Some(_) => ColumnResolution::TableFoundColumnMissing,
+                    None => ColumnResolution::Found {
+                        table: table.to_string(),
+                        all_columns: Vec::new(),
+                    },
+                };
+            }
+        }
+        ColumnResolution::TableNotFound
+    }
+
+    fn resolve_unqualified(&self, column: &str) -> ColumnResolution {
+        for frame in self.frames.iter().rev() {
+            let mut frame_has_unknown = false;
+            for (tbl_name, entry) in frame {
+                match &entry.columns {
+                    Some(cs)
+                        if cs
+                            .iter()
+                            .any(|c: &String| c.eq_ignore_ascii_case(column)) =>
+                    {
+                        return ColumnResolution::Found {
+                            table: tbl_name.clone(),
+                            all_columns: cs.clone(),
+                        };
+                    }
+                    Some(cs) if entry.rowid == RowIdPolicy::WithRowId && is_rowid_alias(column) => {
+                        return ColumnResolution::Found {
+                            table: tbl_name.clone(),
+                            all_columns: cs.clone(),
+                        };
+                    }
+                    Some(_) => {}
+                    None => frame_has_unknown = true,
+                }
+            }
+            // A table with unknown columns in this frame could own the column —
+            // don't leak into outer scopes.
+            if frame_has_unknown {
+                return ColumnResolution::Found {
+                    table: String::new(),
+                    all_columns: Vec::new(),
+                };
+            }
+        }
+        ColumnResolution::NotFound
+    }
+
+    /// Collect all known column names (for fuzzy suggestions).
+    fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        for frame in self.frames.iter().rev() {
+            for (tbl_name, entry) in frame {
+                if table.is_none_or(|t: &str| tbl_name.eq_ignore_ascii_case(t)) {
+                    if let Some(cs) = &entry.columns {
+                        names.extend(cs.iter().map(|c: &String| c.to_ascii_lowercase()));
+                    }
+                }
+            }
+        }
+        names.sort_unstable();
+        names.dedup();
+        names
+    }
+}
+
+/// SQLite's implicit rowid aliases.
+fn is_rowid_alias(column: &str) -> bool {
+    column.eq_ignore_ascii_case("rowid")
+        || column.eq_ignore_ascii_case("oid")
+        || column.eq_ignore_ascii_case("_rowid_")
+}
+
+// ── ValidationPass ─────────────────────────────────────────────────────────────
+
 struct ValidationPass<'a> {
     roles: &'static [SemanticRole],
     source_start: usize,
@@ -482,6 +643,7 @@ struct ValidationPass<'a> {
     config: &'a ValidationConfig,
     diagnostics: &'a mut Vec<Diagnostic>,
     resolutions: &'a mut Vec<Resolution>,
+    scope: QueryScope,
 }
 
 impl<'a> ValidationPass<'a> {
@@ -503,6 +665,7 @@ impl<'a> ValidationPass<'a> {
             config,
             diagnostics,
             resolutions,
+            scope: QueryScope::default(),
         };
         pass.visit(stmt, root);
     }
@@ -596,9 +759,9 @@ impl<'a> ValidationPass<'a> {
                 self.visit_trigger_scope(stmt, &fields, when, body);
             }
             SemanticRole::DmlScope => {
-                self.catalog.push_query_scope();
+                self.scope.push();
                 self.visit_children(stmt, node_id);
-                self.catalog.pop_query_scope();
+                self.scope.pop();
             }
         }
     }
@@ -685,7 +848,12 @@ impl<'a> ValidationPass<'a> {
 
         let alias = self.name_text(stmt, Self::field_node_id(fields, alias_idx));
         let scope_name = if alias.is_empty() { name } else { alias };
-        let columns = self.catalog.columns_for_table_source(name);
+        let (columns, without_rowid) = self.catalog.table_source_info(name);
+        let rowid = if without_rowid {
+            RowIdPolicy::WithoutRowId
+        } else {
+            RowIdPolicy::WithRowId
+        };
 
         if is_known {
             self.resolutions.push(Resolution {
@@ -698,7 +866,7 @@ impl<'a> ValidationPass<'a> {
             });
         }
 
-        self.catalog.add_query_table(scope_name, columns);
+        self.scope.add_table(scope_name, columns, rowid);
     }
 
     fn visit_call(
@@ -782,7 +950,7 @@ impl<'a> ValidationPass<'a> {
         };
         let offset = self.span_offset(column);
 
-        match self.catalog.resolve_column(table, column) {
+        match self.scope.resolve_column(table, column) {
             ColumnResolution::Found {
                 table: resolved_table,
                 all_columns,
@@ -802,7 +970,7 @@ impl<'a> ValidationPass<'a> {
             ColumnResolution::TableNotFound => {}
             ColumnResolution::TableFoundColumnMissing => {
                 let tbl = table.expect("qualifier present when TableFoundColumnMissing");
-                let candidates = self.catalog.all_column_names(Some(tbl));
+                let candidates = self.scope.all_column_names(Some(tbl));
                 let suggestion =
                     best_suggestion(column, &candidates, self.config.suggestion_threshold());
                 self.diagnostics.push(Diagnostic {
@@ -823,7 +991,7 @@ impl<'a> ValidationPass<'a> {
                 if column.eq_ignore_ascii_case("true") || column.eq_ignore_ascii_case("false") {
                     return;
                 }
-                let candidates = self.catalog.all_column_names(None);
+                let candidates = self.scope.all_column_names(None);
                 let suggestion =
                     best_suggestion(column, &candidates, self.config.suggestion_threshold());
                 self.diagnostics.push(Diagnostic {
@@ -847,13 +1015,13 @@ impl<'a> ValidationPass<'a> {
         body_idx: u8,
         alias_idx: u8,
     ) {
-        self.catalog.push_query_scope();
+        self.scope.push();
         self.visit_opt(stmt, Self::field_node_id(fields, body_idx));
-        self.catalog.pop_query_scope();
+        self.scope.pop();
 
         let alias = self.name_text(stmt, Self::field_node_id(fields, alias_idx));
         if !alias.is_empty() {
-            self.catalog.add_query_table(alias, None);
+            self.scope.add_table(alias, None, RowIdPolicy::WithRowId);
         }
     }
 
@@ -875,7 +1043,7 @@ impl<'a> ValidationPass<'a> {
         // WHERE, ORDER BY, etc.  Without this, add_query_table is a silent
         // no-op when no query scope frame exists (e.g. at the top level),
         // causing column refs against unknown tables to be spuriously flagged.
-        self.catalog.push_query_scope();
+        self.scope.push();
         self.visit_opt(stmt, Self::field_node_id(fields, from));
         for idx in [
             columns,
@@ -887,7 +1055,7 @@ impl<'a> ValidationPass<'a> {
         ] {
             self.visit_opt(stmt, Self::field_node_id(fields, idx));
         }
-        self.catalog.pop_query_scope();
+        self.scope.pop();
     }
 
     fn visit_cte_scope(
@@ -903,9 +1071,10 @@ impl<'a> ValidationPass<'a> {
             .and_then(|id| stmt.list_children(id))
             .unwrap_or(&[]);
 
-        // Push a scope for the whole WITH clause so CTE names registered via
-        // add_query_table have somewhere to live (the stack may be empty at the
-        // top level).
+        // Push a catalog scope so CTE names are resolvable as table names in
+        // FROM clauses.  This is purely for relation-name resolution — CTE
+        // columns only become active when a CTE is actually referenced in FROM
+        // (handled by visit_source_ref → scope.add_table).
         self.catalog.push_query_scope();
 
         for cte_id in cte_ids.iter().copied() {
@@ -963,9 +1132,9 @@ impl<'a> ValidationPass<'a> {
                 self.catalog.add_query_table(cte_name, cols);
             }
 
-            self.catalog.push_query_scope();
+            self.scope.push();
             self.visit_opt(stmt, cte_body_id);
-            self.catalog.pop_query_scope();
+            self.scope.pop();
 
             if !cte_name.is_empty() {
                 if let Some(ref declared) = declared_cols {
@@ -1067,12 +1236,12 @@ impl<'a> ValidationPass<'a> {
         when_idx: u8,
         body_idx: u8,
     ) {
-        self.catalog.push_query_scope();
-        self.catalog.add_query_table("OLD", None);
-        self.catalog.add_query_table("NEW", None);
+        self.scope.push();
+        self.scope.add_table("OLD", None, RowIdPolicy::WithRowId);
+        self.scope.add_table("NEW", None, RowIdPolicy::WithRowId);
         self.visit_opt(stmt, Self::field_node_id(fields, when_idx));
         self.visit_opt(stmt, Self::field_node_id(fields, body_idx));
-        self.catalog.pop_query_scope();
+        self.scope.pop();
     }
 }
 
@@ -1080,7 +1249,9 @@ impl<'a> ValidationPass<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::catalog::{AritySpec, CatalogLayer, FunctionCategory, FunctionCheckResult};
+    use super::super::catalog::{
+        AritySpec, CatalogLayer, ColumnResolution, FunctionCategory, FunctionCheckResult,
+    };
     use super::super::diagnostics::{DiagnosticMessage, Help};
     use super::super::render::DiagnosticRenderer;
     use super::*;
@@ -1198,6 +1369,82 @@ mod tests {
         assert!(
             unknown_tables.is_empty(),
             "virtual table should be known: {unknown_tables:?}"
+        );
+    }
+
+    #[test]
+    fn unknown_columns_table_blocks_outer_scope_leaking() {
+        // If the inner scope has a table with unknown columns (None), unqualified
+        // column resolution must NOT leak through to a matching column in an outer
+        // scope.  This prevents CTE columns from polluting sibling/outer queries.
+        let mut scope = QueryScope::default();
+        // Outer scope: simulates a correlated outer query with known columns.
+        scope.push();
+        scope.add_table("a", Some(vec!["id".into(), "name".into()]), RowIdPolicy::WithRowId);
+        // Inner scope: "users" with unknown columns.
+        scope.push();
+        scope.add_table("users", None, RowIdPolicy::WithRowId);
+
+        // Resolving "name" should NOT return table="a".
+        let res = scope.resolve_column(None, "name");
+        match res {
+            ColumnResolution::Found { ref table, .. } => {
+                assert_ne!(
+                    table, "a",
+                    "column 'name' should NOT resolve to outer scope's 'a'; \
+                     inner scope has unknown-columns table that should block leaking"
+                );
+            }
+            _ => panic!("expected Found, got {res:?}"),
+        }
+
+        scope.pop();
+        scope.pop();
+    }
+
+    #[test]
+    fn without_rowid_table_rejects_implicit_rowid() {
+        // A WITHOUT ROWID table should not accept rowid/oid/_rowid_ as columns.
+        let mut az = sqlite_analyzer();
+        let mut cat = sqlite_catalog();
+        cat.layer_mut(CatalogLayer::Database).insert_table(
+            "kv",
+            Some(vec!["key".to_string(), "value".to_string()]),
+            true, // WITHOUT ROWID
+        );
+
+        let model = az.analyze("SELECT rowid FROM kv", &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            !col_errs.is_empty(),
+            "rowid should be rejected for WITHOUT ROWID tables"
+        );
+    }
+
+    #[test]
+    fn regular_table_accepts_implicit_rowid() {
+        // A normal table should accept rowid as an implicit column.
+        let mut az = sqlite_analyzer();
+        let mut cat = sqlite_catalog();
+        cat.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".to_string(), "name".to_string()]),
+            false,
+        );
+
+        let model = az.analyze("SELECT rowid FROM users", &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "rowid should be accepted for regular tables: {col_errs:?}"
         );
     }
 
