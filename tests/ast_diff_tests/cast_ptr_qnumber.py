@@ -278,6 +278,80 @@ class PtrExpr(TestSuite):
         )
 
 
+    def test_ptr2_extract_text(self):
+        return DiffTestBlueprint(
+            sql="SELECT j ->> '$.name'",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      BinaryExpr
+                        op: PTR2
+                        left:
+                          ColumnRef
+                            column: "j"
+                            table: (none)
+                            schema: (none)
+                        right:
+                          Literal
+                            literal_type: STRING
+                            source: "'$.name'"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+    def test_ptr_and_ptr2_chain(self):
+        return DiffTestBlueprint(
+            sql="SELECT j -> '$.a' ->> '$.b'",
+            out="""\
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: (none)
+                    expr:
+                      BinaryExpr
+                        op: PTR2
+                        left:
+                          BinaryExpr
+                            op: PTR
+                            left:
+                              ColumnRef
+                                column: "j"
+                                table: (none)
+                                schema: (none)
+                            right:
+                              Literal
+                                literal_type: STRING
+                                source: "'$.a'"
+                        right:
+                          Literal
+                            literal_type: STRING
+                            source: "'$.b'"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
+""",
+        )
+
+
 class QnumberLiteral(TestSuite):
     """QNUMBER (digit-separated number) literal tests."""
 

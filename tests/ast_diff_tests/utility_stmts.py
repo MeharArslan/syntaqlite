@@ -301,6 +301,8 @@ class ExplainStmts(TestSuite):
                       schema: (none)
                       alias: (none)
                       args: (none)
+                  index_hint: DEFAULT
+                  index_name: (none)
                   where_clause: (none)
                   orderby: (none)
                   limit_clause: (none)

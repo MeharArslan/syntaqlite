@@ -8323,7 +8323,6 @@ static YYACTIONTYPE yy_reduce(
     case 140: /* cmd ::= with DELETE FROM xfullname indexed_opt where_opt_ret
                  orderby_opt limit_opt */
     {
-      (void)yymsp[-3].minor.yy0;
       if (yymsp[-1].minor.yy141 != SYNTAQLITE_NULL_NODE ||
           yymsp[0].minor.yy141 != SYNTAQLITE_NULL_NODE) {
         pCtx->saw_update_delete_limit = 1;
@@ -8332,10 +8331,14 @@ static YYACTIONTYPE yy_reduce(
           pCtx->error = 1;
         }
       }
+      SyntaqliteIndexHint ih =
+          (yymsp[-3].minor.yy0.z != NULL) ? SYNTAQLITE_INDEX_HINT_INDEXED
+          : (yymsp[-3].minor.yy0.n == 1)  ? SYNTAQLITE_INDEX_HINT_NOT_INDEXED
+                                          : SYNTAQLITE_INDEX_HINT_DEFAULT;
       uint32_t del = synq_parse_delete_stmt(
-          pCtx, yymsp[-4].minor.yy141, yymsp[-2].minor.yy5.where_expr,
-          yymsp[-1].minor.yy141, yymsp[0].minor.yy141,
-          yymsp[-2].minor.yy5.returning);
+          pCtx, yymsp[-4].minor.yy141, ih, synq_span(pCtx, yymsp[-3].minor.yy0),
+          yymsp[-2].minor.yy5.where_expr, yymsp[-1].minor.yy141,
+          yymsp[0].minor.yy141, yymsp[-2].minor.yy5.returning);
       if (yymsp[-7].minor.yy95.cte_list != SYNTAQLITE_NULL_NODE) {
         yylhsminor.yy141 =
             synq_parse_with_clause(pCtx, yymsp[-7].minor.yy95.is_recursive,
@@ -8349,7 +8352,6 @@ static YYACTIONTYPE yy_reduce(
     case 141: /* cmd ::= with UPDATE orconf xfullname indexed_opt SET setlist
                  from where_opt_ret orderby_opt limit_opt */
     {
-      (void)yymsp[-6].minor.yy0;
       if (yymsp[-1].minor.yy141 != SYNTAQLITE_NULL_NODE ||
           yymsp[0].minor.yy141 != SYNTAQLITE_NULL_NODE) {
         pCtx->saw_update_delete_limit = 1;
@@ -8358,9 +8360,14 @@ static YYACTIONTYPE yy_reduce(
           pCtx->error = 1;
         }
       }
+      SyntaqliteIndexHint ih =
+          (yymsp[-6].minor.yy0.z != NULL) ? SYNTAQLITE_INDEX_HINT_INDEXED
+          : (yymsp[-6].minor.yy0.n == 1)  ? SYNTAQLITE_INDEX_HINT_NOT_INDEXED
+                                          : SYNTAQLITE_INDEX_HINT_DEFAULT;
       uint32_t upd = synq_parse_update_stmt(
           pCtx, (SyntaqliteConflictAction)yymsp[-8].minor.yy592,
-          yymsp[-7].minor.yy141, yymsp[-4].minor.yy141, yymsp[-3].minor.yy141,
+          yymsp[-7].minor.yy141, ih, synq_span(pCtx, yymsp[-6].minor.yy0),
+          yymsp[-4].minor.yy141, yymsp[-3].minor.yy141,
           yymsp[-2].minor.yy5.where_expr, yymsp[-1].minor.yy141,
           yymsp[0].minor.yy141, yymsp[-2].minor.yy5.returning);
       if (yymsp[-10].minor.yy95.cte_list != SYNTAQLITE_NULL_NODE) {
@@ -9544,6 +9551,7 @@ static YYACTIONTYPE yy_reduce(
           SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
       yymsp[-8].minor.yy141 = synq_parse_update_stmt(
           pCtx, (SyntaqliteConflictAction)yymsp[-7].minor.yy592, tbl,
+          SYNTAQLITE_INDEX_HINT_DEFAULT, (SyntaqliteSourceSpan){0, 0},
           yymsp[-3].minor.yy141, yymsp[-2].minor.yy141, yymsp[-1].minor.yy141,
           SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     } break;
@@ -9564,8 +9572,9 @@ static YYACTIONTYPE yy_reduce(
           pCtx, synq_span(pCtx, yymsp[-3].minor.yy0), SYNQ_NO_SPAN,
           SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
       yymsp[-5].minor.yy141 = synq_parse_delete_stmt(
-          pCtx, tbl, yymsp[-1].minor.yy141, SYNTAQLITE_NULL_NODE,
-          SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+          pCtx, tbl, SYNTAQLITE_INDEX_HINT_DEFAULT,
+          (SyntaqliteSourceSpan){0, 0}, yymsp[-1].minor.yy141,
+          SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     } break;
     case 325: /* cmd ::= PRAGMA nm dbnm */
     {

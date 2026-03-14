@@ -556,6 +556,8 @@ class CreateTriggerBody(TestSuite):
                         schema: (none)
                         alias: (none)
                         args: (none)
+                    index_hint: DEFAULT
+                    index_name: (none)
                     setlist:
                       SetClauseList [1 items]
                         SetClause
@@ -648,6 +650,8 @@ class CreateTriggerBody(TestSuite):
                         schema: (none)
                         alias: (none)
                         args: (none)
+                    index_hint: DEFAULT
+                    index_name: (none)
                     where_clause:
                       BinaryExpr
                         op: EQ

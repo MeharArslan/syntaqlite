@@ -20,6 +20,8 @@ class DeleteBasic(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
@@ -38,6 +40,8 @@ class DeleteBasic(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               where_clause:
                 BinaryExpr
                   op: EQ
@@ -67,6 +71,136 @@ class DeleteBasic(TestSuite):
                   schema: "main"
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
+              where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
+              returning: (none)
+""",
+        )
+
+    def test_delete_indexed_by(self):
+        return DiffTestBlueprint(
+            sql="DELETE FROM t INDEXED BY idx_foo WHERE x = 1",
+            out="""\
+            DeleteStmt
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+                  args: (none)
+              index_hint: INDEXED
+              index_name: "idx_foo"
+              where_clause:
+                BinaryExpr
+                  op: EQ
+                  left:
+                    ColumnRef
+                      column: "x"
+                      table: (none)
+                      schema: (none)
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "1"
+              orderby: (none)
+              limit_clause: (none)
+              returning: (none)
+""",
+        )
+
+    def test_delete_not_indexed(self):
+        return DiffTestBlueprint(
+            sql="DELETE FROM t NOT INDEXED WHERE x = 1",
+            out="""\
+            DeleteStmt
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+                  args: (none)
+              index_hint: NOT_INDEXED
+              index_name: (none)
+              where_clause:
+                BinaryExpr
+                  op: EQ
+                  left:
+                    ColumnRef
+                      column: "x"
+                      table: (none)
+                      schema: (none)
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "1"
+              orderby: (none)
+              limit_clause: (none)
+              returning: (none)
+""",
+        )
+
+
+class UpdateIndexedBy(TestSuite):
+    """INDEXED BY / NOT INDEXED on UPDATE."""
+
+    def test_update_indexed_by(self):
+        return DiffTestBlueprint(
+            sql="UPDATE t INDEXED BY idx_foo SET x = 1",
+            out="""\
+            UpdateStmt
+              conflict_action: DEFAULT
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+                  args: (none)
+              index_hint: INDEXED
+              index_name: "idx_foo"
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: "x"
+                    columns: (none)
+                    value:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
+              returning: (none)
+""",
+        )
+
+    def test_update_not_indexed(self):
+        return DiffTestBlueprint(
+            sql="UPDATE t NOT INDEXED SET x = 1",
+            out="""\
+            UpdateStmt
+              conflict_action: DEFAULT
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+                  args: (none)
+              index_hint: NOT_INDEXED
+              index_name: (none)
+              setlist:
+                SetClauseList [1 items]
+                  SetClause
+                    column: "x"
+                    columns: (none)
+                    value:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
@@ -382,6 +516,8 @@ class UpdateBasic(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -411,6 +547,8 @@ class UpdateBasic(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [2 items]
                   SetClause
@@ -458,6 +596,8 @@ class UpdateBasic(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -491,6 +631,8 @@ class UpdateFrom(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -544,6 +686,8 @@ class UpdateConflict(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -573,6 +717,8 @@ class UpdateConflict(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -602,6 +748,8 @@ class UpdateConflict(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -631,6 +779,8 @@ class UpdateConflict(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -664,6 +814,8 @@ class UpdateSetClauseMultiColumn(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -827,6 +979,8 @@ class ReturningClause(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               where_clause:
                 BinaryExpr
                   op: EQ
@@ -861,6 +1015,8 @@ class ReturningClause(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               where_clause: (none)
               orderby: (none)
               limit_clause: (none)
@@ -897,6 +1053,8 @@ class ReturningClause(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -931,6 +1089,8 @@ class ReturningClause(TestSuite):
                   schema: (none)
                   alias: (none)
                   args: (none)
+              index_hint: DEFAULT
+              index_name: (none)
               setlist:
                 SetClauseList [1 items]
                   SetClause
@@ -1395,5 +1555,71 @@ class UpsertClause(TestSuite):
                         column: "x"
                         table: (none)
                         schema: (none)
+""",
+        )
+
+    def test_multi_upsert_order_preserved(self):
+        """Multiple ON CONFLICT clauses must preserve source order."""
+        return DiffTestBlueprint(
+            sql="INSERT INTO t VALUES (1) ON CONFLICT(a) DO UPDATE SET x = 1 ON CONFLICT(b) DO NOTHING",
+            out="""\
+            InsertStmt
+              conflict_action: DEFAULT
+              table:
+                TableRef
+                  table_name: "t"
+                  schema: (none)
+                  alias: (none)
+                  args: (none)
+              columns: (none)
+              source:
+                ValuesClause
+                  rows:
+                    ValuesRowList [1 items]
+                      ExprList [1 items]
+                        Literal
+                          literal_type: INTEGER
+                          source: "1"
+              upsert:
+                UpsertClauseList [2 items]
+                  UpsertClause
+                    columns:
+                      OrderByList [1 items]
+                        OrderingTerm
+                          expr:
+                            ColumnRef
+                              column: "a"
+                              table: (none)
+                              schema: (none)
+                          sort_order: ASC
+                          nulls_order: NONE
+                    target_where: (none)
+                    action: UPDATE
+                    setlist:
+                      SetClauseList [1 items]
+                        SetClause
+                          column: "x"
+                          columns: (none)
+                          value:
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                    update_where: (none)
+                  UpsertClause
+                    columns:
+                      OrderByList [1 items]
+                        OrderingTerm
+                          expr:
+                            ColumnRef
+                              column: "b"
+                              table: (none)
+                              schema: (none)
+                          sort_order: ASC
+                          nulls_order: NONE
+                    target_where: (none)
+                    action: NOTHING
+                    setlist: (none)
+                    update_where: (none)
+              returning: (none)
 """,
         )

@@ -143,6 +143,12 @@ typedef enum SyntaqliteUpsertAction {
   SYNTAQLITE_UPSERT_ACTION_UPDATE = 1
 } SyntaqliteUpsertAction;
 
+typedef enum SyntaqliteIndexHint {
+  SYNTAQLITE_INDEX_HINT_DEFAULT = 0,
+  SYNTAQLITE_INDEX_HINT_NOT_INDEXED = 1,
+  SYNTAQLITE_INDEX_HINT_INDEXED = 2
+} SyntaqliteIndexHint;
+
 typedef enum SyntaqliteRaiseType {
   SYNTAQLITE_RAISE_TYPE_IGNORE = 0,
   SYNTAQLITE_RAISE_TYPE_ROLLBACK = 1,
@@ -608,6 +614,8 @@ typedef struct SyntaqliteUpsertClauseList {
 typedef struct SyntaqliteDeleteStmt {
   SyntaqliteNodeTag tag;
   uint32_t table;
+  SyntaqliteIndexHint index_hint;
+  SyntaqliteSourceSpan index_name;
   uint32_t where_clause;
   uint32_t orderby;
   uint32_t limit_clause;
@@ -632,6 +640,8 @@ typedef struct SyntaqliteUpdateStmt {
   SyntaqliteNodeTag tag;
   SyntaqliteConflictAction conflict_action;
   uint32_t table;
+  SyntaqliteIndexHint index_hint;
+  SyntaqliteSourceSpan index_name;
   uint32_t setlist;
   uint32_t from_clause;
   uint32_t where_clause;

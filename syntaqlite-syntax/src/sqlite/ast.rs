@@ -499,6 +499,24 @@ impl UpsertAction {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
+pub enum IndexHint {
+    Default = 0,
+    NotIndexed = 1,
+    Indexed = 2,
+}
+
+impl IndexHint {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            IndexHint::Default => "DEFAULT",
+            IndexHint::NotIndexed => "NOT_INDEXED",
+            IndexHint::Indexed => "INDEXED",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
 pub enum RaiseType {
     Ignore = 0,
     Rollback = 1,
@@ -3035,6 +3053,12 @@ impl<'a> DeleteStmt<'a> {
     pub fn table(&self) -> Option<TableRef<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.table)
     }
+    pub fn index_hint(&self) -> IndexHint {
+        self.raw.index_hint
+    }
+    pub fn index_name(&self) -> &'a str {
+        self.raw.index_name.as_str(self.stmt_result.source())
+    }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.where_clause)
     }
@@ -3193,6 +3217,12 @@ impl<'a> UpdateStmt<'a> {
     }
     pub fn table(&self) -> Option<TableRef<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.table)
+    }
+    pub fn index_hint(&self) -> IndexHint {
+        self.raw.index_hint
+    }
+    pub fn index_name(&self) -> &'a str {
+        self.raw.index_name.as_str(self.stmt_result.source())
     }
     pub fn setlist(&self) -> Option<SetClauseList<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.setlist)

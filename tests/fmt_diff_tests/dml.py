@@ -164,3 +164,35 @@ class UpsertFormat(TestSuite):
             sql="insert into t values (1) on conflict do nothing returning *",
             out="INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING RETURNING *;",
         )
+
+    def test_multi_on_conflict_order_preserved(self):
+        return DiffTestBlueprint(
+            sql="insert into t values (1) on conflict(a, b) do update set x = 1 on conflict(a) do nothing",
+            out="INSERT INTO t\nVALUES (1)\nON CONFLICT (a,\nb) DO UPDATE\nSET\n  x = 1\nON CONFLICT (a) DO NOTHING;",
+        )
+
+
+class IndexedByFormat(TestSuite):
+    def test_update_indexed_by(self):
+        return DiffTestBlueprint(
+            sql="update t indexed by idx_foo set x = 1 where y = 2",
+            out="UPDATE t INDEXED BY idx_foo SET x = 1 WHERE y = 2;",
+        )
+
+    def test_delete_indexed_by(self):
+        return DiffTestBlueprint(
+            sql="delete from t indexed by idx_foo where y = 2",
+            out="DELETE FROM t INDEXED BY idx_foo WHERE y = 2;",
+        )
+
+    def test_update_not_indexed(self):
+        return DiffTestBlueprint(
+            sql="update t not indexed set x = 1",
+            out="UPDATE t NOT INDEXED SET x = 1;",
+        )
+
+    def test_delete_not_indexed(self):
+        return DiffTestBlueprint(
+            sql="delete from t not indexed where y = 2",
+            out="DELETE FROM t NOT INDEXED WHERE y = 2;",
+        )

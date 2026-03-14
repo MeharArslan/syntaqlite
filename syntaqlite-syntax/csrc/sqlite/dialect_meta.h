@@ -87,6 +87,12 @@ static const char* const display_upsert_action[] = {
     "UPDATE",
 };
 
+static const char* const display_index_hint[] = {
+    "DEFAULT",
+    "NOT_INDEXED",
+    "INDEXED",
+};
+
 static const char* const display_raise_type[] = {
     "IGNORE",
     "ROLLBACK",
@@ -480,6 +486,11 @@ static const SyntaqliteFieldMeta field_meta_upsert_clause[] = {
 static const SyntaqliteFieldMeta field_meta_delete_stmt[] = {
     {offsetof(SyntaqliteDeleteStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table",
      NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, index_hint), SYNTAQLITE_FIELD_ENUM,
+     "index_hint", display_index_hint,
+     sizeof(display_index_hint) / sizeof(display_index_hint[0])},
+    {offsetof(SyntaqliteDeleteStmt, index_name), SYNTAQLITE_FIELD_SPAN,
+     "index_name", NULL, 0},
     {offsetof(SyntaqliteDeleteStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID,
      "where_clause", NULL, 0},
     {offsetof(SyntaqliteDeleteStmt, orderby), SYNTAQLITE_FIELD_NODE_ID,
@@ -505,6 +516,11 @@ static const SyntaqliteFieldMeta field_meta_update_stmt[] = {
      sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
     {offsetof(SyntaqliteUpdateStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table",
      NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, index_hint), SYNTAQLITE_FIELD_ENUM,
+     "index_hint", display_index_hint,
+     sizeof(display_index_hint) / sizeof(display_index_hint[0])},
+    {offsetof(SyntaqliteUpdateStmt, index_name), SYNTAQLITE_FIELD_SPAN,
+     "index_name", NULL, 0},
     {offsetof(SyntaqliteUpdateStmt, setlist), SYNTAQLITE_FIELD_NODE_ID,
      "setlist", NULL, 0},
     {offsetof(SyntaqliteUpdateStmt, from_clause), SYNTAQLITE_FIELD_NODE_ID,
@@ -970,8 +986,16 @@ static const SyntaqliteFieldRangeMeta range_meta_cte_definition[] = {
     {offsetof(SyntaqliteCteDefinition, cte_name), 1},
 };
 
+static const SyntaqliteFieldRangeMeta range_meta_delete_stmt[] = {
+    {offsetof(SyntaqliteDeleteStmt, index_name), 1},
+};
+
 static const SyntaqliteFieldRangeMeta range_meta_set_clause[] = {
     {offsetof(SyntaqliteSetClause, column), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_update_stmt[] = {
+    {offsetof(SyntaqliteUpdateStmt, index_name), 1},
 };
 
 static const SyntaqliteFieldRangeMeta range_meta_literal[] = {
@@ -1250,10 +1274,10 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     3,  /* WithClause */
     5,  /* UpsertClause */
     0,  /* UpsertClauseList */
-    5,  /* DeleteStmt */
+    7,  /* DeleteStmt */
     3,  /* SetClause */
     0,  /* SetClauseList */
-    8,  /* UpdateStmt */
+    10, /* UpdateStmt */
     6,  /* InsertStmt */
     3,  /* BinaryExpr */
     2,  /* UnaryExpr */
@@ -1418,10 +1442,10 @@ static const SyntaqliteRangeMetaEntry ast_meta_range_meta[] = {
     {NULL, 0},                                 /* WithClause */
     {NULL, 0},                                 /* UpsertClause */
     {NULL, 0},                                 /* UpsertClauseList */
-    {NULL, 0},                                 /* DeleteStmt */
+    {range_meta_delete_stmt, 1},               /* DeleteStmt */
     {range_meta_set_clause, 1},                /* SetClause */
     {NULL, 0},                                 /* SetClauseList */
-    {NULL, 0},                                 /* UpdateStmt */
+    {range_meta_update_stmt, 1},               /* UpdateStmt */
     {NULL, 0},                                 /* InsertStmt */
     {NULL, 0},                                 /* BinaryExpr */
     {NULL, 0},                                 /* UnaryExpr */

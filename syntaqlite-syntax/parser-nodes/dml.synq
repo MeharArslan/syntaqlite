@@ -2,6 +2,8 @@ enum ConflictAction { DEFAULT ROLLBACK ABORT FAIL IGNORE REPLACE }
 
 enum UpsertAction { NOTHING UPDATE }
 
+enum IndexHint { DEFAULT NOT_INDEXED INDEXED }
+
 node UpsertClause {
   columns: index OrderByList
   target_where: index Expr
@@ -31,6 +33,8 @@ list UpsertClauseList {
 
 node DeleteStmt {
   table: index TableRef
+  index_hint: inline IndexHint
+  index_name: inline SyntaqliteSourceSpan
   where_clause: index Expr
   orderby: index OrderByList
   limit_clause: index LimitClause
@@ -41,6 +45,10 @@ node DeleteStmt {
   fmt {
     group {
       "DELETE FROM " child(table)
+      switch(index_hint) {
+        INDEXED { " INDEXED BY " span(index_name) }
+        NOT_INDEXED { " NOT INDEXED" }
+      }
       clause("WHERE", where_clause)
       clause("ORDER BY", orderby)
       if_set(limit_clause) { line "LIMIT " child(limit_clause) }
@@ -67,6 +75,8 @@ list SetClauseList { SetClause }
 node UpdateStmt {
   conflict_action: inline ConflictAction
   table: index TableRef
+  index_hint: inline IndexHint
+  index_name: inline SyntaqliteSourceSpan
   setlist: index SetClauseList
   from_clause: index TableSource
   where_clause: index Expr
@@ -87,6 +97,10 @@ node UpdateStmt {
         REPLACE  { " OR REPLACE" }
       }
       " " child(table)
+      switch(index_hint) {
+        INDEXED { " INDEXED BY " span(index_name) }
+        NOT_INDEXED { " NOT INDEXED" }
+      }
       clause("SET", setlist)
       if_set(from_clause) { line "FROM " child(from_clause) }
       clause("WHERE", where_clause)

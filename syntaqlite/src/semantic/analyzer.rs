@@ -364,11 +364,7 @@ impl Default for SemanticAnalyzer {
 /// If the last two tokens in `tokens` are `identifier DOT`, return the
 /// identifier text as the qualifier. This is used to detect `table.` prefixes
 /// for qualified column completion.
-fn detect_qualifier(
-    source: &str,
-    tokens: &[StoredToken],
-    dialect: &AnyDialect,
-) -> Option<String> {
+fn detect_qualifier(source: &str, tokens: &[StoredToken], dialect: &AnyDialect) -> Option<String> {
     if tokens.len() < 2 {
         return None;
     }
@@ -376,9 +372,7 @@ fn detect_qualifier(
     let ident_tok = &tokens[tokens.len() - 2];
 
     // The DOT must be a single-character punctuation token.
-    if dot_tok.length != 1
-        || source.as_bytes().get(dot_tok.offset) != Some(&b'.')
-    {
+    if dot_tok.length != 1 || source.as_bytes().get(dot_tok.offset) != Some(&b'.') {
         return None;
     }
 
@@ -2307,8 +2301,18 @@ mod detect_qualifier_test {
         let dot_type = AnyTokenType::from(syntaqlite_syntax::TokenType::Dot);
 
         let tokens = vec![
-            StoredToken { offset: 7, length: 2, token_type: id_type, flags: Default::default() },
-            StoredToken { offset: 9, length: 1, token_type: dot_type, flags: Default::default() },
+            StoredToken {
+                offset: 7,
+                length: 2,
+                token_type: id_type,
+                flags: Default::default(),
+            },
+            StoredToken {
+                offset: 9,
+                length: 1,
+                token_type: dot_type,
+                flags: Default::default(),
+            },
         ];
         let result = detect_qualifier(source, &tokens, &dialect);
         assert_eq!(result.as_deref(), Some("t1"));

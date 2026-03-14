@@ -335,6 +335,24 @@ class ConcatPtrPrecedence(TestSuite):
             out="SELECT a -> (b || c);",
         )
 
+    def test_ptr2_preserved(self):
+        return DiffTestBlueprint(
+            sql="SELECT a ->> b",
+            out="SELECT a ->> b;",
+        )
+
+    def test_ptr_and_ptr2_chain(self):
+        return DiffTestBlueprint(
+            sql="SELECT a -> b ->> c",
+            out="SELECT a -> b ->> c;",
+        )
+
+    def test_ptr2_with_string(self):
+        return DiffTestBlueprint(
+            sql="SELECT data ->> '$.name'",
+            out="SELECT data ->> '$.name';",
+        )
+
 
 class ArithmeticVsComparisonPrecedence(TestSuite):
     """Arithmetic (prec 6/7) vs comparison (prec 4): same group, no readability parens."""

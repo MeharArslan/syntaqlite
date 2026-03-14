@@ -235,6 +235,8 @@ pub(crate) struct UpsertClause {
 pub(crate) struct DeleteStmt {
     pub(crate) tag: u32,
     pub(crate) table: AnyNodeId,
+    pub(crate) index_hint: super::ast::IndexHint,
+    pub(crate) index_name: SourceSpan,
     pub(crate) where_clause: AnyNodeId,
     pub(crate) orderby: AnyNodeId,
     pub(crate) limit_clause: AnyNodeId,
@@ -256,6 +258,8 @@ pub(crate) struct UpdateStmt {
     pub(crate) tag: u32,
     pub(crate) conflict_action: super::ast::ConflictAction,
     pub(crate) table: AnyNodeId,
+    pub(crate) index_hint: super::ast::IndexHint,
+    pub(crate) index_name: SourceSpan,
     pub(crate) setlist: AnyNodeId,
     pub(crate) from_clause: AnyNodeId,
     pub(crate) where_clause: AnyNodeId,
