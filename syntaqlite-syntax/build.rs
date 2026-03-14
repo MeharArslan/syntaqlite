@@ -13,7 +13,16 @@ fn main() {
     let csrc = manifest_dir.join("csrc");
     let include_dir = manifest_dir.join("include");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
     let sqlite_enabled = env::var("CARGO_FEATURE_SQLITE").is_ok();
+
+    // Use clang-cl on MSVC targets — MSVC's C compiler lacks C11 features
+    // we rely on (designated initializers in static const, _Static_assert).
+    if target_env == "msvc" && env::var("CC").is_err() {
+        // SAFETY: build scripts are single-threaded; no other threads
+        // are reading environment variables at this point.
+        unsafe { env::set_var("CC", "clang-cl") };
+    }
 
     // Expose include directory so downstream crates can find headers.
     println!("cargo:include={}", include_dir.display());

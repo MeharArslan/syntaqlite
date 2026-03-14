@@ -386,7 +386,7 @@ typedef enum SyntaqliteNodeTag {
   SYNTAQLITE_NODE_FILTER_OVER = 78,
   SYNTAQLITE_NODE_COUNT
 } SyntaqliteNodeTag;
-#if defined(__cplusplus) || defined(_MSC_VER)
+#ifdef __cplusplus
 static_assert(sizeof(SyntaqliteNodeTag) == sizeof(uint32_t),
               "SyntaqliteNodeTag must be 32 bits for FFI compatibility");
 #else
