@@ -15,6 +15,7 @@ export interface FormatTabAttrs {
 export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
   private formatOptions: FormatOptions = {
     lineWidth: 80,
+    indentWidth: 2,
     keywordCase: 1 as KeywordCase,
     semicolons: true,
   };
@@ -30,7 +31,7 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
     if (active && app.runtime.ready && app.dialect.active) {
       const isEmbedded = app.languageMode !== "sql";
       const fragIdx = app.selectedFragmentIndex;
-      const optKey = `${this.formatOptions.lineWidth}:${this.formatOptions.keywordCase}:${this.formatOptions.semicolons}:${app.languageMode}:${fragIdx}`;
+      const optKey = `${this.formatOptions.lineWidth}:${this.formatOptions.indentWidth}:${this.formatOptions.keywordCase}:${this.formatOptions.semicolons}:${app.languageMode}:${fragIdx}`;
       const dPtr = app.dialect.active.ptr;
       const {sqliteVersion, cflags} = app.urlState.current;
       const cfgKey = `${sqliteVersion}|${cflags.join(",")}`;
@@ -90,6 +91,18 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
           value: this.formatOptions.lineWidth,
           oninput: (e: Event) => {
             this.formatOptions.lineWidth = Number((e.target as HTMLInputElement).value);
+          },
+        }),
+        m("label.sq-panel-options__width-label", [
+          "Indent:",
+          m("span.sq-panel-options__width-value", String(this.formatOptions.indentWidth)),
+        ]),
+        m("input[type=range]", {
+          min: 1,
+          max: 8,
+          value: this.formatOptions.indentWidth,
+          oninput: (e: Event) => {
+            this.formatOptions.indentWidth = Number((e.target as HTMLInputElement).value);
           },
         }),
         m("label", "Keywords"),

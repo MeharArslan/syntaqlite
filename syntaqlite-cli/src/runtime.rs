@@ -126,6 +126,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
         Command::Fmt {
             files,
             line_width,
+            indent_width,
             keyword_case,
             in_place,
             check,
@@ -133,6 +134,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
         } => {
             let config = FormatConfig::default()
                 .with_line_width(line_width)
+                .with_indent_width(indent_width)
                 .with_keyword_case(match keyword_case {
                     KeywordCasing::Upper => KeywordCase::Upper,
                     KeywordCasing::Lower => KeywordCase::Lower,

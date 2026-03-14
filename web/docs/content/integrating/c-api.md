@@ -35,6 +35,28 @@ int main(void) {
 The formatter handle is reusable — create once, call `format()` repeatedly.
 Output is borrowed and valid until the next call to format or destroy.
 
+## Format with custom config
+
+```c
+SyntaqliteFormatConfig config = {
+    .line_width   = 120,
+    .indent_width = 4,
+    .keyword_case = SYNTAQLITE_KEYWORD_LOWER,
+    .semicolons   = 1,
+};
+SyntaqliteFormatter* f =
+    syntaqlite_formatter_create_sqlite_with_config(&config);
+
+const char* sql = "select a,b from t where x=1";
+if (syntaqlite_formatter_format(f, sql, strlen(sql)) == 0) {
+    printf("%.*s\n",
+        syntaqlite_formatter_output_len(f),
+        syntaqlite_formatter_output(f));
+}
+
+syntaqlite_formatter_destroy(f);
+```
+
 ## Validate a query
 
 ```c

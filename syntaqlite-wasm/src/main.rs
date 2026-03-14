@@ -251,13 +251,25 @@ pub extern "C" fn wasm_ast_json(ptr: u32, len: u32) -> i32 {
 
 // ── Formatter ────────────────────────────────────────────────────────
 
-fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u32) -> i32 {
+fn run_fmt(
+    ptr: u32,
+    len: u32,
+    line_width: u32,
+    indent_width: u32,
+    keyword_case: u32,
+    semicolons: u32,
+) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
     let config = FormatConfig::default()
         .with_line_width(if line_width == 0 {
             80
         } else {
             line_width as usize
+        })
+        .with_indent_width(if indent_width == 0 {
+            2
+        } else {
+            indent_width as usize
         })
         .with_keyword_case(match keyword_case {
             2 => KeywordCase::Lower,
@@ -276,10 +288,11 @@ pub extern "C" fn wasm_fmt(
     ptr: u32,
     len: u32,
     line_width: u32,
+    indent_width: u32,
     keyword_case: u32,
     semicolons: u32,
 ) -> i32 {
-    run_fmt(ptr, len, line_width, keyword_case, semicolons)
+    run_fmt(ptr, len, line_width, indent_width, keyword_case, semicolons)
 }
 
 // ── Session context ──────────────────────────────────────────────────

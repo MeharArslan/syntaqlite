@@ -19,6 +19,7 @@ Reads from stdin if no files are given.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-w, --line-width <N>` | `80` | Target maximum line width |
+| `-t, --indent-width <N>` | `2` | Spaces per indentation level |
 | `-k, --keyword-case <CASE>` | `upper` | Keyword casing: `upper` or `lower` |
 | `--semicolons <BOOL>` | `true` | Append semicolons after statements |
 | `-i, --in-place` | | Write formatted output back to files |
@@ -29,8 +30,8 @@ Reads from stdin if no files are given.
 | `--sqlite-cflag <FLAG>` | | Enable a compile-time flag (repeatable) |
 
 Exit codes:
-- `0` — success
-- `1` — parse error
+- `0` — success (or all files already formatted with `--check`)
+- `1` — parse error (or files would be reformatted with `--check`)
 
 ## syntaqlite validate
 

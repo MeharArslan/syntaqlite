@@ -69,6 +69,7 @@ export type KeywordCase = 0 | 1 | 2; // 0=preserve, 1=upper, 2=lower
 
 export interface FormatOptions {
   lineWidth: number;
+  indentWidth: number;
   keywordCase: KeywordCase;
   semicolons: boolean;
 }

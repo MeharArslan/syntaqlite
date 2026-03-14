@@ -250,7 +250,7 @@ export class Engine {
 
   runFmt(sql: string, opts: FormatOptions): FormatResult {
     const status = this.withInput(sql, (ptr, len) =>
-      this.fmtRaw!(ptr, len, opts.lineWidth, opts.keywordCase, opts.semicolons ? 1 : 0),
+      this.fmtRaw!(ptr, len, opts.lineWidth, opts.indentWidth, opts.keywordCase, opts.semicolons ? 1 : 0),
     );
     const text = this.readAndClearResult();
     return {ok: status === 0, text};

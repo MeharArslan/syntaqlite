@@ -75,6 +75,9 @@ pub(crate) enum Command {
         /// Maximum line width
         #[arg(short = 'w', long, default_value_t = 80)]
         line_width: usize,
+        /// Spaces per indentation level
+        #[arg(short = 't', long, default_value_t = 2)]
+        indent_width: usize,
         /// Keyword casing
         #[arg(short = 'k', long, value_enum, default_value_t = runtime::KeywordCasing::Upper)]
         keyword_case: runtime::KeywordCasing,
