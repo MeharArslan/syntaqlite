@@ -32,36 +32,12 @@ SQLITE_RUNNER_LSP = os.path.join(DIR, "_sqlite_runner_lsp", "server", "server.js
 SQLS = os.path.join(os.path.expanduser("~"), ".local", "share", "mise", "installs", "go", "1.26.1", "bin", "sqls")
 LSP_TEST = os.path.join(DIR, "lsp", "_lsp_test.js")
 
-# Schema covering all tables/indexes referenced by test_statements.sql.
-TEST_SCHEMA_SQL = """\
-CREATE TABLE users(id INTEGER PRIMARY KEY, email TEXT, name TEXT, active INT, deleted_at TEXT, nickname TEXT, username TEXT, status TEXT, last_login TEXT);
-CREATE TABLE orders(id INTEGER PRIMARY KEY, customer_id INT, status TEXT, total REAL, updated_at TEXT, created_at TEXT);
-CREATE TABLE customers(id INTEGER PRIMARY KEY, active INT);
-CREATE TABLE order_items(id INTEGER PRIMARY KEY, order_id INT, product_id INT, qty INT, price REAL);
-CREATE TABLE employees(id INTEGER PRIMARY KEY, salary REAL, department TEXT, dept_id INT, active INT);
-CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT);
-CREATE TABLE inventory(sku TEXT, warehouse TEXT, qty INT, price REAL, PRIMARY KEY(sku, warehouse));
-CREATE UNIQUE INDEX idx_inventory_sku ON inventory(sku);
-CREATE TABLE sensors(id TEXT PRIMARY KEY);
-CREATE TABLE audit_log(id INTEGER PRIMARY KEY, tbl TEXT, row_id INT, old_val TEXT);
-CREATE TABLE kv(key TEXT PRIMARY KEY, value TEXT);
-CREATE TABLE data(id INTEGER PRIMARY KEY, value REAL);
-CREATE TABLE files(id INTEGER PRIMARY KEY, path TEXT, name TEXT);
-CREATE TABLE counters(name TEXT PRIMARY KEY, count INT);
-CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT, price REAL, category_id INT, category TEXT, status TEXT, nickname TEXT, username TEXT);
-CREATE TABLE categories(id INTEGER PRIMARY KEY, name TEXT);
-CREATE TABLE sessions(id INTEGER PRIMARY KEY, user_id INT, last_active TEXT, expires_at TEXT);
-CREATE TABLE archived_users(id INTEGER PRIMARY KEY, name TEXT, email TEXT);
-CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT);
-CREATE TABLE metrics(name TEXT, ts TEXT, value REAL, updated_count INT DEFAULT 0, PRIMARY KEY(name, ts));
-CREATE TABLE transactions(id INTEGER PRIMARY KEY, category TEXT, amount REAL);
-CREATE TABLE measurements(id INTEGER PRIMARY KEY, sensor_id TEXT REFERENCES sensors(id), raw_value REAL, unit TEXT DEFAULT 'celsius', calibrated REAL, recorded_at TEXT);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_measurements_sensor ON measurements(sensor_id);
-CREATE TABLE docs(id INTEGER PRIMARY KEY, title TEXT, body TEXT);
-CREATE TABLE docs_json(id INTEGER PRIMARY KEY, data TEXT);
-CREATE TABLE computed(a INTEGER NOT NULL, b INTEGER NOT NULL);
-"""
+SCHEMA_SQL_PATH = os.path.join(DIR, "schema.sql")
+
+
+def _load_test_schema_sql():
+    with open(SCHEMA_SQL_PATH) as f:
+        return f.read()
 
 NO_EXPLAIN_PREFIXES = ('ATTACH', 'DETACH', 'PRAGMA', 'EXPLAIN', 'ANALYZE',
                        'SAVEPOINT', 'RELEASE', 'REINDEX', 'VACUUM')
@@ -104,7 +80,7 @@ def _create_test_db():
     if os.path.exists(BASE_DB):
         os.unlink(BASE_DB)
     p = subprocess.run(
-        ["sqlite3", BASE_DB], input=TEST_SCHEMA_SQL,
+        ["sqlite3", BASE_DB], input=_load_test_schema_sql(),
         capture_output=True, text=True,
     )
     if p.returncode != 0:
@@ -729,7 +705,7 @@ def collect_formatter():
 def collect_validator():
     _log("==> Validator comparison")
     _create_test_db()
-    schema_preamble = TEST_SCHEMA_SQL.strip() + "\n"
+    schema_preamble = _load_test_schema_sql().strip() + "\n"
 
     # Demo query for diagnostic quality
     _log("  Diagnostic quality...")
@@ -895,7 +871,7 @@ def collect_validator():
     with open(bench_src) as f:
         bench_sql = f.read()
 
-    schema = TEST_SCHEMA_SQL
+    schema = _load_test_schema_sql()
     small_path = os.path.join(val_dir, "bench.sql")
     with open(small_path, "w") as f:
         f.write(schema + bench_sql)
@@ -1152,7 +1128,7 @@ def collect_lsp():
     _log("  Speed benchmarks...")
     bench_sql_path = os.path.join(lsp_dir, "bench.sql")
     with open(bench_sql_path, "w") as f:
-        f.write(TEST_SCHEMA_SQL)
+        f.write(_load_test_schema_sql())
         with open(os.path.join(DIR, "bench_statements.sql")) as bs:
             f.write(bs.read())
 
