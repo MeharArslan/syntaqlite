@@ -37,6 +37,9 @@ integrations/vscode/node_modules/
 integrations/mcp/.venv/
 integrations/mcp/__pycache__/
 
+# IDE
+.vscode/
+
 # Claude Code worktrees
 .claude/worktrees/
 third_party/.claude/
