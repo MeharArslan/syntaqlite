@@ -83,6 +83,52 @@ has 2 values for 3 columns</code></pre>
     </div>
   </div>
 
+  <div class="home-feature">
+    <h3>Version and compile-flag aware</h3>
+    <p>
+      SQLite isn't one fixed language — syntax changes between releases, and
+      <a href="https://www.sqlite.org/compile.html">compile-time flags</a> enable
+      optional features. syntaqlite tracks this across all tools: parser,
+      formatter, validator, and LSP.
+    </p>
+    <pre><code class="language-bash"># RETURNING was added in SQLite 3.35.0
+# Android 13 ships SQLite 3.32.2 — catch the mismatch:
+syntaqlite --sqlite-version 3.32.0 validate \
+  -e "DELETE FROM users WHERE id = 1 RETURNING *;"</code></pre>
+    <pre class="home-diagnostic__output"><code><span class="diag-error">error</span>: syntax error near 'RETURNING'
+ --> &lt;stdin&gt;:1:32
+  |
+1 | DELETE FROM users WHERE id = 1 RETURNING *;
+  |                                <span class="diag-underline">^~~~~~~~~</span></code></pre>
+  </div>
+
+  <div class="home-feature">
+    <h3>Validate SQL inside other languages <span class="home-tag">experimental</span></h3>
+    <p>
+      SQL lives inside Python and TypeScript strings in most real codebases.
+      syntaqlite extracts and validates it — handling interpolation holes and
+      still catching errors with did-you-mean suggestions.
+    </p>
+    <div class="home-example">
+      <div class="home-example__col">
+        <div class="home-example__label">app.py</div>
+        <pre><code class="language-python">def get_user_stats(user_id: int):
+    return conn.execute(
+        f"SELECT nme, ROUDN(score, 2) FROM users WHERE id = {user_id}"
+    )</code></pre>
+      </div>
+      <div class="home-example__col">
+        <div class="home-example__label">syntaqlite validate --experimental-lang python app.py</div>
+        <pre class="home-diagnostic__output"><code><span class="diag-warning">warning</span>: unknown function 'ROUDN'
+ --> app.py:3:23
+  |
+3 |         f"SELECT nme, ROUDN(score, 2) FROM users WHERE id = {user_id}"
+  |                       <span class="diag-underline">^~~~~</span>
+  = <span class="diag-help">help: did you mean 'round'?</span></code></pre>
+      </div>
+    </div>
+  </div>
+
   <div class="home-feature-grid">
     <div class="home-feature">
       <h3>Parse</h3>
@@ -115,9 +161,9 @@ has 2 values for 3 columns</code></pre>
     <div class="home-feature">
       <h3>Editor integration</h3>
       <p>
-        Built-in language server (LSP) with real-time diagnostics, format on
-        save, completions for keywords, functions, tables and columns, and
-        semantic syntax highlighting.
+        Full language server (LSP) — no database connection required. Real-time
+        diagnostics, format on save, completions for keywords, functions, tables
+        and columns, and semantic syntax highlighting.
       </p>
       <pre><code class="language-bash"># VS Code — install from the marketplace
 ext install syntaqlite.syntaqlite
@@ -229,9 +275,20 @@ syntaqlite lsp</code></pre>
   .home pre[class*="language-"], .home code[class*="language-"] {
     background: var(--code-bg);
   }
+  .home-tag {
+    font-size: 0.65em;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent, #3b82f6);
+    color: #fff;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-sql.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-shell-session.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
 {% endblock content %}

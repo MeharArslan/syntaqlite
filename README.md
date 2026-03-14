@@ -4,26 +4,148 @@
 [![Crates.io](https://img.shields.io/crates/v/syntaqlite)](https://crates.io/crates/syntaqlite)
 [![VS Code](https://img.shields.io/visual-studio-marketplace/v/syntaqlite.syntaqlite)](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)
 
-A parser, formatter, validator, and language server for SQLite SQL — built directly from SQLite's own tokenizer and grammar rules. If SQLite accepts it, syntaqlite parses it identically.
+A parser, formatter, validator, and language server for SQLite SQL, built on SQLite's own grammar and tokenizer. If SQLite accepts it, syntaqlite parses it. If SQLite rejects it, so does syntaqlite.
 
 **[Docs](https://docs.syntaqlite.com)** · **[Playground](https://playground.syntaqlite.com)** · **[VS Code Extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)** · **[MCP Server](integrations/mcp/README.md)**
 
+---
+
+```bash
+syntaqlite --sqlite-version 3.32.0 validate \
+  -e "DELETE FROM users WHERE id = 1 RETURNING *;"
+```
+```text
+error: syntax error near 'RETURNING'
+ --> <stdin>:1:32
+  |
+1 | DELETE FROM users WHERE id = 1 RETURNING *;
+  |                                ^~~~~~~~~
+```
+
+*`RETURNING` was added in SQLite 3.35.0. Android 13 ships SQLite 3.32.2 — syntaqlite catches the mismatch before your users do.*
+
+---
+
 ## Why syntaqlite
 
-Most SQL tools parse a subset of SQL, invent their own grammar, or handle SQLite as an afterthought. syntaqlite uses SQLite's own tokenizer and grammar rules directly — the parser doesn't approximate SQLite, it _is_ SQLite's grammar compiled into a reusable library.
+Most SQL tools parse a subset of SQL, invent their own grammar, or handle SQLite as an afterthought. syntaqlite uses SQLite's own Lemon-generated grammar and tokenizer, compiled from C — the parser doesn't approximate SQLite, it _is_ SQLite's grammar compiled into a reusable library.
 
-Every quirk, every edge case, every syntax extension that SQLite supports works correctly from day one. CTEs, window functions, upsert, `RETURNING`, generated columns, `WITHOUT ROWID` — if SQLite parses it, syntaqlite parses it.
+We've tested against ~396K statements from [SQLite's upstream test suite](https://sqlite.org/testing.html) with ~99.7% agreement on parse acceptance. See the [detailed comparison](https://docs.syntaqlite.com/main/reference/comparison/) for how syntaqlite stacks up against other tools.
 
-syntaqlite grew out of 8+ years of maintaining [PerfettoSQL](https://perfetto.dev/docs/analysis/perfetto-sql-syntax) and scaling it to 100K+ line SQL codebases where generic SQL tooling consistently falls short.
+## What it does
 
-## Features
+### Validate — catch errors without a database
 
-- **Format** — consistent SQL style across a project; Wadler-Lindig pretty-printing that understands SQLite syntax
-- **Validate** — catch unknown tables, columns, and functions before runtime, not after your app ships
-- **Parse** — full parse trees for code generation, migration tooling, or static analysis
-- **LSP** — diagnostics, completions, and formatting in any editor
-- **WASM** — runs in the browser; powers the [interactive playground](https://playground.syntaqlite.com)
-- **Version-aware** — pin to a specific SQLite version or enable compile-time flags to match your exact build
+Finds unknown tables, columns, and functions against your schema — the same errors `sqlite3_prepare` would catch, but without needing a database. Unlike `sqlite3`, syntaqlite finds **all** errors in one pass:
+
+```sql
+CREATE TABLE orders (id, status, total, created_at);
+
+WITH
+  monthly_stats(month, revenue, order_count) AS (
+    SELECT strftime('%Y-%m', o.created_at), SUM(o.total)
+    FROM orders o WHERE o.status = 'completed'
+    GROUP BY strftime('%Y-%m', o.created_at)
+  )
+SELECT ms.month, ms.revenue, ms.order_count,
+  ROUDN(ms.revenue / ms.order_count, 2) AS avg_order
+FROM monthly_stats ms;
+```
+
+**sqlite3** stops at the first error and misses the function typo entirely:
+```text
+Error: in prepare, table monthly_stats has 2 values for 3 columns
+```
+
+**syntaqlite** finds both — CTE column count mismatch and the `ROUDN` typo — with source locations and suggestions:
+```text
+error: table 'monthly_stats' has 2 values for 3 columns
+  |
+2 | monthly_stats(month, revenue,
+  | ^~~~~~~~~~~~~
+
+warning: unknown function 'ROUDN'
+   |
+14 | ROUDN(ms.revenue / ms.order_count,
+   | ^~~~~
+   = help: did you mean 'round'?
+```
+
+### Format
+
+Deterministic formatting with configurable line width, keyword casing, and indentation:
+
+```bash
+echo "select u.id,u.name, p.title from users u join posts p on u.id=p.user_id
+where u.active=1 and p.published=true order by p.created_at desc limit 10" \
+  | syntaqlite fmt
+```
+```sql
+SELECT u.id, u.name, p.title
+FROM users u
+  JOIN posts p ON u.id = p.user_id
+WHERE u.active = 1
+  AND p.published = true
+ORDER BY p.created_at DESC
+LIMIT 10;
+```
+
+### Version and compile-flag aware
+
+SQLite isn't one fixed language — syntax changes between releases, and [compile-time flags](https://www.sqlite.org/compile.html) enable optional features. syntaqlite tracks this across all tools:
+
+```bash
+# Reject syntax your target SQLite version doesn't support
+syntaqlite --sqlite-version 3.32.0 validate query.sql
+
+# Enable optional syntax from compile-time flags
+syntaqlite --sqlite-cflag SQLITE_ENABLE_MATH_FUNCTIONS validate query.sql
+```
+
+### Validate SQL inside other languages *(experimental)*
+
+SQL lives inside Python and TypeScript strings in most real codebases. syntaqlite extracts and validates it, handling interpolation holes:
+
+```python
+# app.py
+def get_user_stats(user_id: int):
+    return conn.execute(
+        f"SELECT nme, ROUDN(score, 2) FROM users WHERE id = {user_id}"
+    )
+```
+```bash
+syntaqlite validate --experimental-lang python app.py
+```
+```text
+warning: unknown function 'ROUDN'
+ --> app.py:3:23
+  |
+3 |         f"SELECT nme, ROUDN(score, 2) FROM users WHERE id = {user_id}"
+  |                       ^~~~~
+  = help: did you mean 'round'?
+```
+
+### Editor integration
+
+Full language server — no database connection required. Diagnostics, format on save, completions, and semantic highlighting.
+
+**VS Code** — install the [syntaqlite extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite) from the marketplace.
+
+**Claude Code** — `syntaqlite plugin install` · **Claude Desktop / Cursor** — `pip install syntaqlite-mcp` ([docs](integrations/mcp/README.md))
+
+**Any editor with LSP support:**
+
+```bash
+syntaqlite lsp
+```
+
+### Parse
+
+Full abstract syntax tree with side tables for tokens, comments, and whitespace — for code generation, migration tooling, or static analysis.
+
+```bash
+syntaqlite parse -e "SELECT 1 + 2" --output text
+```
 
 ## Install
 
@@ -49,67 +171,6 @@ powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/synta
 
 ```bash
 cargo install syntaqlite-cli
-```
-
-## Quick start
-
-```bash
-# Format SQL (inline expression)
-syntaqlite fmt -e "SELECT a,b FROM t WHERE x=1"
-
-# Format SQL (stdin)
-echo "SELECT a,b FROM t WHERE x=1" | syntaqlite fmt
-
-# Format a file in place
-syntaqlite fmt -i query.sql
-
-# Format with options (line width, keyword casing)
-syntaqlite fmt -w 120 -k upper query.sql
-
-# Parse and inspect the AST
-syntaqlite parse -e "SELECT 1 + 2" --output text
-
-# Validate SQL — catch unknown tables, columns, functions
-syntaqlite validate schema.sql
-
-# Validate embedded SQL in Python or TypeScript source (experimental)
-syntaqlite validate --experimental-lang python app.py
-```
-
-## SQLite version and flag support
-
-SQLite isn't one fixed language — syntax changes between releases, and compile-time flags enable optional features. syntaqlite tracks this: pin the parser to a specific SQLite version, or enable flags to match your exact build.
-
-```bash
-# Parse as SQLite 3.47.0 (reject syntax added in later versions)
-syntaqlite fmt --sqlite-version 3.47.0 query.sql
-
-# Enable optional syntax from compile-time flags
-syntaqlite validate --sqlite-cflag SQLITE_ENABLE_ORDERED_SET_AGGREGATES query.sql
-```
-
-## Editor integration
-
-**VS Code** — install the [syntaqlite extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite) from the marketplace. Provides diagnostics, formatting, and completions out of the box.
-
-**Claude Code** — install the plugin:
-
-```
-/plugin install syntaqlite
-```
-
-**Claude Desktop / Cursor** — install the MCP server:
-
-```bash
-pip install syntaqlite-mcp
-```
-
-See the [MCP server docs](integrations/mcp/README.md) for per-client configuration.
-
-**Any editor with LSP support** — point your editor at the language server:
-
-```bash
-syntaqlite lsp
 ```
 
 ## Use as a library
