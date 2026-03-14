@@ -30,6 +30,7 @@
 #include "syntaqlite/types.h"
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
+#include "syntaqlite_dialect/sqlite_compat.h"
 
 // Parser stack realloc/free macros. These expand at the Lemon call site
 // where the parser struct is in scope, routing through pCtx->mem.
@@ -7752,7 +7753,7 @@ static YYACTIONTYPE yy_reduce(
     {
       // WITHOUT ROWID = bit 0
       if (yymsp[0].minor.yy0.n == 5 &&
-          strncasecmp(yymsp[0].minor.yy0.z, "rowid", 5) == 0) {
+          SYNQ_STRNCASECMP(yymsp[0].minor.yy0.z, "rowid", 5) == 0) {
         yymsp[-1].minor.yy592 = 1;
       } else {
         yymsp[-1].minor.yy592 = 0;
@@ -7762,7 +7763,7 @@ static YYACTIONTYPE yy_reduce(
     {
       // STRICT = bit 1
       if (yymsp[0].minor.yy0.n == 6 &&
-          strncasecmp(yymsp[0].minor.yy0.z, "strict", 6) == 0) {
+          SYNQ_STRNCASECMP(yymsp[0].minor.yy0.z, "strict", 6) == 0) {
         yylhsminor.yy592 = 2;
       } else {
         yylhsminor.yy592 = 0;
@@ -8008,7 +8009,7 @@ static YYACTIONTYPE yy_reduce(
       SyntaqliteGeneratedColumnStorage storage =
           SYNTAQLITE_GENERATED_COLUMN_STORAGE_VIRTUAL;
       if (yymsp[0].minor.yy0.n == 6 &&
-          strncasecmp(yymsp[0].minor.yy0.z, "stored", 6) == 0) {
+          SYNQ_STRNCASECMP(yymsp[0].minor.yy0.z, "stored", 6) == 0) {
         storage = SYNTAQLITE_GENERATED_COLUMN_STORAGE_STORED;
       }
       yymsp[-3].minor.yy356.node = synq_parse_column_constraint(

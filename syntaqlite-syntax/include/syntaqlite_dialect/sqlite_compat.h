@@ -24,6 +24,15 @@ typedef uint32_t u32;
 #define SQLITE_DIGIT_SEPARATOR '_'
 #endif
 
+// Case-insensitive string comparison (POSIX strncasecmp / MSVC _strnicmp)
+#ifdef _MSC_VER
+#include <string.h>
+#define SYNQ_STRNCASECMP _strnicmp
+#else
+#include <strings.h>
+#define SYNQ_STRNCASECMP strncasecmp
+#endif
+
 // C++17 fallthrough, C no-op
 #ifdef __cplusplus
 #define deliberate_fall_through [[fallthrough]]

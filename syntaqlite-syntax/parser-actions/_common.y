@@ -25,6 +25,7 @@
 #include <string.h>
 #include <limits.h>
 
+#include "syntaqlite_dialect/sqlite_compat.h"
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
 #include "syntaqlite/types.h"
