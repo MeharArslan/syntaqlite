@@ -96,6 +96,21 @@ class DmlFormat(TestSuite):
         )
 
 
+    def test_update_multi_column_set_stays_inline(self):
+        """Multi-column SET target should not wrap when outer group breaks."""
+        return DiffTestBlueprint(
+            sql="update t set (a, b, c) = (1, 2, 3) where some_really_long_condition = 1 and another_long_condition = 2",
+            out="""\
+                UPDATE t
+                SET
+                  (a, b, c) = (1, 2, 3)
+                WHERE
+                  some_really_long_condition = 1
+                  AND another_long_condition = 2;
+            """,
+        )
+
+
 class ReturningFormat(TestSuite):
     def test_delete_returning_star(self):
         return DiffTestBlueprint(
@@ -168,7 +183,7 @@ class UpsertFormat(TestSuite):
     def test_multi_on_conflict_order_preserved(self):
         return DiffTestBlueprint(
             sql="insert into t values (1) on conflict(a, b) do update set x = 1 on conflict(a) do nothing",
-            out="INSERT INTO t\nVALUES (1)\nON CONFLICT (a,\nb) DO UPDATE\nSET\n  x = 1\nON CONFLICT (a) DO NOTHING;",
+            out="INSERT INTO t\nVALUES (1)\nON CONFLICT (a, b) DO UPDATE\nSET\n  x = 1\nON CONFLICT (a) DO NOTHING;",
         )
 
 

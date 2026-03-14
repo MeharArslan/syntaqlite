@@ -174,6 +174,20 @@ class ForeignKeyFormat(TestSuite):
             out="CREATE TABLE t(a int REFERENCES other(id) DEFERRABLE INITIALLY DEFERRED);",
         )
 
+    def test_long_column_constraints_wrap(self):
+        """Column constraints should wrap when they exceed the line width."""
+        return DiffTestBlueprint(
+            sql="create table measurements(sensor_id text not null references sensors(id) on delete cascade on update set null deferrable initially deferred)",
+            out="""\
+                CREATE TABLE measurements(
+                  sensor_id text
+                    NOT NULL
+                    REFERENCES sensors(id) ON DELETE CASCADE ON UPDATE SET NULL
+                    DEFERRABLE INITIALLY DEFERRED
+                );
+            """,
+        )
+
 
 class TableConstraintFormat(TestSuite):
     def test_table_pk(self):
@@ -213,6 +227,59 @@ class TableConstraintFormat(TestSuite):
                 CREATE TABLE t(
                   a int,
                   FOREIGN KEY(a) REFERENCES other(id) ON DELETE CASCADE ON UPDATE SET NULL
+                );
+            """,
+        )
+
+    def test_table_fk_with_deferrable(self):
+        """Table-level FK with DEFERRABLE should keep space before it."""
+        return DiffTestBlueprint(
+            sql="create table t(a int, foreign key(a) references other(id) on delete cascade deferrable initially deferred)",
+            out="""\
+                CREATE TABLE t(
+                  a int,
+                  FOREIGN KEY(a) REFERENCES other(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+                );
+            """,
+        )
+
+    def test_table_pk_columns_stay_inline(self):
+        """PRIMARY KEY column list should not wrap when outer group breaks."""
+        return DiffTestBlueprint(
+            sql="create table really_long_table_name (id integer, first_name text, last_name text, primary key(first_name, last_name))",
+            out="""\
+                CREATE TABLE really_long_table_name(
+                  id integer,
+                  first_name text,
+                  last_name text,
+                  PRIMARY KEY(first_name, last_name)
+                );
+            """,
+        )
+
+    def test_table_unique_columns_stay_inline(self):
+        """UNIQUE column list should not wrap when outer group breaks."""
+        return DiffTestBlueprint(
+            sql="create table really_long_table_name (id integer primary key, first_name text, last_name text, unique(first_name, last_name))",
+            out="""\
+                CREATE TABLE really_long_table_name(
+                  id integer PRIMARY KEY,
+                  first_name text,
+                  last_name text,
+                  UNIQUE(first_name, last_name)
+                );
+            """,
+        )
+
+    def test_table_fk_columns_stay_inline(self):
+        """FOREIGN KEY and REFERENCES column lists should not wrap when outer group breaks."""
+        return DiffTestBlueprint(
+            sql="create table really_long_table_name (a integer, b integer, foreign key(a, b) references other_table(x, y))",
+            out="""\
+                CREATE TABLE really_long_table_name(
+                  a integer,
+                  b integer,
+                  FOREIGN KEY(a, b) REFERENCES other_table(x, y)
                 );
             """,
         )

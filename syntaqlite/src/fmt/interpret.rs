@@ -169,7 +169,8 @@ impl Formatter {
                         let inner = arena.cat(lp, result);
                         let rp = arena.text(")");
                         let wrapped = arena.cat(inner, rp);
-                        running = arena.cat(running, wrapped);
+                        let grouped = arena.group(wrapped);
+                        running = arena.cat(running, grouped);
                     }
                     ReturnAction::Discard => {}
                 }

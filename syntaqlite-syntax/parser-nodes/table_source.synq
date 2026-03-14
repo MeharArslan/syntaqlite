@@ -14,7 +14,7 @@ node TableRef {
   fmt {
     if_span(schema) { span(schema) "." }
     span(table_name)
-    if_set(args) { "(" child(args) ")" }
+    if_set(args) { group { "(" child(args) ")" } }
     if_set(alias) { " AS " child(alias) }
   }
 }
@@ -43,7 +43,7 @@ node JoinClause {
       COMMA {
         child(left) ", " child(right)
         if_set(on_expr) { hardline "ON " child(on_expr) }
-        if_set(using_columns) { " USING (" child(using_columns) ")" }
+        if_set(using_columns) { group { " USING (" child(using_columns) ")" } }
       }
       default {
         child(left) hardline
@@ -57,7 +57,7 @@ node JoinClause {
           })
           " " child(right)
           if_set(on_expr) { nest { line "ON " child(on_expr) } }
-          if_set(using_columns) { " USING (" child(using_columns) ")" }
+          if_set(using_columns) { group { " USING (" child(using_columns) ")" } }
         }
       }
     }

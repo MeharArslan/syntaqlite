@@ -14,7 +14,7 @@ node ForeignKeyClause {
 
   fmt {
     if_span(ref_table) { "REFERENCES " span(ref_table) }
-    if_set(ref_columns) { "(" child(ref_columns) ")" }
+    if_set(ref_columns) { group { "(" child(ref_columns) ")" } }
     switch(on_delete) {
       SET_NULL    { " ON DELETE SET NULL" }
       SET_DEFAULT { " ON DELETE SET DEFAULT" }
@@ -27,7 +27,7 @@ node ForeignKeyClause {
       CASCADE     { " ON UPDATE CASCADE" }
       RESTRICT    { " ON UPDATE RESTRICT" }
     }
-    if_flag(is_deferred) { "DEFERRABLE INITIALLY DEFERRED" }
+    if_flag(is_deferred) { if_span(ref_table) { " " } "DEFERRABLE INITIALLY DEFERRED" }
   }
 }
 
@@ -94,7 +94,7 @@ node ColumnConstraint {
 
 list ColumnConstraintList {
   ColumnConstraint
-  fmt { for_each(sep: " ") { child(_item) } }
+  fmt { for_each(sep: line) { child(_item) } }
 }
 
 node ColumnDef {
@@ -105,9 +105,11 @@ node ColumnDef {
   semantic { column_def(name: column_name, type: type_name, constraints: constraints) }
 
   fmt {
-    child(column_name)
-    if_span(type_name) { " " span(type_name) }
-    if_set(constraints) { " " child(constraints) }
+    group {
+      child(column_name)
+      if_span(type_name) { " " span(type_name) }
+      if_set(constraints) { nest { line child(constraints) } }
+    }
   }
 }
 
@@ -130,7 +132,7 @@ node TableConstraint {
     if_span(constraint_name) { "CONSTRAINT " span(constraint_name) " " }
     switch(kind) {
       PRIMARY_KEY {
-        "PRIMARY KEY(" child(pk_columns) ")"
+        group { "PRIMARY KEY(" child(pk_columns) ")" }
         switch(onconf) {
           ROLLBACK { " ON CONFLICT ROLLBACK" }
           ABORT    { " ON CONFLICT ABORT" }
@@ -140,7 +142,7 @@ node TableConstraint {
         }
       }
       UNIQUE {
-        "UNIQUE(" child(pk_columns) ")"
+        group { "UNIQUE(" child(pk_columns) ")" }
         switch(onconf) {
           ROLLBACK { " ON CONFLICT ROLLBACK" }
           ABORT    { " ON CONFLICT ABORT" }
@@ -150,7 +152,7 @@ node TableConstraint {
         }
       }
       CHECK       { "CHECK(" child(check_expr) ")" }
-      FOREIGN_KEY { "FOREIGN KEY(" child(fk_columns) ") " child(fk_clause) }
+      FOREIGN_KEY { group { "FOREIGN KEY(" child(fk_columns) ")" } " " child(fk_clause) }
     }
   }
 }

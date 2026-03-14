@@ -187,6 +187,22 @@ class ExprFormat(TestSuite):
         )
 
 
+class JoinUsingFormat(TestSuite):
+    def test_comma_join_using_columns_stay_inline(self):
+        """USING column list in comma-join should not wrap when outer group breaks."""
+        return DiffTestBlueprint(
+            sql="select * from long_table_name_one, long_table_name_two using (col_a, col_b) where x = 1 and y = 2 and z = 3",
+            out="""\
+                SELECT *
+                FROM long_table_name_one, long_table_name_two USING (col_a, col_b)
+                WHERE
+                  x = 1
+                  AND y = 2
+                  AND z = 3;
+            """,
+        )
+
+
 class TableValuedFunctionFormat(TestSuite):
     def test_tvf_basic(self):
         return DiffTestBlueprint(

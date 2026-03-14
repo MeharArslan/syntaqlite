@@ -91,7 +91,7 @@ node CreateIndexStmt {
       if_span(schema) { span(schema) "." }
       span(index_name)
       " ON " span(table_name)
-      " (" child(columns) ")"
+      group { " (" child(columns) ")" }
       clause("WHERE", where_clause)
     }
   }
