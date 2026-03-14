@@ -102,7 +102,7 @@ static inline void synq_parse_list_flush_top(SynqParseCtx* ctx) {
                     children_size, ctx->mem);
 
   syntaqlite_vec_truncate(&ctx->child_buf, desc->offset);
-  syntaqlite_vec_pop(&ctx->list_stack);
+  (void)syntaqlite_vec_pop(&ctx->list_stack);
 }
 
 static inline void synq_parse_ctx_init(SynqParseCtx* ctx,

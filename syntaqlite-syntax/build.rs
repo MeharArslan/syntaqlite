@@ -65,7 +65,11 @@ fn main() {
             .flag_if_supported("-Wno-void-pointer-to-int-cast")
             .flag_if_supported("-Wno-unused-variable")
             .flag_if_supported("-Wno-unused-parameter")
-            .flag_if_supported("-Wno-comment");
+            .flag_if_supported("-Wno-unused-value")
+            .flag_if_supported("-Wno-comment")
+            .flag_if_supported("-Wno-type-limits")
+            .flag_if_supported("-Wno-old-style-declaration")
+            .flag_if_supported("-Wno-implicit-fallthrough");
         if target_os == "emscripten" {
             build.flag("-fPIC");
         }
