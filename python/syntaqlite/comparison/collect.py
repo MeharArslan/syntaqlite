@@ -275,8 +275,10 @@ def _get_formatted_sql(tool_name, input_path):
     elif tool_name == "sleek":
         tmp = input_path + ".sleek_tmp.sql"
         shutil.copy2(input_path, tmp)
-        _run(f"sleek '{tmp}'")
+        ok, _, _ = _run(f"sleek '{tmp}'")
         try:
+            if not ok:
+                return (False, None)
             with open(tmp) as f:
                 return (True, f.read())
         except Exception:
@@ -287,8 +289,10 @@ def _get_formatted_sql(tool_name, input_path):
     elif tool_name == "sqruff":
         tmp = input_path + ".sqruff_tmp.sql"
         shutil.copy2(input_path, tmp)
-        _run(f"sqruff fix '{tmp}' --dialect sqlite")
+        ok, _, _ = _run(f"sqruff fix '{tmp}' --dialect sqlite")
         try:
+            if not ok:
+                return (False, None)
             with open(tmp) as f:
                 return (True, f.read())
         except Exception:
@@ -541,12 +545,13 @@ def collect_formatter():
             if not fmt_ok or not formatted_sql or not formatted_sql.strip():
                 row["tools"][tn] = "FAIL"
                 continue
-            tallies[tn]["format_ok"] += 1
             if not orig_pass[path]:
+                tallies[tn]["format_ok"] += 1
                 row["tools"][tn] = "skip"
                 continue
             sqlite_ok, sqlite_err = validate_results.get((si, tn), (False, "not run"))
             if sqlite_ok:
+                tallies[tn]["format_ok"] += 1
                 tallies[tn]["sqlite_ok"] += 1
                 row["tools"][tn] = "OK"
             else:

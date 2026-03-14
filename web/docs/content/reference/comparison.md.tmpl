@@ -8,7 +8,7 @@ There are many SQL tools out there. This page tests them head-to-head on
 **SQLite-specific SQL** — the kind of syntax that trips up generic SQL parsers —
 and shows raw, reproducible results.
 
-> Generated on `arm64-darwin` with syntaqlite `0.1.0` on 2026-03-14.
+> {{META_LINE}}
 > To reproduce: `tools/run-comparison --setup && tools/run-comparison --all`.
 > Per-statement breakdowns and reproduction details are in the
 > [detailed results](@/reference/comparison-details.md).
@@ -65,38 +65,17 @@ important.
 
 ## Accuracy
 
-| Tool          | Correct | Corrupt | Refused |
-| ------------- | ------: | ------: | ------: |
-| syntaqlite    |   40/40 |       - |       - |
-| prettier-cst  |   39/40 |       - |       1 |
-| sql-formatter |   39/40 |       - |       1 |
-| sqlglot[c]    |   31/40 |       4 |       5 |
-| sleek         |   38/40 |       2 |       - |
-| sqruff        |   33/40 |       2 |       5 |
+{{FORMATTER_ACCURACY_TABLE}}
 
 ## Speed
 
 ### bench.sql (1×)
 
-| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
-|:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.8 ± 0.1 | 1.7 | 3.3 | 1.00 |
-| `prettier-cst` | 396.5 ± 8.5 | 388.9 | 416.1 | 217.05 ± 16.18 |
-| `sql-formatter` | 74.9 ± 1.2 | 72.5 | 78.1 | 41.01 ± 3.00 |
-| `sqlglot[c]` | 87.2 ± 1.5 | 85.2 | 92.6 | 47.75 ± 3.50 |
-| `sleek` | 8.3 ± 1.2 | 7.7 | 27.7 | 4.56 ± 0.75 |
-| `sqruff` | 39.8 ± 4.0 | 38.5 | 73.8 | 21.77 ± 2.67 |
+{{FORMATTER_SPEED_1X}}
 
 ### bench_30x.sql (30×)
 
-| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
-|:---|---:|---:|---:|---:|
-| `syntaqlite` | 4.9 ± 0.1 | 4.7 | 5.5 | 1.00 |
-| `prettier-cst` | 542.3 ± 4.3 | 535.1 | 545.3 | 111.47 ± 2.33 |
-| `sql-formatter` | 200.3 ± 8.2 | 195.8 | 229.6 | 41.17 ± 1.87 |
-| `sqlglot[c]` | 264.5 ± 1.5 | 262.6 | 267.2 | 54.37 ± 1.10 |
-| `sleek` | 26.9 ± 0.4 | 26.1 | 27.9 | 5.52 ± 0.14 |
-| `sqruff` | 3286.7 ± 53.0 | 3226.0 | 3349.7 | 675.63 ± 17.01 |
+{{FORMATTER_SPEED_30X}}
 
 ---
 
