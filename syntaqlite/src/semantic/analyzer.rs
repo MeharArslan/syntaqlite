@@ -525,6 +525,16 @@ impl ActiveTable {
     }
 }
 
+/// A single scope frame: named tables plus anonymous sources.
+#[derive(Default)]
+struct ScopeFrame {
+    /// Named tables/aliases, keyed by lowercase name.
+    named: HashMap<String, ActiveTable>,
+    /// Anonymous sources (unaliased subqueries). Participate in unqualified
+    /// column resolution but cannot be referenced by name.
+    anonymous: Vec<ActiveTable>,
+}
+
 /// Tracks which tables are "active" (in FROM/JOIN) for column resolution.
 ///
 /// Completely separate from [`Catalog`] (schema-level).  Frames are
@@ -534,7 +544,7 @@ impl ActiveTable {
 /// they appear in a FROM clause.
 #[derive(Default)]
 struct QueryScope {
-    frames: Vec<HashMap<String, ActiveTable>>,
+    frames: Vec<ScopeFrame>,
 }
 
 impl QueryScope {
@@ -543,17 +553,29 @@ impl QueryScope {
     }
 
     fn push(&mut self) {
-        self.frames.push(HashMap::new());
+        self.frames.push(ScopeFrame::default());
     }
 
     fn pop(&mut self) {
         self.frames.pop();
     }
 
-    /// Register a table (or alias) as active in the current scope frame.
+    /// Register a named table (or alias) as active in the current scope frame.
     fn add_table(&mut self, name: &str, columns: Option<Vec<String>>, rowid: RowIdPolicy) {
         if let Some(frame) = self.frames.last_mut() {
-            frame.insert(name.to_ascii_lowercase(), ActiveTable { columns, rowid });
+            frame
+                .named
+                .insert(name.to_ascii_lowercase(), ActiveTable { columns, rowid });
+        }
+    }
+
+    /// Register an anonymous source (unaliased subquery) in the current frame.
+    fn add_anonymous(&mut self, columns: Option<Vec<String>>) {
+        if let Some(frame) = self.frames.last_mut() {
+            frame.anonymous.push(ActiveTable {
+                columns,
+                rowid: RowIdPolicy::WithRowId,
+            });
         }
     }
 
@@ -569,7 +591,7 @@ impl QueryScope {
     fn resolve_qualified(&self, table: &str, column: &str) -> ColumnResolution {
         let key = table.to_ascii_lowercase();
         for frame in self.frames.iter().rev() {
-            let Some(entry) = frame.get(&key) else {
+            let Some(entry) = frame.named.get(&key) else {
                 continue;
             };
             if entry.has_column(column) {
@@ -592,7 +614,9 @@ impl QueryScope {
     fn resolve_unqualified(&self, column: &str) -> ColumnResolution {
         for frame in self.frames.iter().rev() {
             let mut frame_has_unknown = false;
-            for (tbl_name, entry) in frame {
+
+            // Search named tables.
+            for (tbl_name, entry) in &frame.named {
                 if entry.has_column(column) {
                     return ColumnResolution::Found {
                         table: tbl_name.clone(),
@@ -603,7 +627,21 @@ impl QueryScope {
                     frame_has_unknown = true;
                 }
             }
-            // A table with unknown columns in this frame could own the column —
+
+            // Search anonymous sources.
+            for entry in &frame.anonymous {
+                if entry.has_column(column) {
+                    return ColumnResolution::Found {
+                        table: String::new(),
+                        all_columns: entry.columns.clone().unwrap_or_default(),
+                    };
+                }
+                if entry.columns.is_none() {
+                    frame_has_unknown = true;
+                }
+            }
+
+            // A source with unknown columns in this frame could own the column —
             // don't leak into outer scopes.
             if frame_has_unknown {
                 return ColumnResolution::Found {
@@ -619,11 +657,18 @@ impl QueryScope {
     fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
         let mut names: Vec<String> = Vec::new();
         for frame in self.frames.iter().rev() {
-            for (tbl_name, entry) in frame {
+            for (tbl_name, entry) in &frame.named {
                 if table.is_none_or(|t| tbl_name.eq_ignore_ascii_case(t))
                     && let Some(cs) = &entry.columns
                 {
                     names.extend(cs.iter().map(|c| c.to_ascii_lowercase()));
+                }
+            }
+            if table.is_none() {
+                for entry in &frame.anonymous {
+                    if let Some(cs) = &entry.columns {
+                        names.extend(cs.iter().map(|c| c.to_ascii_lowercase()));
+                    }
                 }
             }
         }
@@ -1103,8 +1148,13 @@ impl<'a> ValidationPass<'a> {
         self.scope.pop();
 
         let alias = self.name_text(stmt, Self::field_node_id(fields, alias_idx));
+        let cols = Self::field_node_id(fields, body_idx)
+            .and_then(|id| columns_from_select(stmt, id, self.roles));
         if !alias.is_empty() {
-            self.scope.add_table(alias, None, RowIdPolicy::WithRowId);
+            self.scope
+                .add_table(alias, cols, RowIdPolicy::WithRowId);
+        } else {
+            self.scope.add_anonymous(cols);
         }
     }
 
