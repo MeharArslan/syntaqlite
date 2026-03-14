@@ -53,25 +53,25 @@ file repeated 30× (throughput-dominated).
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.7 ± 0.1 | 1.6 | 2.1 | 1.15 ± 0.06 |
-| `lemon-rs` | 1.5 ± 0.1 | 1.4 | 2.2 | 1.00 |
-| `sql-parser-cst` | 75.3 ± 5.6 | 72.0 | 108.8 | 51.53 ± 4.39 |
-| `sqlglot[c]` | 83.9 ± 1.0 | 82.6 | 87.3 | 57.47 ± 2.50 |
-| `sqlparser-rs` | 1.8 ± 0.1 | 1.7 | 5.2 | 1.23 ± 0.10 |
-| `node-sql-parser` | 74.0 ± 5.5 | 71.4 | 106.8 | 50.63 ± 4.34 |
-| `sqlfluff` | 445.0 ± 2.7 | 439.5 | 447.5 | 304.66 ± 12.90 |
+| `syntaqlite` | 1.8 ± 0.8 | 1.6 | 34.0 | 1.09 ± 0.83 |
+| `lemon-rs` | 1.6 ± 1.0 | 1.4 | 40.7 | 1.00 |
+| `sql-parser-cst` | 78.2 ± 8.0 | 73.7 | 122.7 | 48.12 ± 29.44 |
+| `sqlglot[c]` | 91.2 ± 10.8 | 84.1 | 134.7 | 56.09 ± 34.47 |
+| `sqlparser-rs` | 2.1 ± 3.0 | 1.7 | 123.5 | 1.30 ± 2.02 |
+| `node-sql-parser` | 79.7 ± 5.9 | 73.1 | 94.0 | 49.04 ± 29.80 |
+| `sqlfluff` | 504.9 ± 81.6 | 446.6 | 707.0 | 310.62 ± 193.98 |
 
 ### bench_30x.sql (30×)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.6 ± 0.6 | 2.4 | 20.5 | 1.00 |
-| `lemon-rs` | 4.2 ± 1.0 | 4.0 | 29.7 | 1.64 ± 0.54 |
-| `sql-parser-cst` | 140.1 ± 1.2 | 138.2 | 142.6 | 54.28 ± 12.40 |
-| `sqlglot[c]` | 180.5 ± 1.5 | 178.5 | 183.8 | 69.96 ± 15.99 |
-| `sqlparser-rs` | 11.1 ± 2.4 | 10.4 | 33.7 | 4.30 ± 1.36 |
-| `node-sql-parser` | 149.2 ± 1.3 | 147.3 | 152.3 | 57.82 ± 13.21 |
-| `sqlfluff` | 6695.8 ± 304.1 | 6388.0 | 7052.6 | 2594.75 ± 604.22 |
+| `syntaqlite` | 2.6 ± 0.1 | 2.4 | 3.7 | 1.00 |
+| `lemon-rs` | 4.7 ± 1.0 | 4.1 | 13.1 | 1.82 ± 0.40 |
+| `sql-parser-cst` | 149.5 ± 14.0 | 140.6 | 192.8 | 57.83 ± 6.00 |
+| `sqlglot[c]` | 227.2 ± 32.4 | 189.9 | 286.9 | 87.87 ± 13.11 |
+| `sqlparser-rs` | 11.9 ± 1.2 | 10.7 | 18.7 | 4.60 ± 0.51 |
+| `node-sql-parser` | 158.2 ± 14.2 | 150.0 | 211.8 | 61.21 ± 6.11 |
+| `sqlfluff` | 12716.5 ± 814.3 | 11402.3 | 13606.4 | 4918.86 ± 382.34 |
 
 ---
 
@@ -94,12 +94,12 @@ semantic changes. For statements where `EXPLAIN` isn't applicable (e.g.
 
 | Tool          | Correct | Corrupt | Refused |
 | ------------- | ------: | ------: | ------: |
-| syntaqlite    |   33/40 |       7 |       - |
-| prettier-cst  |   34/40 |       5 |       1 |
-| sql-formatter |   34/40 |       5 |       1 |
-| sqlglot[c]    |   30/40 |       5 |       5 |
-| sleek         |   32/40 |       8 |       - |
-| sqruff        |   29/40 |       6 |       5 |
+| syntaqlite    |   36/40 |       4 |       - |
+| prettier-cst  |   38/40 |       1 |       1 |
+| sql-formatter |   38/40 |       1 |       1 |
+| sqlglot[c]    |   31/40 |       4 |       5 |
+| sleek         |   36/40 |       4 |       - |
+| sqruff        |   32/40 |       3 |       5 |
 
 ## Speed
 
@@ -107,23 +107,23 @@ semantic changes. For statements where `EXPLAIN` isn't applicable (e.g.
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 1.8 ± 0.1 | 1.7 | 2.6 | 1.00 |
-| `prettier-cst` | 399.8 ± 20.0 | 386.7 | 456.2 | 219.84 ± 13.96 |
-| `sql-formatter` | 74.9 ± 1.1 | 72.3 | 77.9 | 41.19 ± 1.72 |
-| `sqlglot[c]` | 87.7 ± 2.0 | 85.3 | 94.2 | 48.20 ± 2.18 |
-| `sleek` | 8.7 ± 2.6 | 7.8 | 43.9 | 4.79 ± 1.44 |
-| `sqruff` | 43.6 ± 16.6 | 38.8 | 141.6 | 23.99 ± 9.18 |
+| `syntaqlite` | 9.3 ± 8.2 | 4.0 | 99.1 | 1.00 |
+| `prettier-cst` | 1146.5 ± 471.1 | 639.2 | 1783.0 | 123.29 ± 120.34 |
+| `sql-formatter` | 267.3 ± 54.6 | 166.1 | 366.2 | 28.74 ± 26.11 |
+| `sqlglot[c]` | 134.7 ± 32.8 | 106.8 | 202.3 | 14.48 ± 13.30 |
+| `sleek` | 13.2 ± 9.2 | 9.0 | 165.1 | 1.42 ± 1.60 |
+| `sqruff` | 54.1 ± 3.4 | 49.8 | 64.1 | 5.82 ± 5.16 |
 
 ### bench_30x.sql (30×)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 5.2 ± 0.7 | 4.8 | 15.7 | 1.00 |
-| `prettier-cst` | 594.7 ± 74.5 | 541.4 | 721.4 | 115.37 ± 21.84 |
-| `sql-formatter` | 210.6 ± 24.4 | 195.5 | 271.2 | 40.85 ± 7.48 |
-| `sqlglot[c]` | 296.2 ± 51.9 | 264.2 | 414.7 | 57.47 ± 12.96 |
-| `sleek` | 28.5 ± 3.6 | 26.3 | 60.3 | 5.53 ± 1.05 |
-| `sqruff` | 4657.1 ± 815.3 | 3861.5 | 5994.5 | 903.47 ± 203.61 |
+| `syntaqlite` | 7.6 ± 1.8 | 6.1 | 32.1 | 1.00 |
+| `prettier-cst` | 787.7 ± 15.9 | 770.3 | 808.5 | 103.90 ± 24.38 |
+| `sql-formatter` | 330.6 ± 6.0 | 320.4 | 337.6 | 43.60 ± 10.23 |
+| `sqlglot[c]` | 364.3 ± 10.9 | 354.6 | 389.9 | 48.05 ± 11.33 |
+| `sleek` | 38.9 ± 1.5 | 35.6 | 42.6 | 5.12 ± 1.21 |
+| `sqruff` | 4694.8 ± 371.6 | 4267.5 | 5071.1 | 619.24 ± 152.85 |
 
 ---
 
@@ -167,12 +167,12 @@ did-you-mean suggestion:
 
 ```
 error: table 'monthly_stats' has 2 values for 3 columns
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpxhi61dqq.sql:29:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpoh8hxfpk.sql:29:3
    |
 29 |   monthly_stats(month, revenue, order_count) AS (
    |   ^~~~~~~~~~~~~
 warning: unknown function 'ROUDN'
-  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpxhi61dqq.sql:41:3
+  --> /var/folders/rx/t6_rqmqx0f15l7kgp7yjhcbc0000gn/T/tmpoh8hxfpk.sql:41:3
    |
 41 |   ROUDN(ms.revenue / ms.order_count, 2) AS avg_order
    |   ^~~~~
@@ -191,19 +191,19 @@ Error: in prepare, table monthly_stats has 2 values for 3 columns
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 2.1 ± 0.9 | 1.9 | 21.4 | 1.00 |
-| `sqlite3` | 4.9 ± 0.2 | 4.6 | 6.2 | 2.30 ± 0.93 |
-| `sqlite-runner-lsp` | 10050.2 ± 8.6 | 10041.9 | 10066.9 | 4708.90 ± 1896.03 |
-| `sql-lint` | 335.4 ± 7.4 | 327.3 | 348.1 | 157.15 ± 63.37 |
+| `syntaqlite` | 6.6 ± 3.5 | 3.4 | 36.9 | 1.00 |
+| `sqlite3` | 13.4 ± 7.2 | 7.2 | 76.0 | 2.02 ± 1.51 |
+| `sqlite-runner-lsp` | 10089.9 ± 49.5 | 10049.1 | 10193.2 | 1519.61 ± 795.09 |
+| `sql-lint` | 769.0 ± 48.7 | 724.3 | 875.7 | 115.82 ± 61.04 |
 
 ### bench_30x.sql (30×)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 8.6 ± 0.5 | 8.4 | 16.7 | 1.00 |
-| `sqlite3` | 10.2 ± 2.0 | 9.6 | 37.0 | 1.18 ± 0.24 |
-| `sqlite-runner-lsp` | 10071.4 ± 7.4 | 10065.4 | 10083.9 | 1165.82 ± 64.19 |
-| `sql-lint` | 365.5 ± 1.6 | 362.4 | 367.5 | 42.31 ± 2.34 |
+| `syntaqlite` | 19.2 ± 2.3 | 14.9 | 30.7 | 1.00 |
+| `sqlite3` | 29.2 ± 7.6 | 20.8 | 78.1 | 1.52 ± 0.44 |
+| `sqlite-runner-lsp` | 10043.6 ± 4.7 | 10039.0 | 10049.9 | 523.07 ± 63.20 |
+| `sql-lint` | 371.6 ± 4.3 | 364.6 | 376.7 | 19.35 ± 2.35 |
 
 ---
 
@@ -237,6 +237,6 @@ Time from server start → document open → diagnostics received → exit:
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `syntaqlite` | 33.0 ± 0.9 | 30.4 | 35.0 | 1.00 |
-| `sqls` | 10065.0 ± 7.2 | 10052.6 | 10070.3 | 304.91 ± 8.47 |
-| `sql-language-server` | 469.7 ± 10.6 | 456.3 | 482.1 | 14.23 ± 0.51 |
+| `syntaqlite` | 33.2 ± 1.0 | 31.2 | 36.4 | 1.00 |
+| `sqls` | 10071.9 ± 1.6 | 10070.2 | 10074.6 | 303.36 ± 9.41 |
+| `sql-language-server` | 461.2 ± 6.9 | 455.9 | 473.1 | 13.89 ± 0.48 |
