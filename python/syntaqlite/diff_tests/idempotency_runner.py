@@ -4,12 +4,18 @@
 """SQL formatting idempotency test runner.
 
 Verifies that formatting preserves SQL semantics by comparing ASTs before and
-after formatting. For every SQL string found in the existing test suites:
+after formatting, and (where applicable) by comparing EXPLAIN bytecode via
+sqlite3 to catch silent semantic changes.
+
+For every SQL string found in the existing test suites:
 
   1. Parse the original SQL and dump its AST.
   2. Format the SQL.
   3. Parse the formatted SQL and dump its AST.
   4. Assert the two ASTs are identical.
+  5. For DML statements: run EXPLAIN on both via sqlite3 and compare
+     the opcode columns (stripping the comment column which contains
+     whitespace-sensitive source snippets).
 
 This catches formatting bugs that silently alter SQL semantics.
 """
@@ -17,17 +23,29 @@ This catches formatting bugs that silently alter SQL semantics.
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 from python.syntaqlite.diff_tests.test_loader import load_all_tests
 from python.syntaqlite.diff_tests.testing import DiffTestBlueprint
 from python.syntaqlite.diff_tests.utils import Colors, colorize, format_diff
+
+
+# Statements where EXPLAIN bytecode comparison is not applicable — either
+# because EXPLAIN doesn't work or because the bytecode includes format-sensitive
+# metadata (string offsets in DDL).
+_NO_EXPLAIN_PREFIXES = (
+    'CREATE', 'ALTER', 'DROP', 'ATTACH', 'DETACH', 'PRAGMA', 'EXPLAIN',
+    'ANALYZE', 'SAVEPOINT', 'RELEASE', 'REINDEX', 'VACUUM', 'BEGIN',
+    'COMMIT', 'END', 'ROLLBACK',
+)
 
 
 @dataclass
@@ -40,6 +58,8 @@ class IdempotencyResult:
     formatted: str = ""
     ast_before: str = ""
     ast_after: str = ""
+    bytecode_before: str = ""
+    bytecode_after: str = ""
     error: str = ""
 
 
@@ -64,6 +84,61 @@ def _run_binary(
         cmd, input=sql, capture_output=True, text=True, timeout=timeout
     )
     return proc.returncode, proc.stdout, proc.stderr
+
+
+def _can_explain(sql: str) -> bool:
+    """Whether this SQL is suitable for EXPLAIN bytecode comparison."""
+    stripped = sql.strip().rstrip(';').strip().upper()
+    return not any(stripped.startswith(pfx) for pfx in _NO_EXPLAIN_PREFIXES)
+
+
+def _normalize_explain(raw: str) -> str:
+    """Strip the comment column and normalize volatile values in EXPLAIN output.
+
+    The comment column contains source-text snippets that change with
+    whitespace reformatting. The p4 column can contain memory addresses
+    (vtab:XXXXXXXX) that change between invocations.
+    """
+    lines = raw.splitlines()
+    if len(lines) < 2:
+        return raw
+    header = lines[0]
+    col = header.find("comment")
+    if col < 0:
+        return raw
+    result = []
+    for line in lines[2:]:
+        truncated = line[:col].rstrip()
+        # Normalize volatile vtab addresses: vtab:XXXXXXXX -> vtab:*
+        truncated = re.sub(r'vtab:[0-9A-Fa-f]+', 'vtab:*', truncated)
+        result.append(truncated)
+    return "\n".join(result)
+
+
+def _get_explain_bytecode(sql: str, schema_db: Optional[str] = None) -> Optional[str]:
+    """Get normalized EXPLAIN bytecode for SQL via sqlite3, or None."""
+    if not _can_explain(sql):
+        return None
+
+    if schema_db:
+        tmp_db = tempfile.mktemp(suffix=".db")
+        shutil.copy2(schema_db, tmp_db)
+    else:
+        tmp_db = ":memory:"
+
+    try:
+        p = subprocess.run(
+            ["sqlite3", tmp_db, "EXPLAIN " + sql],
+            capture_output=True, timeout=10,
+        )
+        if p.returncode != 0:
+            return None
+        return _normalize_explain(p.stdout.decode("utf-8", errors="replace"))
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+    finally:
+        if schema_db and os.path.exists(tmp_db):
+            os.unlink(tmp_db)
 
 
 def _run_idempotency_check(args: tuple) -> IdempotencyResult:
@@ -114,10 +189,26 @@ def _run_idempotency_check(args: tuple) -> IdempotencyResult:
         ast_after = ast_after.strip()
         passed = ast_before == ast_after
 
+        if not passed:
+            elapsed = int((time.monotonic() - t0) * 1000)
+            return IdempotencyResult(
+                name=name, passed=False, elapsed_ms=elapsed, sql=sql,
+                formatted=formatted, ast_before=ast_before, ast_after=ast_after,
+            )
+
+        # Step 5: compare EXPLAIN bytecode (DML only).
+        bc_before = _get_explain_bytecode(sql)
+        bc_after = _get_explain_bytecode(formatted) if bc_before is not None else None
+        bytecode_match = True
+        if bc_before is not None and bc_after is not None:
+            bytecode_match = bc_before == bc_after
+
         elapsed = int((time.monotonic() - t0) * 1000)
         return IdempotencyResult(
-            name=name, passed=passed, elapsed_ms=elapsed, sql=sql,
+            name=name, passed=bytecode_match, elapsed_ms=elapsed, sql=sql,
             formatted=formatted, ast_before=ast_before, ast_after=ast_after,
+            bytecode_before=bc_before or "", bytecode_after=bc_after or "",
+            error="" if bytecode_match else "EXPLAIN bytecode differs",
         )
 
     except subprocess.TimeoutExpired:
@@ -261,11 +352,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                     print(f"{fail} {result.name} ({result.elapsed_ms} ms)")
 
                 # Always print failure details.
-                if result.error:
+                print(f"  SQL: {result.sql}")
+                print(f"  Formatted: {result.formatted.strip()}")
+                if result.error == "EXPLAIN bytecode differs":
+                    print(f"  EXPLAIN bytecode diff:")
+                    for line in format_diff(result.bytecode_before, result.bytecode_after):
+                        print(f"    {line}")
+                elif result.error:
                     print(f"  Error: {result.error}")
                 else:
-                    print(f"  SQL: {result.sql}")
-                    print(f"  Formatted: {result.formatted.strip()}")
                     print(f"  AST diff:")
                     for line in format_diff(result.ast_before, result.ast_after):
                         print(f"    {line}")
