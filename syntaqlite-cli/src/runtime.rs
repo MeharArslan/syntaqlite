@@ -128,6 +128,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             line_width,
             keyword_case,
             in_place,
+            check,
             semicolons,
         } => {
             let config = FormatConfig::default()
@@ -137,7 +138,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
                     KeywordCasing::Lower => KeywordCase::Lower,
                 })
                 .with_semicolons(semicolons);
-            require_dialect(dialect).and_then(|d| cmd_fmt(&d, &files, &config, in_place))
+            require_dialect(dialect).and_then(|d| cmd_fmt(&d, &files, &config, in_place, check))
         }
         Command::Version => {
             println!("syntaqlite {}", env!("CARGO_PKG_VERSION"));
@@ -274,13 +275,18 @@ fn cmd_fmt(
     files: &[String],
     config: &FormatConfig,
     in_place: bool,
+    check: bool,
 ) -> Result<(), String> {
     let mut errors = Vec::new();
+    let mut unformatted = Vec::new();
     process_files(
         files,
         |source| {
-            if in_place {
-                return Err("--in-place requires file arguments".to_string());
+            if in_place || check {
+                return Err(format!(
+                    "--{} requires file arguments",
+                    if check { "check" } else { "in-place" }
+                ));
             }
             let out = format_source(dialect, source, config).map_err(|e| {
                 render_format_error(&e, source, "<stdin>");
@@ -292,7 +298,11 @@ fn cmd_fmt(
         |source, path, multi| {
             match format_source(dialect, source, config) {
                 Ok(out) => {
-                    if in_place {
+                    if check {
+                        if out != source {
+                            unformatted.push(path.display().to_string());
+                        }
+                    } else if in_place {
                         if out != source {
                             fs::write(path, &out)
                                 .map_err(|e| format!("{}: {e}", path.display()))?;
@@ -317,6 +327,15 @@ fn cmd_fmt(
 
     if !errors.is_empty() {
         return Err(errors.join("\n"));
+    }
+    if !unformatted.is_empty() {
+        for f in &unformatted {
+            eprintln!("would reformat {f}");
+        }
+        return Err(format!(
+            "{} file(s) would be reformatted",
+            unformatted.len()
+        ));
     }
     Ok(())
 }

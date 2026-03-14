@@ -76,10 +76,9 @@ pub(crate) enum CliMacroStyle {
     Rust,
 }
 
-/// Hidden subcommands forwarded to the lemon/mkkeyword subprocess invocations.
-///
-/// These must be present in any binary that calls the codegen pipeline;
-/// `generate_codegen_artifacts()` spawns the current executable with these.
+// Hidden subcommands forwarded to the lemon/mkkeyword subprocess invocations.
+// These must be present in any binary that calls the codegen pipeline;
+// `generate_codegen_artifacts()` spawns the current executable with these.
 #[derive(clap::Subcommand)]
 pub(crate) enum ToolCommand {
     #[command(hide = true)]

@@ -1151,11 +1151,11 @@ impl<'a> ValidationPass<'a> {
         let alias = self.name_text(stmt, Self::field_node_id(fields, alias_idx));
         let cols = Self::field_node_id(fields, body_idx)
             .and_then(|id| columns_from_select(stmt, id, self.roles));
-        if !alias.is_empty() {
+        if alias.is_empty() {
+            self.scope.add_anonymous(cols);
+        } else {
             self.scope
                 .add_table(alias, cols, RowIdPolicy::WithRowId);
-        } else {
-            self.scope.add_anonymous(cols);
         }
     }
 
@@ -3199,7 +3199,7 @@ mod tests {
 
     // ── ORDER BY alias resolution ─────────────────────────────────────────────
 
-    /// SELECT alias used in ORDER BY should not produce UnknownColumn.
+    /// SELECT alias used in ORDER BY should not produce `UnknownColumn`.
     #[test]
     fn order_by_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();
@@ -3245,7 +3245,7 @@ mod tests {
         );
     }
 
-    /// HAVING clause can also reference SELECT aliases in SQLite.
+    /// HAVING clause can also reference SELECT aliases in `SQLite`.
     #[test]
     fn having_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();
@@ -3268,7 +3268,7 @@ mod tests {
         );
     }
 
-    /// WHERE clause can reference SELECT aliases in SQLite (real column wins on collision).
+    /// WHERE clause can reference SELECT aliases in `SQLite` (real column wins on collision).
     #[test]
     fn where_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();
@@ -3308,7 +3308,7 @@ mod tests {
         );
     }
 
-    /// GROUP BY can reference SELECT aliases in SQLite (real column wins on collision).
+    /// GROUP BY can reference SELECT aliases in `SQLite` (real column wins on collision).
     #[test]
     fn group_by_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();

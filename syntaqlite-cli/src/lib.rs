@@ -81,6 +81,9 @@ pub(crate) enum Command {
         /// Write formatted output back to file(s) in place
         #[arg(short = 'i', long)]
         in_place: bool,
+        /// Check if files are formatted (exit 1 if not)
+        #[arg(long, conflicts_with = "in_place")]
+        check: bool,
         /// Append semicolons after each statement
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         semicolons: bool,
@@ -102,7 +105,6 @@ pub(crate) enum Command {
     Dialect(codegen::DialectArgs),
     /// Print version information
     Version,
-    /// Hidden lemon/mkkeyword subcommands for codegen subprocess support.
     #[cfg(feature = "builtin-sqlite")]
     #[command(flatten)]
     DialectTool(codegen::ToolCommand),

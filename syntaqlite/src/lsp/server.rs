@@ -28,7 +28,7 @@ use lsp_types::{
     SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp,
     SignatureHelpOptions, SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextEdit, Uri, WorkspaceEdit,
+    TextEdit, Uri, WorkDoneProgressOptions, WorkspaceEdit,
 };
 
 use crate::dialect::AnyDialect;
@@ -88,7 +88,7 @@ impl LspServer {
             references_provider: Some(lsp_types::OneOf::Left(true)),
             rename_provider: Some(lsp_types::OneOf::Right(RenameOptions {
                 prepare_provider: Some(true),
-                work_done_progress_options: Default::default(),
+                work_done_progress_options: WorkDoneProgressOptions::default(),
             })),
             hover_provider: Some(HoverProviderCapability::Simple(true)),
             document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
@@ -563,6 +563,7 @@ impl LspServer {
             return Response::new_ok(req.id, Option::<WorkspaceEdit>::None);
         }
 
+        #[expect(clippy::mutable_key_type, reason = "Uri uses interior mutability but hashes stably")]
         let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
         for (edit_uri, edits) in edits_by_uri {
             let source = if edit_uri == uri_str {

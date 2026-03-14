@@ -194,7 +194,7 @@ impl SemanticModel {
             .and_then(|r| match &r.symbol {
                 ResolvedSymbol::Table { definition, .. }
                 | ResolvedSymbol::Column { definition, .. } => definition.as_ref(),
-                _ => None,
+                ResolvedSymbol::Function { .. } => None,
             })
     }
 

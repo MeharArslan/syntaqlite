@@ -429,7 +429,7 @@ impl LspHost {
         // Collect matching resolutions from all open documents.
         let uris: Vec<String> = self.documents.keys().cloned().collect();
         for doc_uri in &uris {
-            let doc = self.documents.get_mut(doc_uri.as_str()).unwrap();
+            let doc = self.documents.get_mut(doc_uri.as_str()).expect("doc_uri came from keys()");
             ensure_model(doc, &mut self.analyzer, &self.user_catalog);
             let model = doc.model.as_ref().expect("ensure_model sets model");
             for (start, end) in model.references_matching(&identity) {
@@ -450,14 +450,14 @@ impl LspHost {
         }
 
         // Include external (schema) definition site if requested.
-        if include_declaration {
-            if let Some(def_site) = self.external_definition_site(&identity) {
-                let already = results
-                    .iter()
-                    .any(|(u, s, e)| *u == def_site.0 && *s == def_site.1 && *e == def_site.2);
-                if !already {
-                    results.push(def_site);
-                }
+        if include_declaration
+            && let Some(def_site) = self.external_definition_site(&identity)
+        {
+            let already = results
+                .iter()
+                .any(|(u, s, e)| *u == def_site.0 && *s == def_site.1 && *e == def_site.2);
+            if !already {
+                results.push(def_site);
             }
         }
 
@@ -1246,9 +1246,9 @@ mod tests {
         let offset = "SELECT * FROM ".len();
         let refs = host.find_references(uri1, offset, false);
         assert_eq!(refs.len(), 2, "expected refs in both files, got: {refs:?}");
-        let uris: Vec<&str> = refs.iter().map(|r| r.0.as_str()).collect();
-        assert!(uris.contains(&uri1));
-        assert!(uris.contains(&uri2));
+        let ref_uris: Vec<&str> = refs.iter().map(|r| r.0.as_str()).collect();
+        assert!(ref_uris.contains(&uri1));
+        assert!(ref_uris.contains(&uri2));
     }
 
     #[test]
