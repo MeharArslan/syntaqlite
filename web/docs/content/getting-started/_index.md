@@ -19,18 +19,18 @@ Install the CLI (or [try it in the browser](https://playground.syntaqlite.com) f
     <button data-tab="cargo" onclick="switchTab('install','cargo')">Cargo</button>
   </div>
   <div class="tab-panel active" data-tab="brew">
-    <pre><code>brew install LalitMaganti/tap/syntaqlite</code></pre>
+    <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
   </div>
   <div class="tab-panel" data-tab="shell">
-    <pre><code>curl --proto '=https' --tlsv1.2 -LsSf \
+    <pre><code class="language-bash">curl --proto '=https' --tlsv1.2 -LsSf \
   https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.sh \
   | sh</code></pre>
   </div>
   <div class="tab-panel" data-tab="windows">
-    <pre><code>powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.ps1 | iex"</code></pre>
+    <pre><code class="language-powershell">powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.ps1 | iex"</code></pre>
   </div>
   <div class="tab-panel" data-tab="cargo">
-    <pre><code>cargo install syntaqlite-cli</code></pre>
+    <pre><code class="language-bash">cargo install syntaqlite-cli</code></pre>
   </div>
 </div>
 

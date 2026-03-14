@@ -18,13 +18,12 @@
     <div class="home-example">
       <div class="home-example__col">
         <div class="home-example__label">Input</div>
-        <pre><code class="language-sql">select u.id, u.name, p.title
-from users u join posts p
-on u.id=p.user_id
-where u.active=1
-and p.published=true
-order by p.created_at desc
-limit 10</code></pre>
+        <pre><code class="language-sql">select u.id,u.name, p.title from
+  users u join posts p on u.id
+  =p.user_id where u.active
+  =1 and p.published=true
+  order by p.created_at
+  desc limit 10</code></pre>
       </div>
       <div class="home-example__col">
         <div class="home-example__label">Output</div>

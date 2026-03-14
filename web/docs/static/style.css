@@ -277,7 +277,8 @@ article code {
 }
 
 article pre {
-  background: var(--code-bg);
+  background: var(--code-bg) !important;
+  color: var(--fg);
   border: 1px solid var(--border);
   padding: 1rem 1.25rem;
   border-radius: 6px;
@@ -287,7 +288,7 @@ article pre {
   font-family: var(--font-mono);
 }
 
-article pre code { background: none; padding: 0; border: none; }
+article pre code { background: none; padding: 0; border: none; color: inherit; }
 
 article table {
   width: 100%;
