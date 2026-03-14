@@ -4,7 +4,7 @@
 //! Runtime SQL commands (ast, fmt, lsp, validate) that require the `syntaqlite` crate.
 
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, IsTerminal, Read};
 use std::ops::Deref;
 use std::path::PathBuf;
 
@@ -114,19 +114,24 @@ fn apply_version_cflags(
 
 fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<(), String> {
     match command {
-        Command::Parse { files, output } => {
-            require_dialect(dialect).and_then(|d| cmd_parse(&d, &files, output))
-        }
+        Command::Parse {
+            files,
+            expression,
+            output,
+        } => require_dialect(dialect).and_then(|d| cmd_parse(&d, &files, expression.as_deref(), output)),
         Command::Validate {
             files,
+            expression,
             schema,
             lang,
-        } => require_dialect(dialect).and_then(|d| cmd_validate(&d, &files, &schema, lang)),
+        } => require_dialect(dialect)
+            .and_then(|d| cmd_validate(&d, &files, expression.as_deref(), &schema, lang)),
         Command::Lsp => require_dialect(dialect).and_then(|d| {
             syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
         }),
         Command::Fmt {
             files,
+            expression,
             line_width,
             indent_width,
             keyword_case,
@@ -142,7 +147,8 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
                     KeywordCasing::Lower => KeywordCase::Lower,
                 })
                 .with_semicolons(semicolons);
-            require_dialect(dialect).and_then(|d| cmd_fmt(&d, &files, &config, in_place, check))
+            require_dialect(dialect)
+                .and_then(|d| cmd_fmt(&d, &files, expression.as_deref(), &config, in_place, check))
         }
         Command::Version => {
             println!("syntaqlite {}", env!("CARGO_PKG_VERSION"));
@@ -154,6 +160,9 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
 }
 
 fn read_stdin() -> Result<String, String> {
+    if io::stdin().is_terminal() {
+        eprintln!("reading from stdin; paste SQL then press Ctrl-D (or pass files as arguments)");
+    }
     let mut buf = String::new();
     io::stdin()
         .read_to_string(&mut buf)
@@ -161,16 +170,24 @@ fn read_stdin() -> Result<String, String> {
     Ok(buf)
 }
 
-/// Expand file patterns and dispatch to `on_stdin` (no files) or `on_file` (each file).
+/// Resolve the SQL source: `-e` expression, files, or stdin (in that priority order).
+///
+/// The `on_inline` callback receives `(source, label)` where label is `"<expression>"` or
+/// `"<stdin>"` depending on the input source.
 fn process_files(
     files: &[String],
-    on_stdin: impl FnOnce(&str) -> Result<(), String>,
+    expression: Option<&str>,
+    on_inline: impl FnOnce(&str, &str) -> Result<(), String>,
     mut on_file: impl FnMut(&str, &PathBuf, bool) -> Result<(), String>,
 ) -> Result<(), String> {
+    if let Some(expr) = expression {
+        return on_inline(expr, "<expression>");
+    }
+
     let paths = expand_paths(files)?;
 
     if paths.is_empty() {
-        return on_stdin(&read_stdin()?);
+        return on_inline(&read_stdin()?, "<stdin>");
     }
 
     let multi = paths.len() > 1;
@@ -184,30 +201,41 @@ fn process_files(
 fn cmd_parse(
     dialect: &AnyDialect,
     files: &[String],
+    expression: Option<&str>,
     output: crate::ParseOutput,
 ) -> Result<(), String> {
     let mut total_stmts = 0u64;
     let mut total_errors = 0u64;
 
-    let paths = expand_paths(files)?;
+    let process_source = |source: &str, file: &str| -> (u64, u64) {
+        cmd_parse_source(dialect, source, file, output)
+    };
 
-    if paths.is_empty() {
-        let source = read_stdin()?;
-        let (s, e) = cmd_parse_source(dialect, &source, "<stdin>", output);
+    if let Some(expr) = expression {
+        let (s, e) = process_source(expr, "<expression>");
         total_stmts += s;
         total_errors += e;
     } else {
-        let multi = paths.len() > 1;
-        for path in &paths {
-            let source =
-                fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let file = path.display().to_string();
-            if multi && matches!(output, crate::ParseOutput::Ast) {
-                println!("==> {file} <==");
-            }
-            let (s, e) = cmd_parse_source(dialect, &source, &file, output);
+        let paths = expand_paths(files)?;
+
+        if paths.is_empty() {
+            let source = read_stdin()?;
+            let (s, e) = process_source(&source, "<stdin>");
             total_stmts += s;
             total_errors += e;
+        } else {
+            let multi = paths.len() > 1;
+            for path in &paths {
+                let source =
+                    fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+                let file = path.display().to_string();
+                if multi && matches!(output, crate::ParseOutput::Ast) {
+                    println!("==> {file} <==");
+                }
+                let (s, e) = process_source(&source, &file);
+                total_stmts += s;
+                total_errors += e;
+            }
         }
     }
 
@@ -277,6 +305,7 @@ fn cmd_parse_source(
 fn cmd_fmt(
     dialect: &AnyDialect,
     files: &[String],
+    expression: Option<&str>,
     config: &FormatConfig,
     in_place: bool,
     check: bool,
@@ -285,7 +314,8 @@ fn cmd_fmt(
     let mut unformatted = Vec::new();
     process_files(
         files,
-        |source| {
+        expression,
+        |source, label| {
             if in_place || check {
                 return Err(format!(
                     "--{} requires file arguments",
@@ -293,8 +323,8 @@ fn cmd_fmt(
                 ));
             }
             let out = format_source(dialect, source, config).map_err(|e| {
-                render_format_error(&e, source, "<stdin>");
-                format!("<stdin>: {e}")
+                render_format_error(&e, source, label);
+                format!("{label}: {e}")
             })?;
             print!("{out}");
             Ok(())
@@ -398,6 +428,7 @@ fn build_schema_catalog(
 fn cmd_validate(
     dialect: &AnyDialect,
     files: &[String],
+    expression: Option<&str>,
     schema_files: &[String],
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
@@ -416,8 +447,9 @@ fn cmd_validate(
 
     process_files(
         files,
-        |source| {
-            if validate(source, "<stdin>") {
+        expression,
+        |source, label| {
+            if validate(source, label) {
                 std::process::exit(1);
             }
             Ok(())

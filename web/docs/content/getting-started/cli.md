@@ -43,6 +43,9 @@ syntaqlite --help
 ## Format SQL
 
 ```bash
+# Inline expression
+syntaqlite fmt -e "select a,b,c from users where id=1 and active=true"
+
 # From stdin
 echo "select a,b,c from users where id=1 and active=true" | syntaqlite fmt
 ```

@@ -54,7 +54,10 @@ cargo install syntaqlite-cli
 ## Quick start
 
 ```bash
-# Format SQL
+# Format SQL (inline expression)
+syntaqlite fmt -e "SELECT a,b FROM t WHERE x=1"
+
+# Format SQL (stdin)
 echo "SELECT a,b FROM t WHERE x=1" | syntaqlite fmt
 
 # Format a file in place
@@ -64,7 +67,7 @@ syntaqlite fmt -i query.sql
 syntaqlite fmt -w 120 -k upper query.sql
 
 # Parse and inspect the AST
-echo "SELECT 1 + 2" | syntaqlite parse --output ast
+syntaqlite parse -e "SELECT 1 + 2" --output ast
 
 # Validate SQL — catch unknown tables, columns, functions
 syntaqlite validate schema.sql

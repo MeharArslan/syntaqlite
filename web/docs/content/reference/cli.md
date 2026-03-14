@@ -14,10 +14,12 @@ Format SQL files.
 syntaqlite fmt [OPTIONS] [FILES...]
 ```
 
-Reads from stdin if no files are given.
+Reads from stdin if no files are given. When stdin is a terminal, a hint is
+printed to stderr.
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `-e, --expression <SQL>` | | SQL to format directly (instead of files or stdin) |
 | `-w, --line-width <N>` | `80` | Target maximum line width |
 | `-t, --indent-width <N>` | `2` | Spaces per indentation level |
 | `-k, --keyword-case <CASE>` | `upper` | Keyword casing: `upper` or `lower` |
@@ -43,6 +45,7 @@ syntaqlite validate [OPTIONS] [FILES...]
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `-e, --expression <SQL>` | | SQL to validate directly (instead of files or stdin) |
 | `--schema <FILE>` | | Schema DDL file(s) to load (repeatable, supports globs) |
 | `--experimental-lang <LANG>` | | Extract SQL from `python` or `typescript` source |
 | `--dialect <PATH>` | | Path to custom dialect shared library |
@@ -63,11 +66,13 @@ Parse SQL and report results.
 syntaqlite parse [OPTIONS] [FILES...]
 ```
 
-Reads from stdin if no files are given.
+Reads from stdin if no files are given. When stdin is a terminal, a hint is
+printed to stderr.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `-o, --output <OUTPUT>` | `summary` | Output format: `summary` or `ast` |
+| `-e, --expression <SQL>` | | SQL to parse directly (instead of files or stdin) |
+| `-o, --output <FORMAT>` | `summary` | Output format: `summary` or `ast` |
 
 Output formats:
 - `summary` — print statement/error counts (compact, for benchmarks)

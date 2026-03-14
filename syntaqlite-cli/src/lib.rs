@@ -63,6 +63,9 @@ pub(crate) enum Command {
     Parse {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
+        /// SQL expression to process directly (instead of files or stdin)
+        #[arg(short = 'e', long = "expression", conflicts_with = "files")]
+        expression: Option<String>,
         /// Output format
         #[arg(short, long, value_enum, default_value_t = ParseOutput::Summary)]
         output: ParseOutput,
@@ -72,6 +75,9 @@ pub(crate) enum Command {
     Fmt {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
+        /// SQL expression to format directly (instead of files or stdin)
+        #[arg(short = 'e', long = "expression", conflicts_with = "files")]
+        expression: Option<String>,
         /// Maximum line width
         #[arg(short = 'w', long, default_value_t = 80)]
         line_width: usize,
@@ -96,6 +102,9 @@ pub(crate) enum Command {
     Validate {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
+        /// SQL expression to validate directly (instead of files or stdin)
+        #[arg(short = 'e', long = "expression", conflicts_with = "files")]
+        expression: Option<String>,
         /// Schema DDL file(s) to load before validation (repeatable, supports globs)
         #[arg(long)]
         schema: Vec<String>,
