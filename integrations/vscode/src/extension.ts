@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+import { minimatch } from "minimatch";
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -9,6 +10,69 @@ import {
 } from "vscode-languageclient/node";
 
 let client: LanguageClient | undefined;
+let lastSentSchemaPath: string | undefined;
+
+interface SchemaEntry {
+  schema: string;
+  files: string[];
+}
+
+/**
+ * Resolve which schema path applies to a given document URI.
+ *
+ * Checks `syntaqlite.schemas` entries first (glob matching against workspace-
+ * relative path), then falls back to `syntaqlite.schemaPath`.
+ */
+function resolveSchemaForUri(uri: vscode.Uri): string {
+  const config = vscode.workspace.getConfiguration("syntaqlite");
+  const schemas = config.get<SchemaEntry[]>("schemas", []);
+
+  if (schemas.length > 0) {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    const relativePath = workspaceFolder
+      ? path.relative(workspaceFolder.uri.fsPath, uri.fsPath)
+      : uri.fsPath;
+
+    for (const entry of schemas) {
+      for (const pattern of entry.files) {
+        if (minimatch(relativePath, pattern)) {
+          // Resolve schema path relative to workspace root if not absolute.
+          if (path.isAbsolute(entry.schema)) {
+            return entry.schema;
+          }
+          if (workspaceFolder) {
+            return path.join(workspaceFolder.uri.fsPath, entry.schema);
+          }
+          return entry.schema;
+        }
+      }
+    }
+  }
+
+  return config.get<string>("schemaPath", "");
+}
+
+/**
+ * Send a didChangeConfiguration notification if the resolved schema for the
+ * given URI differs from the last one sent.
+ */
+function sendSchemaIfChanged(
+  uri: vscode.Uri,
+  outputChannel: vscode.OutputChannel,
+): void {
+  if (!client) return;
+
+  const resolved = resolveSchemaForUri(uri);
+  if (resolved === lastSentSchemaPath) return;
+
+  lastSentSchemaPath = resolved;
+  void client.sendNotification("workspace/didChangeConfiguration", {
+    settings: { schemaPath: resolved },
+  });
+  outputChannel.appendLine(
+    `Schema path changed: ${resolved || "(cleared)"}`,
+  );
+}
 
 /**
  * Resolve the syntaqlite binary path. Preference order:
@@ -75,12 +139,29 @@ export async function activate(
     args: ["lsp"],
   };
 
+  // Resolve initial schema from the active editor if available, else fall back
+  // to the simple schemaPath setting.
+  const activeUri = vscode.window.activeTextEditor?.document.uri;
+  const initialSchemaPath = activeUri
+    ? resolveSchemaForUri(activeUri)
+    : vscode.workspace.getConfiguration("syntaqlite").get<string>("schemaPath", "");
+  lastSentSchemaPath = initialSchemaPath;
+
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { scheme: "file", language: "sql" },
       { scheme: "file", language: "sqlite" },
     ],
     outputChannel,
+    initializationOptions: {
+      ...(initialSchemaPath ? { schemaPath: initialSchemaPath } : {}),
+    },
+    middleware: {
+      didOpen: (document, next) => {
+        sendSchemaIfChanged(document.uri, outputChannel);
+        return next(document);
+      },
+    },
   };
 
   client = new LanguageClient(
@@ -109,6 +190,46 @@ export async function activate(
         await vscode.commands.executeCommand(
           "editor.action.formatDocument",
         );
+      }
+    }),
+  );
+
+  // When the active editor changes, resolve and send the appropriate schema.
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor && (editor.document.languageId === "sql" || editor.document.languageId === "sqlite")) {
+        sendSchemaIfChanged(editor.document.uri, outputChannel);
+      }
+    }),
+  );
+
+  // Watch for schemaPath/schemas configuration changes and notify the server.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (
+        (e.affectsConfiguration("syntaqlite.schemaPath") ||
+          e.affectsConfiguration("syntaqlite.schemas")) &&
+        client
+      ) {
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          // Force re-resolution by clearing last-sent value.
+          lastSentSchemaPath = undefined;
+          sendSchemaIfChanged(editor.document.uri, outputChannel);
+        } else {
+          // No active editor — just send the fallback schemaPath.
+          const updated = vscode.workspace.getConfiguration("syntaqlite");
+          const newSchemaPath = updated.get<string>("schemaPath") || "";
+          if (newSchemaPath !== lastSentSchemaPath) {
+            lastSentSchemaPath = newSchemaPath;
+            void client.sendNotification("workspace/didChangeConfiguration", {
+              settings: { schemaPath: newSchemaPath },
+            });
+            outputChannel.appendLine(
+              `Schema path changed: ${newSchemaPath || "(cleared)"}`,
+            );
+          }
+        }
       }
     }),
   );

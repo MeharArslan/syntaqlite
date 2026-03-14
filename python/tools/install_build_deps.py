@@ -114,6 +114,24 @@ BINARY_DEPS = [
               "b349a6eace4063e4a89d9be1de2e77b20bd0193016a43036522f453be709c0f8",
               "windows", "x64", "tar.gz",
               f"rust-{RUST_VERSION}-x86_64-pc-windows-msvc"),
+    # sqlite3 CLI tools: precompiled binaries from sqlite.org.
+    # SHA256 hashes computed from https://sqlite.org/2026/sqlite-tools-*-3510200.zip
+    BinaryDep("sqlite-tools", SQLITE_VERSION,
+              f"https://sqlite.org/{SQLITE_YEAR}/sqlite-tools-osx-arm64-{SQLITE_VERSION}.zip",
+              "0d672a4729817bc92034004b7c81b6876e961f4701416593e051b7bf535c943c",
+              "darwin", "arm64", "zip"),
+    BinaryDep("sqlite-tools", SQLITE_VERSION,
+              f"https://sqlite.org/{SQLITE_YEAR}/sqlite-tools-osx-x64-{SQLITE_VERSION}.zip",
+              "0960f6221bc58605e6099bbeac21bd31ed53e9a6a9fd5ecb2af4e3c4e14364f6",
+              "darwin", "x64", "zip"),
+    BinaryDep("sqlite-tools", SQLITE_VERSION,
+              f"https://sqlite.org/{SQLITE_YEAR}/sqlite-tools-linux-x64-{SQLITE_VERSION}.zip",
+              "4d8fbfe3548ff28906c3e91cd2b0415c490a459c78901b6594084984dc17e818",
+              "linux", "x64", "zip"),
+    BinaryDep("sqlite-tools", SQLITE_VERSION,
+              f"https://sqlite.org/{SQLITE_YEAR}/sqlite-tools-win-x64-{SQLITE_VERSION}.zip",
+              "042805d77076e2b806c86b1ac4082d65c2f2d4bdef5ce8995eed7845878fd69f",
+              "windows", "x64", "zip"),
 ]
 
 # UI deps: emscripten toolchain, node.js, and wasm32 rust std.
@@ -399,9 +417,19 @@ def install_binary_dep(dep: BinaryDep, target_dir: str) -> bool:
                 os.chmod(exe_path, 0o755)
         else:
             extract(tmp_path, target_dir, dep.format)
+            # Try to chmod the binary matching dep.name; if it doesn't exist
+            # (e.g. sqlite-tools zip contains sqlite3, not sqlite-tools),
+            # make all extracted files executable.
             exe_path = os.path.join(target_dir, dep.name)
             if os.path.exists(exe_path):
                 os.chmod(exe_path, 0o755)
+            else:
+                if dep.format == "zip":
+                    with zipfile.ZipFile(tmp_path) as zf:
+                        for name in zf.namelist():
+                            p = os.path.join(target_dir, name)
+                            if os.path.isfile(p):
+                                os.chmod(p, 0o755)
 
         with open(stamp_path, "w") as f:
             f.write(dep.version)

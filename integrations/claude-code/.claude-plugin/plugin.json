@@ -1,5 +1,5 @@
 {
   "name": "syntaqlite",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "SQL language support for SQLite dialects (tokenizing, parsing, formatting, completions)"
 }

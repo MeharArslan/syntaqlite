@@ -1,10 +1,9 @@
 {
-  "languages": [
-    {
-      "languageId": "sql",
-      "filePatterns": ["*.sql"]
+  "sql": {
+    "command": "syntaqlite",
+    "args": ["lsp"],
+    "extensionToLanguage": {
+      ".sql": "sql"
     }
-  ],
-  "command": "syntaqlite",
-  "args": ["lsp"]
+  }
 }

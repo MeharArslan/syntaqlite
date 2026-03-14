@@ -12,8 +12,8 @@ use std::path::PathBuf;
 
 use lsp_server::{Connection, Message, Notification, Request, Response};
 use lsp_types::notification::{
-    DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification as _,
-    PublishDiagnostics,
+    DidChangeConfiguration, DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
+    Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
     Completion, Formatting, HoverRequest, Request as _, SemanticTokensFullRequest,
@@ -120,6 +120,9 @@ impl LspServer {
         }
 
         let mut host = LspHost::with_dialect(dialect);
+
+        // Load schema from initializationOptions.schemaPath if provided.
+        Self::load_schema_from_options(&init_params, &mut host);
 
         for msg in &connection.receiver {
             match msg {
@@ -421,6 +424,11 @@ impl LspServer {
                 }
                 DiagnosticPublisher::publish(connection, host, uri)?;
             }
+            DidChangeConfiguration::METHOD => {
+                let params: lsp_types::DidChangeConfigurationParams =
+                    serde_json::from_value(notif.params)?;
+                Self::load_schema_from_settings(&params.settings, host);
+            }
             DidCloseTextDocument::METHOD => {
                 let params: lsp_types::DidCloseTextDocumentParams =
                     serde_json::from_value(notif.params)?;
@@ -445,6 +453,47 @@ impl LspServer {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
+
+    /// Load schema from `initializationOptions.schemaPath`.
+    fn load_schema_from_options(params: &InitializeParams, host: &mut LspHost) {
+        let Some(opts) = &params.initialization_options else {
+            return;
+        };
+        Self::load_schema_from_settings(opts, host);
+    }
+
+    /// Load schema DDL from a `schemaPath` key in a JSON settings object.
+    fn load_schema_from_settings(settings: &serde_json::Value, host: &mut LspHost) {
+        let path_str = settings
+            .get("schemaPath")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if path_str.is_empty() {
+            return;
+        }
+        let path = PathBuf::from(path_str);
+        match std::fs::read_to_string(&path) {
+            Ok(contents) => match host.set_session_context_from_ddl(&contents) {
+                Ok(()) => {
+                    eprintln!("syntaqlite-lsp: loaded schema from {}", path.display());
+                }
+                Err(errors) => {
+                    eprintln!(
+                        "syntaqlite-lsp: schema loaded with {} parse error(s) from {}",
+                        errors.len(),
+                        path.display()
+                    );
+                }
+            },
+            Err(e) => {
+                eprintln!(
+                    "syntaqlite-lsp: failed to read schema file {}: {}",
+                    path.display(),
+                    e
+                );
+            }
+        }
+    }
 
     fn workspace_root(params: &InitializeParams) -> Option<PathBuf> {
         #[expect(deprecated)]

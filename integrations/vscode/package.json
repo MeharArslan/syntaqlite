@@ -2,7 +2,7 @@
   "name": "syntaqlite",
   "displayName": "syntaqlite",
   "description": "SQL language support powered by syntaqlite — diagnostics, formatting, completions, and semantic highlighting",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "publisher": "syntaqlite",
   "license": "MIT",
   "repository": {
@@ -12,8 +12,18 @@
   "engines": {
     "vscode": "^1.75.0"
   },
-  "categories": ["Programming Languages", "Formatters", "Linters"],
-  "keywords": ["sql", "sqlite", "formatter", "linter", "lsp"],
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Linters"
+  ],
+  "keywords": [
+    "sql",
+    "sqlite",
+    "formatter",
+    "linter",
+    "lsp"
+  ],
   "activationEvents": [
     "onLanguage:sql",
     "onLanguage:sqlite",
@@ -25,8 +35,13 @@
     "languages": [
       {
         "id": "sqlite",
-        "extensions": [".sqlite.sql"],
-        "aliases": ["SQLite", "SQL (SQLite)"],
+        "extensions": [
+          ".sqlite.sql"
+        ],
+        "aliases": [
+          "SQLite",
+          "SQL (SQLite)"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -34,9 +49,19 @@
       {
         "language": "sqlite",
         "scopeName": "source.sql.sqlite",
-        "path": "./syntaxes/sqlite.tmLanguage.json"
+        "path": "./syntaxes/sqlite.tmLanguage.json",
+        "semanticHighlighting": true
       }
     ],
+    "configurationDefaults": {
+      "editor.semanticHighlighting.enabled": true,
+      "[sql]": {
+        "editor.semanticHighlighting.enabled": true
+      },
+      "[sqlite]": {
+        "editor.semanticHighlighting.enabled": true
+      }
+    },
     "commands": [
       {
         "command": "syntaqlite.restartServer",
@@ -54,24 +79,52 @@
           "type": "string",
           "default": "",
           "description": "Absolute path to the syntaqlite binary. Leave empty to use the bundled binary or PATH."
+        },
+        "syntaqlite.schemaPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a SQL DDL file (e.g. output of `sqlite3 mydb.db .schema`) that defines tables and columns for validation. Used as the default when syntaqlite.schemas does not match."
+        },
+        "syntaqlite.schemas": {
+          "type": "array",
+          "default": [],
+          "description": "Map SQL files to different schemas by glob pattern. Each entry has a 'schema' path and 'files' glob array. Takes precedence over syntaqlite.schemaPath for matched files.",
+          "items": {
+            "type": "object",
+            "required": ["schema", "files"],
+            "properties": {
+              "schema": {
+                "type": "string",
+                "description": "Path to a SQL DDL file (absolute, or relative to workspace root)."
+              },
+              "files": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Glob patterns matching SQL files that should use this schema."
+              }
+            }
+          }
         }
       }
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
+    "watch": "npm run compile -- --watch",
     "lint": "tsc --noEmit",
     "package": "vsce package",
     "package:target": "node scripts/package-target.mjs"
   },
   "dependencies": {
+    "minimatch": "^9.0.0",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
+    "@types/minimatch": "^5.1.2",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.75.0",
     "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.27.4",
     "typescript": "^5.0.0"
   }
 }

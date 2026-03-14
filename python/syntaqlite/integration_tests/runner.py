@@ -37,6 +37,7 @@ _SUITE_MODULES = [
     "python.syntaqlite.integration_tests.suites.grammar",
     "python.syntaqlite.integration_tests.suites.sql_idempotency",
     "python.syntaqlite.integration_tests.suites.upstream_sqlite",
+    "python.syntaqlite.integration_tests.suites.lsp",
 ]
 
 _BLUE = "\033[1;34m"
