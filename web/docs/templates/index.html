@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="home">
-  <h1>{{ section.title }}</h1>
+  <h1><img src="{{ get_url(path='favicon.svg') }}" width="36" height="36" alt="" style="vertical-align: -5px; margin-right: 8px;">{{ section.title }}</h1>
   {{ section.content | safe }}
 
   <h2>What it does</h2>

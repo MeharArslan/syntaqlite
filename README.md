@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="web/docs/static/favicon.svg" width="80" height="80" alt="syntaqlite">
-</p>
-
-# syntaqlite
+# <img src="web/docs/static/favicon.svg" width="32" height="32" alt=""> syntaqlite
 
 [![CI](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml/badge.svg)](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/syntaqlite)](https://crates.io/crates/syntaqlite)
