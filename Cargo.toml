@@ -8,7 +8,7 @@ members = [
     "syntaqlite-wasm",
     # temporarily excluded until semantic refactor is complete:
     "syntaqlite-cli",
-    "test/benches",
+    "tests/benches",
 ]
 exclude = ["tests/comparison/parser", "comparison/parser", "comparison/sqlparser-bench"]
 resolver = "3"
