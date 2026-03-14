@@ -37,27 +37,23 @@ Install the CLI (or [try it in the browser](https://playground.syntaqlite.com) f
 Format a query:
 
 ```bash
-echo "select id,name from users where active=1 and role='admin'" | syntaqlite fmt
+syntaqlite fmt -e "select id,name from users where active=1 and role='admin'"
 ```
 ```sql
-SELECT id, name
-FROM users
-WHERE active = 1
-  AND role = 'admin';
+SELECT id, name FROM users WHERE active = 1 AND role = 'admin';
 ```
 
 Catch a schema error:
 
 ```bash
-echo "CREATE TABLE users (id, name, email); SELECT nme FROM users;" | syntaqlite validate
+syntaqlite validate -e "CREATE TABLE users (id, name, email); SELECT nme FROM users;"
 ```
 ```text
-error: unknown column 'nme'
- --> stdin:1:43
+warning: unknown column 'nme'
+ --> <expression>:1:46
   |
-1 | ...; SELECT nme FROM users;
-  |             ^^^
-  |
+1 | CREATE TABLE users (id, name, email); SELECT nme FROM users;
+  |                                              ^~~
   = help: did you mean 'name'?
 ```
 
