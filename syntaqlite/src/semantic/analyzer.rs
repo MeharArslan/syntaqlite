@@ -332,11 +332,16 @@ impl SemanticAnalyzer {
             self.catalog
                 .accumulate_ddl(CatalogLayer::Document, &erased, root_id, &self.dialect);
 
-            // Record DDL definition offsets for go-to-definition.
-            if let Some((name, off)) = ddl_name_offset(&erased, root_id, &self.dialect) {
-                definition_offsets.insert(name, off);
+            // Record DDL definition offsets for go-to-definition (same-file).
+            if let Some((table_name, off)) = ddl_name_offset(&erased, root_id, &self.dialect) {
+                for (col_name, col_start, col_end) in
+                    super::catalog::ddl_column_spans(&erased, root_id, self.dialect.roles())
+                {
+                    let key = format!("{table_name}.{col_name}");
+                    definition_offsets.insert(key, (col_start, col_end));
+                }
+                definition_offsets.insert(table_name, off);
             }
-            ddl_column_offsets(&erased, root_id, &self.dialect, &mut definition_offsets);
 
             ValidationPass::run(
                 &erased,
@@ -651,75 +656,6 @@ fn ddl_name_offset(
     }
     let off = s.as_ptr() as usize - stmt.source().as_ptr() as usize;
     Some((s.to_ascii_lowercase(), (off, off + s.len())))
-}
-
-/// Extract column definition offsets from a `CREATE TABLE` DDL statement.
-///
-/// Populates `out` with `("table.column", (start, end))` entries for each
-/// column definition, enabling go-to-definition on column references.
-fn ddl_column_offsets(
-    stmt: &AnyParsedStatement<'_>,
-    root: AnyNodeId,
-    dialect: &AnyDialect,
-    out: &mut HashMap<String, (usize, usize)>,
-) {
-    let Some((tag, fields)) = stmt.extract_fields(root) else {
-        return;
-    };
-    let Some(&SemanticRole::DefineTable { name, columns, .. }) = dialect.roles().get(u32::from(tag) as usize) else {
-        return;
-    };
-    let table_name = match fields[name as usize] {
-        FieldValue::Span(s) if !s.is_empty() => s,
-        _ => return,
-    };
-    if columns == FIELD_ABSENT {
-        return;
-    }
-    let FieldValue::NodeId(col_list_id) = fields[columns as usize] else { return };
-    if col_list_id.is_null() {
-        return;
-    }
-    let Some(children) = stmt.list_children(col_list_id) else { return };
-    let source_start = stmt.source().as_ptr() as usize;
-
-    for &child_id in children {
-        if let Some((col_name, off)) = column_def_name_offset(stmt, child_id, dialect.roles(), source_start) {
-            let key = format!("{}.{}", table_name.to_ascii_lowercase(), col_name.to_ascii_lowercase());
-            out.insert(key, off);
-        }
-    }
-}
-
-/// Extract the name and source offset of a single `ColumnDef` node.
-fn column_def_name_offset<'a>(
-    stmt: &AnyParsedStatement<'a>,
-    node_id: AnyNodeId,
-    roles: &[SemanticRole],
-    source_start: usize,
-) -> Option<(&'a str, (usize, usize))> {
-    if node_id.is_null() {
-        return None;
-    }
-    let (tag, fields) = stmt.extract_fields(node_id)?;
-    let SemanticRole::ColumnDef { name: name_idx, .. } = roles.get(u32::from(tag) as usize)? else {
-        return None;
-    };
-    let FieldValue::NodeId(name_id) = fields[*name_idx as usize] else { return None };
-    if name_id.is_null() {
-        return None;
-    }
-    let (_, name_fields) = stmt.extract_fields(name_id)?;
-    // First non-empty span is the identifier text.
-    for j in 0..name_fields.len() {
-        if let FieldValue::Span(s) = name_fields[j]
-            && !s.is_empty()
-        {
-            let off = s.as_ptr() as usize - source_start;
-            return Some((s, (off, off + s.len())));
-        }
-    }
-    None
 }
 
 /// `SQLite`'s implicit rowid aliases.
@@ -1092,6 +1028,15 @@ impl<'a> ValidationPass<'a> {
                             start,
                             end,
                             file_uri: None,
+                        })
+                        .or_else(|| {
+                            self.catalog
+                                .column_definition_site(&resolved_table, column)
+                                .map(|site| DefinitionLocation {
+                                    start: site.start,
+                                    end: site.end,
+                                    file_uri: Some(site.file_uri.clone()),
+                                })
                         });
                     self.resolutions.push(Resolution {
                         start: offset,

@@ -1004,6 +1004,27 @@ mod tests {
     }
 
     #[test]
+    fn definition_info_returns_cross_file_uri_for_schema_column() {
+        let schema = "CREATE TABLE orders (id INTEGER, total REAL);";
+        let file_uri = "file:///path/to/schema.sql";
+        let mut host = LspHost::new();
+        host.set_session_context_from_ddl(schema, Some(file_uri))
+            .unwrap();
+
+        let uri = "file:///query.sql";
+        host.open_document(uri, 1, "SELECT total FROM orders".to_string());
+
+        let ref_offset = "SELECT ".len(); // points to "total"
+        let result = host.definition_info(uri, ref_offset);
+        assert!(result.is_some(), "expected definition for schema column");
+        let (target_uri, start, end) = result.unwrap();
+        assert_eq!(target_uri.as_deref(), Some(file_uri));
+        let schema_offset = schema.find("total").unwrap();
+        assert_eq!(start, schema_offset);
+        assert_eq!(end, schema_offset + "total".len());
+    }
+
+    #[test]
     fn syntax_error_for_create_table_as_missing_select() {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";

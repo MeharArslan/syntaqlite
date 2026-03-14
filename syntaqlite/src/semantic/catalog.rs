@@ -77,6 +77,8 @@ struct RelationEntry {
     without_rowid: bool,
     /// Where this relation was defined, if known.
     definition_site: Option<DefinitionSite>,
+    /// Where each column was defined, keyed by lowercase column name.
+    column_definition_sites: HashMap<String, DefinitionSite>,
 }
 
 #[derive(Debug, Clone)]
@@ -185,6 +187,7 @@ impl CatalogLayerContents {
                 columns,
                 without_rowid,
                 definition_site: None,
+                column_definition_sites: HashMap::new(),
             },
         );
     }
@@ -214,6 +217,7 @@ impl CatalogLayerContents {
                 columns,
                 without_rowid: true, // views have no rowid
                 definition_site: None,
+                column_definition_sites: HashMap::new(),
             },
         );
     }
@@ -788,7 +792,7 @@ impl Catalog {
         (None, false)
     }
 
-    /// Record a definition site for a DDL statement, if `file_uri` is provided.
+    /// Record definition sites for a DDL statement (table + columns), if `file_uri` is provided.
     fn record_ddl_definition_site(
         &mut self,
         stmt: &AnyParsedStatement<'_>,
@@ -801,16 +805,45 @@ impl Catalog {
             return;
         };
         let key = canonical_name(&name);
-        if let Some(entry) = self.layers[CatalogLayer::Database.index()]
+        let Some(entry) = self.layers[CatalogLayer::Database.index()]
             .relations
             .get_mut(&key)
-        {
-            entry.definition_site = Some(DefinitionSite {
-                file_uri: uri.to_string(),
-                start,
-                end,
-            });
+        else {
+            return;
+        };
+        entry.definition_site = Some(DefinitionSite {
+            file_uri: uri.to_string(),
+            start,
+            end,
+        });
+
+        // Also record column definition sites.
+        let col_sites = ddl_column_spans(stmt, root, dialect.roles());
+        for (col_name, col_start, col_end) in col_sites {
+            entry.column_definition_sites.insert(
+                col_name,
+                DefinitionSite {
+                    file_uri: uri.to_string(),
+                    start: col_start,
+                    end: col_end,
+                },
+            );
         }
+    }
+
+    /// Return the definition site for a column in a relation, if one was recorded.
+    pub(crate) fn column_definition_site(
+        &self,
+        table: &str,
+        column: &str,
+    ) -> Option<&DefinitionSite> {
+        let col_key = canonical_name(column);
+        for layer in self.all_layers_ordered() {
+            if let Some(rel) = layer.relation(table) {
+                return rel.column_definition_sites.get(&col_key);
+            }
+        }
+        None
     }
 
     /// Return the definition site for a relation, if one was recorded.
@@ -925,6 +958,67 @@ fn ddl_name_span(
     }
     let off = s.as_ptr() as usize - stmt.source().as_ptr() as usize;
     Some((s.to_ascii_lowercase(), off, off + s.len()))
+}
+
+/// Extract column name spans from a `CREATE TABLE` statement.
+///
+/// Returns `[(lowercase_name, start, end)]` for each `ColumnDef` child.
+pub(crate) fn ddl_column_spans(
+    stmt: &AnyParsedStatement<'_>,
+    root: AnyNodeId,
+    roles: &[SemanticRole],
+) -> Vec<(String, usize, usize)> {
+    let mut out = Vec::new();
+    let Some((tag, fields)) = stmt.extract_fields(root) else { return out };
+    let Some(&SemanticRole::DefineTable { columns, .. }) = roles.get(u32::from(tag) as usize) else {
+        return out;
+    };
+    if columns == FIELD_ABSENT {
+        return out;
+    }
+    let FieldValue::NodeId(col_list_id) = fields[columns as usize] else { return out };
+    if col_list_id.is_null() {
+        return out;
+    }
+    let Some(children) = stmt.list_children(col_list_id) else { return out };
+    let source_start = stmt.source().as_ptr() as usize;
+
+    for &child_id in children {
+        if child_id.is_null() {
+            continue;
+        }
+        if let Some((name, start, end)) = column_def_name_span(stmt, child_id, roles, source_start) {
+            out.push((name.to_ascii_lowercase(), start, end));
+        }
+    }
+    out
+}
+
+/// Extract the name and byte offset of a single `ColumnDef` node.
+fn column_def_name_span<'a>(
+    stmt: &AnyParsedStatement<'a>,
+    node_id: AnyNodeId,
+    roles: &[SemanticRole],
+    source_start: usize,
+) -> Option<(&'a str, usize, usize)> {
+    let (tag, fields) = stmt.extract_fields(node_id)?;
+    let SemanticRole::ColumnDef { name: name_idx, .. } = roles.get(u32::from(tag) as usize)? else {
+        return None;
+    };
+    let FieldValue::NodeId(name_id) = fields[*name_idx as usize] else { return None };
+    if name_id.is_null() {
+        return None;
+    }
+    let (_, name_fields) = stmt.extract_fields(name_id)?;
+    for j in 0..name_fields.len() {
+        if let FieldValue::Span(s) = name_fields[j]
+            && !s.is_empty()
+        {
+            let off = s.as_ptr() as usize - source_start;
+            return Some((s, off, off + s.len()));
+        }
+    }
+    None
 }
 
 /// Extract columns for a table/view DDL contribution.
