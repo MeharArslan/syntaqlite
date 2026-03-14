@@ -10,9 +10,7 @@ import re
 
 FORMATTER_NAMES = ["syntaqlite", "prettier-cst", "sql-formatter", "sqlglot[c]", "sleek", "sqruff"]
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
-TMPL_DIR = os.path.join(REPO, "web", "docs", "content", "reference")
+TMPL_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # ─── Markdown table helper ───────────────────────────────────────
