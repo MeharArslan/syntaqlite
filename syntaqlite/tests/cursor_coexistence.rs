@@ -7,8 +7,8 @@
 //! takes `&self`, so the parser can be moved into the same struct as the
 //! session it produced.
 
-use syntaqlite::parse::{IncrementalParseSession, ParseSession};
 use syntaqlite::parse::Tokenizer;
+use syntaqlite::parse::{IncrementalParseSession, ParseSession};
 use syntaqlite::{ParseOutcome, Parser};
 
 // ── Parser + ParseSession coexistence ────────────────────────────────────

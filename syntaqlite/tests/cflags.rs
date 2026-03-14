@@ -23,10 +23,10 @@
 //! The `saw_subquery` tests verify the `OMIT_SUBQUERY` detection mechanism,
 //! which uses a parser flag rather than keyword suppression.
 
+use syntaqlite::ParseOutcome;
+use syntaqlite::parse::TokenType;
 use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
 use syntaqlite::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVersion};
-use syntaqlite::parse::TokenType;
-use syntaqlite::ParseOutcome;
 
 const fn tk(t: TokenType) -> u32 {
     t as u32

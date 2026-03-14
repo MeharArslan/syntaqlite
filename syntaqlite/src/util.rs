@@ -6,10 +6,10 @@
 use std::io::{self, Write};
 
 #[doc(inline)]
-pub use crate::sqlite::cflags::SqliteFlag;
-#[doc(inline)]
 #[cfg(feature = "validation")]
 pub use crate::semantic::render::{DiagnosticRenderer, SourceContext};
+#[doc(inline)]
+pub use crate::sqlite::cflags::SqliteFlag;
 #[doc(inline)]
 pub use syntaqlite_syntax::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVersion};
 

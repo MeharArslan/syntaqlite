@@ -14,7 +14,7 @@ node BinaryExpr {
             PLUS="+" MINUS="-" STAR="*" SLASH="/" REM="%"
             LT="<" GT=">" LE="<=" GE=">=" EQ="=" NE="!="
             AND="AND" OR="OR" BIT_AND="&" BIT_OR="|"
-            LSHIFT="<<" RSHIFT=">>" CONCAT="||" PTR="->"
+            LSHIFT="<<" RSHIFT=">>" CONCAT="||" PTR="->" PTR2="->>"
           })
           " " child_prec(right, op, right)
         }

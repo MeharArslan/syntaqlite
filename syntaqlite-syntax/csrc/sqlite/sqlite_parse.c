@@ -8714,9 +8714,11 @@ static YYACTIONTYPE yy_reduce(
       break;
     case 186: /* expr ::= expr PTR expr */
     {
-      yylhsminor.yy141 =
-          synq_parse_binary_expr(pCtx, SYNTAQLITE_BINARY_OP_PTR,
-                                 yymsp[-2].minor.yy141, yymsp[0].minor.yy141);
+      SyntaqliteBinaryOp op = (yymsp[-1].minor.yy0.n == 3)
+                                  ? SYNTAQLITE_BINARY_OP_PTR2
+                                  : SYNTAQLITE_BINARY_OP_PTR;
+      yylhsminor.yy141 = synq_parse_binary_expr(pCtx, op, yymsp[-2].minor.yy141,
+                                                yymsp[0].minor.yy141);
     }
       yymsp[-2].minor.yy141 = yylhsminor.yy141;
       break;
@@ -10035,7 +10037,7 @@ static void yy_syntax_error(
   SynqSqliteParseARG_FETCH SynqSqliteParseCTX_FETCH
 #define TOKEN yyminor
       /************ Begin %syntax_error code
-       ****************************************/
+         ****************************************/
 
       (void) yymajor;
   (void)TOKEN;

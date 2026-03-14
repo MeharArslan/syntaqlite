@@ -143,6 +143,26 @@ def _validate_sql_with_sqlite(sql):
 NO_BYTECODE_PREFIXES = ('CREATE', 'ALTER', 'DROP', 'DETACH')
 
 
+def _normalize_explain(raw):
+    """Strip the 'comment' column from EXPLAIN output.
+
+    The comment column contains source-text snippets (e.g. "r[10]=x+1")
+    that change with whitespace reformatting but don't affect semantics.
+    EXPLAIN uses fixed-width columnar output; the comment starts at the
+    'comment' header position.
+    """
+    lines = raw.decode("utf-8", errors="replace").splitlines()
+    if len(lines) < 2:
+        return raw
+    # Find the comment column offset from the header line.
+    header = lines[0]
+    col = header.find("comment")
+    if col < 0:
+        return raw
+    # Truncate each line at the comment column.
+    return "\n".join(line[:col].rstrip() for line in lines[2:])  # skip header+separator
+
+
 def _get_explain_bytecode(sql):
     """Get EXPLAIN bytecode for SQL, or None if not applicable."""
     sql_stripped = sql.strip().rstrip(';').strip()
@@ -157,7 +177,7 @@ def _get_explain_bytecode(sql):
             capture_output=True, timeout=10,
         )
         if p.returncode == 0:
-            return p.stdout
+            return _normalize_explain(p.stdout)
         return None
     except subprocess.TimeoutExpired:
         return None

@@ -175,6 +175,7 @@ pub(crate) enum Item {
         name: String,
         child_type: String,
         fmt: Option<Vec<Fmt>>,
+        prepend: bool,
     },
     Abstract {
         name: String,
@@ -839,20 +840,28 @@ impl Parser {
         let name = self.ident()?;
         self.expect(&Token::LBrace)?;
         let child_type = self.ident()?;
-        let fmt = if self.at("fmt") {
-            self.advance();
-            self.expect(&Token::LBrace)?;
-            let items = self.parse_fmt_seq()?;
-            self.expect(&Token::RBrace)?;
-            Some(items)
-        } else {
-            None
-        };
+        let mut fmt = None;
+        let mut prepend = false;
+        loop {
+            if self.at("fmt") {
+                self.advance();
+                self.expect(&Token::LBrace)?;
+                let items = self.parse_fmt_seq()?;
+                self.expect(&Token::RBrace)?;
+                fmt = Some(items);
+            } else if self.at("prepend") {
+                self.advance();
+                prepend = true;
+            } else {
+                break;
+            }
+        }
         self.expect(&Token::RBrace)?;
         Ok(Item::List {
             name,
             child_type,
             fmt,
+            prepend,
         })
     }
 

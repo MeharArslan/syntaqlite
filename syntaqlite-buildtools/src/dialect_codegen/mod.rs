@@ -65,6 +65,7 @@ pub(crate) struct ListRef<'a> {
     pub(crate) child_type: &'a str,
     #[expect(dead_code)]
     pub(crate) fmt: Option<&'a [Fmt]>,
+    pub(crate) prepend: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -139,11 +140,13 @@ impl<'a> AstModel<'a> {
                     name,
                     child_type,
                     fmt,
+                    prepend,
                 } => {
                     let list = ListRef {
                         name: name.as_str(),
                         child_type: child_type.as_str(),
                         fmt: fmt.as_deref(),
+                        prepend: *prepend,
                     };
                     list_names.insert(list.name);
                     lists.push(list);
@@ -285,12 +288,14 @@ impl<'a> AstModel<'a> {
                     name,
                     child_type,
                     fmt,
+                    prepend,
                 } => {
                     let name_str = name.as_str();
                     let list = ListRef {
                         name: name_str,
                         child_type: child_type.as_str(),
                         fmt: fmt.as_deref(),
+                        prepend: *prepend,
                     };
 
                     if tag_map.contains_key(name_str) {

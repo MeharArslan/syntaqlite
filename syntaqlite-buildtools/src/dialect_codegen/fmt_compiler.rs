@@ -1139,6 +1139,7 @@ mod tests {
             name: "ExprList".into(),
             child_type: "Expr".into(),
             fmt: None,
+            prepend: false,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -1194,6 +1195,7 @@ mod tests {
                 name: "FooList".into(),
                 child_type: "Foo".into(),
                 fmt: None,
+                prepend: false,
             },
         ];
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();

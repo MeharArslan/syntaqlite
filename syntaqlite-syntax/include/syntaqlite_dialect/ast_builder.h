@@ -157,6 +157,41 @@ static inline uint32_t synq_parse_list_append(SynqParseCtx* ctx,
   return list_id;
 }
 
+// Like list_append, but inserts the child at the front of the list.
+// Used for right-recursive grammar rules where the innermost (last in source)
+// clause reduces first, so each outer clause must prepend to maintain source
+// order.
+static inline uint32_t synq_parse_list_prepend(SynqParseCtx* ctx,
+                                               uint32_t tag,
+                                               uint32_t list_id,
+                                               uint32_t child) {
+  if (list_id == SYNTAQLITE_NULL_NODE) {
+    return synq_parse_list_append(ctx, tag, list_id, child);
+  }
+
+  // Auto-flush completed inner lists above the target.
+  while (syntaqlite_vec_at(&ctx->list_stack,
+                           syntaqlite_vec_len(&ctx->list_stack) - 1)
+             .node_id != list_id) {
+    synq_parse_list_flush_top(ctx);
+  }
+
+  // Find the list descriptor to get its start offset.
+  SynqListDesc* desc = &syntaqlite_vec_at(
+      &ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1);
+  uint32_t insert_at = desc->offset;
+  uint32_t len = syntaqlite_vec_len(&ctx->child_buf);
+
+  // Make room: push a dummy, shift elements right, insert at front.
+  syntaqlite_vec_push(&ctx->child_buf, child, ctx->mem);
+  for (uint32_t i = len; i > insert_at; --i) {
+    syntaqlite_vec_at(&ctx->child_buf, i) =
+        syntaqlite_vec_at(&ctx->child_buf, i - 1);
+  }
+  syntaqlite_vec_at(&ctx->child_buf, insert_at) = child;
+  return list_id;
+}
+
 static inline void synq_parse_list_flush(SynqParseCtx* ctx) {
   while (syntaqlite_vec_len(&ctx->list_stack) > 0) {
     synq_parse_list_flush_top(ctx);

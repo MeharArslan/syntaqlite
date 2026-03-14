@@ -25,6 +25,7 @@ node UpsertClause {
 
 list UpsertClauseList {
   UpsertClause
+  prepend
   fmt { for_each(sep: hardline) { child(_item) } }
 }
 

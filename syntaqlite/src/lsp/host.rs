@@ -983,7 +983,10 @@ mod tests {
         host.open_document(uri, 1, sql.to_string());
         let items = host.completion_items(uri, sql.len());
         let labels: Vec<&str> = items.iter().map(|e| e.label.as_str()).collect();
-        assert!(labels.contains(&"ON"), "ON should be suggested, got: {labels:?}");
+        assert!(
+            labels.contains(&"ON"),
+            "ON should be suggested, got: {labels:?}"
+        );
     }
 
     #[test]
@@ -993,8 +996,12 @@ mod tests {
         let sql = "CREATE TABLE t1 (a INT, b TEXT);\nCREATE TABLE t2 (c INT);\nSELECT t1.";
         host.open_document(uri, 1, sql.to_string());
         let info = host.completion_info_at_offset(uri, sql.len());
-        assert_eq!(info.qualifier.as_deref(), Some("t1"),
-            "should detect t1 as qualifier, got: {:?}", info.qualifier);
+        assert_eq!(
+            info.qualifier.as_deref(),
+            Some("t1"),
+            "should detect t1 as qualifier, got: {:?}",
+            info.qualifier
+        );
     }
 
     #[test]
@@ -1007,9 +1014,14 @@ mod tests {
         let labels: Vec<&str> = items.iter().map(|e| e.label.as_str()).collect();
         assert!(labels.contains(&"a"), "should suggest column a");
         assert!(labels.contains(&"b"), "should suggest column b");
-        assert!(!labels.contains(&"c"), "should NOT suggest column c from t2");
-        assert!(items.iter().all(|e| e.kind == CompletionKind::Column),
-            "all items should be columns, got: {labels:?}");
+        assert!(
+            !labels.contains(&"c"),
+            "should NOT suggest column c from t2"
+        );
+        assert!(
+            items.iter().all(|e| e.kind == CompletionKind::Column),
+            "all items should be columns, got: {labels:?}"
+        );
     }
 
     #[test]
@@ -1020,7 +1032,10 @@ mod tests {
         host.open_document(uri, 1, sql.to_string());
         let items = host.completion_items(uri, sql.len());
         let labels: Vec<&str> = items.iter().map(|e| e.label.as_str()).collect();
-        assert!(labels.contains(&"users"), "should suggest table users, got: {labels:?}");
+        assert!(
+            labels.contains(&"users"),
+            "should suggest table users, got: {labels:?}"
+        );
     }
 
     #[test]
@@ -1047,13 +1062,14 @@ mod tests {
         let items = host.completion_items(uri, sql.len());
 
         // Find the first column and first function in the list.
-        let first_column_pos = items.iter().position(|e| e.kind() == CompletionKind::Column);
-        let first_function_pos = items.iter().position(|e| e.kind() == CompletionKind::Function);
+        let first_column_pos = items
+            .iter()
+            .position(|e| e.kind() == CompletionKind::Column);
+        let first_function_pos = items
+            .iter()
+            .position(|e| e.kind() == CompletionKind::Function);
 
-        assert!(
-            first_column_pos.is_some(),
-            "should have column completions"
-        );
+        assert!(first_column_pos.is_some(), "should have column completions");
         assert!(
             first_function_pos.is_some(),
             "should have function completions"
@@ -1067,4 +1083,3 @@ mod tests {
         );
     }
 }
-

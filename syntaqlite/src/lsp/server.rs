@@ -82,7 +82,13 @@ impl LspServer {
             hover_provider: Some(HoverProviderCapability::Simple(true)),
             document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
             completion_provider: Some(CompletionOptions {
-                trigger_characters: Some(vec![" ".into(), ".".into(), "\n".into(), "\t".into(), ";".into()]),
+                trigger_characters: Some(vec![
+                    " ".into(),
+                    ".".into(),
+                    "\n".into(),
+                    "\t".into(),
+                    ";".into(),
+                ]),
                 ..Default::default()
             }),
             signature_help_provider: Some(SignatureHelpOptions {

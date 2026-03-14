@@ -21,9 +21,9 @@ static const char* const display_literal_type[] = {
 };
 
 static const char* const display_binary_op[] = {
-    "PLUS",   "MINUS",  "STAR",   "SLASH",  "REM", "LT", "GT",
-    "LE",     "GE",     "EQ",     "NE",     "AND", "OR", "BIT_AND",
-    "BIT_OR", "LSHIFT", "RSHIFT", "CONCAT", "PTR",
+    "PLUS",   "MINUS",  "STAR",   "SLASH",  "REM", "LT",   "GT",
+    "LE",     "GE",     "EQ",     "NE",     "AND", "OR",   "BIT_AND",
+    "BIT_OR", "LSHIFT", "RSHIFT", "CONCAT", "PTR", "PTR2",
 };
 
 static const char* const display_unary_op[] = {

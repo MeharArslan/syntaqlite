@@ -22,10 +22,10 @@
 //! - 3.24.0: `FILTER (WHERE ...)` → error near "("
 //! - 3.25.0: same query (with OVER) → success
 
+use syntaqlite::ParseOutcome;
+use syntaqlite::parse::TokenType;
 use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
 use syntaqlite::util::SqliteVersion;
-use syntaqlite::parse::TokenType;
-use syntaqlite::ParseOutcome;
 
 /// Shorthand: convert a `TokenType` variant to its raw u32 value.
 const fn tk(t: TokenType) -> u32 {

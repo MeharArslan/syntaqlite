@@ -11,8 +11,7 @@ fn main() {
     // script (via its `links = "syntaqlite_syntax"` key in Cargo.toml).
     // Re-emit them so rustdoc can find the native libraries when linking
     // doc-test binaries.
-    let out_dir =
-        std::env::var("DEP_SYNTAQLITE_SYNTAX_OUT_DIR").unwrap_or_default();
+    let out_dir = std::env::var("DEP_SYNTAQLITE_SYNTAX_OUT_DIR").unwrap_or_default();
     if !out_dir.is_empty() {
         println!("cargo:rustc-link-search=native={out_dir}");
     }

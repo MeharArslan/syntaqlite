@@ -237,6 +237,7 @@ pub enum BinaryOp {
     Rshift = 16,
     Concat = 17,
     Ptr = 18,
+    Ptr2 = 19,
 }
 
 impl BinaryOp {
@@ -261,6 +262,7 @@ impl BinaryOp {
             BinaryOp::Rshift => "RSHIFT",
             BinaryOp::Concat => "CONCAT",
             BinaryOp::Ptr => "PTR",
+            BinaryOp::Ptr2 => "PTR2",
         }
     }
 }

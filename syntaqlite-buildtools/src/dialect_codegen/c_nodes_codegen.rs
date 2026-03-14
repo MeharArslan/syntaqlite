@@ -238,7 +238,7 @@ impl AstModel<'_> {
             emit_node_builder_inline(&mut w, node.name, node.fields, enum_names, flags_names);
         }
         for list in self.lists() {
-            emit_list_builder_inline(&mut w, list.name);
+            emit_list_builder_inline(&mut w, list.name, list.prepend);
         }
 
         w.extern_c_end();
@@ -300,9 +300,14 @@ fn emit_node_builder_inline(
     w.newline();
 }
 
-fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
+fn emit_list_builder_inline(w: &mut CWriter, name: &str, prepend: bool) {
     let func = builder_name(name);
     let tag = tag_name(name);
+    let builder_fn = if prepend {
+        "synq_parse_list_prepend"
+    } else {
+        "synq_parse_list_append"
+    };
 
     w.func_signature(
         "static inline ",
@@ -312,9 +317,7 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
         " {",
     );
     w.indent();
-    w.line(&format!(
-        "return synq_parse_list_append(ctx, {tag}, list_id, child);"
-    ));
+    w.line(&format!("return {builder_fn}(ctx, {tag}, list_id, child);"));
     w.dedent();
     w.line("}");
     w.newline();

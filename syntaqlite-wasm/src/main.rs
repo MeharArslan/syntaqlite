@@ -8,10 +8,10 @@ use std::slice;
 
 use serde::Serialize;
 
-use syntaqlite::lsp::LspHost;
-use syntaqlite::util::{SqliteFlag, SqliteFlags, SqliteVersion};
 use syntaqlite::any::AnyDialect;
 use syntaqlite::fmt::KeywordCase;
+use syntaqlite::lsp::LspHost;
+use syntaqlite::util::{SqliteFlag, SqliteFlags, SqliteVersion};
 use syntaqlite::{FormatConfig, Formatter, ValidationConfig};
 
 thread_local! {
@@ -218,8 +218,10 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
     let dialect = try_wasm!(get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first"));
     let grammar = (*dialect).clone();
-    let parser =
-        syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::parse::ParserConfig::default());
+    let parser = syntaqlite::any::AnyParser::with_config(
+        grammar,
+        &syntaqlite::parse::ParserConfig::default(),
+    );
     let mut session = parser.parse(&source);
     let mut nodes: Vec<serde_json::Value> = Vec::new();
     loop {

@@ -11,11 +11,11 @@ use std::path::PathBuf;
 use clap::ValueEnum;
 use syntaqlite::any::AnyDialect;
 use syntaqlite::any::{AnyParser, ParseOutcome};
-use syntaqlite::util::DiagnosticRenderer;
 use syntaqlite::fmt::FormatError;
-use syntaqlite::semantic::DiagnosticMessage;
 use syntaqlite::fmt::KeywordCase;
+use syntaqlite::semantic::DiagnosticMessage;
 use syntaqlite::semantic::Severity;
+use syntaqlite::util::DiagnosticRenderer;
 use syntaqlite::{
     Catalog, Diagnostic, FormatConfig, Formatter, SemanticAnalyzer, ValidationConfig,
 };
@@ -120,8 +120,9 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
         Command::Validate { files, lang } => {
             require_dialect(dialect).and_then(|d| cmd_validate(&d, &files, lang))
         }
-        Command::Lsp => require_dialect(dialect)
-            .and_then(|d| syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))),
+        Command::Lsp => require_dialect(dialect).and_then(|d| {
+            syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
+        }),
         Command::Fmt {
             files,
             line_width,

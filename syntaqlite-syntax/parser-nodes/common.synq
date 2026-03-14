@@ -6,7 +6,7 @@ enum BinaryOp {
   PLUS MINUS STAR SLASH REM
   LT GT LE GE EQ NE
   AND OR BIT_AND BIT_OR LSHIFT RSHIFT
-  CONCAT PTR
+  CONCAT PTR PTR2
 
   fmt_precedence {
     OR=1 AND=2 EQ=3 NE=3
@@ -14,13 +14,13 @@ enum BinaryOp {
     BIT_AND=5 BIT_OR=5 LSHIFT=5 RSHIFT=5
     PLUS=6 MINUS=6
     STAR=7 SLASH=7 REM=7
-    CONCAT=8 PTR=8
+    CONCAT=8 PTR=8 PTR2=8
   }
   fmt_group {
     OR=0 AND=0 EQ=0 NE=0 LT=0 GT=0 LE=0 GE=0
     BIT_AND=1 BIT_OR=1 LSHIFT=1 RSHIFT=1
     PLUS=0 MINUS=0 STAR=0 SLASH=0 REM=0
-    CONCAT=0 PTR=0
+    CONCAT=0 PTR=0 PTR2=0
   }
   fmt_paren_boundary { AND }
 }

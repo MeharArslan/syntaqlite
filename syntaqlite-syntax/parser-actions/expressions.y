@@ -85,8 +85,9 @@ expr(A) ::= expr(L) CONCAT expr(R). {
     A = synq_parse_binary_expr(pCtx, SYNTAQLITE_BINARY_OP_CONCAT, L, R);
 }
 
-expr(A) ::= expr(L) PTR expr(R). {
-    A = synq_parse_binary_expr(pCtx, SYNTAQLITE_BINARY_OP_PTR, L, R);
+expr(A) ::= expr(L) PTR(OP) expr(R). {
+    SyntaqliteBinaryOp op = (OP.n == 3) ? SYNTAQLITE_BINARY_OP_PTR2 : SYNTAQLITE_BINARY_OP_PTR;
+    A = synq_parse_binary_expr(pCtx, op, L, R);
 }
 
 // ============ Unary Expressions ============

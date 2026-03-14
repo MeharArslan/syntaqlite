@@ -154,18 +154,18 @@ pub mod util;
 // Parsing — only the two types needed to parse and consume results.
 #[doc(inline)]
 #[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::Parser;
+pub use syntaqlite_syntax::ParseOutcome;
 #[doc(inline)]
 #[cfg(feature = "sqlite")]
-pub use syntaqlite_syntax::ParseOutcome;
+pub use syntaqlite_syntax::Parser;
 
 // Formatting — the formatter and its config.
 #[doc(inline)]
 #[cfg(feature = "fmt")]
-pub use fmt::formatter::Formatter;
+pub use fmt::FormatConfig;
 #[doc(inline)]
 #[cfg(feature = "fmt")]
-pub use fmt::FormatConfig;
+pub use fmt::formatter::Formatter;
 
 // Validation — the core types needed for a validation pass.
 #[doc(inline)]
@@ -230,15 +230,15 @@ pub fn sqlite_dialect() -> Dialect {
 /// ```
 pub mod parse {
     #[doc(inline)]
+    pub use syntaqlite_syntax::any::MacroRegion;
+    #[doc(inline)]
+    pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
+    #[doc(inline)]
     #[cfg(feature = "sqlite")]
     pub use syntaqlite_syntax::{
         IncrementalParseSession, ParseError, ParseErrorKind, ParseOutcome, ParseSession,
         ParsedStatement, Parser, ParserToken, Token, TokenType, Tokenizer,
     };
-    #[doc(inline)]
-    pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
-    #[doc(inline)]
-    pub use syntaqlite_syntax::any::MacroRegion;
 }
 
 /// Type-erased (grammar-agnostic) parser and tokenizer types.

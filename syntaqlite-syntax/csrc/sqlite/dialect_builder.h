@@ -985,8 +985,8 @@ static inline uint32_t synq_parse_cte_list(SynqParseCtx* ctx,
 static inline uint32_t synq_parse_upsert_clause_list(SynqParseCtx* ctx,
                                                      uint32_t list_id,
                                                      uint32_t child) {
-  return synq_parse_list_append(ctx, SYNTAQLITE_NODE_UPSERT_CLAUSE_LIST,
-                                list_id, child);
+  return synq_parse_list_prepend(ctx, SYNTAQLITE_NODE_UPSERT_CLAUSE_LIST,
+                                 list_id, child);
 }
 
 static inline uint32_t synq_parse_set_clause_list(SynqParseCtx* ctx,
