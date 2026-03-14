@@ -455,7 +455,7 @@ def collect_parser():
             f"-n 'sqlglot[c]' '{UV} run --directory {DIR} python {parse_dir}/_parse_sqlglot.py {sqlfile}' "
             f"-n sqlparser-rs '{SQLPARSER_RS} {sqlfile}' "
             f"-n node-sql-parser 'node {parse_dir}/_parse_node.js {sqlfile}' "
-            f"-n sqlfluff '{UV} run --directory {DIR} sqlfluff parse {sqlfile} --dialect sqlite' "
+            f"-n sqlfluff '{UV} run --directory {DIR} sqlfluff parse {sqlfile} --dialect sqlite --large-file-skip-byte-limit 0' "
         )
         subprocess.run(cmd, shell=True, cwd=DIR)
 
