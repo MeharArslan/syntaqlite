@@ -21,8 +21,8 @@ use super::catalog::{
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 use super::fuzzy::best_suggestion;
 use super::model::{
-    CompletionContext, CompletionInfo, Resolution, ResolvedSymbol, SemanticModel, SemanticToken,
-    StoredComment, StoredToken,
+    CompletionContext, CompletionInfo, DefinitionLocation, Resolution, ResolvedSymbol,
+    SemanticModel, SemanticToken, StoredComment, StoredToken,
 };
 use super::{AnalysisMode, ValidationConfig};
 
@@ -272,6 +272,7 @@ impl SemanticAnalyzer {
         let mut tokens: Vec<StoredToken> = Vec::new();
         let mut comments: Vec<StoredComment> = Vec::new();
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
+        let mut definition_offsets: HashMap<String, (usize, usize)> = HashMap::new();
         let mut resolutions: Vec<Resolution> = Vec::new();
 
         loop {
@@ -331,6 +332,11 @@ impl SemanticAnalyzer {
             self.catalog
                 .accumulate_ddl(CatalogLayer::Document, &erased, root_id, &self.dialect);
 
+            // Record DDL definition offsets for go-to-definition.
+            if let Some((name, off)) = ddl_name_offset(&erased, root_id, &self.dialect) {
+                definition_offsets.insert(name, off);
+            }
+
             ValidationPass::run(
                 &erased,
                 root_id,
@@ -339,6 +345,7 @@ impl SemanticAnalyzer {
                 config,
                 &mut diagnostics,
                 &mut resolutions,
+                &mut definition_offsets,
             );
         }
 
@@ -471,10 +478,6 @@ fn merge_expected_tokens(into: &mut Vec<AnyTokenType>, extra: Vec<AnyTokenType>)
     }
 }
 
-// ── ValidationPass ────────────────────────────────────────────────────────────
-
-/// Per-statement validation pass.  Reads the dialect's [`SemanticRole`] table
-/// and dispatches node visits to role-specific handlers.
 // ── QueryScope ─────────────────────────────────────────────────────────────────
 
 /// Whether a table has an implicit rowid column.
@@ -486,6 +489,12 @@ enum RowIdPolicy {
     WithoutRowId,
 }
 
+impl From<bool> for RowIdPolicy {
+    fn from(without_rowid: bool) -> Self {
+        if without_rowid { Self::WithoutRowId } else { Self::WithRowId }
+    }
+}
+
 /// A table entry in the query scope.
 struct ActiveTable {
     /// `None` = table exists but column list is unknown (accept any ref).
@@ -493,16 +502,26 @@ struct ActiveTable {
     rowid: RowIdPolicy,
 }
 
+impl ActiveTable {
+    /// Does this table have `column` (by name or implicit rowid)?
+    fn has_column(&self, column: &str) -> bool {
+        match &self.columns {
+            Some(cs) => {
+                cs.iter().any(|c| c.eq_ignore_ascii_case(column))
+                    || (self.rowid == RowIdPolicy::WithRowId && is_rowid_alias(column))
+            }
+            None => true, // unknown columns — accept anything
+        }
+    }
+}
+
 /// Tracks which tables are "active" (in FROM/JOIN) for column resolution.
 ///
-/// Completely separate from [`Catalog`] (schema-level).  The query scope
-/// answers: "given the tables in this SELECT's FROM clause, can we resolve
-/// this column reference?"
-///
-/// Frames are pushed/popped as we enter/leave SELECT statements, subqueries,
-/// and DML blocks.  Inner frames are searched first (supporting correlated
-/// subqueries).  CTE definitions are never stored here — CTEs only contribute
-/// columns when they appear in a FROM clause.
+/// Completely separate from [`Catalog`] (schema-level).  Frames are
+/// pushed/popped as we enter/leave SELECT statements, subqueries, and DML
+/// blocks.  Inner frames are searched first (supporting correlated subqueries).
+/// CTE definitions are never stored here — CTEs only contribute columns when
+/// they appear in a FROM clause.
 #[derive(Default)]
 struct QueryScope {
     frames: Vec<HashMap<String, ActiveTable>>,
@@ -518,17 +537,9 @@ impl QueryScope {
     }
 
     /// Register a table (or alias) as active in the current scope frame.
-    fn add_table(
-        &mut self,
-        name: &str,
-        columns: Option<Vec<String>>,
-        rowid: RowIdPolicy,
-    ) {
+    fn add_table(&mut self, name: &str, columns: Option<Vec<String>>, rowid: RowIdPolicy) {
         if let Some(frame) = self.frames.last_mut() {
-            frame.insert(
-                name.to_ascii_lowercase(),
-                ActiveTable { columns, rowid },
-            );
+            frame.insert(name.to_ascii_lowercase(), ActiveTable { columns, rowid });
         }
     }
 
@@ -542,32 +553,22 @@ impl QueryScope {
     }
 
     fn resolve_qualified(&self, table: &str, column: &str) -> ColumnResolution {
+        let key = table.to_ascii_lowercase();
         for frame in self.frames.iter().rev() {
-            if let Some(entry) = frame.get(&table.to_ascii_lowercase()) {
-                return match &entry.columns {
-                    Some(cs)
-                        if cs
-                            .iter()
-                            .any(|c: &String| c.eq_ignore_ascii_case(column)) =>
-                    {
-                        ColumnResolution::Found {
-                            table: table.to_string(),
-                            all_columns: cs.clone(),
-                        }
-                    }
-                    Some(cs) if entry.rowid == RowIdPolicy::WithRowId && is_rowid_alias(column) => {
-                        ColumnResolution::Found {
-                            table: table.to_string(),
-                            all_columns: cs.clone(),
-                        }
-                    }
-                    Some(_) => ColumnResolution::TableFoundColumnMissing,
-                    None => ColumnResolution::Found {
-                        table: table.to_string(),
-                        all_columns: Vec::new(),
-                    },
+            let Some(entry) = frame.get(&key) else { continue };
+            if entry.has_column(column) {
+                return ColumnResolution::Found {
+                    table: table.to_string(),
+                    all_columns: entry.columns.clone().unwrap_or_default(),
                 };
             }
+            return match &entry.columns {
+                Some(_) => ColumnResolution::TableFoundColumnMissing,
+                None => ColumnResolution::Found {
+                    table: table.to_string(),
+                    all_columns: Vec::new(),
+                },
+            };
         }
         ColumnResolution::TableNotFound
     }
@@ -576,25 +577,14 @@ impl QueryScope {
         for frame in self.frames.iter().rev() {
             let mut frame_has_unknown = false;
             for (tbl_name, entry) in frame {
-                match &entry.columns {
-                    Some(cs)
-                        if cs
-                            .iter()
-                            .any(|c: &String| c.eq_ignore_ascii_case(column)) =>
-                    {
-                        return ColumnResolution::Found {
-                            table: tbl_name.clone(),
-                            all_columns: cs.clone(),
-                        };
-                    }
-                    Some(cs) if entry.rowid == RowIdPolicy::WithRowId && is_rowid_alias(column) => {
-                        return ColumnResolution::Found {
-                            table: tbl_name.clone(),
-                            all_columns: cs.clone(),
-                        };
-                    }
-                    Some(_) => {}
-                    None => frame_has_unknown = true,
+                if entry.has_column(column) {
+                    return ColumnResolution::Found {
+                        table: tbl_name.clone(),
+                        all_columns: entry.columns.clone().unwrap_or_default(),
+                    };
+                }
+                if entry.columns.is_none() {
+                    frame_has_unknown = true;
                 }
             }
             // A table with unknown columns in this frame could own the column —
@@ -614,9 +604,9 @@ impl QueryScope {
         let mut names: Vec<String> = Vec::new();
         for frame in self.frames.iter().rev() {
             for (tbl_name, entry) in frame {
-                if table.is_none_or(|t: &str| tbl_name.eq_ignore_ascii_case(t)) {
+                if table.is_none_or(|t| tbl_name.eq_ignore_ascii_case(t)) {
                     if let Some(cs) = &entry.columns {
-                        names.extend(cs.iter().map(|c: &String| c.to_ascii_lowercase()));
+                        names.extend(cs.iter().map(|c| c.to_ascii_lowercase()));
                     }
                 }
             }
@@ -625,6 +615,29 @@ impl QueryScope {
         names.dedup();
         names
     }
+}
+
+/// Extract the definition name and byte-offset range from a DDL statement.
+///
+/// Returns `(lowercase_name, (start, end))` for CREATE TABLE / CREATE VIEW,
+/// or `None` for non-DDL statements.
+fn ddl_name_offset(
+    stmt: &AnyParsedStatement<'_>,
+    root: AnyNodeId,
+    dialect: &AnyDialect,
+) -> Option<(String, (usize, usize))> {
+    let (tag, fields) = stmt.extract_fields(root)?;
+    let role = dialect.roles().get(u32::from(tag) as usize)?;
+    let name_idx = match role {
+        SemanticRole::DefineTable { name, .. } | SemanticRole::DefineView { name, .. } => *name,
+        _ => return None,
+    };
+    let FieldValue::Span(s) = fields[name_idx as usize] else { return None };
+    if s.is_empty() {
+        return None;
+    }
+    let off = s.as_ptr() as usize - stmt.source().as_ptr() as usize;
+    Some((s.to_ascii_lowercase(), (off, off + s.len())))
 }
 
 /// SQLite's implicit rowid aliases.
@@ -636,6 +649,13 @@ fn is_rowid_alias(column: &str) -> bool {
 
 // ── ValidationPass ─────────────────────────────────────────────────────────────
 
+/// Extracted info for a single CTE binding.
+struct CteBindingInfo<'a> {
+    name: &'a str,
+    body_id: Option<AnyNodeId>,
+    declared_cols: Option<Vec<&'a str>>,
+}
+
 struct ValidationPass<'a> {
     roles: &'static [SemanticRole],
     source_start: usize,
@@ -644,6 +664,9 @@ struct ValidationPass<'a> {
     diagnostics: &'a mut Vec<Diagnostic>,
     resolutions: &'a mut Vec<Resolution>,
     scope: QueryScope,
+    /// Maps `lowercase(name)` → `(start_offset, end_offset)` for definition sites.
+    /// Populated from DDL (per-document) and CTE bindings (per-WITH scope).
+    definition_offsets: &'a mut HashMap<String, (usize, usize)>,
 }
 
 impl<'a> ValidationPass<'a> {
@@ -655,6 +678,7 @@ impl<'a> ValidationPass<'a> {
         config: &'a ValidationConfig,
         diagnostics: &'a mut Vec<Diagnostic>,
         resolutions: &'a mut Vec<Resolution>,
+        definition_offsets: &'a mut HashMap<String, (usize, usize)>,
     ) {
         let roles = dialect.roles();
         let source_start = stmt.source().as_ptr() as usize;
@@ -666,6 +690,7 @@ impl<'a> ValidationPass<'a> {
             diagnostics,
             resolutions,
             scope: QueryScope::default(),
+            definition_offsets,
         };
         pass.visit(stmt, root);
     }
@@ -849,24 +874,25 @@ impl<'a> ValidationPass<'a> {
         let alias = self.name_text(stmt, Self::field_node_id(fields, alias_idx));
         let scope_name = if alias.is_empty() { name } else { alias };
         let (columns, without_rowid) = self.catalog.table_source_info(name);
-        let rowid = if without_rowid {
-            RowIdPolicy::WithoutRowId
-        } else {
-            RowIdPolicy::WithRowId
-        };
 
         if is_known {
+            let definition = self
+                .definition_offsets
+                .get(&name.to_ascii_lowercase())
+                .map(|&(start, end)| DefinitionLocation { start, end });
             self.resolutions.push(Resolution {
                 start: offset,
                 end: offset + name.len(),
                 symbol: ResolvedSymbol::Table {
                     name: name.to_string(),
                     columns: columns.clone(),
+                    definition,
                 },
             });
         }
 
-        self.scope.add_table(scope_name, columns, rowid);
+        self.scope
+            .add_table(scope_name, columns, without_rowid.into());
     }
 
     fn visit_call(
@@ -1077,98 +1103,134 @@ impl<'a> ValidationPass<'a> {
         // (handled by visit_source_ref → scope.add_table).
         self.catalog.push_query_scope();
 
-        for cte_id in cte_ids.iter().copied() {
-            if cte_id.is_null() {
+        for &cte_id in cte_ids {
+            let Some(binding) = self.extract_cte_binding(stmt, cte_id) else {
                 continue;
-            }
-            let Some((cte_tag, cte_fields)) = stmt.extract_fields(cte_id) else {
-                continue;
-            };
-            let cte_tag_idx = u32::from(cte_tag) as usize;
-            let cte_role = self
-                .roles
-                .get(cte_tag_idx)
-                .copied()
-                .unwrap_or(SemanticRole::Transparent);
-
-            let SemanticRole::CteBinding {
-                name: cte_name_idx,
-                columns: columns_field_idx,
-                body: cte_body_idx,
-            } = cte_role
-            else {
-                continue;
-            };
-
-            let cte_name = match cte_fields[cte_name_idx as usize] {
-                FieldValue::Span(s) => s,
-                _ => "",
-            };
-            let cte_body_id = Self::field_node_id(&cte_fields, cte_body_idx);
-
-            // Extract declared column names (if a column list is present).
-            let declared_cols: Option<Vec<&'a str>> = if columns_field_idx == FIELD_ABSENT {
-                None
-            } else {
-                (|| -> Option<Vec<&'a str>> {
-                    let list_id = Self::field_node_id(&cte_fields, columns_field_idx)?;
-                    let children = stmt.list_children(list_id)?;
-                    let names: Vec<&'a str> = children
-                        .iter()
-                        .copied()
-                        .filter(|id| !id.is_null())
-                        .map(|id| self.name_text(stmt, Some(id)))
-                        .filter(|s| !s.is_empty())
-                        .collect();
-                    if names.is_empty() { None } else { Some(names) }
-                })()
             };
 
             // For recursive CTEs, register the name before visiting the body.
-            if is_recursive && !cte_name.is_empty() {
-                let cols = declared_cols
+            if is_recursive && !binding.name.is_empty() {
+                let cols = binding
+                    .declared_cols
                     .as_ref()
                     .map(|v| v.iter().map(ToString::to_string).collect());
-                self.catalog.add_query_table(cte_name, cols);
+                self.catalog.add_query_table(binding.name, cols);
             }
 
             self.scope.push();
-            self.visit_opt(stmt, cte_body_id);
+            self.visit_opt(stmt, binding.body_id);
             self.scope.pop();
 
-            if !cte_name.is_empty() {
-                if let Some(ref declared) = declared_cols {
-                    // Count result columns; emit diagnostic on mismatch.
-                    if let Some(actual) = self.count_result_columns(stmt, cte_body_id)
-                        && actual != declared.len()
-                    {
-                        let offset = self.span_offset(cte_name);
-                        self.diagnostics.push(Diagnostic {
-                            start_offset: offset,
-                            end_offset: offset + cte_name.len(),
-                            message: DiagnosticMessage::CteColumnCountMismatch {
-                                name: cte_name.to_string(),
-                                declared: declared.len(),
-                                actual,
-                            },
-                            severity: Severity::Error,
-                            help: None,
-                        });
-                    }
-                    // Register with declared column names regardless of count.
-                    let cols = declared.iter().map(ToString::to_string).collect();
-                    self.catalog.add_query_table(cte_name, Some(cols));
-                } else {
-                    // No declared column list: infer names from SELECT result columns.
-                    let inferred =
-                        cte_body_id.and_then(|id| columns_from_select(stmt, id, self.roles));
-                    self.catalog.add_query_table(cte_name, inferred);
-                }
+            if binding.name.is_empty() {
+                continue;
             }
+
+            // Record CTE definition offset for go-to-definition.
+            let name_offset = self.span_offset(binding.name);
+            self.definition_offsets.insert(
+                binding.name.to_ascii_lowercase(),
+                (name_offset, name_offset + binding.name.len()),
+            );
+
+            // Determine the CTE's column list and register it in the catalog.
+            let cols = if let Some(ref declared) = binding.declared_cols {
+                self.check_cte_column_count(stmt, binding.name, declared, binding.body_id);
+                Some(declared.iter().map(ToString::to_string).collect())
+            } else {
+                binding
+                    .body_id
+                    .and_then(|id| columns_from_select(stmt, id, self.roles))
+            };
+            self.catalog.add_query_table(binding.name, cols);
         }
 
         self.visit_opt(stmt, Self::field_node_id(fields, body_idx));
         self.catalog.pop_query_scope();
+    }
+
+    /// Extract CTE binding info from a node, or `None` if it's not a CTE.
+    fn extract_cte_binding(
+        &self,
+        stmt: &AnyParsedStatement<'a>,
+        cte_id: AnyNodeId,
+    ) -> Option<CteBindingInfo<'a>> {
+        if cte_id.is_null() {
+            return None;
+        }
+        let (tag, fields) = stmt.extract_fields(cte_id)?;
+        let role = self
+            .roles
+            .get(u32::from(tag) as usize)
+            .copied()
+            .unwrap_or(SemanticRole::Transparent);
+        let SemanticRole::CteBinding {
+            name: name_idx,
+            columns: cols_idx,
+            body: body_idx,
+        } = role
+        else {
+            return None;
+        };
+
+        let name = match fields[name_idx as usize] {
+            FieldValue::Span(s) => s,
+            _ => "",
+        };
+        let body_id = Self::field_node_id(&fields, body_idx);
+        let declared_cols = self.extract_declared_cols(stmt, &fields, cols_idx);
+        Some(CteBindingInfo {
+            name,
+            body_id,
+            declared_cols,
+        })
+    }
+
+    /// Extract declared CTE column names from the column list field.
+    fn extract_declared_cols(
+        &self,
+        stmt: &AnyParsedStatement<'a>,
+        fields: &NodeFields<'a>,
+        cols_idx: u8,
+    ) -> Option<Vec<&'a str>> {
+        if cols_idx == FIELD_ABSENT {
+            return None;
+        }
+        let list_id = Self::field_node_id(fields, cols_idx)?;
+        let children = stmt.list_children(list_id)?;
+        let names: Vec<&'a str> = children
+            .iter()
+            .copied()
+            .filter(|id| !id.is_null())
+            .map(|id| self.name_text(stmt, Some(id)))
+            .filter(|s| !s.is_empty())
+            .collect();
+        if names.is_empty() { None } else { Some(names) }
+    }
+
+    /// Emit a diagnostic if the CTE body has a different column count than declared.
+    fn check_cte_column_count(
+        &mut self,
+        stmt: &AnyParsedStatement<'a>,
+        cte_name: &str,
+        declared: &[&str],
+        body_id: Option<AnyNodeId>,
+    ) {
+        if let Some(actual) = self.count_result_columns(stmt, body_id)
+            && actual != declared.len()
+        {
+            let offset = self.span_offset(cte_name);
+            self.diagnostics.push(Diagnostic {
+                start_offset: offset,
+                end_offset: offset + cte_name.len(),
+                message: DiagnosticMessage::CteColumnCountMismatch {
+                    name: cte_name.to_string(),
+                    declared: declared.len(),
+                    actual,
+                },
+                severity: Severity::Error,
+                help: None,
+            });
+        }
     }
 
     /// Count the result columns of a SELECT body node.
@@ -1625,6 +1687,79 @@ mod tests {
             "unknown column should be flagged: {:?}",
             model.diagnostics()
         );
+    }
+
+    // ── Analyzer: go-to-definition ──────────────────────────────────────────────
+
+    #[test]
+    fn definition_cte_reference_jumps_to_cte_name() {
+        let src = "WITH cte AS (SELECT 1) SELECT * FROM cte";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &lenient());
+
+        // Click on "cte" in FROM.
+        let ref_offset = src.rfind("cte").unwrap();
+        let def = model.definition_at(ref_offset);
+        assert!(def.is_some(), "expected definition for CTE reference");
+        let def = def.unwrap();
+        let cte_def_offset = src.find("cte").unwrap();
+        assert_eq!(def.start, cte_def_offset, "definition should point to CTE name");
+        assert_eq!(def.end, cte_def_offset + "cte".len());
+    }
+
+    #[test]
+    fn definition_ddl_table_reference_jumps_to_create() {
+        let src = "CREATE TABLE users (id INTEGER); SELECT id FROM users;";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+
+        // Click on "users" in FROM clause.
+        let ref_offset = src.rfind("users").unwrap();
+        let def = model.definition_at(ref_offset);
+        assert!(
+            def.is_some(),
+            "expected definition for DDL table reference; resolutions: {:?}",
+            model.resolutions
+        );
+        let def = def.unwrap();
+        let ddl_offset = src.find("users").unwrap();
+        assert_eq!(def.start, ddl_offset, "definition should point to CREATE TABLE name");
+        assert_eq!(def.end, ddl_offset + "users".len());
+    }
+
+    #[test]
+    fn definition_cte_shadows_ddl() {
+        let src = "CREATE TABLE t (id INTEGER); WITH t AS (SELECT 1 AS id) SELECT * FROM t;";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+
+        // Find "t" in FROM — should point to CTE definition, not CREATE TABLE.
+        // "FROM t" — find the offset of the last "t"
+        let from_t_offset = src.rfind("FROM t").unwrap() + 5; // offset of "t" after FROM
+        let def = model.definition_at(from_t_offset);
+        assert!(def.is_some(), "expected definition for CTE-shadowed reference");
+        let def = def.unwrap();
+        // CTE "t" starts at "WITH t" — offset 29
+        let cte_t_offset = src[29..].find('t').unwrap() + 29;
+        assert_eq!(
+            def.start, cte_t_offset,
+            "definition should point to CTE, not DDL"
+        );
+    }
+
+    #[test]
+    fn definition_unknown_table_returns_none() {
+        let src = "SELECT * FROM nonexistent";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &lenient());
+
+        let from_offset = src.find("nonexistent").unwrap();
+        let def = model.definition_at(from_offset);
+        assert!(def.is_none(), "unknown table should have no definition");
     }
 
     // ── Analyzer: function validation ──────────────────────────────────────────

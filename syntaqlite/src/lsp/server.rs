@@ -16,13 +16,14 @@ use lsp_types::notification::{
     Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    Completion, Formatting, HoverRequest, Request as _, SemanticTokensFullRequest,
+    Completion, Formatting, GotoDefinition, HoverRequest, Request as _, SemanticTokensFullRequest,
     SignatureHelpRequest,
 };
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
-    Hover, HoverContents, HoverProviderCapability, InitializeParams, MarkupContent, MarkupKind,
-    ParameterInformation, ParameterLabel, Position, PositionEncodingKind, Range, SemanticTokenType,
+    GotoDefinitionResponse, Hover, HoverContents, HoverProviderCapability, InitializeParams,
+    Location, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, Position,
+    PositionEncodingKind, Range, SemanticTokenType,
     SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
     SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp, SignatureHelpOptions,
     SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
@@ -79,6 +80,7 @@ impl LspServer {
         let server_capabilities = serde_json::to_value(ServerCapabilities {
             position_encoding: Some(PositionEncodingKind::UTF16),
             text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+            definition_provider: Some(lsp_types::OneOf::Left(true)),
             hover_provider: Some(HoverProviderCapability::Simple(true)),
             document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
             completion_provider: Some(CompletionOptions {
@@ -152,6 +154,7 @@ impl LspServer {
     ) -> Result<(), Box<dyn Error + Sync + Send>> {
         let response = match req.method.as_str() {
             Completion::METHOD => Self::handle_completion(req, host),
+            GotoDefinition::METHOD => Self::handle_definition(req, host),
             HoverRequest::METHOD => Self::handle_hover(req, host),
             SignatureHelpRequest::METHOD => Self::handle_signature_help(req, host),
             Formatting::METHOD => Self::handle_formatting(req, host),
@@ -248,6 +251,41 @@ impl LspServer {
                 Response::new_ok(req.id, hover)
             }
             None => Response::new_ok(req.id, Option::<Hover>::None),
+        }
+    }
+
+    fn handle_definition(req: Request, host: &mut LspHost) -> Response {
+        let params: lsp_types::GotoDefinitionParams = match serde_json::from_value(req.params) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    e.to_string(),
+                );
+            }
+        };
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let uri_str = uri.as_str();
+
+        let Some(source) = host.document_source(uri_str) else {
+            return Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None);
+        };
+        let offset = SourcePositionMap::new(source).position_to_offset(position);
+
+        match host.definition_info(uri_str, offset) {
+            Some((def_start, def_end)) => {
+                let source = host
+                    .document_source(uri_str)
+                    .expect("document must exist for definition");
+                let map = SourcePositionMap::new(source);
+                let positions = map.offsets_to_positions(&[def_start, def_end]);
+                let range = Range::new(positions[0], positions[1]);
+                let location = Location { uri, range };
+                Response::new_ok(req.id, GotoDefinitionResponse::Scalar(location))
+            }
+            None => Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None),
         }
     }
 

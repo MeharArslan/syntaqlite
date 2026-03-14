@@ -77,6 +77,13 @@ pub(crate) struct CompletionInfo {
 
 // ── Resolved symbols ──────────────────────────────────────────────────────────
 
+/// A definition site that a reference points to.
+#[derive(Debug, Clone)]
+pub(crate) struct DefinitionLocation {
+    pub start: usize,
+    pub end: usize,
+}
+
 /// A symbol resolution recorded during the validation pass.
 #[derive(Debug, Clone)]
 pub(crate) enum ResolvedSymbol {
@@ -84,6 +91,8 @@ pub(crate) enum ResolvedSymbol {
     Table {
         name: String,
         columns: Option<Vec<String>>,
+        /// Where this table/CTE was defined (byte offsets), if known.
+        definition: Option<DefinitionLocation>,
     },
     /// A column reference that resolved successfully.
     Column {
@@ -165,5 +174,16 @@ impl SemanticModel {
             .iter()
             .find(|r| offset >= r.start && offset < r.end)
             .map(|r| &r.symbol)
+    }
+
+    /// Find the definition location for the symbol at a byte offset, if any.
+    pub(crate) fn definition_at(&self, offset: usize) -> Option<&DefinitionLocation> {
+        self.resolutions
+            .iter()
+            .find(|r| offset >= r.start && offset < r.end)
+            .and_then(|r| match &r.symbol {
+                ResolvedSymbol::Table { definition, .. } => definition.as_ref(),
+                _ => None,
+            })
     }
 }

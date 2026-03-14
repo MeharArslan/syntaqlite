@@ -386,6 +386,21 @@ impl LspHost {
         Some((hover, start, end - start))
     }
 
+    // ── Go-to-definition ───────────────────────────────────────────────────
+
+    /// Return the definition location `(start, end)` for the symbol at `offset`.
+    pub(crate) fn definition_info(
+        &mut self,
+        uri: &str,
+        offset: usize,
+    ) -> Option<(usize, usize)> {
+        let doc = self.documents.get_mut(uri)?;
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        let model = doc.model.as_ref().expect("ensure_model sets model");
+        let def = model.definition_at(offset)?;
+        Some((def.start, def.end))
+    }
+
     // ── Signature help ────────────────────────────────────────────────────────
 
     /// Signature help at a byte offset: finds enclosing function call and returns
@@ -529,7 +544,7 @@ pub(crate) struct SignatureHelpInfo {
 
 fn format_resolved_hover(symbol: &ResolvedSymbol) -> String {
     match symbol {
-        ResolvedSymbol::Table { name, columns } => match columns {
+        ResolvedSymbol::Table { name, columns, .. } => match columns {
             Some(cols) => format!("**table** `{name}`\n\n```\n{}\n```", cols.join(", ")),
             None => format!("**table** `{name}`"),
         },
