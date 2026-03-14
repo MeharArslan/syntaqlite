@@ -49,10 +49,10 @@ Options:
 
 ```bash
 # Print AST from stdin
-echo "SELECT 1" | syntaqlite parse --output ast
+echo "SELECT 1" | syntaqlite parse --output text
 
 # Print AST from file
-syntaqlite parse --output ast query.sql
+syntaqlite parse --output text query.sql
 ```
 
 ### Language server (LSP)

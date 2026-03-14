@@ -152,7 +152,7 @@ def _run_idempotency_check(args: tuple) -> IdempotencyResult:
     try:
         # Step 1: get AST of original SQL.
         rc, ast_before, stderr = _run_binary(
-            binary, "parse -o ast", sql, version=version, cflags=cflags
+            binary, "parse -o text", sql, version=version, cflags=cflags
         )
         if rc != 0:
             elapsed = int((time.monotonic() - t0) * 1000)
@@ -174,7 +174,7 @@ def _run_idempotency_check(args: tuple) -> IdempotencyResult:
 
         # Step 3: get AST of formatted SQL.
         rc, ast_after, stderr = _run_binary(
-            binary, "parse -o ast", formatted, version=version, cflags=cflags
+            binary, "parse -o text", formatted, version=version, cflags=cflags
         )
         if rc != 0:
             elapsed = int((time.monotonic() - t0) * 1000)

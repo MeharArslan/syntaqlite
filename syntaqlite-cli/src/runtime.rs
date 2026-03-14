@@ -206,41 +206,49 @@ fn cmd_parse(
 ) -> Result<(), String> {
     let mut total_stmts = 0u64;
     let mut total_errors = 0u64;
+    let mut json_nodes: Vec<serde_json::Value> = Vec::new();
 
-    let process_source = |source: &str, file: &str| -> (u64, u64) {
-        cmd_parse_source(dialect, source, file, output)
+    let mut process_source = |source: &str, file: &str| {
+        let (s, e, nodes) = cmd_parse_source(dialect, source, file, output);
+        total_stmts += s;
+        total_errors += e;
+        json_nodes.extend(nodes);
     };
 
     if let Some(expr) = expression {
-        let (s, e) = process_source(expr, "<expression>");
-        total_stmts += s;
-        total_errors += e;
+        process_source(expr, "<expression>");
     } else {
         let paths = expand_paths(files)?;
 
         if paths.is_empty() {
             let source = read_stdin()?;
-            let (s, e) = process_source(&source, "<stdin>");
-            total_stmts += s;
-            total_errors += e;
+            process_source(&source, "<stdin>");
         } else {
             let multi = paths.len() > 1;
             for path in &paths {
                 let source =
                     fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
                 let file = path.display().to_string();
-                if multi && matches!(output, crate::ParseOutput::Ast) {
+                if multi && matches!(output, crate::ParseOutput::Text) {
                     println!("==> {file} <==");
                 }
-                let (s, e) = process_source(&source, &file);
-                total_stmts += s;
-                total_errors += e;
+                process_source(&source, &file);
             }
         }
     }
 
-    if matches!(output, crate::ParseOutput::Summary) {
-        println!("{total_stmts} statements parsed, {total_errors} errors");
+    match output {
+        crate::ParseOutput::Summary => {
+            println!("{total_stmts} statements parsed, {total_errors} errors");
+        }
+        crate::ParseOutput::Json => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&json_nodes)
+                    .map_err(|e| format!("JSON serialization failed: {e}"))?
+            );
+        }
+        crate::ParseOutput::Text => {}
     }
 
     if total_errors > 0 {
@@ -250,27 +258,38 @@ fn cmd_parse(
     }
 }
 
-/// Parse a single source. Returns `(stmt_count, error_count)`.
+/// Parse a single source. Returns `(stmt_count, error_count, json_nodes)`.
 fn cmd_parse_source(
     dialect: &AnyDialect,
     source: &str,
     file: &str,
     output: crate::ParseOutput,
-) -> (u64, u64) {
+) -> (u64, u64, Vec<serde_json::Value>) {
     let parser = AnyParser::new(dialect.deref().clone());
     let mut session = parser.parse(source);
     let mut ast_out = String::new();
+    let mut json_nodes: Vec<serde_json::Value> = Vec::new();
     let mut error_diags: Vec<Diagnostic> = Vec::new();
     let mut count = 0u64;
 
     loop {
         match session.next() {
             ParseOutcome::Ok(stmt) => {
-                if matches!(output, crate::ParseOutput::Ast) {
-                    if count > 0 {
-                        ast_out.push_str("----\n");
+                match output {
+                    crate::ParseOutput::Text => {
+                        if count > 0 {
+                            ast_out.push_str("----\n");
+                        }
+                        stmt.dump(&mut ast_out, 0);
                     }
-                    stmt.dump(&mut ast_out, 0);
+                    crate::ParseOutput::Json => {
+                        let val = stmt.erase().root_node().map_or(
+                            serde_json::Value::Null,
+                            |n| serde_json::to_value(n).unwrap_or(serde_json::Value::Null),
+                        );
+                        json_nodes.push(val);
+                    }
+                    crate::ParseOutput::Summary => {}
                 }
                 count += 1;
             }
@@ -289,7 +308,7 @@ fn cmd_parse_source(
         }
     }
 
-    if matches!(output, crate::ParseOutput::Ast) {
+    if matches!(output, crate::ParseOutput::Text) {
         print!("{ast_out}");
     }
 
@@ -299,7 +318,7 @@ fn cmd_parse_source(
             .render_diagnostics(&error_diags, &mut io::stderr())
             .ok();
     }
-    (count, n_err)
+    (count, n_err, json_nodes)
 }
 
 fn cmd_fmt(

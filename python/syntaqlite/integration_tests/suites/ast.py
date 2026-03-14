@@ -14,7 +14,7 @@ def run(ctx: SuiteContext) -> int:
 
     argv = [
         "--binary", str(ctx.binary),
-        "--subcommand", "parse -o ast",
+        "--subcommand", "parse -o text",
         "--test-dir", "tests/ast_diff_tests",
     ]
     if ctx.filter_pattern:

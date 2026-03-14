@@ -72,13 +72,14 @@ printed to stderr.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-e, --expression <SQL>` | | SQL to parse directly (instead of files or stdin) |
-| `-o, --output <FORMAT>` | `summary` | Output format: `summary` or `ast` |
+| `-o, --output <FORMAT>` | `summary` | Output format: `summary`, `text`, or `json` |
 
 Output formats:
 - `summary` — print statement/error counts (compact, for benchmarks)
-- `ast` — print the full abstract syntax tree
+- `text` — print the AST as human-readable text
+- `json` — print the AST as JSON
 
-When `ast` output is used with multiple files, each is prefixed with
+When `text` output is used with multiple files, each is prefixed with
 `==> filename <==`.
 
 Exit codes:

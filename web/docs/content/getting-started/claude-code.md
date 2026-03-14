@@ -23,7 +23,7 @@ errors, or debug a parse issue.
 
 - **Format SQL** — `syntaqlite fmt` with configurable line width, keyword
   casing, and semicolons
-- **Parse SQL** — `syntaqlite parse -o ast` to inspect the parse tree
+- **Parse SQL** — `syntaqlite parse -o text` to inspect the parse tree
 - **Language server** — `syntaqlite lsp` for diagnostics, completions, and
   semantic tokens
 

@@ -10,10 +10,10 @@ syntaqlite can dump the AST for any SQL input. This is useful for debugging
 queries, understanding how SQL is parsed, or building tools on top of the
 parser.
 
-## CLI: `syntaqlite parse -o ast`
+## CLI: `syntaqlite parse -o text`
 
 ```bash
-echo "SELECT id, name FROM users WHERE active = 1" | syntaqlite parse -o ast
+echo "SELECT id, name FROM users WHERE active = 1" | syntaqlite parse -o text
 ```
 
 ```
@@ -69,7 +69,7 @@ name.
 For files:
 
 ```bash
-syntaqlite parse -o ast schema.sql queries.sql
+syntaqlite parse -o text schema.sql queries.sql
 ```
 
 When given multiple files, each is prefixed with `==> filename <==`.

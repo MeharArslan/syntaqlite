@@ -18,8 +18,10 @@ mod codegen;
 pub(crate) enum ParseOutput {
     /// Print statement/error counts (compact, for benchmarks)
     Summary,
-    /// Print the full AST
-    Ast,
+    /// Print the AST as human-readable text
+    Text,
+    /// Print the AST as JSON
+    Json,
 }
 
 #[derive(Parser)]
