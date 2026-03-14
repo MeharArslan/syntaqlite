@@ -25,8 +25,9 @@ examples/syntaqlite_sqlite.c
 # web/docs Zola output
 /web/docs/public/
 
-# profiling
+# profiling / scratch data
 profile.json.gz
+tok.json.gz
 
 # integrations/vscode
 integrations/vscode/out/
