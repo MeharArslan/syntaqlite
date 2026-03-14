@@ -958,6 +958,7 @@ def collect_lsp():
     err_sql = os.path.join(lsp_dir, "test_error.sql")
     with open(err_sql, "w") as f:
         f.write("SELEC * FROM users;\n")
+        f.write("SELECT * FROM nonexistent_table;\n")
 
     test_db = os.path.join(lsp_dir, "test.db")
     if os.path.exists(test_db):
@@ -971,9 +972,10 @@ def collect_lsp():
     with open(sqls_config, "w") as f:
         f.write(f"lowercaseKeywords: false\nconnections:\n  - alias: test\n    driver: sqlite3\n    dataSourceName: {test_db}\n")
 
+    schema_sql = os.path.join(lsp_dir, "schema.sql")
     lsp_servers = [
-        ("syntaqlite", [SYNQ, "lsp"], []),
-        ("sqls", [SQLS, "-c", sqls_config], []),
+        ("syntaqlite", [SYNQ, "lsp"], ["--schema", schema_sql]),
+        ("sqls", [SQLS, "-c", sqls_config], ["--db", test_db]),
         ("sql-language-server", ["npx", "sql-language-server", "up", "--method", "stdio"], []),
     ]
 
@@ -981,14 +983,15 @@ def collect_lsp():
     _log("  Feature testing...")
     import json as _json
 
-    def _test_lsp_server(name, cmd, test_sql_path, err_sql_path):
-        full_cmd = f"node '{LSP_TEST}' {' '.join(cmd)} -- '{test_sql_path}'"
+    def _test_lsp_server(name, cmd, extra_args, test_sql_path, err_sql_path):
+        extra = " ".join(f"'{a}'" for a in extra_args) if extra_args else ""
+        full_cmd = f"node '{LSP_TEST}' {' '.join(cmd)} -- '{test_sql_path}' {extra}"
         ok, out, err = _run(full_cmd, timeout=15)
         try:
             data = _json.loads(out) if ok and out.strip() else {}
         except _json.JSONDecodeError:
             data = {}
-        err_cmd = f"node '{LSP_TEST}' {' '.join(cmd)} -- '{err_sql_path}'"
+        err_cmd = f"node '{LSP_TEST}' {' '.join(cmd)} -- '{err_sql_path}' {extra}"
         ok2, out2, _ = _run(err_cmd, timeout=15)
         try:
             err_data = _json.loads(out2) if ok2 and out2.strip() else {}
@@ -998,7 +1001,7 @@ def collect_lsp():
 
     all_results = {}
     with ThreadPoolExecutor(max_workers=len(lsp_servers)) as pool:
-        futures = [pool.submit(_test_lsp_server, name, cmd, test_sql, err_sql) for name, cmd, _ in lsp_servers]
+        futures = [pool.submit(_test_lsp_server, name, cmd, extra, test_sql, err_sql) for name, cmd, extra in lsp_servers]
         for fut in as_completed(futures):
             name, result = fut.result()
             all_results[name] = result
@@ -1066,18 +1069,23 @@ def collect_lsp():
             row.append("No")
     feature_rows.append(row)
 
-    # Diagnostics: semantic
+    # Diagnostics: semantic — check the error file which contains an unknown table reference
     row = ["Diagnostics: semantic"]
     for name in tool_names:
-        diag = all_results.get(name, {}).get("valid", {}).get("diagnostics")
-        if diag and len(diag) > 0:
+        # Check both valid and error results for semantic diagnostics
+        all_diags = []
+        for key in ("valid", "error"):
+            diag = all_results.get(name, {}).get(key, {}).get("diagnostics")
+            if diag:
+                all_diags.extend(diag)
+        if all_diags:
             has_semantic = any("unknown" in d.get("message", "").lower() or
                               "table" in d.get("message", "").lower()
-                              for d in diag)
+                              for d in all_diags)
             has_style = all("linebreak" in d.get("message", "").lower() or
                            "new line" in d.get("message", "").lower() or
                            "column" in d.get("message", "").lower()
-                           for d in diag)
+                           for d in all_diags)
             if has_semantic:
                 row.append("Yes")
             elif has_style:

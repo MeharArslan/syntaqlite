@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // LSP feature tester: spawns an LSP server, tests multiple capabilities.
-// Usage: node _lsp_test.js <server-cmd...> -- <sql-file> [--db <path>] [--test <feature>]
+// Usage: node _lsp_test.js <server-cmd...> -- <sql-file> [--db <path>] [--schema <path>] [--test <feature>]
 //
 // Features: capabilities, diagnostics, completion, hover, formatting
 // If --test is omitted, tests all features and prints JSON results.
@@ -22,6 +22,8 @@ const ourArgs = process.argv.slice(dashIdx + 1);
 const sqlFile = ourArgs[0];
 const dbIdx = ourArgs.indexOf("--db");
 const dbPath = dbIdx >= 0 ? ourArgs[dbIdx + 1] : null;
+const schemaIdx = ourArgs.indexOf("--schema");
+const schemaPath = schemaIdx >= 0 ? ourArgs[schemaIdx + 1] : null;
 const testIdx = ourArgs.indexOf("--test");
 const testFeature = testIdx >= 0 ? ourArgs[testIdx + 1] : null;
 
@@ -271,10 +273,17 @@ const initParams = {
   workspaceFolders: null,
 };
 
-if (dbPath) {
-  initParams.initializationOptions = {
-    connectionConfig: { adapter: "sqlite3", filename: path.resolve(dbPath) },
-  };
+if (dbPath || schemaPath) {
+  initParams.initializationOptions = {};
+  if (dbPath) {
+    initParams.initializationOptions.connectionConfig = {
+      adapter: "sqlite3",
+      filename: path.resolve(dbPath),
+    };
+  }
+  if (schemaPath) {
+    initParams.initializationOptions.schemaPath = path.resolve(schemaPath);
+  }
 }
 
 const init = request("initialize", initParams);
