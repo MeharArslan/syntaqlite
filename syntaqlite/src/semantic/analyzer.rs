@@ -1689,6 +1689,81 @@ mod tests {
         );
     }
 
+    // ── Analyzer: correlated subqueries ─────────────────────────────────────────
+
+    #[test]
+    fn correlated_subquery_outer_column_resolves() {
+        // `name` only exists in `users` (outer). SQLite resolves it as a
+        // correlated reference — no error expected.
+        let src = "\
+            CREATE TABLE users (id INTEGER, name TEXT);\
+            CREATE TABLE orders (id INTEGER, user_id INTEGER);\
+            SELECT * FROM users WHERE EXISTS (\
+                SELECT 1 FROM orders WHERE name = 'Alice'\
+            );";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "outer column 'name' should resolve via correlated reference: {col_errs:?}"
+        );
+    }
+
+    #[test]
+    fn correlated_subquery_inner_shadows_outer() {
+        // Both tables have `id`. In the subquery, unqualified `id` should
+        // resolve to `orders.id` (inner wins) — no error expected.
+        let src = "\
+            CREATE TABLE users (id INTEGER, name TEXT);\
+            CREATE TABLE orders (id INTEGER, user_id INTEGER);\
+            SELECT * FROM users WHERE EXISTS (\
+                SELECT 1 FROM orders WHERE id = 1\
+            );";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "inner 'id' should shadow outer — no error: {col_errs:?}"
+        );
+    }
+
+    #[test]
+    fn correlated_subquery_column_in_neither_scope_flagged() {
+        // `bogus` doesn't exist in either table — should be flagged.
+        let src = "\
+            CREATE TABLE users (id INTEGER, name TEXT);\
+            CREATE TABLE orders (id INTEGER, user_id INTEGER);\
+            SELECT * FROM users WHERE EXISTS (\
+                SELECT 1 FROM orders WHERE bogus = 1\
+            );";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == "bogus"))
+            .collect();
+        assert_eq!(
+            col_errs.len(),
+            1,
+            "column 'bogus' should be flagged as unknown: {:?}",
+            model.diagnostics()
+        );
+    }
+
     // ── Analyzer: go-to-definition ──────────────────────────────────────────────
 
     #[test]
