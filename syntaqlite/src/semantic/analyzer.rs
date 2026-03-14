@@ -962,7 +962,20 @@ impl<'a> ValidationPass<'a> {
             let definition = self
                 .definition_offsets
                 .get(&name.to_ascii_lowercase())
-                .map(|&(start, end)| DefinitionLocation { start, end });
+                .map(|&(start, end)| DefinitionLocation {
+                    start,
+                    end,
+                    file_uri: None,
+                })
+                .or_else(|| {
+                    self.catalog.relation_definition_site(name).map(|site| {
+                        DefinitionLocation {
+                            start: site.start,
+                            end: site.end,
+                            file_uri: Some(site.file_uri.clone()),
+                        }
+                    })
+                });
             self.resolutions.push(Resolution {
                 start: offset,
                 end: offset + name.len(),
@@ -1075,7 +1088,11 @@ impl<'a> ValidationPass<'a> {
                     let definition = self
                         .definition_offsets
                         .get(&def_key)
-                        .map(|&(start, end)| DefinitionLocation { start, end });
+                        .map(|&(start, end)| DefinitionLocation {
+                            start,
+                            end,
+                            file_uri: None,
+                        });
                     self.resolutions.push(Resolution {
                         start: offset,
                         end: offset + column.len(),
@@ -1543,14 +1560,16 @@ mod tests {
     #[test]
     fn catalog_from_ddl_populates_tables() {
         let dialect = crate::sqlite::dialect::dialect();
-        let cat = Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);").0;
+        let cat =
+            Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);", None).0;
         assert!(cat.resolve_relation("users"));
     }
 
     #[test]
     fn catalog_from_ddl_populates_virtual_tables() {
         let dialect = crate::sqlite::dialect::dialect();
-        let cat = Catalog::from_ddl(dialect, "CREATE VIRTUAL TABLE fts USING fts5(content);").0;
+        let cat =
+            Catalog::from_ddl(dialect, "CREATE VIRTUAL TABLE fts USING fts5(content);", None).0;
         assert!(cat.resolve_relation("fts"));
     }
 
@@ -1996,7 +2015,8 @@ mod tests {
     fn definition_column_in_ddl_table() {
         let src = "CREATE TABLE users (id INTEGER, name TEXT);\nSELECT name FROM users;";
         let dialect = crate::sqlite::dialect::dialect();
-        let cat = Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);").0;
+        let cat =
+            Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);", None).0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(src, &cat, &strict());
 
@@ -2021,13 +2041,57 @@ mod tests {
     fn definition_unknown_column_returns_none() {
         let src = "CREATE TABLE t (a INT);\nSELECT b FROM t;";
         let dialect = crate::sqlite::dialect::dialect();
-        let cat = Catalog::from_ddl(dialect, "CREATE TABLE t (a INT);").0;
+        let cat = Catalog::from_ddl(dialect, "CREATE TABLE t (a INT);", None).0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(src, &cat, &strict());
 
         let b_offset = src.find('b').unwrap();
         let def = model.definition_at(b_offset);
         assert!(def.is_none(), "unknown column should have no definition");
+    }
+
+    // ── Go-to-definition: cross-file schema ─────────────────────────────────────
+
+    #[test]
+    fn definition_schema_table_jumps_to_external_file() {
+        let schema = "CREATE TABLE users (id INTEGER, name TEXT);";
+        let file_uri = "file:///path/to/schema.sql";
+        let dialect = crate::sqlite::dialect::dialect();
+        let cat = Catalog::from_ddl(dialect, schema, Some(file_uri)).0;
+
+        let src = "SELECT * FROM users";
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(src, &cat, &lenient());
+
+        let ref_offset = src.find("users").unwrap();
+        let def = model.definition_at(ref_offset);
+        assert!(def.is_some(), "expected definition for schema table");
+        let def = def.unwrap();
+        assert_eq!(def.file_uri.as_deref(), Some(file_uri));
+        let schema_offset = schema.find("users").unwrap();
+        assert_eq!(def.start, schema_offset);
+        assert_eq!(def.end, schema_offset + "users".len());
+    }
+
+    #[test]
+    fn definition_same_file_ddl_shadows_schema() {
+        // Same-file CREATE TABLE should win over external schema.
+        let schema = "CREATE TABLE t (x INTEGER);";
+        let file_uri = "file:///schema.sql";
+        let dialect = crate::sqlite::dialect::dialect();
+        let cat = Catalog::from_ddl(dialect, schema, Some(file_uri)).0;
+
+        let src = "CREATE TABLE t (y INTEGER); SELECT * FROM t;";
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(src, &cat, &strict());
+
+        let ref_offset = src.rfind(" t").unwrap() + 1;
+        let def = model.definition_at(ref_offset);
+        assert!(def.is_some(), "expected definition");
+        let def = def.unwrap();
+        // Should point to same-file definition, not external schema.
+        assert!(def.file_uri.is_none(), "same-file DDL should shadow schema");
+        assert_eq!(def.start, src.find('t').unwrap());
     }
 
     // ── Analyzer: function validation ──────────────────────────────────────────
@@ -2864,7 +2928,7 @@ mod tests {
     fn order_by_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();
         let ddl = "CREATE TABLE users (id INTEGER, name TEXT, active INT);";
-        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let cat = Catalog::from_ddl(dialect, ddl, None).0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(
             "SELECT COUNT(*) AS cnt FROM users ORDER BY cnt",
@@ -2887,7 +2951,7 @@ mod tests {
     fn order_by_alias_with_group_by() {
         let dialect = crate::sqlite::dialect::dialect();
         let ddl = "CREATE TABLE employees (id INTEGER, dept TEXT, salary REAL);";
-        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let cat = Catalog::from_ddl(dialect, ddl, None).0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(
             "SELECT dept, SUM(salary) AS total_salary FROM employees GROUP BY dept ORDER BY total_salary DESC",
@@ -2910,7 +2974,7 @@ mod tests {
     fn having_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();
         let ddl = "CREATE TABLE users (id INTEGER, active INT);";
-        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let cat = Catalog::from_ddl(dialect, ddl, None).0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(
             "SELECT COUNT(*) AS n FROM users HAVING n > 0",
@@ -2933,7 +2997,7 @@ mod tests {
     fn where_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();
         let ddl = "CREATE TABLE t (a INT, b INT);";
-        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let cat = Catalog::from_ddl(dialect, ddl, None).0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(
             "SELECT a + b AS total FROM t WHERE total > 10",
@@ -2973,7 +3037,7 @@ mod tests {
     fn group_by_select_alias_no_unknown_column() {
         let dialect = crate::sqlite::dialect::dialect();
         let ddl = "CREATE TABLE t (a INT, b INT);";
-        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let cat = Catalog::from_ddl(dialect, ddl, None).0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(
             "SELECT a + b AS total, COUNT(*) FROM t GROUP BY total",

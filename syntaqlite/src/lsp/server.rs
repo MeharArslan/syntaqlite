@@ -274,19 +274,25 @@ impl LspServer {
         };
         let offset = SourcePositionMap::new(source).position_to_offset(position);
 
-        match host.definition_info(uri_str, offset) {
-            Some((def_start, def_end)) => {
-                let source = host
-                    .document_source(uri_str)
-                    .expect("document must exist for definition");
-                let map = SourcePositionMap::new(source);
-                let positions = map.offsets_to_positions(&[def_start, def_end]);
-                let range = Range::new(positions[0], positions[1]);
-                let location = Location { uri, range };
-                Response::new_ok(req.id, GotoDefinitionResponse::Scalar(location))
-            }
-            None => Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None),
-        }
+        let Some((target_file_uri, def_start, def_end)) = host.definition_info(uri_str, offset)
+        else {
+            return Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None);
+        };
+
+        let (target_uri, source) = if let Some(ref file_uri) = target_file_uri {
+            let target: Uri = file_uri.parse().unwrap_or(uri);
+            let file_path = file_uri.strip_prefix("file://").unwrap_or(file_uri);
+            (target, std::fs::read_to_string(file_path).unwrap_or_default())
+        } else {
+            let source = host
+                .document_source(uri_str)
+                .expect("document must exist for definition")
+                .to_string();
+            (uri, source)
+        };
+        let range = offsets_to_range(&source, def_start, def_end);
+        let location = Location { uri: target_uri, range };
+        Response::new_ok(req.id, GotoDefinitionResponse::Scalar(location))
     }
 
     fn handle_signature_help(req: Request, host: &mut LspHost) -> Response {
@@ -514,8 +520,9 @@ impl LspServer {
             return;
         }
         let path = PathBuf::from(path_str);
+        let file_uri = format!("file://{}", path.display());
         match std::fs::read_to_string(&path) {
-            Ok(contents) => match host.set_session_context_from_ddl(&contents) {
+            Ok(contents) => match host.set_session_context_from_ddl(&contents, Some(&file_uri)) {
                 Ok(()) => {
                     eprintln!("syntaqlite-lsp: loaded schema from {}", path.display());
                 }
@@ -605,6 +612,13 @@ impl DiagnosticPublisher {
             )))?;
         Ok(())
     }
+}
+
+/// Convert byte offsets to an LSP `Range`.
+fn offsets_to_range(source: &str, start: usize, end: usize) -> Range {
+    let map = SourcePositionMap::new(source);
+    let positions = map.offsets_to_positions(&[start, end]);
+    Range::new(positions[0], positions[1])
 }
 
 // ── SourcePositionMap ─────────────────────────────────────────────────────

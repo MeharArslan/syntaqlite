@@ -56,6 +56,17 @@ struct FunctionSet {
     overloads: Vec<FunctionOverload>,
 }
 
+/// Where a catalog entry was originally defined (e.g. in an external schema file).
+#[derive(Debug, Clone)]
+pub(crate) struct DefinitionSite {
+    /// File URI (e.g. `"file:///path/to/schema.sql"`).
+    pub file_uri: String,
+    /// Byte offset of the start of the name in the source file.
+    pub start: usize,
+    /// Byte offset of the end of the name in the source file.
+    pub end: usize,
+}
+
 #[derive(Debug, Clone)]
 struct RelationEntry {
     name: String,
@@ -64,6 +75,8 @@ struct RelationEntry {
     columns: Option<Vec<String>>,
     /// `true` for WITHOUT ROWID tables — no implicit rowid/oid/_rowid_ columns.
     without_rowid: bool,
+    /// Where this relation was defined, if known.
+    definition_site: Option<DefinitionSite>,
 }
 
 #[derive(Debug, Clone)]
@@ -171,6 +184,7 @@ impl CatalogLayerContents {
                 name,
                 columns,
                 without_rowid,
+                definition_site: None,
             },
         );
     }
@@ -199,6 +213,7 @@ impl CatalogLayerContents {
                 name,
                 columns,
                 without_rowid: true, // views have no rowid
+                definition_site: None,
             },
         );
     }
@@ -480,7 +495,11 @@ impl Catalog {
     /// message for each statement that failed to parse. Partial results from
     /// successfully parsed statements are always accumulated.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(dialect: impl Into<AnyDialect>, source: &str) -> (Self, Vec<String>) {
+    pub(crate) fn from_ddl(
+        dialect: impl Into<AnyDialect>,
+        source: &str,
+        file_uri: Option<&str>,
+    ) -> (Self, Vec<String>) {
         use syntaqlite_syntax::ParseOutcome;
         let dialect = dialect.into();
         let mut catalog = Catalog::new(dialect.clone());
@@ -500,6 +519,7 @@ impl Catalog {
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
             catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, &dialect);
+            catalog.record_ddl_definition_site(&erased, root_id, &dialect, file_uri);
         }
         (catalog, errors)
     }
@@ -768,6 +788,41 @@ impl Catalog {
         (None, false)
     }
 
+    /// Record a definition site for a DDL statement, if `file_uri` is provided.
+    fn record_ddl_definition_site(
+        &mut self,
+        stmt: &AnyParsedStatement<'_>,
+        root: AnyNodeId,
+        dialect: &AnyDialect,
+        file_uri: Option<&str>,
+    ) {
+        let Some(uri) = file_uri else { return };
+        let Some((name, start, end)) = ddl_name_span(stmt, root, dialect.roles()) else {
+            return;
+        };
+        let key = canonical_name(&name);
+        if let Some(entry) = self.layers[CatalogLayer::Database.index()]
+            .relations
+            .get_mut(&key)
+        {
+            entry.definition_site = Some(DefinitionSite {
+                file_uri: uri.to_string(),
+                start,
+                end,
+            });
+        }
+    }
+
+    /// Return the definition site for a relation, if one was recorded.
+    pub(crate) fn relation_definition_site(&self, name: &str) -> Option<&DefinitionSite> {
+        for layer in self.all_layers_ordered() {
+            if let Some(rel) = layer.relation(name) {
+                return rel.definition_site.as_ref();
+            }
+        }
+        None
+    }
+
     // ── Enumeration (for fuzzy suggestions and completions) ───────────────────
 
     pub(crate) fn all_relation_names(&self) -> Vec<String> {
@@ -848,6 +903,29 @@ impl Catalog {
 }
 
 // ── DDL extraction helpers ────────────────────────────────────────────────────
+
+/// Extract the definition name and byte-offset range from a DDL statement.
+///
+/// Returns `(lowercase_name, start, end)` for CREATE TABLE / CREATE VIEW,
+/// or `None` for non-DDL statements.
+fn ddl_name_span(
+    stmt: &AnyParsedStatement<'_>,
+    root: AnyNodeId,
+    roles: &[SemanticRole],
+) -> Option<(String, usize, usize)> {
+    let (tag, fields) = stmt.extract_fields(root)?;
+    let role = roles.get(u32::from(tag) as usize)?;
+    let name_idx = match role {
+        SemanticRole::DefineTable { name, .. } | SemanticRole::DefineView { name, .. } => *name,
+        _ => return None,
+    };
+    let FieldValue::Span(s) = fields[name_idx as usize] else { return None };
+    if s.is_empty() {
+        return None;
+    }
+    let off = s.as_ptr() as usize - stmt.source().as_ptr() as usize;
+    Some((s.to_ascii_lowercase(), off, off + s.len()))
+}
 
 /// Extract columns for a table/view DDL contribution.
 ///

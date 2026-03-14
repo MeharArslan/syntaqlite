@@ -295,7 +295,7 @@ fn run_set_session_context(ptr: u32, len: u32) -> i32 {
 fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
     let mut lsp = try_wasm!(take_or_create_lsp_host());
-    let result = lsp.set_session_context_from_ddl(&source);
+    let result = lsp.set_session_context_from_ddl(&source, None);
     store_lsp_host(lsp);
     match result {
         Ok(()) => 0,

@@ -388,13 +388,20 @@ impl LspHost {
 
     // ── Go-to-definition ───────────────────────────────────────────────────
 
-    /// Return the definition location `(start, end)` for the symbol at `offset`.
-    pub(crate) fn definition_info(&mut self, uri: &str, offset: usize) -> Option<(usize, usize)> {
+    /// Return the definition location for the symbol at `offset`.
+    ///
+    /// Returns `(file_uri, start, end)` where `file_uri` is `None` for
+    /// same-file definitions or `Some(uri)` for cross-file (schema) definitions.
+    pub(crate) fn definition_info(
+        &mut self,
+        uri: &str,
+        offset: usize,
+    ) -> Option<(Option<String>, usize, usize)> {
         let doc = self.documents.get_mut(uri)?;
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let def = model.definition_at(offset)?;
-        Some((def.start, def.end))
+        Some((def.file_uri.clone(), def.start, def.end))
     }
 
     // ── Signature help ────────────────────────────────────────────────────────
@@ -455,8 +462,12 @@ impl LspHost {
     /// source contains any syntax errors. Partial results from successfully
     /// parsed statements are still applied as the session context.
     #[cfg(feature = "sqlite")]
-    pub fn set_session_context_from_ddl(&mut self, ddl: &str) -> Result<(), Vec<String>> {
-        let (catalog, errors) = Catalog::from_ddl(self.dialect.clone(), ddl);
+    pub fn set_session_context_from_ddl(
+        &mut self,
+        ddl: &str,
+        file_uri: Option<&str>,
+    ) -> Result<(), Vec<String>> {
+        let (catalog, errors) = Catalog::from_ddl(self.dialect.clone(), ddl, file_uri);
         self.set_session_context(catalog);
         if errors.is_empty() {
             Ok(())
@@ -954,7 +965,7 @@ mod tests {
     fn set_session_context_from_ddl_returns_error_for_invalid_ddl() {
         let mut host = LspHost::new();
         let errors = host
-            .set_session_context_from_ddl("create table orders as;")
+            .set_session_context_from_ddl("create table orders as;", None)
             .expect_err("expected parse errors for invalid DDL, got Ok");
         assert!(!errors.is_empty(), "expected at least one error message");
         assert!(
@@ -967,8 +978,29 @@ mod tests {
     fn set_session_context_from_ddl_returns_ok_for_valid_ddl() {
         let mut host = LspHost::new();
         let result =
-            host.set_session_context_from_ddl("CREATE TABLE orders (id INTEGER, total REAL);");
+            host.set_session_context_from_ddl("CREATE TABLE orders (id INTEGER, total REAL);", None);
         assert!(result.is_ok(), "expected Ok for valid DDL, got: {result:?}");
+    }
+
+    #[test]
+    fn definition_info_returns_cross_file_uri_for_schema_table() {
+        let schema = "CREATE TABLE orders (id INTEGER, total REAL);";
+        let file_uri = "file:///path/to/schema.sql";
+        let mut host = LspHost::new();
+        host.set_session_context_from_ddl(schema, Some(file_uri))
+            .unwrap();
+
+        let uri = "file:///query.sql";
+        host.open_document(uri, 1, "SELECT * FROM orders".to_string());
+
+        let ref_offset = "SELECT * FROM ".len();
+        let result = host.definition_info(uri, ref_offset);
+        assert!(result.is_some(), "expected definition for schema table");
+        let (target_uri, start, end) = result.unwrap();
+        assert_eq!(target_uri.as_deref(), Some(file_uri));
+        let schema_offset = schema.find("orders").unwrap();
+        assert_eq!(start, schema_offset);
+        assert_eq!(end, schema_offset + "orders".len());
     }
 
     #[test]

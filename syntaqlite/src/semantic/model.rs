@@ -82,6 +82,8 @@ pub(crate) struct CompletionInfo {
 pub(crate) struct DefinitionLocation {
     pub start: usize,
     pub end: usize,
+    /// If `Some`, the definition is in a different file (e.g. an external schema).
+    pub file_uri: Option<String>,
 }
 
 /// A symbol resolution recorded during the validation pass.
