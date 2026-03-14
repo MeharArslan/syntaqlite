@@ -8,7 +8,11 @@ A parser, formatter, validator, and language server for SQLite SQL, built on SQL
 
 **[Docs](https://docs.syntaqlite.com)** · **[Playground](https://playground.syntaqlite.com)** · **[VS Code Extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)** · **[MCP Server](integrations/mcp/README.md)**
 
----
+## Why syntaqlite
+
+Most SQL tools parse a subset of SQL, invent their own grammar, or handle SQLite as an afterthought. syntaqlite uses SQLite's own Lemon-generated grammar and tokenizer, compiled from C — the parser doesn't approximate SQLite, it _is_ SQLite's grammar compiled into a reusable library.
+
+SQLite isn't one fixed language — syntax changes between releases, and compile-time flags enable optional features. syntaqlite tracks this across all tools:
 
 ```bash
 syntaqlite --sqlite-version 3.32.0 validate \
@@ -22,13 +26,7 @@ error: syntax error near 'RETURNING'
   |                                ^~~~~~~~~
 ```
 
-*`RETURNING` was added in SQLite 3.35.0. Android 13 ships SQLite 3.32.2 — syntaqlite catches the mismatch before your users do.*
-
----
-
-## Why syntaqlite
-
-Most SQL tools parse a subset of SQL, invent their own grammar, or handle SQLite as an afterthought. syntaqlite uses SQLite's own Lemon-generated grammar and tokenizer, compiled from C — the parser doesn't approximate SQLite, it _is_ SQLite's grammar compiled into a reusable library.
+`RETURNING` was added in SQLite 3.35.0 — Android 13 still ships SQLite 3.32.2.
 
 We've tested against ~396K statements from [SQLite's upstream test suite](https://sqlite.org/testing.html) with ~99.7% agreement on parse acceptance. See the [detailed comparison](https://docs.syntaqlite.com/main/reference/comparison/) for how syntaqlite stacks up against other tools.
 
