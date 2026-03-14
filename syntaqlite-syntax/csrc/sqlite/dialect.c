@@ -93,27 +93,30 @@ struct SyntaqliteDialectTemplate {
   uint32_t fmt_expr_meta_count;
 };
 
-static const struct SyntaqliteDialectTemplate SQLITE_DIALECT = {
-    .grammar = {&SQLITE_GRAMMAR, INT32_MAX, {0}},
-    .fmt_str_data = sqlite_fmt_string_data,
-    .fmt_str_offsets = sqlite_fmt_string_offsets,
-    .fmt_str_count = sqlite_fmt_string_count,
-    .fmt_enum_display = sqlite_fmt_enum_display,
-    .fmt_enum_display_count = sqlite_fmt_enum_display_count,
-    .fmt_ops = sqlite_fmt_ops,
-    .fmt_ops_count = sqlite_fmt_ops_count,
-    .fmt_dispatch = sqlite_fmt_dispatch,
-    .fmt_dispatch_count = sqlite_fmt_dispatch_count,
-    .roles_data = sqlite_roles_data,
-    .roles_count = sqlite_roles_count,
-    .macro_defs_data = sqlite_macro_defs_data,
-    .macro_defs_count = sqlite_macro_defs_count,
-    .fmt_prec_table = sqlite_fmt_prec_table,
-    .fmt_prec_table_count = sqlite_fmt_prec_table_count,
-    .fmt_expr_meta = sqlite_fmt_expr_meta,
-    .fmt_expr_meta_count = sqlite_fmt_expr_meta_count,
-};
-
 const struct SyntaqliteDialectTemplate* syntaqlite_sqlite_dialect(void) {
-  return &SQLITE_DIALECT;
+  static struct SyntaqliteDialectTemplate d = {0};
+  static int init = 0;
+  if (init)
+    return &d;
+  init = 1;
+  d.grammar.tmpl = &SQLITE_GRAMMAR;
+  d.grammar.sqlite_version = INT32_MAX;
+  d.fmt_str_data = sqlite_fmt_string_data;
+  d.fmt_str_offsets = sqlite_fmt_string_offsets;
+  d.fmt_str_count = sqlite_fmt_string_count;
+  d.fmt_enum_display = sqlite_fmt_enum_display;
+  d.fmt_enum_display_count = sqlite_fmt_enum_display_count;
+  d.fmt_ops = sqlite_fmt_ops;
+  d.fmt_ops_count = sqlite_fmt_ops_count;
+  d.fmt_dispatch = sqlite_fmt_dispatch;
+  d.fmt_dispatch_count = sqlite_fmt_dispatch_count;
+  d.roles_data = sqlite_roles_data;
+  d.roles_count = sqlite_roles_count;
+  d.macro_defs_data = sqlite_macro_defs_data;
+  d.macro_defs_count = sqlite_macro_defs_count;
+  d.fmt_prec_table = sqlite_fmt_prec_table;
+  d.fmt_prec_table_count = sqlite_fmt_prec_table_count;
+  d.fmt_expr_meta = sqlite_fmt_expr_meta;
+  d.fmt_expr_meta_count = sqlite_fmt_expr_meta_count;
+  return &d;
 }
