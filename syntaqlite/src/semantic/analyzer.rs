@@ -1080,17 +1080,61 @@ impl<'a> ValidationPass<'a> {
         // causing column refs against unknown tables to be spuriously flagged.
         self.scope.push();
         self.visit_opt(stmt, Self::field_node_id(fields, from));
-        for idx in [
-            columns,
-            where_clause,
-            groupby,
-            having,
-            orderby,
-            limit_clause,
-        ] {
+        self.visit_opt(stmt, Self::field_node_id(fields, columns));
+
+        // Collect SELECT aliases so they are visible in WHERE, GROUP BY,
+        // HAVING, ORDER BY, and LIMIT — matching SQLite's resolution rules.
+        let aliases = self.collect_select_aliases(stmt, fields, columns);
+        if !aliases.is_empty() {
+            self.scope
+                .add_table("", Some(aliases), RowIdPolicy::WithRowId);
+        }
+
+        for idx in [where_clause, groupby, having, orderby, limit_clause] {
             self.visit_opt(stmt, Self::field_node_id(fields, idx));
         }
         self.scope.pop();
+    }
+
+    /// Extract alias names from the SELECT result column list.
+    fn collect_select_aliases(
+        &self,
+        stmt: &AnyParsedStatement<'a>,
+        fields: &NodeFields<'a>,
+        columns_idx: u8,
+    ) -> Vec<String> {
+        let mut aliases = Vec::new();
+        let Some(list_id) = Self::field_node_id(fields, columns_idx) else {
+            return aliases;
+        };
+        let Some(children) = stmt.list_children(list_id) else {
+            return aliases;
+        };
+        for &child_id in children {
+            if child_id.is_null() {
+                continue;
+            }
+            let Some((child_tag, child_fields)) = stmt.extract_fields(child_id) else {
+                continue;
+            };
+            let child_role = self
+                .roles
+                .get(u32::from(child_tag) as usize)
+                .copied()
+                .unwrap_or(SemanticRole::Transparent);
+            let SemanticRole::ResultColumn {
+                alias: alias_idx, ..
+            } = child_role
+            else {
+                continue;
+            };
+            let alias_node = Self::field_node_id(&child_fields, alias_idx);
+            let alias_text = self.name_text(stmt, alias_node);
+            if !alias_text.is_empty() {
+                aliases.push(alias_text.to_string());
+            }
+        }
+        aliases
     }
 
     fn visit_cte_scope(
@@ -2683,6 +2727,123 @@ mod tests {
         assert!(
             col_errs.is_empty(),
             "DELETE from unknown table should suppress column errors, got: {col_errs:#?}"
+        );
+    }
+
+    // ── ORDER BY alias resolution ─────────────────────────────────────────────
+
+    /// SELECT alias used in ORDER BY should not produce UnknownColumn.
+    #[test]
+    fn order_by_select_alias_no_unknown_column() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let ddl = "CREATE TABLE users (id INTEGER, name TEXT, active INT);";
+        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(
+            "SELECT COUNT(*) AS cnt FROM users ORDER BY cnt",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "ORDER BY referencing SELECT alias should not flag UnknownColumn, got: {col_errs:#?}"
+        );
+    }
+
+    /// SELECT alias with expression + GROUP BY + ORDER BY.
+    #[test]
+    fn order_by_alias_with_group_by() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let ddl = "CREATE TABLE employees (id INTEGER, dept TEXT, salary REAL);";
+        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(
+            "SELECT dept, SUM(salary) AS total_salary FROM employees GROUP BY dept ORDER BY total_salary DESC",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "ORDER BY alias with GROUP BY should not flag UnknownColumn, got: {col_errs:#?}"
+        );
+    }
+
+    /// HAVING clause can also reference SELECT aliases in SQLite.
+    #[test]
+    fn having_select_alias_no_unknown_column() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let ddl = "CREATE TABLE users (id INTEGER, active INT);";
+        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(
+            "SELECT COUNT(*) AS n FROM users HAVING n > 0",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "HAVING referencing SELECT alias should not flag UnknownColumn, got: {col_errs:#?}"
+        );
+    }
+
+    /// WHERE clause can reference SELECT aliases in SQLite (real column wins on collision).
+    #[test]
+    fn where_select_alias_no_unknown_column() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let ddl = "CREATE TABLE t (a INT, b INT);";
+        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(
+            "SELECT a + b AS total FROM t WHERE total > 10",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "WHERE referencing SELECT alias should not flag UnknownColumn, got: {col_errs:#?}"
+        );
+    }
+
+    /// GROUP BY can reference SELECT aliases in SQLite (real column wins on collision).
+    #[test]
+    fn group_by_select_alias_no_unknown_column() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let ddl = "CREATE TABLE t (a INT, b INT);";
+        let cat = Catalog::from_ddl(dialect, ddl).0;
+        let mut az = sqlite_analyzer();
+        let model = az.analyze(
+            "SELECT a + b AS total, COUNT(*) FROM t GROUP BY total",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "GROUP BY referencing SELECT alias should not flag UnknownColumn, got: {col_errs:#?}"
         );
     }
 
