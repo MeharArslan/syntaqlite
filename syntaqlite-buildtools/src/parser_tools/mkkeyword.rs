@@ -157,9 +157,9 @@ pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
             "keyword {name_c:?} too long for z_orig_name[20]"
         );
 
-        let mut z_orig_name = [0i8; 20];
+        let mut z_orig_name = [0 as c_char; 20];
         for (i, &b) in bytes.iter().enumerate() {
-            z_orig_name[i] = b.cast_signed();
+            z_orig_name[i] = b as c_char;
         }
 
         keywords_copy.push(Keyword {
