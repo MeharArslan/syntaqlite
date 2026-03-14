@@ -199,10 +199,7 @@ impl SemanticModel {
     }
 
     /// Find all resolutions in this model that match the given symbol identity.
-    pub(crate) fn references_matching(
-        &self,
-        kind: &SymbolIdentity,
-    ) -> Vec<(usize, usize)> {
+    pub(crate) fn references_matching(&self, kind: &SymbolIdentity) -> Vec<(usize, usize)> {
         self.resolutions
             .iter()
             .filter(|r| kind.matches(&r.symbol))
@@ -240,7 +237,11 @@ impl SymbolIdentity {
             }
             (
                 SymbolIdentity::Column { table, column },
-                ResolvedSymbol::Column { table: t, column: c, .. },
+                ResolvedSymbol::Column {
+                    table: t,
+                    column: c,
+                    ..
+                },
             ) => t.eq_ignore_ascii_case(table) && c.eq_ignore_ascii_case(column),
             _ => false,
         }

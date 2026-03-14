@@ -429,7 +429,10 @@ impl LspHost {
         // Collect matching resolutions from all open documents.
         let uris: Vec<String> = self.documents.keys().cloned().collect();
         for doc_uri in &uris {
-            let doc = self.documents.get_mut(doc_uri.as_str()).expect("doc_uri came from keys()");
+            let doc = self
+                .documents
+                .get_mut(doc_uri.as_str())
+                .expect("doc_uri came from keys()");
             ensure_model(doc, &mut self.analyzer, &self.user_catalog);
             let model = doc.model.as_ref().expect("ensure_model sets model");
             for (start, end) in model.references_matching(&identity) {
@@ -450,9 +453,7 @@ impl LspHost {
         }
 
         // Include external (schema) definition site if requested.
-        if include_declaration
-            && let Some(def_site) = self.external_definition_site(&identity)
-        {
+        if include_declaration && let Some(def_site) = self.external_definition_site(&identity) {
             let already = results
                 .iter()
                 .any(|(u, s, e)| *u == def_site.0 && *s == def_site.1 && *e == def_site.2);
@@ -538,7 +539,10 @@ impl LspHost {
     }
 
     /// Look up an external (schema-file) definition site for a symbol from the catalog.
-    fn external_definition_site(&self, identity: &SymbolIdentity) -> Option<(String, usize, usize)> {
+    fn external_definition_site(
+        &self,
+        identity: &SymbolIdentity,
+    ) -> Option<(String, usize, usize)> {
         match identity {
             SymbolIdentity::Table(name) => {
                 let site = self.user_catalog.relation_definition_site(name)?;
@@ -1124,8 +1128,8 @@ mod tests {
     #[test]
     fn set_session_context_from_ddl_returns_ok_for_valid_ddl() {
         let mut host = LspHost::new();
-        let result =
-            host.set_session_context_from_ddl("CREATE TABLE orders (id INTEGER, total REAL);", None);
+        let result = host
+            .set_session_context_from_ddl("CREATE TABLE orders (id INTEGER, total REAL);", None);
         assert!(result.is_ok(), "expected Ok for valid DDL, got: {result:?}");
     }
 
@@ -1261,7 +1265,11 @@ mod tests {
         // Click on "users" in CREATE TABLE — should still find the SELECT reference.
         let offset = sql.find("users").unwrap();
         let refs = host.find_references(uri, offset, false);
-        assert_eq!(refs.len(), 1, "expected 1 ref from definition site, got: {refs:?}");
+        assert_eq!(
+            refs.len(),
+            1,
+            "expected 1 ref from definition site, got: {refs:?}"
+        );
     }
 
     #[test]

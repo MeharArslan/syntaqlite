@@ -17,18 +17,18 @@ use lsp_types::notification::{
     Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    Completion, Formatting, GotoDefinition, HoverRequest, PrepareRenameRequest, References,
-    Rename, Request as _, SemanticTokensFullRequest, SignatureHelpRequest,
+    Completion, Formatting, GotoDefinition, HoverRequest, PrepareRenameRequest, References, Rename,
+    Request as _, SemanticTokensFullRequest, SignatureHelpRequest,
 };
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
     GotoDefinitionResponse, Hover, HoverContents, HoverProviderCapability, InitializeParams,
     Location, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, Position,
     PositionEncodingKind, PrepareRenameResponse, Range, RenameOptions, SemanticTokenType,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp,
-    SignatureHelpOptions, SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextEdit, Uri, WorkDoneProgressOptions, WorkspaceEdit,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp, SignatureHelpOptions,
+    SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
+    WorkDoneProgressOptions, WorkspaceEdit,
 };
 
 use crate::dialect::AnyDialect;
@@ -294,7 +294,10 @@ impl LspServer {
         let (target_uri, source) = if let Some(ref file_uri) = target_file_uri {
             let target: Uri = file_uri.parse().unwrap_or(uri);
             let file_path = file_uri.strip_prefix("file://").unwrap_or(file_uri);
-            (target, std::fs::read_to_string(file_path).unwrap_or_default())
+            (
+                target,
+                std::fs::read_to_string(file_path).unwrap_or_default(),
+            )
         } else {
             let source = host
                 .document_source(uri_str)
@@ -303,7 +306,10 @@ impl LspServer {
             (uri, source)
         };
         let range = offsets_to_range(&source, def_start, def_end);
-        let location = Location { uri: target_uri, range };
+        let location = Location {
+            uri: target_uri,
+            range,
+        };
         Response::new_ok(req.id, GotoDefinitionResponse::Scalar(location))
     }
 
@@ -491,7 +497,10 @@ impl LspServer {
                 };
                 let range = offsets_to_range(&source, start, end);
                 let target_uri: Uri = ref_uri.parse().ok()?;
-                Some(Location { uri: target_uri, range })
+                Some(Location {
+                    uri: target_uri,
+                    range,
+                })
             })
             .collect();
 
@@ -499,17 +508,17 @@ impl LspServer {
     }
 
     fn handle_prepare_rename(req: Request, host: &mut LspHost) -> Response {
-        let params: lsp_types::TextDocumentPositionParams =
-            match serde_json::from_value(req.params) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Response::new_err(
-                        req.id,
-                        lsp_server::ErrorCode::InvalidParams as i32,
-                        e.to_string(),
-                    );
-                }
-            };
+        let params: lsp_types::TextDocumentPositionParams = match serde_json::from_value(req.params)
+        {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    e.to_string(),
+                );
+            }
+        };
         let uri = params.text_document.uri;
         let position = params.position;
         let uri_str = uri.as_str();
@@ -530,10 +539,7 @@ impl LspServer {
         let range = offsets_to_range(&source, start, end);
         Response::new_ok(
             req.id,
-            PrepareRenameResponse::RangeWithPlaceholder {
-                range,
-                placeholder,
-            },
+            PrepareRenameResponse::RangeWithPlaceholder { range, placeholder },
         )
     }
 
@@ -563,7 +569,10 @@ impl LspServer {
             return Response::new_ok(req.id, Option::<WorkspaceEdit>::None);
         }
 
-        #[expect(clippy::mutable_key_type, reason = "Uri uses interior mutability but hashes stably")]
+        #[expect(
+            clippy::mutable_key_type,
+            reason = "Uri uses interior mutability but hashes stably"
+        )]
         let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
         for (edit_uri, edits) in edits_by_uri {
             let source = if edit_uri == uri_str {

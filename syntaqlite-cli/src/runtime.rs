@@ -118,7 +118,8 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             files,
             expression,
             output,
-        } => require_dialect(dialect).and_then(|d| cmd_parse(&d, &files, expression.as_deref(), output)),
+        } => require_dialect(dialect)
+            .and_then(|d| cmd_parse(&d, &files, expression.as_deref(), output)),
         Command::Validate {
             files,
             expression,
@@ -283,10 +284,12 @@ fn cmd_parse_source(
                         stmt.dump(&mut ast_out, 0);
                     }
                     crate::ParseOutput::Json => {
-                        let val = stmt.erase().root_node().map_or(
-                            serde_json::Value::Null,
-                            |n| serde_json::to_value(n).unwrap_or(serde_json::Value::Null),
-                        );
+                        let val = stmt
+                            .erase()
+                            .root_node()
+                            .map_or(serde_json::Value::Null, |n| {
+                                serde_json::to_value(n).unwrap_or(serde_json::Value::Null)
+                            });
                         json_nodes.push(val);
                     }
                     crate::ParseOutput::Summary => {}
@@ -416,10 +419,7 @@ fn format_source(
     Formatter::with_dialect_config(dialect.clone(), config).format(source)
 }
 
-fn build_schema_catalog(
-    dialect: &AnyDialect,
-    schema_files: &[String],
-) -> Result<Catalog, String> {
+fn build_schema_catalog(dialect: &AnyDialect, schema_files: &[String]) -> Result<Catalog, String> {
     if schema_files.is_empty() {
         return Ok(Catalog::new(dialect.clone()));
     }

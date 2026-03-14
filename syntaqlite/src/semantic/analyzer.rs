@@ -950,13 +950,13 @@ impl<'a> ValidationPass<'a> {
                     file_uri: None,
                 })
                 .or_else(|| {
-                    self.catalog.relation_definition_site(name).map(|site| {
-                        DefinitionLocation {
+                    self.catalog
+                        .relation_definition_site(name)
+                        .map(|site| DefinitionLocation {
                             start: site.start,
                             end: site.end,
                             file_uri: Some(site.file_uri.clone()),
-                        }
-                    })
+                        })
                 });
             self.resolutions.push(Resolution {
                 start: offset,
@@ -1065,8 +1065,11 @@ impl<'a> ValidationPass<'a> {
                 all_columns,
             } => {
                 if !resolved_table.is_empty() {
-                    let def_key =
-                        format!("{}.{}", resolved_table.to_ascii_lowercase(), column.to_ascii_lowercase());
+                    let def_key = format!(
+                        "{}.{}",
+                        resolved_table.to_ascii_lowercase(),
+                        column.to_ascii_lowercase()
+                    );
                     let definition = self
                         .definition_offsets
                         .get(&def_key)
@@ -1154,8 +1157,7 @@ impl<'a> ValidationPass<'a> {
         if alias.is_empty() {
             self.scope.add_anonymous(cols);
         } else {
-            self.scope
-                .add_table(alias, cols, RowIdPolicy::WithRowId);
+            self.scope.add_table(alias, cols, RowIdPolicy::WithRowId);
         }
     }
 
@@ -1321,14 +1323,21 @@ impl<'a> ValidationPass<'a> {
         table_key: &str,
     ) {
         let Some(body_id) = body_id else { return };
-        let Some((tag, fields)) = stmt.extract_fields(body_id) else { return };
-        let Some(&SemanticRole::Query { columns: cols_idx, .. }) =
-            self.roles.get(u32::from(tag) as usize)
+        let Some((tag, fields)) = stmt.extract_fields(body_id) else {
+            return;
+        };
+        let Some(&SemanticRole::Query {
+            columns: cols_idx, ..
+        }) = self.roles.get(u32::from(tag) as usize)
         else {
             return;
         };
-        let Some(list_id) = Self::field_node_id(&fields, cols_idx) else { return };
-        let Some(children) = stmt.list_children(list_id) else { return };
+        let Some(list_id) = Self::field_node_id(&fields, cols_idx) else {
+            return;
+        };
+        let Some(children) = stmt.list_children(list_id) else {
+            return;
+        };
 
         for &child_id in children {
             if child_id.is_null() {
@@ -1342,7 +1351,10 @@ impl<'a> ValidationPass<'a> {
                 .get(u32::from(child_tag) as usize)
                 .copied()
                 .unwrap_or(SemanticRole::Transparent);
-            let SemanticRole::ResultColumn { alias: alias_idx, .. } = child_role else {
+            let SemanticRole::ResultColumn {
+                alias: alias_idx, ..
+            } = child_role
+            else {
                 continue;
             };
             let alias_node = Self::field_node_id(&child_fields, alias_idx);
@@ -1350,7 +1362,8 @@ impl<'a> ValidationPass<'a> {
             if !alias_text.is_empty() {
                 let off = self.span_offset(alias_text);
                 let key = format!("{table_key}.{}", alias_text.to_ascii_lowercase());
-                self.definition_offsets.insert(key, (off, off + alias_text.len()));
+                self.definition_offsets
+                    .insert(key, (off, off + alias_text.len()));
             }
         }
     }
@@ -1611,16 +1624,22 @@ mod tests {
     #[test]
     fn catalog_from_ddl_populates_tables() {
         let dialect = crate::sqlite::dialect::dialect();
-        let cat =
-            Catalog::from_ddl(dialect, &[("CREATE TABLE users (id INTEGER, name TEXT);", None)]).0;
+        let cat = Catalog::from_ddl(
+            dialect,
+            &[("CREATE TABLE users (id INTEGER, name TEXT);", None)],
+        )
+        .0;
         assert!(cat.resolve_relation("users"));
     }
 
     #[test]
     fn catalog_from_ddl_populates_virtual_tables() {
         let dialect = crate::sqlite::dialect::dialect();
-        let cat =
-            Catalog::from_ddl(dialect, &[("CREATE VIRTUAL TABLE fts USING fts5(content);", None)]).0;
+        let cat = Catalog::from_ddl(
+            dialect,
+            &[("CREATE VIRTUAL TABLE fts USING fts5(content);", None)],
+        )
+        .0;
         assert!(cat.resolve_relation("fts"));
     }
 
@@ -1707,11 +1726,7 @@ mod tests {
         // accept any column and block leaking to outer scopes.
         let mut scope = QueryScope::default();
         scope.push();
-        scope.add_table(
-            "outer_tbl",
-            Some(vec!["id".into()]),
-            RowIdPolicy::WithRowId,
-        );
+        scope.add_table("outer_tbl", Some(vec!["id".into()]), RowIdPolicy::WithRowId);
         scope.push();
         scope.add_anonymous(None); // unknown columns
 
@@ -2242,8 +2257,11 @@ mod tests {
     fn definition_column_in_ddl_table() {
         let src = "CREATE TABLE users (id INTEGER, name TEXT);\nSELECT name FROM users;";
         let dialect = crate::sqlite::dialect::dialect();
-        let cat =
-            Catalog::from_ddl(dialect, &[("CREATE TABLE users (id INTEGER, name TEXT);", None)]).0;
+        let cat = Catalog::from_ddl(
+            dialect,
+            &[("CREATE TABLE users (id INTEGER, name TEXT);", None)],
+        )
+        .0;
         let mut az = sqlite_analyzer();
         let model = az.analyze(src, &cat, &strict());
 

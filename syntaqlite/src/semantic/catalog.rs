@@ -958,7 +958,9 @@ fn ddl_name_span(
         SemanticRole::DefineTable { name, .. } | SemanticRole::DefineView { name, .. } => *name,
         _ => return None,
     };
-    let FieldValue::Span(s) = fields[name_idx as usize] else { return None };
+    let FieldValue::Span(s) = fields[name_idx as usize] else {
+        return None;
+    };
     if s.is_empty() {
         return None;
     }
@@ -975,25 +977,33 @@ pub(crate) fn ddl_column_spans(
     roles: &[SemanticRole],
 ) -> Vec<(String, usize, usize)> {
     let mut out = Vec::new();
-    let Some((tag, fields)) = stmt.extract_fields(root) else { return out };
-    let Some(&SemanticRole::DefineTable { columns, .. }) = roles.get(u32::from(tag) as usize) else {
+    let Some((tag, fields)) = stmt.extract_fields(root) else {
+        return out;
+    };
+    let Some(&SemanticRole::DefineTable { columns, .. }) = roles.get(u32::from(tag) as usize)
+    else {
         return out;
     };
     if columns == FIELD_ABSENT {
         return out;
     }
-    let FieldValue::NodeId(col_list_id) = fields[columns as usize] else { return out };
+    let FieldValue::NodeId(col_list_id) = fields[columns as usize] else {
+        return out;
+    };
     if col_list_id.is_null() {
         return out;
     }
-    let Some(children) = stmt.list_children(col_list_id) else { return out };
+    let Some(children) = stmt.list_children(col_list_id) else {
+        return out;
+    };
     let source_start = stmt.source().as_ptr() as usize;
 
     for &child_id in children {
         if child_id.is_null() {
             continue;
         }
-        if let Some((name, start, end)) = column_def_name_span(stmt, child_id, roles, source_start) {
+        if let Some((name, start, end)) = column_def_name_span(stmt, child_id, roles, source_start)
+        {
             out.push((name.to_ascii_lowercase(), start, end));
         }
     }
@@ -1011,7 +1021,9 @@ fn column_def_name_span<'a>(
     let SemanticRole::ColumnDef { name: name_idx, .. } = roles.get(u32::from(tag) as usize)? else {
         return None;
     };
-    let FieldValue::NodeId(name_id) = fields[*name_idx as usize] else { return None };
+    let FieldValue::NodeId(name_id) = fields[*name_idx as usize] else {
+        return None;
+    };
     if name_id.is_null() {
         return None;
     }
