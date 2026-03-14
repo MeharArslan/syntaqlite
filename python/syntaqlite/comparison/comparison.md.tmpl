@@ -53,15 +53,18 @@ file repeated 30× (throughput-dominated).
 
 # Formatting
 
-**What we test:** Round-trip correctness. Each of the same 40 statements is
-formatted, then the formatted output is validated against `sqlite3`. A tool
-scores "correct" only if sqlite3 still accepts the formatted SQL. Tools that
-crash or refuse to format a statement score "fail". Tools that produce output
-sqlite3 rejects score "corrupt" — the most dangerous failure mode.
+**What we test:** Round-trip semantic preservation. Each of the same 40
+statements is formatted, then we run `EXPLAIN` on both the original and
+formatted SQL and compare the bytecode sqlite3 produces. Identical bytecode
+means sqlite3 will execute the exact same operations — the formatter preserved
+semantics, not just validity. Tools that crash or refuse to format score
+"refused". Tools whose output produces different bytecode score "corrupt".
 
-**Why this matters:** A formatter that silently changes the meaning of your SQL
-is worse than one that refuses to format it. The "corrupt" column is the most
-important.
+**Why bytecode, not just acceptance?** A formatter could subtly alter your SQL
+(reorder expressions, change operator grouping) in a way sqlite3 still accepts
+but that produces different results. Bytecode comparison catches these silent
+semantic changes. For statements where `EXPLAIN` isn't applicable (e.g.
+`PRAGMA`, `ATTACH`), we fall back to acceptance-only.
 
 ## Accuracy
 

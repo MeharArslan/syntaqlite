@@ -138,6 +138,29 @@ def _validate_sql_with_sqlite(sql):
             os.unlink(tmp_db)
 
 
+def _get_explain_bytecode(sql):
+    """Get EXPLAIN bytecode for SQL, or None if not applicable."""
+    sql_stripped = sql.strip().rstrip(';').strip()
+    upper = sql_stripped.upper()
+    if upper.startswith('DETACH') or any(upper.startswith(pfx) for pfx in NO_EXPLAIN_PREFIXES):
+        return None
+    tmp_db = tempfile.mktemp(suffix=".db")
+    shutil.copy2(BASE_DB, tmp_db)
+    try:
+        p = subprocess.run(
+            ["sqlite3", tmp_db, "EXPLAIN " + sql],
+            capture_output=True, timeout=10,
+        )
+        if p.returncode == 0:
+            return p.stdout
+        return None
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        if os.path.exists(tmp_db):
+            os.unlink(tmp_db)
+
+
 def _load_test_statements():
     with open(os.path.join(DIR, "test_statements.sql")) as f:
         content = f.read()
@@ -444,7 +467,7 @@ def collect_parser():
         ("bench.sql (1x)", small_path),
         ("bench_30x.sql (30x)", large_path),
     ]:
-        warmup = "3" if "1x" in label else "2"
+        warmup = "5"
         runs = "10" if "1x" in label else "5"
         cmd = (
             f"hyperfine --warmup {warmup} --min-runs {runs} --shell=none "
@@ -493,12 +516,15 @@ def collect_formatter():
     # Ground truth
     _log("  Ground truth...")
     orig_pass = {}
+    orig_bytecode = {}
     gt_results = []
     for name, path in stmt_files:
         with open(path) as f:
             sql = f.read()
         ok, err = _validate_sql_with_sqlite(sql)
         orig_pass[path] = ok
+        if ok:
+            orig_bytecode[path] = _get_explain_bytecode(sql)
         gt_results.append({"name": name[:50], "sqlite3_ok": ok, "error": err[:60] if err else ""})
 
     n_valid = sum(orig_pass.values())
@@ -521,22 +547,40 @@ def collect_formatter():
             si, tn = futures[fut]
             fmt_results[(si, tn)] = fut.result()
 
-    # Validate formatted output in parallel
+    # Validate formatted output in parallel — compare EXPLAIN bytecode
     validate_jobs = {}
     for si, (name, path) in enumerate(stmt_files):
         for tn in FORMATTER_NAMES:
             fmt_ok, formatted_sql = fmt_results[(si, tn)]
             if fmt_ok and formatted_sql and formatted_sql.strip() and orig_pass[path]:
-                validate_jobs[(si, tn)] = formatted_sql
+                validate_jobs[(si, tn)] = (formatted_sql, path)
 
     validate_results = {}
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 8) as pool:
         futures = {}
-        for key, sql in validate_jobs.items():
-            fut = pool.submit(_validate_sql_with_sqlite, sql)
-            futures[fut] = key
+        for key, (sql, path) in validate_jobs.items():
+            orig_bc = orig_bytecode.get(path)
+            if orig_bc is not None:
+                # Compare EXPLAIN bytecode
+                fut = pool.submit(_get_explain_bytecode, sql)
+            else:
+                # No bytecode available (PRAGMA etc.) — fall back to acceptance check
+                fut = pool.submit(_validate_sql_with_sqlite, sql)
+            futures[fut] = (key, orig_bc)
         for fut in as_completed(futures):
-            validate_results[futures[fut]] = fut.result()
+            key, orig_bc = futures[fut]
+            result = fut.result()
+            if orig_bc is not None:
+                # result is bytecode (bytes or None)
+                if result is not None and result == orig_bc:
+                    validate_results[key] = (True, "")
+                elif result is None:
+                    validate_results[key] = (False, "EXPLAIN failed on formatted SQL")
+                else:
+                    validate_results[key] = (False, "EXPLAIN bytecode differs from original")
+            else:
+                # result is (ok, err) tuple from _validate_sql_with_sqlite
+                validate_results[key] = result
 
     for si, (name, path) in enumerate(stmt_files):
         row = {"name": name[:50], "tools": {}}
@@ -605,7 +649,7 @@ def collect_formatter():
         ("bench.sql (1x)", small_path),
         ("bench_30x.sql (30x)", large_path),
     ]:
-        warmup = "3" if "1x" in label else "2"
+        warmup = "5"
         runs = "10" if "1x" in label else "5"
         cmd = (
             f"hyperfine --warmup {warmup} --min-runs {runs} --shell=none "
@@ -865,7 +909,7 @@ def collect_validator():
         ("bench.sql (1x)", small_path),
         ("bench_30x.sql (30x)", large_path),
     ]:
-        warmup = "3" if "1x" in label else "2"
+        warmup = "5"
         runs = "10" if "1x" in label else "5"
         cmd = (
             f"hyperfine --warmup {warmup} --min-runs {runs} --shell=none "
@@ -1102,7 +1146,7 @@ def collect_lsp():
         bench_cmds.append(f"-n '{name}' '{script} {bench_sql_path}'")
 
     cmd = (
-        f"hyperfine --warmup 2 --min-runs 5 --shell=none -i "
+        f"hyperfine --warmup 5 --min-runs 5 --shell=none -i "
         f"--export-markdown '{lsp_dir}/bench.md' "
         + " ".join(bench_cmds)
     )

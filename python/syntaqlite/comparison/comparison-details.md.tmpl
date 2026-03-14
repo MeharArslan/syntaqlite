@@ -105,7 +105,9 @@ Legend: **PASS** = correctly parses valid SQL, **FAIL** = rejects valid SQL, **F
 
 ## Round-trip validation
 
-For each formatter: does the formatted output still pass `sqlite3`?
+For each formatter: does the formatted output produce identical `EXPLAIN`
+bytecode to the original? This verifies semantic preservation, not just
+syntactic validity. "CORRUPT" means the bytecode differs or `EXPLAIN` fails.
 
 {{FORMATTER_PER_STMT_TABLE}}
 
