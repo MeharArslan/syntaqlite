@@ -8,6 +8,8 @@ A parser, formatter, validator, and language server for SQLite SQL, built on SQL
 
 **[Docs](https://docs.syntaqlite.com)** · **[Playground](https://playground.syntaqlite.com)** · **[VS Code Extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)** · **[MCP Server](integrations/mcp/README.md)**
 
+> **Note:** syntaqlite is at 0.x — APIs and CLI flags may change before 1.0.
+
 ## Why syntaqlite
 
 Most SQL tools parse a subset of SQL, invent their own grammar, or handle SQLite as an afterthought. syntaqlite uses SQLite's own Lemon-generated grammar and tokenizer, compiled from C — the parser doesn't approximate SQLite, it _is_ SQLite's grammar compiled into a reusable library.
@@ -177,7 +179,7 @@ cargo install syntaqlite-cli
 
 ```toml
 [dependencies]
-syntaqlite = { version = "0.1", features = ["fmt"] }
+syntaqlite = { version = "0.0.1", features = ["fmt"] }
 ```
 
 **JavaScript / WASM**

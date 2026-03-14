@@ -3,10 +3,13 @@
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
 
-//! Shared primitives with no generated-file dependencies.
+//! Internal shared primitives for syntaqlite — **not intended for direct use**.
 //!
-//! Safe for the bootstrap tool (`syntaqlite-buildtools`) to depend on.
+//! This crate is published to crates.io only because `syntaqlite` depends on it.
+//! All types are `#[doc(hidden)]` and may change without notice.
+//! Use the [`syntaqlite`](https://crates.io/crates/syntaqlite) crate instead.
 
+#[doc(hidden)]
 /// Semantic role types shared between the codegen tool and the runtime.
 ///
 /// `SemanticRole` is `#[repr(C, u8)]` so the Rust in-memory layout
@@ -350,6 +353,7 @@ pub mod roles {
     }
 }
 
+#[doc(hidden)]
 /// Formatter bytecode types shared between the codegen tool and the runtime.
 pub mod fmt {
     /// Binary encoding of formatter bytecode programs.
