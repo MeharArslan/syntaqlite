@@ -10,22 +10,11 @@ Run syntaqlite in CI to enforce consistent SQL formatting across your team.
 
 ## Check mode
 
-Use `syntaqlite fmt` without `-i` and compare the output to the original. If
-they differ, the file isn't formatted. A simple approach:
+Use `--check` to verify that files are already formatted without modifying
+them. It exits with code 1 if any file would change:
 
 ```bash
-#!/bin/bash
-set -e
-
-failed=0
-for f in $(find . -name '*.sql'); do
-  if ! diff -q <(syntaqlite fmt "$f") "$f" > /dev/null 2>&1; then
-    echo "Not formatted: $f"
-    failed=1
-  fi
-done
-
-exit $failed
+syntaqlite fmt --check "**/*.sql"
 ```
 
 ## GitHub Actions
@@ -47,10 +36,7 @@ jobs:
             | sh
 
       - name: Check formatting
-        run: |
-          for f in $(find . -name '*.sql'); do
-            diff <(syntaqlite fmt "$f") "$f" || { echo "::error file=$f::Not formatted"; exit 1; }
-          done
+        run: syntaqlite fmt --check "**/*.sql"
 ```
 
 ## Pre-commit hook

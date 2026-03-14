@@ -127,7 +127,7 @@ details.
 ## Inspect the parse tree
 
 ```bash
-echo "SELECT 1 + 2" | syntaqlite ast
+echo "SELECT 1 + 2" | syntaqlite parse -o ast
 ```
 
 Prints a text dump of the abstract syntax tree.

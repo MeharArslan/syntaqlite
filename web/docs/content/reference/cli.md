@@ -22,6 +22,7 @@ Reads from stdin if no files are given.
 | `-k, --keyword-case <CASE>` | `upper` | Keyword casing: `upper` or `lower` |
 | `--semicolons <BOOL>` | `true` | Append semicolons after statements |
 | `-i, --in-place` | | Write formatted output back to files |
+| `--check` | | Check if files are formatted (exit 1 if not, conflicts with `-i`) |
 | `--dialect <PATH>` | | Path to custom dialect shared library |
 | `--dialect-name <NAME>` | | Symbol name in dialect library |
 | `--sqlite-version <VER>` | `latest` | Target SQLite version (e.g., `3.47.0`) |
@@ -51,16 +52,26 @@ The validator builds schema from `CREATE TABLE` / `CREATE VIEW` statements in
 the input, then checks queries against that schema. Diagnostics are printed to
 stderr in rustc-style format.
 
-## syntaqlite ast
+## syntaqlite parse
 
-Print the parsed AST.
+Parse SQL and report results.
 
 ```bash
-syntaqlite ast [FILES...]
+syntaqlite parse [OPTIONS] [FILES...]
 ```
 
-Reads from stdin if no files are given. When multiple files are provided, each
-is prefixed with `==> filename <==`.
+Reads from stdin if no files are given.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-o, --output <OUTPUT>` | `summary` | Output format: `summary` or `ast` |
+
+Output formats:
+- `summary` — print statement/error counts (compact, for benchmarks)
+- `ast` — print the full abstract syntax tree
+
+When `ast` output is used with multiple files, each is prefixed with
+`==> filename <==`.
 
 Exit codes:
 - `0` — parsed successfully

@@ -9,7 +9,7 @@ Choose how you want to use syntaqlite, then follow the guide for your setup.
 
 ## Quick taste
 
-Install the CLI (or [try it in the browser](https://syntaqlite.com) first):
+Install the CLI (or [try it in the browser](https://playground.syntaqlite.com) first):
 
 <div class="tabs" data-tab-group="install">
   <div class="tab-buttons">
