@@ -28,7 +28,8 @@
     "onLanguage:sql",
     "onLanguage:sqlite",
     "onCommand:syntaqlite.restartServer",
-    "onCommand:syntaqlite.formatDocument"
+    "onCommand:syntaqlite.formatDocument",
+    "onCommand:syntaqlite.openSchema"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -70,6 +71,10 @@
       {
         "command": "syntaqlite.formatDocument",
         "title": "syntaqlite: Format Document"
+      },
+      {
+        "command": "syntaqlite.openSchema",
+        "title": "syntaqlite: Open Schema File"
       }
     ],
     "configuration": {

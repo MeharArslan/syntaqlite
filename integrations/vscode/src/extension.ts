@@ -11,6 +11,7 @@ import {
 
 let client: LanguageClient | undefined;
 let lastSentSchemaPath: string | undefined;
+let schemaStatusItem: vscode.StatusBarItem | undefined;
 
 interface SchemaEntry {
   schema: string;
@@ -69,9 +70,26 @@ function sendSchemaIfChanged(
   void client.sendNotification("workspace/didChangeConfiguration", {
     settings: { schemaPath: resolved },
   });
+  updateSchemaStatusItem(resolved);
   outputChannel.appendLine(
     `Schema path changed: ${resolved || "(cleared)"}`,
   );
+}
+
+/**
+ * Update the status bar item with the current schema path.
+ */
+function updateSchemaStatusItem(schemaPath: string): void {
+  if (!schemaStatusItem) return;
+  if (schemaPath) {
+    schemaStatusItem.text = `$(database) ${path.basename(schemaPath)}`;
+    schemaStatusItem.tooltip = `syntaqlite schema: ${schemaPath} (click to open)`;
+    schemaStatusItem.show();
+  } else {
+    schemaStatusItem.text = "$(database) No schema";
+    schemaStatusItem.tooltip = "syntaqlite: No schema configured (click to configure)";
+    schemaStatusItem.show();
+  }
 }
 
 /**
@@ -171,6 +189,37 @@ export async function activate(
     clientOptions,
   );
 
+  // Status bar item showing active schema
+  schemaStatusItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    100,
+  );
+  schemaStatusItem.command = "syntaqlite.openSchema";
+  updateSchemaStatusItem(initialSchemaPath);
+  context.subscriptions.push(schemaStatusItem);
+
+  // Register open schema command
+  context.subscriptions.push(
+    vscode.commands.registerCommand("syntaqlite.openSchema", async () => {
+      const editor = vscode.window.activeTextEditor;
+      const resolved = editor
+        ? resolveSchemaForUri(editor.document.uri)
+        : vscode.workspace.getConfiguration("syntaqlite").get<string>("schemaPath", "");
+      if (!resolved) {
+        void vscode.window.showInformationMessage(
+          "No schema configured. Set syntaqlite.schemaPath or syntaqlite.schemas in settings.",
+        );
+        return;
+      }
+      const uri = vscode.Uri.file(resolved);
+      try {
+        await vscode.window.showTextDocument(uri);
+      } catch {
+        void vscode.window.showErrorMessage(`Could not open schema file: ${resolved}`);
+      }
+    }),
+  );
+
   // Register restart command
   context.subscriptions.push(
     vscode.commands.registerCommand("syntaqlite.restartServer", async () => {
@@ -199,6 +248,9 @@ export async function activate(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (editor && (editor.document.languageId === "sql" || editor.document.languageId === "sqlite")) {
         sendSchemaIfChanged(editor.document.uri, outputChannel);
+        updateSchemaStatusItem(resolveSchemaForUri(editor.document.uri));
+      } else {
+        schemaStatusItem?.hide();
       }
     }),
   );
@@ -225,6 +277,7 @@ export async function activate(
             void client.sendNotification("workspace/didChangeConfiguration", {
               settings: { schemaPath: newSchemaPath },
             });
+            updateSchemaStatusItem(newSchemaPath);
             outputChannel.appendLine(
               `Schema path changed: ${newSchemaPath || "(cleared)"}`,
             );
