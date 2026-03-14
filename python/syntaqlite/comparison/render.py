@@ -152,14 +152,17 @@ def _build_formatter(ph, r):
     n_valid = r["n_valid"]
     fmt_names = r.get("formatter_names", FORMATTER_NAMES)
 
-    # Accuracy table
+    # Accuracy table (sorted by correct count descending)
+    ranked = sorted(fmt_names, key=lambda tn: -tallies[tn]['format_ok'])
     rows = []
-    for tn in fmt_names:
+    for tn in ranked:
         t = tallies[tn]
+        pct = t['format_ok'] * 100 // total
+        bar = "\u2588" * (t['format_ok'] * 20 // total)
         refused = total - t['format_ok'] - t['corrupted']
-        rows.append([tn, f"{t['format_ok']}/{total}", str(t['corrupted']) if t['corrupted'] else "-", str(refused) if refused else "-"])
+        rows.append([tn, f"{t['format_ok']}/{total} ({pct}%) {bar}", str(t['corrupted']) if t['corrupted'] else "-", str(refused) if refused else "-"])
     ph["FORMATTER_ACCURACY_TABLE"] = _table(
-        ["Tool", "Correct", "Corrupt", "Refused"], rows, ['l', 'r', 'r', 'r'])
+        ["Tool", "Correct", "Corrupt", "Refused"], rows, ['l', 'l', 'r', 'r'])
 
     # Speed
     _build_speed(ph, r["speed"], "FORMATTER")
@@ -286,10 +289,44 @@ def _build_validator(ph, r):
 def _build_lsp(ph, r):
     tool_names = r["tool_names"]
 
-    # Features table
-    headers = ["Feature"] + tool_names
+    # Features table — mark sqls with footnote
+    display_names = []
+    for n in tool_names:
+        display_names.append(f"{n} \u00b9" if n == "sqls" else n)
+    headers = ["Feature"] + display_names
     align = ['l'] + ['c'] * len(tool_names)
     ph["LSP_FEATURES_TABLE"] = _table(headers, r["feature_rows"], align)
+
+    # sqls footnote
+    ph["LSP_SQLS_FOOTNOTE"] = (
+        "\u00b9 sqls requires a live database connection. Completion and hover results come\n"
+        "from the connected database schema, not static analysis. Without a database,\n"
+        "these features return no results."
+    )
+
+    # Completion depth bar chart
+    comp_rows = []
+    for row in r["feature_rows"]:
+        if row[0] == "Completion":
+            for i, name in enumerate(tool_names):
+                cell = row[i + 1]
+                m = re.search(r'\((\d+) items?\)', cell)
+                count = int(m.group(1)) if m else 0
+                if count > 0:
+                    label = f"{name} \u00b9" if name == "sqls" else name
+                    comp_rows.append((label, count))
+            break
+    if comp_rows:
+        max_count = max(c for _, c in comp_rows)
+        comp_rows.sort(key=lambda x: -x[1])
+        bar_rows = []
+        for label, count in comp_rows:
+            bar_len = max(1, count * 20 // max_count)
+            bar = "\u2588" * bar_len
+            bar_rows.append([label, f"{count} {bar}"])
+        ph["LSP_COMPLETION_DEPTH"] = _table(["Tool", "Items"], bar_rows)
+    else:
+        ph["LSP_COMPLETION_DEPTH"] = ""
 
     # Speed
     bench_md = r.get("speed", {}).get("hyperfine_md", "")
