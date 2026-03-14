@@ -1677,6 +1677,75 @@ mod tests {
     }
 
     #[test]
+    fn anonymous_source_columns_resolve_unqualified() {
+        // Anonymous sources (unaliased subqueries) should participate in
+        // unqualified column resolution.
+        let mut scope = QueryScope::default();
+        scope.push();
+        scope.add_anonymous(Some(vec!["x".into(), "y".into()]));
+
+        let res = scope.resolve_column(None, "x");
+        assert!(
+            matches!(res, ColumnResolution::Found { .. }),
+            "anonymous source column 'x' should resolve: {res:?}"
+        );
+
+        // Unknown column should NOT resolve.
+        let res = scope.resolve_column(None, "missing");
+        assert!(
+            matches!(res, ColumnResolution::NotFound),
+            "column 'missing' should not resolve: {res:?}"
+        );
+
+        scope.pop();
+    }
+
+    #[test]
+    fn anonymous_source_unknown_columns_blocks_leaking() {
+        // An anonymous source with None columns (compound subquery) should
+        // accept any column and block leaking to outer scopes.
+        let mut scope = QueryScope::default();
+        scope.push();
+        scope.add_table(
+            "outer_tbl",
+            Some(vec!["id".into()]),
+            RowIdPolicy::WithRowId,
+        );
+        scope.push();
+        scope.add_anonymous(None); // unknown columns
+
+        let res = scope.resolve_column(None, "anything");
+        match res {
+            ColumnResolution::Found { ref table, .. } => {
+                assert_ne!(
+                    table, "outer_tbl",
+                    "should not leak to outer scope through anonymous unknown-columns source"
+                );
+            }
+            _ => panic!("expected Found, got {res:?}"),
+        }
+
+        scope.pop();
+        scope.pop();
+    }
+
+    #[test]
+    fn anonymous_source_not_in_qualified_lookup() {
+        // Anonymous sources should NOT be found by qualified (table.column) lookup.
+        let mut scope = QueryScope::default();
+        scope.push();
+        scope.add_anonymous(Some(vec!["x".into()]));
+
+        let res = scope.resolve_column(Some("sq"), "x");
+        assert!(
+            matches!(res, ColumnResolution::TableNotFound),
+            "anonymous source should not match qualified lookup: {res:?}"
+        );
+
+        scope.pop();
+    }
+
+    #[test]
     fn without_rowid_table_rejects_implicit_rowid() {
         // A WITHOUT ROWID table should not accept rowid/oid/_rowid_ as columns.
         let mut az = sqlite_analyzer();
@@ -1973,6 +2042,113 @@ mod tests {
             1,
             "column 'bogus' should be flagged as unknown: {:?}",
             model.diagnostics()
+        );
+    }
+
+    // ── Analyzer: unaliased subqueries ─────────────────────────────────────────
+
+    #[test]
+    fn unaliased_subquery_columns_visible() {
+        // Columns from an unaliased subquery should be resolvable in the outer
+        // query — this was the main regression from the QueryScope refactor.
+        let src = "\
+            CREATE TABLE t1(a INTEGER, b TEXT);\
+            SELECT a FROM (SELECT a, b FROM t1);";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "columns from unaliased subquery should be visible: {col_errs:?}"
+        );
+    }
+
+    #[test]
+    fn unaliased_subquery_rejects_missing_column() {
+        // A column not in the subquery's SELECT list should still be flagged.
+        let src = "\
+            CREATE TABLE t1(a INTEGER, b TEXT);\
+            SELECT missing FROM (SELECT a FROM t1);";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == "missing"))
+            .collect();
+        assert_eq!(
+            col_errs.len(),
+            1,
+            "'missing' should be flagged as unknown: {:?}",
+            model.diagnostics()
+        );
+    }
+
+    #[test]
+    fn unaliased_compound_subquery_accepts_columns() {
+        // UNION/UNION ALL subqueries can't have columns inferred (returns None),
+        // so all column references should be accepted conservatively.
+        let src = "\
+            CREATE TABLE t1(a INTEGER);\
+            SELECT x FROM (SELECT a AS x FROM t1 UNION ALL SELECT a FROM t1);";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "compound subquery columns should be accepted: {col_errs:?}"
+        );
+    }
+
+    #[test]
+    fn aliased_subquery_columns_visible() {
+        // Named subquery with inferred columns — column names should be known.
+        let src = "\
+            CREATE TABLE t1(a INTEGER, b TEXT);\
+            SELECT sq.a FROM (SELECT a, b FROM t1) AS sq;";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "aliased subquery columns should be visible: {col_errs:?}"
+        );
+    }
+
+    #[test]
+    fn unaliased_subquery_in_join_columns_visible() {
+        // Columns from an unaliased subquery in a JOIN should be resolvable.
+        let src = "\
+            CREATE TABLE t1(a INTEGER);\
+            CREATE TABLE t2(x INTEGER);\
+            SELECT a, x FROM t1 LEFT JOIN (SELECT x FROM t2) ON a = x;";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "unaliased subquery columns in JOIN should be visible: {col_errs:?}"
         );
     }
 
