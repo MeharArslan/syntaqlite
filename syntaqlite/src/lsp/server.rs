@@ -495,18 +495,22 @@ impl LspServer {
     /// Load schema from `initializationOptions.schemaPath`.
     fn load_schema_from_options(params: &InitializeParams, host: &mut LspHost) {
         let Some(opts) = &params.initialization_options else {
+            eprintln!("syntaqlite-lsp: no initializationOptions");
             return;
         };
+        eprintln!("syntaqlite-lsp: initializationOptions: {opts}");
         Self::load_schema_from_settings(opts, host);
     }
 
     /// Load schema DDL from a `schemaPath` key in a JSON settings object.
     fn load_schema_from_settings(settings: &serde_json::Value, host: &mut LspHost) {
+        eprintln!("syntaqlite-lsp: load_schema_from_settings: {settings}");
         let path_str = settings
             .get("schemaPath")
             .and_then(|v| v.as_str())
             .unwrap_or("");
         if path_str.is_empty() {
+            eprintln!("syntaqlite-lsp: schemaPath is empty, skipping");
             return;
         }
         let path = PathBuf::from(path_str);

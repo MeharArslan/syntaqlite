@@ -50,7 +50,16 @@ function resolveSchemaForUri(uri: vscode.Uri): string {
     }
   }
 
-  return config.get<string>("schemaPath", "");
+  const schemaPath = config.get<string>("schemaPath", "");
+  if (schemaPath && !path.isAbsolute(schemaPath)) {
+    const workspaceFolder = uri
+      ? vscode.workspace.getWorkspaceFolder(uri)
+      : vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      return path.join(workspaceFolder.uri.fsPath, schemaPath);
+    }
+  }
+  return schemaPath;
 }
 
 /**
@@ -67,12 +76,13 @@ function sendSchemaIfChanged(
   if (resolved === lastSentSchemaPath) return;
 
   lastSentSchemaPath = resolved;
+  const exists = resolved ? fs.existsSync(resolved) : false;
   void client.sendNotification("workspace/didChangeConfiguration", {
     settings: { schemaPath: resolved },
   });
   updateSchemaStatusItem(resolved);
   outputChannel.appendLine(
-    `Schema path changed: ${resolved || "(cleared)"}`,
+    `Schema path changed: ${resolved || "(cleared)"} (exists: ${exists})`,
   );
 }
 
@@ -160,10 +170,19 @@ export async function activate(
   // Resolve initial schema from the active editor if available, else fall back
   // to the simple schemaPath setting.
   const activeUri = vscode.window.activeTextEditor?.document.uri;
-  const initialSchemaPath = activeUri
-    ? resolveSchemaForUri(activeUri)
-    : vscode.workspace.getConfiguration("syntaqlite").get<string>("schemaPath", "");
+  let initialSchemaPath: string;
+  if (activeUri) {
+    initialSchemaPath = resolveSchemaForUri(activeUri);
+  } else {
+    let sp = vscode.workspace.getConfiguration("syntaqlite").get<string>("schemaPath", "");
+    if (sp && !path.isAbsolute(sp)) {
+      const wf = vscode.workspace.workspaceFolders?.[0];
+      if (wf) { sp = path.join(wf.uri.fsPath, sp); }
+    }
+    initialSchemaPath = sp;
+  }
   lastSentSchemaPath = initialSchemaPath;
+  outputChannel.appendLine(`Initial schema path: ${initialSchemaPath || "(none)"}`);
 
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
