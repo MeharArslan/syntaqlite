@@ -23,8 +23,8 @@ use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
     GotoDefinitionResponse, Hover, HoverContents, HoverProviderCapability, InitializeParams,
     Location, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, Position,
-    PositionEncodingKind, Range, SemanticTokenType,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    PositionEncodingKind, Range, SemanticTokenType, SemanticTokensFullOptions,
+    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
     SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelp, SignatureHelpOptions,
     SignatureInformation, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
 };

@@ -297,7 +297,7 @@ impl LspHost {
             }
         }
 
-        items.sort_by(|a, b| a.kind().sort_priority().cmp(&b.kind().sort_priority()));
+        items.sort_by_key(|a| a.kind().sort_priority());
         items
     }
 
@@ -389,11 +389,7 @@ impl LspHost {
     // ── Go-to-definition ───────────────────────────────────────────────────
 
     /// Return the definition location `(start, end)` for the symbol at `offset`.
-    pub(crate) fn definition_info(
-        &mut self,
-        uri: &str,
-        offset: usize,
-    ) -> Option<(usize, usize)> {
+    pub(crate) fn definition_info(&mut self, uri: &str, offset: usize) -> Option<(usize, usize)> {
         let doc = self.documents.get_mut(uri)?;
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         let model = doc.model.as_ref().expect("ensure_model sets model");

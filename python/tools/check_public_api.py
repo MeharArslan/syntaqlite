@@ -31,7 +31,7 @@ _RED: str = "\033[1;31m"
 _GREEN: str = "\033[1;32m"
 _RESET: str = "\033[0m"
 
-_GOLDEN_DIR: str = os.path.join(ROOT_DIR, "test", "public-api")
+_GOLDEN_DIR: str = os.path.join(ROOT_DIR, "tests", "public-api")
 
 # (crate_name, features_or_None)
 _CRATES: list[tuple[str, str | None]] = [

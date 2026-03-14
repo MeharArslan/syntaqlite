@@ -403,7 +403,7 @@ impl Catalog {
     /// Create a catalog for `dialect`.
     ///
     /// The dialect's built-in functions (e.g. `length`, `count`, `substr` for
-    /// SQLite) are loaded immediately into the dialect layer. After
+    /// `SQLite`) are loaded immediately into the dialect layer. After
     /// construction, use [`layer_mut`](Self::layer_mut) to populate the
     /// database layer with your application's tables and views.
     ///
@@ -751,10 +751,7 @@ impl Catalog {
     /// - `columns = Some(cols)` — known column list.
     /// - `columns = None` — not found, or columns unknown (accept any ref).
     /// - `without_rowid = true` — no implicit rowid/oid/_rowid_ column.
-    pub(crate) fn table_source_info(
-        &self,
-        name: &str,
-    ) -> (Option<Vec<String>>, bool) {
+    pub(crate) fn table_source_info(&self, name: &str) -> (Option<Vec<String>>, bool) {
         for layer in self.all_layers_ordered() {
             if let Some(rel) = layer.relation(name) {
                 return (rel.columns.clone(), rel.without_rowid);
@@ -848,7 +845,6 @@ impl Catalog {
     fn all_layers_ordered(&self) -> impl Iterator<Item = &CatalogLayerContents> {
         self.layers.iter().rev()
     }
-
 }
 
 // ── DDL extraction helpers ────────────────────────────────────────────────────

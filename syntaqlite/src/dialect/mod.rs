@@ -8,6 +8,7 @@ use std::sync::Arc;
 use syntaqlite_syntax::any::AnyGrammar;
 
 #[cfg(feature = "dynload")]
+#[expect(clippy::single_component_path_imports)]
 use libloading;
 pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
@@ -137,7 +138,7 @@ pub trait TypedDialect: Into<AnyDialect> + Clone + 'static {}
 ///
 /// | Method | When to use |
 /// |--------|-------------|
-/// | [`sqlite_dialect().erase()`](crate::sqlite_dialect) | Built-in SQLite, type-erased. |
+/// | [`sqlite_dialect().erase()`](crate::sqlite_dialect) | Built-in `SQLite`, type-erased. |
 /// | [`Dialect::new().into()`](crate::Dialect) | Same, via `Into<AnyDialect>`. |
 /// | `AnyDialect::load(path, name)` | Dynamically loaded dialect (feature `dynload`). |
 ///

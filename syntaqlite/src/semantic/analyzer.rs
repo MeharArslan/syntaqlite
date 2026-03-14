@@ -491,7 +491,11 @@ enum RowIdPolicy {
 
 impl From<bool> for RowIdPolicy {
     fn from(without_rowid: bool) -> Self {
-        if without_rowid { Self::WithoutRowId } else { Self::WithRowId }
+        if without_rowid {
+            Self::WithoutRowId
+        } else {
+            Self::WithRowId
+        }
     }
 }
 
@@ -555,7 +559,9 @@ impl QueryScope {
     fn resolve_qualified(&self, table: &str, column: &str) -> ColumnResolution {
         let key = table.to_ascii_lowercase();
         for frame in self.frames.iter().rev() {
-            let Some(entry) = frame.get(&key) else { continue };
+            let Some(entry) = frame.get(&key) else {
+                continue;
+            };
             if entry.has_column(column) {
                 return ColumnResolution::Found {
                     table: table.to_string(),
@@ -604,10 +610,10 @@ impl QueryScope {
         let mut names: Vec<String> = Vec::new();
         for frame in self.frames.iter().rev() {
             for (tbl_name, entry) in frame {
-                if table.is_none_or(|t| tbl_name.eq_ignore_ascii_case(t)) {
-                    if let Some(cs) = &entry.columns {
-                        names.extend(cs.iter().map(|c| c.to_ascii_lowercase()));
-                    }
+                if table.is_none_or(|t| tbl_name.eq_ignore_ascii_case(t))
+                    && let Some(cs) = &entry.columns
+                {
+                    names.extend(cs.iter().map(|c| c.to_ascii_lowercase()));
                 }
             }
         }
@@ -632,7 +638,9 @@ fn ddl_name_offset(
         SemanticRole::DefineTable { name, .. } | SemanticRole::DefineView { name, .. } => *name,
         _ => return None,
     };
-    let FieldValue::Span(s) = fields[name_idx as usize] else { return None };
+    let FieldValue::Span(s) = fields[name_idx as usize] else {
+        return None;
+    };
     if s.is_empty() {
         return None;
     }
@@ -640,7 +648,7 @@ fn ddl_name_offset(
     Some((s.to_ascii_lowercase(), (off, off + s.len())))
 }
 
-/// SQLite's implicit rowid aliases.
+/// `SQLite`'s implicit rowid aliases.
 fn is_rowid_alias(column: &str) -> bool {
     column.eq_ignore_ascii_case("rowid")
         || column.eq_ignore_ascii_case("oid")
@@ -670,6 +678,7 @@ struct ValidationPass<'a> {
 }
 
 impl<'a> ValidationPass<'a> {
+    #[expect(clippy::too_many_arguments)]
     fn run(
         stmt: &AnyParsedStatement<'a>,
         root: AnyNodeId,
@@ -1442,7 +1451,11 @@ mod tests {
         let mut scope = QueryScope::default();
         // Outer scope: simulates a correlated outer query with known columns.
         scope.push();
-        scope.add_table("a", Some(vec!["id".into(), "name".into()]), RowIdPolicy::WithRowId);
+        scope.add_table(
+            "a",
+            Some(vec!["id".into(), "name".into()]),
+            RowIdPolicy::WithRowId,
+        );
         // Inner scope: "users" with unknown columns.
         scope.push();
         scope.add_table("users", None, RowIdPolicy::WithRowId);
@@ -1779,7 +1792,10 @@ mod tests {
         assert!(def.is_some(), "expected definition for CTE reference");
         let def = def.unwrap();
         let cte_def_offset = src.find("cte").unwrap();
-        assert_eq!(def.start, cte_def_offset, "definition should point to CTE name");
+        assert_eq!(
+            def.start, cte_def_offset,
+            "definition should point to CTE name"
+        );
         assert_eq!(def.end, cte_def_offset + "cte".len());
     }
 
@@ -1800,7 +1816,10 @@ mod tests {
         );
         let def = def.unwrap();
         let ddl_offset = src.find("users").unwrap();
-        assert_eq!(def.start, ddl_offset, "definition should point to CREATE TABLE name");
+        assert_eq!(
+            def.start, ddl_offset,
+            "definition should point to CREATE TABLE name"
+        );
         assert_eq!(def.end, ddl_offset + "users".len());
     }
 
@@ -1815,7 +1834,10 @@ mod tests {
         // "FROM t" — find the offset of the last "t"
         let from_t_offset = src.rfind("FROM t").unwrap() + 5; // offset of "t" after FROM
         let def = model.definition_at(from_t_offset);
-        assert!(def.is_some(), "expected definition for CTE-shadowed reference");
+        assert!(
+            def.is_some(),
+            "expected definition for CTE-shadowed reference"
+        );
         let def = def.unwrap();
         // CTE "t" starts at "WITH t" — offset 29
         let cte_t_offset = src[29..].find('t').unwrap() + 29;
@@ -2749,6 +2771,7 @@ mod tests {
 mod detect_qualifier_test {
     use super::*;
     use crate::semantic::model::StoredToken;
+    use syntaqlite_syntax::ParserTokenFlags;
 
     #[test]
     fn test_detect_qualifier_basic() {
@@ -2762,13 +2785,13 @@ mod detect_qualifier_test {
                 offset: 7,
                 length: 2,
                 token_type: id_type,
-                flags: Default::default(),
+                flags: ParserTokenFlags::default(),
             },
             StoredToken {
                 offset: 9,
                 length: 1,
                 token_type: dot_type,
-                flags: Default::default(),
+                flags: ParserTokenFlags::default(),
             },
         ];
         let result = detect_qualifier(source, &tokens, &dialect);

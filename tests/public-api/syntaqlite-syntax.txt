@@ -23,6 +23,7 @@
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::FrameExclude
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::FrameType
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::GeneratedColumnStorage
+#[repr(u32)] pub enum syntaqlite_syntax::nodes::IndexHint
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::IsOp
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::JoinType
 #[repr(u32)] pub enum syntaqlite_syntax::nodes::LikeKeyword
@@ -339,6 +340,7 @@ impl syntaqlite_syntax::nodes::GeneratedColumnStorage
 impl syntaqlite_syntax::nodes::IdentNameId
 impl syntaqlite_syntax::nodes::InExprId
 impl syntaqlite_syntax::nodes::InExprSourceId
+impl syntaqlite_syntax::nodes::IndexHint
 impl syntaqlite_syntax::nodes::InsertStmtId
 impl syntaqlite_syntax::nodes::IsExprId
 impl syntaqlite_syntax::nodes::IsOp
@@ -1136,6 +1138,8 @@ pub fn syntaqlite_syntax::nodes::CteListId::from(n: syntaqlite_syntax::nodes::Ct
 pub fn syntaqlite_syntax::nodes::CteListId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::DeleteStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::DeleteStmt<'a>::from_result(stmt_result: &'a syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
+pub fn syntaqlite_syntax::nodes::DeleteStmt<'a>::index_hint(&self) -> syntaqlite_syntax::nodes::IndexHint
+pub fn syntaqlite_syntax::nodes::DeleteStmt<'a>::index_name(&self) -> &'a str
 pub fn syntaqlite_syntax::nodes::DeleteStmt<'a>::limit_clause(&self) -> core::option::Option<syntaqlite_syntax::nodes::LimitClause<'a>>
 pub fn syntaqlite_syntax::nodes::DeleteStmt<'a>::node_id(&self) -> syntaqlite_syntax::nodes::DeleteStmtId
 pub fn syntaqlite_syntax::nodes::DeleteStmt<'a>::orderby(&self) -> core::option::Option<syntaqlite_syntax::nodes::OrderByList<'a>>
@@ -1255,6 +1259,7 @@ pub fn syntaqlite_syntax::nodes::InExprSource<'a>::from_result(stmt_result: &'a 
 pub fn syntaqlite_syntax::nodes::InExprSource<'a>::node_id(&self) -> syntaqlite_syntax::nodes::InExprSourceId
 pub fn syntaqlite_syntax::nodes::InExprSourceId::from(n: syntaqlite_syntax::nodes::InExprSource<'a>) -> Self
 pub fn syntaqlite_syntax::nodes::InExprSourceId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
+pub fn syntaqlite_syntax::nodes::IndexHint::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::InsertStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::InsertStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_syntax::nodes::ExprList<'a>>
 pub fn syntaqlite_syntax::nodes::InsertStmt<'a>::conflict_action(&self) -> syntaqlite_syntax::nodes::ConflictAction
@@ -1515,6 +1520,8 @@ pub fn syntaqlite_syntax::nodes::UpdateStmt<'_>::fmt(&self, f: &mut core::fmt::F
 pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::conflict_action(&self) -> syntaqlite_syntax::nodes::ConflictAction
 pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::from_clause(&self) -> core::option::Option<syntaqlite_syntax::nodes::TableSource<'a>>
 pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::from_result(stmt_result: &'a syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
+pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::index_hint(&self) -> syntaqlite_syntax::nodes::IndexHint
+pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::index_name(&self) -> &'a str
 pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::limit_clause(&self) -> core::option::Option<syntaqlite_syntax::nodes::LimitClause<'a>>
 pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::node_id(&self) -> syntaqlite_syntax::nodes::UpdateStmtId
 pub fn syntaqlite_syntax::nodes::UpdateStmt<'a>::orderby(&self) -> core::option::Option<syntaqlite_syntax::nodes::OrderByList<'a>>
@@ -2071,6 +2078,7 @@ pub syntaqlite_syntax::nodes::BinaryOp::Ne = 10
 pub syntaqlite_syntax::nodes::BinaryOp::Or = 12
 pub syntaqlite_syntax::nodes::BinaryOp::Plus = 0
 pub syntaqlite_syntax::nodes::BinaryOp::Ptr = 18
+pub syntaqlite_syntax::nodes::BinaryOp::Ptr2 = 19
 pub syntaqlite_syntax::nodes::BinaryOp::Rem = 4
 pub syntaqlite_syntax::nodes::BinaryOp::Rshift = 16
 pub syntaqlite_syntax::nodes::BinaryOp::Slash = 3
@@ -2146,6 +2154,9 @@ pub syntaqlite_syntax::nodes::InExprSource::SelectStmt(syntaqlite_syntax::nodes:
 pub syntaqlite_syntax::nodes::InExprSource::SubqueryExpr(syntaqlite_syntax::nodes::SubqueryExpr<'a>)
 pub syntaqlite_syntax::nodes::InExprSource::ValuesClause(syntaqlite_syntax::nodes::ValuesClause<'a>)
 pub syntaqlite_syntax::nodes::InExprSource::WithClause(syntaqlite_syntax::nodes::WithClause<'a>)
+pub syntaqlite_syntax::nodes::IndexHint::Default = 0
+pub syntaqlite_syntax::nodes::IndexHint::Indexed = 2
+pub syntaqlite_syntax::nodes::IndexHint::NotIndexed = 1
 pub syntaqlite_syntax::nodes::IsOp::Is = 0
 pub syntaqlite_syntax::nodes::IsOp::IsDistinct = 5
 pub syntaqlite_syntax::nodes::IsOp::IsNot = 1
