@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+"""Bump the version across all publishable packages and references."""
+
+import argparse
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+# Files with `version = "X.Y.Z"` on a line by themselves (Cargo.toml style).
+CARGO_TOMLS = [
+    "syntaqlite-common/Cargo.toml",
+    "syntaqlite-syntax/Cargo.toml",
+    "syntaqlite/Cargo.toml",
+    "syntaqlite-cli/Cargo.toml",
+    "syntaqlite-wasm/Cargo.toml",
+    "syntaqlite-buildtools/Cargo.toml",
+    "tests/benches/Cargo.toml",
+    "tests/comparison/parser/Cargo.toml",
+]
+
+# Files with `version = "X.Y.Z"` (pyproject.toml style).
+OTHER_MANIFESTS = [
+    "integrations/mcp/pyproject.toml",
+]
+
+# Files with inline version references (docs, lib.rs, etc.).
+VERSION_REF_FILES = [
+    "README.md",
+    "CHANGELOG.md",
+    "web/docs/content/integrating/rust-api.md",
+    "web/docs/content/guides/validation.md",
+    "syntaqlite-syntax/src/lib.rs",
+]
+
+# Cargo.toml dependency version refs (e.g. version = "X.Y.Z", path = ...).
+CARGO_DEP_FILES = [
+    "syntaqlite/Cargo.toml",
+]
+
+
+def current_version():
+    """Read current version from syntaqlite/Cargo.toml."""
+    cargo = ROOT / "syntaqlite/Cargo.toml"
+    for line in cargo.read_text().splitlines():
+        m = re.match(r'^version\s*=\s*"([^"]+)"', line)
+        if m:
+            return m.group(1)
+    sys.exit("Could not find version in syntaqlite/Cargo.toml")
+
+
+def replace_in_file(path, old, new):
+    """Replace all occurrences of old with new in a file."""
+    p = ROOT / path
+    text = p.read_text()
+    updated = text.replace(old, new)
+    if text != updated:
+        p.write_text(updated)
+        return True
+    return False
+
+
+def bump(old_ver, new_ver):
+    changed = []
+
+    # 1. Cargo.toml package versions
+    for f in CARGO_TOMLS + OTHER_MANIFESTS:
+        if replace_in_file(f, f'version = "{old_ver}"', f'version = "{new_ver}"'):
+            changed.append(f)
+
+    # 2. Cargo.toml dependency versions
+    for f in CARGO_DEP_FILES:
+        if replace_in_file(f, f'version = "{old_ver}", path', f'version = "{new_ver}", path'):
+            changed.append(f)
+
+    # 3. Inline version references in docs/code
+    for f in VERSION_REF_FILES:
+        if replace_in_file(f, f'version = "{old_ver}"', f'version = "{new_ver}"'):
+            changed.append(f)
+
+    # 4. CHANGELOG header
+    replace_in_file("CHANGELOG.md", f"## {old_ver}", f"## {new_ver}")
+
+    return list(dict.fromkeys(changed))  # dedupe preserving order
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Bump syntaqlite version")
+    parser.add_argument("new_version", help="New version (e.g. 0.0.3)")
+    parser.add_argument(
+        "--check", action="store_true",
+        help="Verify cargo check passes after bump"
+    )
+    args = parser.parse_args()
+
+    old = current_version()
+    new = args.new_version
+
+    if old == new:
+        print(f"Already at {old}")
+        return
+
+    print(f"Bumping {old} → {new}")
+    changed = bump(old, new)
+
+    for f in changed:
+        print(f"  updated {f}")
+
+    if not changed:
+        print("  no files changed — version mismatch?")
+        sys.exit(1)
+
+    if args.check:
+        print("\nRunning cargo check...")
+        subprocess.run(
+            ["cargo", "check", "--all-targets"],
+            cwd=ROOT, check=True
+        )
+        print("cargo check passed")
+
+
+if __name__ == "__main__":
+    main()

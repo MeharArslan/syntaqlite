@@ -94,7 +94,7 @@ struct SyntaqliteDialectTemplate {
 };
 
 static const struct SyntaqliteDialectTemplate SQLITE_DIALECT = {
-    .grammar = SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR),
+    .grammar = {&SQLITE_GRAMMAR, INT32_MAX, {0}},
     .fmt_str_data = sqlite_fmt_string_data,
     .fmt_str_offsets = sqlite_fmt_string_offsets,
     .fmt_str_count = sqlite_fmt_string_count,

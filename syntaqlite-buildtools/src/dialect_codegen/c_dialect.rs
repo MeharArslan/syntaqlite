@@ -260,7 +260,7 @@ pub(crate) fn generate_dialect_c(
             "static const struct SyntaqliteDialectTemplate {upper}_DIALECT = {{"
         ));
         w.line(&format!(
-            "    .grammar = SYNQ_GRAMMAR_DEFAULT(&{upper}_GRAMMAR),"
+            "    .grammar = {{&{upper}_GRAMMAR, INT32_MAX, {{0}}}},"
         ));
         if has_fmt {
             w.line(&format!("    .fmt_str_data = {p}_string_data,"));
@@ -515,7 +515,7 @@ mod tests {
         );
         assert!(c.contains("SyntaqliteGrammar syntaqlite_sqlite_grammar(void)"));
         assert!(c.contains("SyntaqliteGrammarTemplate SQLITE_GRAMMAR ="));
-        assert!(c.contains("SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR)"));
+        assert!(c.contains("{&SQLITE_GRAMMAR, INT32_MAX, {0}}"));
         // Bundled dialect struct and accessor
         assert!(c.contains("SyntaqliteDialectTemplate"));
         assert!(c.contains("syntaqlite_sqlite_dialect"));
