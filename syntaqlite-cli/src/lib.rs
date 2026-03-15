@@ -95,8 +95,8 @@ pub(crate) enum Command {
         /// Check if files are formatted (exit 1 if not)
         #[arg(long, conflicts_with = "in_place")]
         check: bool,
-        /// Append semicolons after each statement
-        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        /// Append semicolons after each statement [default: true]
+        #[arg(long, default_missing_value = "true", default_value_t = true, num_args = 0..=1, require_equals = true)]
         semicolons: bool,
     },
     /// Validate SQL and report diagnostics

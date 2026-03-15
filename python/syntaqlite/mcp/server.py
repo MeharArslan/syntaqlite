@@ -41,8 +41,7 @@ def format_sql(
         "--keyword-case",
         keyword_case,
     ]
-    if semicolons:
-        args.append("--semicolons")
+    args.append(f"--semicolons={'true' if semicolons else 'false'}")
     result = _run(args, sql)
     if result.returncode != 0:
         return f"Error: {result.stderr.strip()}"
