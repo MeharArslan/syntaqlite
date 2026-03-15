@@ -11,6 +11,7 @@ server.
   highlighting.
 - **`/syntaqlite:format` skill** — Format SQL files with configurable options.
 - **`/syntaqlite:parse` skill** — Inspect SQL parse trees and ASTs.
+- **`/syntaqlite:validate` skill** — Check SQL for errors against a schema.
 
 ## Prerequisites
 
@@ -49,6 +50,7 @@ Use the skills for CLI operations:
 
 ```
 /syntaqlite:format query.sql
+/syntaqlite:validate --schema schema.sql query.sql
 /syntaqlite:parse query.sql
 ```
 
