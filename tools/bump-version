@@ -38,7 +38,6 @@ JSON_MANIFESTS = [
 # Files with inline version references (docs, lib.rs, etc.).
 VERSION_REF_FILES = [
     "README.md",
-    "CHANGELOG.md",
     "web/docs/content/integrating/rust-api.md",
     "web/docs/content/guides/validation.md",
     "syntaqlite-syntax/src/lib.rs",
@@ -96,8 +95,13 @@ def bump(old_ver, new_ver):
         if replace_in_file(f, f'version = "{old_ver}"', f'version = "{new_ver}"'):
             changed.append(f)
 
-    # 5. CHANGELOG header
-    replace_in_file("CHANGELOG.md", f"## {old_ver}", f"## {new_ver}")
+    # 5. CHANGELOG: insert new version section, keep old entries
+    changelog = ROOT / "CHANGELOG.md"
+    text = changelog.read_text()
+    old_header = f"## {old_ver}"
+    if old_header in text:
+        new_section = f"## {new_ver}\n\n*No changes yet.*\n\n{old_header}"
+        changelog.write_text(text.replace(old_header, new_section, 1))
 
     return list(dict.fromkeys(changed))  # dedupe preserving order
 
