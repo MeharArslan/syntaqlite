@@ -19,8 +19,9 @@ use lsp_types::notification::{
     Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    Completion, Formatting, GotoDefinition, HoverRequest, PrepareRenameRequest, References, Rename,
-    Request as _, SemanticTokensFullRequest, SignatureHelpRequest,
+    Completion, DocumentHighlightRequest, Formatting, GotoDefinition, HoverRequest,
+    PrepareRenameRequest, References, Rename, Request as _, SemanticTokensFullRequest,
+    SignatureHelpRequest,
 };
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
@@ -115,6 +116,7 @@ impl LspServer {
             position_encoding: Some(PositionEncodingKind::UTF16),
             text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
             definition_provider: Some(lsp_types::OneOf::Left(true)),
+            document_highlight_provider: Some(lsp_types::OneOf::Left(true)),
             references_provider: Some(lsp_types::OneOf::Left(true)),
             rename_provider: Some(lsp_types::OneOf::Right(RenameOptions {
                 prepare_provider: Some(true),
@@ -224,6 +226,7 @@ impl LspServer {
             SignatureHelpRequest::METHOD => Self::handle_signature_help(req, host),
             Formatting::METHOD => Self::handle_formatting(req, host),
             SemanticTokensFullRequest::METHOD => Self::handle_semantic_tokens(req, host),
+            DocumentHighlightRequest::METHOD => Self::handle_document_highlight(req, host),
             References::METHOD => Self::handle_references(req, host),
             PrepareRenameRequest::METHOD => Self::handle_prepare_rename(req, host),
             Rename::METHOD => Self::handle_rename(req, host),
@@ -522,6 +525,51 @@ impl LspServer {
                 data,
             }),
         )
+    }
+
+    fn handle_document_highlight(req: Request, host: &mut LspHost) -> Response {
+        let params: lsp_types::DocumentHighlightParams = match serde_json::from_value(req.params) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    e.to_string(),
+                );
+            }
+        };
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let uri_str = uri.as_str();
+
+        let Some(source) = host.document_source(uri_str) else {
+            return Response::new_ok(req.id, Option::<Vec<lsp_types::DocumentHighlight>>::None);
+        };
+        let offset = SourcePositionMap::new(source).position_to_offset(position);
+
+        // find_references with include_declaration=true, then filter to same file.
+        let refs = host.find_references(uri_str, offset, true);
+        let same_file: Vec<_> = refs
+            .into_iter()
+            .filter(|(ref_uri, _, _)| ref_uri == uri_str)
+            .collect();
+        if same_file.is_empty() {
+            return Response::new_ok(req.id, Option::<Vec<lsp_types::DocumentHighlight>>::None);
+        }
+
+        let source = host
+            .document_source(uri_str)
+            .expect("document must exist")
+            .to_string();
+        let highlights: Vec<lsp_types::DocumentHighlight> = same_file
+            .into_iter()
+            .map(|(_, start, end)| lsp_types::DocumentHighlight {
+                range: offsets_to_range(&source, start, end),
+                kind: Some(lsp_types::DocumentHighlightKind::READ),
+            })
+            .collect();
+
+        Response::new_ok(req.id, highlights)
     }
 
     fn handle_references(req: Request, host: &mut LspHost) -> Response {
