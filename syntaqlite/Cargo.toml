@@ -10,7 +10,7 @@ repository.workspace = true
 readme = "../README.md"
 
 [lib]
-crate-type = ["rlib", "staticlib", "cdylib"]
+crate-type = ["rlib", "staticlib"]
 
 [features]
 default = ["sqlite", "fmt", "validation"]
