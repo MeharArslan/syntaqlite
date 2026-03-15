@@ -162,7 +162,7 @@ Downloads the binary on first run, caches it, auto-updates weekly.
 **mise**
 
 ```bash
-mise use ubi:LalitMaganti/syntaqlite
+mise use github:LalitMaganti/syntaqlite
 ```
 
 **pip (all platforms, bundled binary)**

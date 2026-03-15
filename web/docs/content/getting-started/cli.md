@@ -19,7 +19,7 @@ Downloads the binary on first run, caches at `~/.local/share/syntaqlite/`, auto-
 **mise:**
 
 ```bash
-mise use ubi:LalitMaganti/syntaqlite
+mise use github:LalitMaganti/syntaqlite
 ```
 
 **pip (all platforms, bundled binary):**

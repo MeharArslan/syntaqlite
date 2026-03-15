@@ -23,7 +23,7 @@ Install the CLI (or [try it in the browser](https://playground.syntaqlite.com) f
     <pre><code class="language-bash">curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"</code></pre>
   </div>
   <div class="tab-panel" data-tab="mise">
-    <pre><code class="language-bash">mise use ubi:LalitMaganti/syntaqlite</code></pre>
+    <pre><code class="language-bash">mise use github:LalitMaganti/syntaqlite</code></pre>
   </div>
   <div class="tab-panel" data-tab="pip">
     <pre><code class="language-bash">pip install syntaqlite</code></pre>
