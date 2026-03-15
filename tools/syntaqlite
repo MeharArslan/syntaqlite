@@ -9,9 +9,14 @@ Downloads the binary to ~/.local/share/syntaqlite/ (Unix) or
 Subsequent runs use the cached binary. Auto-checks for updates every 7 days.
 
 Usage:
+    # Download and run (caches binary, auto-updates weekly):
     curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
 
-For permanent installation, use: pip install syntaqlite
+    # Install permanently to ~/.local/bin (Unix) or %LOCALAPPDATA%\\Programs\\syntaqlite (Windows):
+    curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - install
+
+    # Install to a custom directory:
+    curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - install /usr/local/bin
 """
 
 import io
@@ -148,7 +153,63 @@ def _ensure_binary() -> Path:
     return binary
 
 
+def _install_dir() -> Path:
+    if platform.system() == "Windows":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+        return base / "Programs" / "syntaqlite"
+    else:
+        return Path.home() / ".local" / "bin"
+
+
+def _is_on_path(directory: Path) -> bool:
+    return str(directory) in os.environ.get("PATH", "").split(os.pathsep)
+
+
+def _install_command(custom_dir: str | None) -> None:
+    target = _detect_target()
+    version = _latest_version()
+    dest_dir = Path(custom_dir) if custom_dir else _install_dir()
+    dest = dest_dir / _binary_name()
+
+    if dest.exists():
+        print(f"Updating syntaqlite at {dest}...", file=sys.stderr)
+    else:
+        print(f"Installing syntaqlite to {dest}...", file=sys.stderr)
+
+    _download(target, dest)
+
+    print(f"syntaqlite {version} installed to {dest}", file=sys.stderr)
+
+    if not _is_on_path(dest_dir):
+        if platform.system() == "Windows":
+            print(
+                f"\nAdd {dest_dir} to your PATH:\n"
+                f'  setx PATH "%PATH%;{dest_dir}"',
+                file=sys.stderr,
+            )
+        else:
+            shell = os.environ.get("SHELL", "")
+            if "fish" in shell:
+                rc = "~/.config/fish/config.fish"
+                line = f"fish_add_path {dest_dir}"
+            elif "zsh" in shell:
+                rc = "~/.zshrc"
+                line = f'export PATH="{dest_dir}:$PATH"'
+            else:
+                rc = "~/.bashrc"
+                line = f'export PATH="{dest_dir}:$PATH"'
+            print(
+                f"\nAdd {dest_dir} to your PATH:\n"
+                f"  echo '{line}' >> {rc}",
+                file=sys.stderr,
+            )
+
+
 def main():
+    if sys.argv[1:2] == ["install"]:
+        _install_command(sys.argv[2] if len(sys.argv) > 2 else None)
+        return
+
     binary = _ensure_binary()
 
     if platform.system() == "Windows":

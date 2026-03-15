@@ -1,5 +1,21 @@
 {
   "name": "syntaqlite",
-  "version": "0.0.1",
-  "description": "SQL language support for SQLite dialects (tokenizing, parsing, formatting, completions)"
+  "version": "0.0.24",
+  "description": "SQLite SQL language server — diagnostics, formatting, completions, and semantic tokens",
+  "author": {
+    "name": "Lalit Maganti"
+  },
+  "homepage": "https://syntaqlite.com",
+  "repository": "https://github.com/LalitMaganti/syntaqlite",
+  "license": "Apache-2.0",
+  "keywords": ["sql", "sqlite", "lsp", "formatter", "linter"],
+  "lspServers": {
+    "sql": {
+      "command": "syntaqlite",
+      "args": ["lsp"],
+      "extensionToLanguage": {
+        ".sql": "sql"
+      }
+    }
+  }
 }

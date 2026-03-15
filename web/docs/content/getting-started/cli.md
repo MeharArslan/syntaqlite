@@ -10,15 +10,15 @@ weight = 3
 
 <div class="tabs" data-tab-group="cli-install">
   <div class="tab-buttons">
-    <button class="active" data-tab="binary" onclick="switchTab('cli-install','binary')">Download &amp; run</button>
+    <button class="active" data-tab="binary" onclick="switchTab('cli-install','binary')">Download script</button>
     <button data-tab="mise" onclick="switchTab('cli-install','mise')">mise</button>
     <button data-tab="pip" onclick="switchTab('cli-install','pip')">pip</button>
     <button data-tab="brew" onclick="switchTab('cli-install','brew')">Homebrew</button>
     <button data-tab="cargo" onclick="switchTab('cli-install','cargo')">Cargo</button>
   </div>
   <div class="tab-panel active" data-tab="binary">
-    <pre><code class="language-bash">curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"</code></pre>
-    <p>Downloads the binary on first run, caches at <code>~/.local/share/syntaqlite/</code>, auto-updates weekly. Works on macOS, Linux, and Windows.</p>
+    <pre><code class="language-bash">curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - install</code></pre>
+    <p>Downloads the latest release to <code>~/.local/bin</code>. Works on macOS, Linux, and Windows. Optionally pass a custom directory: <code>python3 - install /usr/local/bin</code>.</p>
   </div>
   <div class="tab-panel" data-tab="mise">
     <pre><code class="language-bash">mise use github:LalitMaganti/syntaqlite</code></pre>
