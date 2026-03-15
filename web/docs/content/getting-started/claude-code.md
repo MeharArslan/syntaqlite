@@ -12,6 +12,10 @@ weight = 2
 claude plugin install syntaqlite
 ```
 
+The plugin starts the syntaqlite language server automatically for `.sql`
+files. Open any `.sql` file and you'll see syntax errors underlined, keyword
+completions, and formatting via your editor's format command.
+
 ## Format a query
 
 Ask Claude to format some SQL:
