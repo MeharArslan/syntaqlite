@@ -12,9 +12,11 @@ A parser, formatter, validator, and language server for SQLite SQL, built on SQL
 
 ## Why syntaqlite
 
-Most SQL tools parse a subset of SQL, invent their own grammar, or handle SQLite as an afterthought. syntaqlite uses SQLite's own Lemon-generated grammar and tokenizer, compiled from C — the parser doesn't approximate SQLite, it _is_ SQLite's grammar compiled into a reusable library.
+Developer tooling for SQLite treats it as a second-class language. Most tools build a generic SQL parser and bolt SQLite on as a "flavor" — hand-written grammars, regex-based tokenizers, or subsets of SQL that approximate SQLite rather than matching it. That falls apart because SQLite has a deep surface area of syntax that generic parsers don't handle.
 
-SQLite isn't one fixed language — syntax changes between releases, and compile-time flags enable optional features. syntaqlite tracks this across all tools:
+syntaqlite uses SQLite's own [Lemon-generated grammar](https://www.sqlite.org/lemon.html) and tokenizer, compiled from C. The parser doesn't approximate SQLite — it _is_ SQLite's grammar compiled into a reusable library.
+
+SQLite SQL is also not one fixed language. It has [22 compile-time flags](https://www.sqlite.org/compile.html) that change what syntax the parser accepts, another 12 that gate built-in functions, and the language constantly evolves across versions. Because SQLite is embedded, you can't assume everyone is on the latest version — Android 15 ships SQLite 3.44.3, seven major versions behind latest. syntaqlite tracks all of this:
 
 ```bash
 syntaqlite --sqlite-version 3.32.0 validate \
@@ -30,11 +32,11 @@ error: syntax error near 'RETURNING'
 
 `RETURNING` was added in SQLite 3.35.0 — Android 13 still ships SQLite 3.32.2.
 
-We've tested against ~396K statements from [SQLite's upstream test suite](https://sqlite.org/testing.html) with ~99.7% agreement on parse acceptance. See the [detailed comparison](https://docs.syntaqlite.com/main/reference/comparison/) for how syntaqlite stacks up against other tools.
+We've tested against ~396K statements from [SQLite's upstream test suite](https://sqlite.org/testing.html) with ~99.7% agreement on parse acceptance. See the [detailed comparison](https://docs.syntaqlite.com/main/reference/comparison/) for how syntaqlite stacks up against other tools in parser accuracy, formatter correctness, validator quality, and performance.
 
 ## What it does
 
-### Validate — catch errors without a database
+### Validate — catch errors without a database ([docs](https://docs.syntaqlite.com/main/concepts/validation/))
 
 Finds unknown tables, columns, and functions against your schema — the same errors `sqlite3_prepare` would catch, but without needing a database. Unlike `sqlite3`, syntaqlite finds **all** errors in one pass:
 
@@ -71,7 +73,7 @@ warning: unknown function 'ROUDN'
    = help: did you mean 'round'?
 ```
 
-### Format
+### Format ([docs](https://docs.syntaqlite.com/main/reference/cli/#fmt))
 
 Deterministic formatting with configurable line width, keyword casing, and indentation:
 
@@ -90,9 +92,9 @@ ORDER BY p.created_at DESC
 LIMIT 10;
 ```
 
-### Version and compile-flag aware
+### Version and compile-flag aware ([docs](https://docs.syntaqlite.com/main/guides/version-pinning/))
 
-SQLite isn't one fixed language — syntax changes between releases, and [compile-time flags](https://www.sqlite.org/compile.html) enable optional features. syntaqlite tracks this across all tools:
+Pin the parser to a specific SQLite version or enable [compile-time flags](https://www.sqlite.org/compile.html) to match your exact build:
 
 ```bash
 # Reject syntax your target SQLite version doesn't support
@@ -125,7 +127,7 @@ warning: unknown function 'ROUDN'
   = help: did you mean 'round'?
 ```
 
-### Editor integration
+### Editor integration ([docs](https://docs.syntaqlite.com/main/getting-started/vscode/))
 
 Full language server — no database connection required. Diagnostics, format on save, completions, and semantic highlighting.
 
@@ -133,13 +135,13 @@ Full language server — no database connection required. Diagnostics, format on
 
 **Claude Code** — `syntaqlite plugin install` · **Claude Desktop / Cursor** — `pip install syntaqlite-mcp` ([docs](integrations/mcp/README.md))
 
-**Any editor with LSP support:**
+**[Other editors](https://docs.syntaqlite.com/main/getting-started/other-editors/)** — point your LSP client at:
 
 ```bash
 syntaqlite lsp
 ```
 
-### Parse
+### Parse ([docs](https://docs.syntaqlite.com/main/guides/parsing/))
 
 Full abstract syntax tree with side tables for tokens, comments, and whitespace — for code generation, migration tooling, or static analysis.
 
@@ -147,7 +149,7 @@ Full abstract syntax tree with side tables for tokens, comments, and whitespace 
 syntaqlite parse -e "SELECT 1 + 2" --output text
 ```
 
-## Install
+## Install ([all methods](https://docs.syntaqlite.com/main/getting-started/cli/))
 
 **Homebrew**
 
@@ -173,16 +175,16 @@ powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/synta
 cargo install syntaqlite-cli
 ```
 
-## Use as a library
+## Use as a library ([docs](https://docs.syntaqlite.com/main/integrating/))
 
-**Rust**
+**Rust** ([API docs](https://docs.syntaqlite.com/main/integrating/rust-api/))
 
 ```toml
 [dependencies]
 syntaqlite = { version = "0.0.7", features = ["fmt"] }
 ```
 
-**JavaScript / WASM**
+**JavaScript / WASM** ([API docs](https://docs.syntaqlite.com/main/reference/js-api/))
 
 ```bash
 npm install @syntaqlite/js
@@ -190,7 +192,7 @@ npm install @syntaqlite/js
 
 **C** — the parser, tokenizer, formatter, and validator all have C APIs. See the [C API docs](https://docs.syntaqlite.com/reference/c-api/) for details.
 
-## Architecture
+## Architecture ([docs](https://docs.syntaqlite.com/main/contributing/architecture/))
 
 The parser and tokenizer are written in C, directly wrapping SQLite's own grammar. Everything else — formatter, validator, LSP — is written in Rust with C bindings available.
 
