@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.28
+
+*No changes yet.*
+
 ## 0.0.27
 
 - Add global `--config` flag to explicitly pass `syntaqlite.toml` path (VS Code extension uses this to avoid cwd dependency)
