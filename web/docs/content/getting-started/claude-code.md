@@ -8,52 +8,56 @@ weight = 2
 
 ## Install the plugin
 
+Add the marketplace and install the plugin:
+
 ```bash
 claude plugin marketplace add LalitMaganti/claude-code-plugin
 claude plugin install syntaqlite@LalitMaganti/claude-code-plugin
 ```
 
-The plugin starts the syntaqlite language server for `.sql` files. When Claude
-writes or edits SQL, the server feeds back syntax errors, unknown
-tables/columns, and function typos — so Claude catches and fixes mistakes
-automatically without you having to ask.
+## What you get
 
-## Format a query
+The plugin gives Claude two things:
 
-Ask Claude to format some SQL:
+**Language server** — starts automatically for `.sql` files. When Claude writes
+or edits SQL, the server feeds back syntax errors, unknown tables/columns, and
+function typos. Claude sees these diagnostics and fixes mistakes on its own,
+without you having to ask.
 
-> Format this: `select id,name from users where active=1 order by name`
+**CLI skills** — Claude can run `syntaqlite fmt`, `syntaqlite validate`, and
+`syntaqlite parse` directly when you ask it to format a query, check a file, or
+inspect a parse tree.
 
-Claude uses `syntaqlite fmt` under the hood and returns:
+## Try it out
 
-```sql
-SELECT id, name
-FROM users
-WHERE active = 1
-ORDER BY name;
-```
+Open a project with `.sql` files and ask Claude to edit one. If the SQL has an
+error — say a misspelled column name — Claude will notice the diagnostic from
+the language server and fix it in the same edit.
 
-## Validate a file
+You can also ask Claude to format or validate explicitly:
 
-If you have a `.sql` file with errors, ask Claude to check it:
+> Format all the SQL files in src/
 
-> Run syntaqlite validate on query.sql using schema.sql
+> Check query.sql for errors against schema.sql
 
-Claude will show you any unknown tables, columns, or function typos with
-suggestions.
+## Add schema validation
 
-## Set up schema validation
-
-Create a `syntaqlite.toml` in your project root so the language server knows
-which schema to validate against:
+Without a schema, the language server checks syntax only. To enable table and
+column validation, create a `syntaqlite.toml` in your project root:
 
 ```toml
 schema = ["schema.sql"]
 ```
 
-Now when Claude writes SQL that references a column or table that doesn't exist
-in your schema, it sees the error immediately and fixes it — the same way a
-type checker catches mistakes in code.
+Then create `schema.sql` with your table definitions:
+
+```sql
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT);
+CREATE TABLE orders (id INTEGER, user_id INTEGER, amount REAL);
+```
+
+Now when Claude writes `SELECT nme FROM users`, the language server flags `nme`
+as unknown and suggests `name`. Claude sees this and corrects it automatically.
 
 See the [config file reference](@/reference/config-file.md) for glob-based
 schema routing and formatting options.
