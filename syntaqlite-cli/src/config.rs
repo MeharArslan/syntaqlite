@@ -36,8 +36,13 @@ pub(crate) struct FormatOptions {
 /// Walk up from `start` looking for `syntaqlite.toml`.
 /// Returns `(config, directory containing the config file)`.
 pub(crate) fn discover(start: &Path) -> Option<(ProjectConfig, PathBuf)> {
+    let start = if start.is_relative() {
+        std::env::current_dir().ok()?.join(start)
+    } else {
+        start.to_path_buf()
+    };
     let mut dir = if start.is_file() {
-        start.parent()?
+        start.parent()?.to_path_buf()
     } else {
         start
     };
@@ -46,9 +51,13 @@ pub(crate) fn discover(start: &Path) -> Option<(ProjectConfig, PathBuf)> {
         if candidate.is_file() {
             let contents = std::fs::read_to_string(&candidate).ok()?;
             let config: ProjectConfig = toml::from_str(&contents).ok()?;
-            return Some((config, dir.to_path_buf()));
+            return Some((config, dir));
         }
-        dir = dir.parent()?;
+        let parent = dir.parent()?.to_path_buf();
+        if parent == dir {
+            return None;
+        }
+        dir = parent;
     }
 }
 
