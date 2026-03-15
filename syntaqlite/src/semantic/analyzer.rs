@@ -280,16 +280,16 @@ impl SemanticAnalyzer {
                 ParseOutcome::Done => break,
                 ParseOutcome::Ok(s) => s,
                 ParseOutcome::Err(e) => {
-                    let (start, end) = parse_error_span(&e, source);
-                    let diag = Diagnostic {
-                        start_offset: start,
-                        end_offset: end,
-                        message: DiagnosticMessage::Other(e.message().to_owned()),
-                        severity: Severity::Error,
-                        help: None,
-                    };
-                    if let Some(severity) = config.checks().level_for(&diag.message).to_severity() {
-                        diagnostics.push(Diagnostic { severity, ..diag });
+                    let message = DiagnosticMessage::ParseError(e.message().to_owned());
+                    if let Some(severity) = config.checks().level_for(&message).to_severity() {
+                        let (start, end) = parse_error_span(&e, source);
+                        diagnostics.push(Diagnostic {
+                            start_offset: start,
+                            end_offset: end,
+                            message,
+                            severity,
+                            help: None,
+                        });
                     }
                     // Collect tokens from the partial parse so completion_info
                     // can replay them through the incremental parser.
@@ -745,19 +745,30 @@ impl CheckConfig {
             DiagnosticMessage::UnknownFunction { .. } => self.unknown_function,
             DiagnosticMessage::FunctionArity { .. } => self.function_arity,
             DiagnosticMessage::CteColumnCountMismatch { .. } => self.cte_columns,
-            DiagnosticMessage::Other(_) => self.parse_errors,
+            DiagnosticMessage::ParseError(_) => self.parse_errors,
         }
     }
 }
 
 impl<'a> ValidationPass<'a> {
     /// Push a diagnostic if its check category is not `allow`.
-    /// The severity is determined by the check level (`warn` or `deny`),
-    /// overriding whatever severity was set on the diagnostic.
-    fn emit_if(&mut self, mut diagnostic: Diagnostic) {
-        if let Some(severity) = self.config.checks().level_for(&diagnostic.message).to_severity() {
-            diagnostic.severity = severity;
-            self.diagnostics.push(diagnostic);
+    /// Severity is determined entirely by the check level — callers do not
+    /// specify it.
+    fn emit(
+        &mut self,
+        start_offset: usize,
+        end_offset: usize,
+        message: DiagnosticMessage,
+        help: Option<Help>,
+    ) {
+        if let Some(severity) = self.config.checks().level_for(&message).to_severity() {
+            self.diagnostics.push(Diagnostic {
+                start_offset,
+                end_offset,
+                message,
+                severity,
+                help,
+            });
         }
     }
 
@@ -952,15 +963,12 @@ impl<'a> ValidationPass<'a> {
             let mut candidates = self.catalog.all_relation_names();
             candidates.extend(self.catalog.all_table_function_names());
             let suggestion = best_suggestion(name, &candidates, self.config.suggestion_threshold());
-            self.emit_if(Diagnostic {
-                start_offset: offset,
-                end_offset: offset + name.len(),
-                message: DiagnosticMessage::UnknownTable {
-                    name: name.to_string(),
-                },
-                severity: Severity::Warning, // overridden by emit_if from CheckConfig
-                help: suggestion.map(Help::Suggestion),
-            });
+            self.emit(
+                offset,
+                offset + name.len(),
+                DiagnosticMessage::UnknownTable { name: name.to_string() },
+                suggestion.map(Help::Suggestion),
+            );
         }
 
         let alias = self.name_text(stmt, Self::field_node_id(fields, alias_idx));
@@ -1040,28 +1048,24 @@ impl<'a> ValidationPass<'a> {
                     let candidates = self.catalog.all_function_names();
                     let suggestion =
                         best_suggestion(name, &candidates, self.config.suggestion_threshold());
-                    self.emit_if(Diagnostic {
-                        start_offset: offset,
-                        end_offset: offset + name.len(),
-                        message: DiagnosticMessage::UnknownFunction {
-                            name: name.to_string(),
-                        },
-                        severity: Severity::Warning, // overridden by emit_if from CheckConfig
-                        help: suggestion.map(Help::Suggestion),
-                    });
+                    self.emit(
+                        offset,
+                        offset + name.len(),
+                        DiagnosticMessage::UnknownFunction { name: name.to_string() },
+                        suggestion.map(Help::Suggestion),
+                    );
                 }
                 FunctionCheckResult::WrongArity { expected } => {
-                    self.emit_if(Diagnostic {
-                        start_offset: offset,
-                        end_offset: offset + name.len(),
-                        message: DiagnosticMessage::FunctionArity {
+                    self.emit(
+                        offset,
+                        offset + name.len(),
+                        DiagnosticMessage::FunctionArity {
                             name: name.to_string(),
                             expected,
                             got: arg_count,
                         },
-                        severity: Severity::Warning, // overridden by emit_if from CheckConfig
-                        help: None,
-                    });
+                        None,
+                    );
                 }
             }
         }
@@ -1132,16 +1136,15 @@ impl<'a> ValidationPass<'a> {
                 let candidates = self.scope.all_column_names(Some(tbl));
                 let suggestion =
                     best_suggestion(column, &candidates, self.config.suggestion_threshold());
-                self.emit_if(Diagnostic {
-                    start_offset: offset,
-                    end_offset: offset + column.len(),
-                    message: DiagnosticMessage::UnknownColumn {
+                self.emit(
+                    offset,
+                    offset + column.len(),
+                    DiagnosticMessage::UnknownColumn {
                         column: column.to_string(),
                         table: Some(tbl.to_string()),
                     },
-                    severity: Severity::Warning, // overridden by emit_if from CheckConfig
-                    help: suggestion.map(Help::Suggestion),
-                });
+                    suggestion.map(Help::Suggestion),
+                );
             }
             ColumnResolution::NotFound => {
                 // SQLite resolves bare TRUE/FALSE identifiers to integer
@@ -1153,16 +1156,15 @@ impl<'a> ValidationPass<'a> {
                 let candidates = self.scope.all_column_names(None);
                 let suggestion =
                     best_suggestion(column, &candidates, self.config.suggestion_threshold());
-                self.emit_if(Diagnostic {
-                    start_offset: offset,
-                    end_offset: offset + column.len(),
-                    message: DiagnosticMessage::UnknownColumn {
+                self.emit(
+                    offset,
+                    offset + column.len(),
+                    DiagnosticMessage::UnknownColumn {
                         column: column.to_string(),
                         table: None,
                     },
-                    severity: Severity::Warning, // overridden by emit_if from CheckConfig
-                    help: suggestion.map(Help::Suggestion),
-                });
+                    suggestion.map(Help::Suggestion),
+                );
             }
         }
     }
@@ -1466,17 +1468,16 @@ impl<'a> ValidationPass<'a> {
             && actual != declared.len()
         {
             let offset = self.span_offset(cte_name);
-            self.emit_if(Diagnostic {
-                start_offset: offset,
-                end_offset: offset + cte_name.len(),
-                message: DiagnosticMessage::CteColumnCountMismatch {
+            self.emit(
+                offset,
+                offset + cte_name.len(),
+                DiagnosticMessage::CteColumnCountMismatch {
                     name: cte_name.to_string(),
                     declared: declared.len(),
                     actual,
                 },
-                severity: Severity::Error,
-                help: None,
-            });
+                None,
+            );
         }
     }
 

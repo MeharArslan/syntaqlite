@@ -57,8 +57,26 @@ pub(crate) struct FormatOptions {
 /// Load config from an explicit file path.
 /// Returns `(config, directory containing the config file)`.
 pub(crate) fn load(config_path: &Path) -> Option<(ProjectConfig, PathBuf)> {
-    let contents = std::fs::read_to_string(config_path).ok()?;
-    let config: ProjectConfig = toml::from_str(&contents).ok()?;
+    let contents = match std::fs::read_to_string(config_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!(
+                "warning: failed to read {}: {e}",
+                config_path.display()
+            );
+            return None;
+        }
+    };
+    let config: ProjectConfig = match toml::from_str(&contents) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!(
+                "warning: failed to parse {}: {e}",
+                config_path.display()
+            );
+            return None;
+        }
+    };
     let dir = config_path.parent()?.to_path_buf();
     Some((config, dir))
 }

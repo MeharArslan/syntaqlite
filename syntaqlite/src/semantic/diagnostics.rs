@@ -114,7 +114,7 @@ impl Diagnostic {
 ///         DiagnosticMessage::UnknownTable { name } => {
 ///             println!("table not found: {name}");
 ///         }
-///         DiagnosticMessage::Other(msg) => {
+///         DiagnosticMessage::ParseError(msg) => {
 ///             println!("parse error: {msg}");
 ///         }
 ///         other => {
@@ -161,8 +161,8 @@ pub enum DiagnosticMessage {
         /// Number of result columns in the CTE body.
         actual: usize,
     },
-    /// Catch-all for parse errors and other unstructured messages.
-    Other(String),
+    /// Parse error from the parser.
+    ParseError(String),
 }
 
 impl std::fmt::Display for DiagnosticMessage {
@@ -202,7 +202,7 @@ impl std::fmt::Display for DiagnosticMessage {
                 f,
                 "table '{name}' has {actual} values for {declared} columns"
             ),
-            Self::Other(msg) => f.write_str(msg),
+            Self::ParseError(msg) => f.write_str(msg),
         }
     }
 }
@@ -210,7 +210,7 @@ impl std::fmt::Display for DiagnosticMessage {
 impl DiagnosticMessage {
     /// Returns `true` for parse errors (`Other`), `false` for semantic diagnostics.
     pub fn is_parse_error(&self) -> bool {
-        matches!(self, Self::Other(_))
+        matches!(self, Self::ParseError(_))
     }
 }
 
@@ -263,7 +263,7 @@ impl serde::Serialize for DiagnosticMessage {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;
         match self {
-            Self::Other(_) => serializer.serialize_none(),
+            Self::ParseError(_) => serializer.serialize_none(),
             Self::UnknownTable { name } => {
                 let mut m = serializer.serialize_map(Some(2))?;
                 m.serialize_entry("kind", "unknown_table")?;

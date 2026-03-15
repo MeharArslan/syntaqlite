@@ -333,7 +333,7 @@ fn cmd_parse_source(
                 error_diags.push(Diagnostic::new(
                     start,
                     end,
-                    DiagnosticMessage::Other(err.message().to_string()),
+                    DiagnosticMessage::ParseError(err.message().to_string()),
                     Severity::Error,
                     None,
                 ));
@@ -386,11 +386,21 @@ fn cmd_lsp(dialect: AnyDialect, config_path: Option<&str>) -> Result<(), String>
         } else {
             vec![]
         };
-        if !schema_paths.is_empty() {
+        let has_schema = !schema_paths.is_empty();
+        if has_schema {
             match build_schema_catalog(&dialect, &schema_paths) {
                 Ok(catalog) => lsp_config.schema_catalog = Some(catalog),
                 Err(e) => eprintln!("syntaqlite-lsp: failed to load schema: {e}"),
             }
+        }
+
+        // Apply check levels from config file.
+        match build_check_config(has_schema, Some(&project_config.checks), &[], &[], &[]) {
+            Ok(checks) => {
+                lsp_config.validation_config =
+                    Some(ValidationConfig::default().with_checks(checks));
+            }
+            Err(e) => eprintln!("syntaqlite-lsp: invalid [checks] config: {e}"),
         }
     }
 
@@ -524,7 +534,7 @@ fn render_format_error(e: &FormatError, source: &str, file: &str) {
     let diag = Diagnostic::new(
         start,
         end,
-        DiagnosticMessage::Other(e.message().to_owned()),
+        DiagnosticMessage::ParseError(e.message().to_owned()),
         Severity::Error,
         None,
     );

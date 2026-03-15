@@ -47,6 +47,8 @@ pub struct LspConfig {
     pub format_config: Option<FormatConfig>,
     /// Pre-loaded schema catalog from project config file.
     pub schema_catalog: Option<Catalog>,
+    /// Validation config (check levels) from project config file.
+    pub validation_config: Option<ValidationConfig>,
 }
 
 impl Default for LspConfig {
@@ -54,6 +56,7 @@ impl Default for LspConfig {
         LspConfig {
             format_config: None,
             schema_catalog: None,
+            validation_config: None,
         }
     }
 }
@@ -167,14 +170,22 @@ impl LspServer {
 
         // Apply project config if provided.
         let has_config_schema = config.schema_catalog.is_some();
+        let has_validation_config = config.validation_config.is_some();
         if let Some(fmt) = config.format_config {
             host.set_format_config(fmt);
         }
+        if let Some(validation) = config.validation_config {
+            host.set_validation_config(validation);
+        }
         if let Some(catalog) = config.schema_catalog {
             host.set_session_context(catalog);
-            host.set_validation_config(
-                ValidationConfig::default().with_strict_schema(),
-            );
+            // If no explicit validation config was provided, default schema
+            // checks to deny when a schema is present.
+            if !has_validation_config {
+                host.set_validation_config(
+                    ValidationConfig::default().with_strict_schema(),
+                );
+            }
             eprintln!("syntaqlite-lsp: using project config schema");
         }
 
