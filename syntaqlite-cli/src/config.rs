@@ -129,6 +129,7 @@ fn glob_match(pattern: &str, path: &str) -> bool {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)]
 mod tests {
     use std::fs;
 

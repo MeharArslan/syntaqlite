@@ -117,13 +117,12 @@ fn ensure_model_for(
     uri: &str,
     documents: &mut HashMap<String, Document>,
     analyzer: &mut SemanticAnalyzer,
-    schema_map: &Option<SchemaMap>,
+    schema_map: Option<&SchemaMap>,
     user_catalog: &Catalog,
     base_validation_config: &ValidationConfig,
 ) -> bool {
-    let doc = match documents.get_mut(uri) {
-        Some(d) => d,
-        None => return false,
+    let Some(doc) = documents.get_mut(uri) else {
+        return false;
     };
     let (catalog, config) = if let Some(map) = schema_map {
         if let Some((cat, _strict)) = map.resolve(uri) {
@@ -187,7 +186,7 @@ pub struct LspHost {
     documents: HashMap<String, Document>,
     /// Format config from project config file. `None` means use defaults.
     format_config: Option<FormatConfig>,
-    /// Validation config (strict_schema is set when a schema is provided).
+    /// Validation config (`strict_schema` is set when a schema is provided).
     validation_config: ValidationConfig,
     /// Per-file schema resolution from `[schemas]` globs.
     schema_map: Option<SchemaMap>,
@@ -254,7 +253,7 @@ impl LspHost {
 
     /// Set the per-file schema map from `[schemas]` config globs.
     /// When set, each document is resolved against the map to find its
-    /// matching catalog and strict_schema is set automatically.
+    /// matching catalog and `strict_schema` is set automatically.
     pub fn set_schema_map(&mut self, map: SchemaMap) {
         self.schema_map = Some(map);
         for doc in self.documents.values_mut() {
@@ -322,7 +321,7 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         ) {
@@ -330,7 +329,7 @@ impl LspHost {
         }
         self.documents
             .get(uri)
-            .unwrap()
+            .expect("ensure_model_for guarantees document exists")
             .cached_parse_diags
             .as_deref()
             .expect("ensure_model sets cached_parse_diags")
@@ -350,13 +349,16 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         ) {
             return Vec::new();
         }
-        let doc = self.documents.get_mut(uri).unwrap();
+        let doc = self
+            .documents
+            .get_mut(uri)
+            .expect("ensure_model_for guarantees document exists");
         if doc.cached_sem_tokens.is_none() {
             let tokens = self
                 .analyzer
@@ -376,7 +378,7 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         ) {
@@ -386,7 +388,10 @@ impl LspHost {
                 qualifier: None,
             };
         }
-        let doc = self.documents.get(uri).unwrap();
+        let doc = self
+            .documents
+            .get(uri)
+            .expect("ensure_model_for guarantees document exists");
         self.analyzer
             .completion_info(doc.model.as_ref().expect("ensure_model sets model"), offset)
     }
@@ -474,13 +479,16 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         ) {
             return None;
         }
-        let doc = self.documents.get(uri).unwrap();
+        let doc = self
+            .documents
+            .get(uri)
+            .expect("ensure_model_for guarantees document exists");
         let version = doc.version;
         let source = doc.source.clone();
         let diags = doc
@@ -543,7 +551,7 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         );
@@ -576,7 +584,7 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         );
@@ -613,7 +621,7 @@ impl LspHost {
                 doc_uri,
                 &mut self.documents,
                 &mut self.analyzer,
-                &self.schema_map,
+                self.schema_map.as_ref(),
                 &self.user_catalog,
                 &self.validation_config,
             );
@@ -664,7 +672,7 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         );
@@ -711,7 +719,7 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         );
@@ -765,7 +773,7 @@ impl LspHost {
             uri,
             &mut self.documents,
             &mut self.analyzer,
-            &self.schema_map,
+            self.schema_map.as_ref(),
             &self.user_catalog,
             &self.validation_config,
         );
@@ -1731,9 +1739,9 @@ mod tests {
 
             // Matched file should get the glob catalog (from entries[0]).
             let (resolved, _) = map.resolve("file:///project/special/q.sql").unwrap();
-            let glob_ptr = resolved as *const Catalog;
+            let glob_ptr = std::ptr::from_ref::<Catalog>(resolved);
             // The glob entry catalog lives in map.entries, not map.default.
-            let expected_glob_ptr = &map.entries[0].1 as *const Catalog;
+            let expected_glob_ptr = &raw const map.entries[0].1;
             assert_eq!(
                 glob_ptr, expected_glob_ptr,
                 "matched file should get glob catalog"
@@ -1741,8 +1749,8 @@ mod tests {
 
             // Unmatched file should get the default catalog.
             let (resolved, _) = map.resolve("file:///project/other/q.sql").unwrap();
-            let default_ptr = resolved as *const Catalog;
-            let expected_default_ptr = map.default.as_ref().unwrap() as *const Catalog;
+            let default_ptr = std::ptr::from_ref::<Catalog>(resolved);
+            let expected_default_ptr = std::ptr::from_ref::<Catalog>(map.default.as_ref().unwrap());
             assert_eq!(
                 default_ptr, expected_default_ptr,
                 "unmatched file should get default catalog"

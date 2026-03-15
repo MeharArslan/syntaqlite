@@ -159,7 +159,10 @@ pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
 
         let mut z_orig_name = [0 as c_char; 20];
         for (i, &b) in bytes.iter().enumerate() {
-            z_orig_name[i] = b as c_char;
+            #[expect(clippy::cast_possible_wrap)]
+            {
+                z_orig_name[i] = b as c_char;
+            }
         }
 
         keywords_copy.push(Keyword {

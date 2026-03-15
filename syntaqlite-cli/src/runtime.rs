@@ -85,7 +85,7 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
         None => None,
     };
 
-    dispatch_commands(cli.command, configured, cli.config)
+    dispatch_commands(cli.command, configured, cli.config.as_deref())
 }
 
 fn apply_version_cflags(
@@ -117,7 +117,7 @@ fn apply_version_cflags(
 fn dispatch_commands(
     command: Command,
     dialect: Option<AnyDialect>,
-    config_path: Option<String>,
+    config_path: Option<&str>,
 ) -> Result<(), String> {
     match command {
         Command::Parse {
@@ -135,12 +135,12 @@ fn dispatch_commands(
             deny,
             lang,
         } => require_dialect(dialect).and_then(|d| {
-            let file_config = discover_config_for_paths(&files, config_path.as_deref());
+            let file_config = discover_config_for_paths(&files, config_path);
             // If --schema is given, use it directly. Otherwise, resolve from config file.
-            let resolved_schemas = if !schema.is_empty() {
-                schema
+            let resolved_schemas = if schema.is_empty() {
+                resolve_schemas_from_config_with(&files, file_config.as_ref())
             } else {
-                resolve_schemas_from_config_with(&files, &file_config)
+                schema
             };
             let has_schema = !resolved_schemas.is_empty();
             let checks = build_check_config(
@@ -156,10 +156,10 @@ fn dispatch_commands(
                 expression.as_deref(),
                 &resolved_schemas,
                 lang,
-                &checks,
+                checks,
             )
         }),
-        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, config_path.as_deref())),
+        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, config_path)),
         #[cfg(feature = "mcp")]
         Command::Mcp => require_dialect(dialect).and_then(crate::mcp::cmd_mcp),
         Command::Fmt {
@@ -173,7 +173,7 @@ fn dispatch_commands(
             semicolons,
             output,
         } => {
-            let file_config = discover_config_for_paths(&files, config_path.as_deref());
+            let file_config = discover_config_for_paths(&files, config_path);
             let config = build_format_config(
                 file_config.as_ref().map(|(c, _)| &c.format),
                 line_width,
@@ -624,11 +624,11 @@ fn cmd_validate(
     expression: Option<&str>,
     schema_files: &[String],
     lang: Option<HostLanguage>,
-    checks: &syntaqlite::CheckConfig,
+    checks: syntaqlite::CheckConfig,
 ) -> Result<(), String> {
     let has_schema = !schema_files.is_empty();
     let schema_catalog = build_schema_catalog(dialect, schema_files)?;
-    let config = ValidationConfig::default().with_checks(*checks);
+    let config = ValidationConfig::default().with_checks(checks);
     let mut any_errors = false;
     let mut any_diagnostics = false;
 
@@ -810,16 +810,14 @@ fn build_format_config(
 /// Resolve schema files from an already-discovered config.
 fn resolve_schemas_from_config_with(
     files: &[String],
-    found: &Option<(ProjectConfig, PathBuf)>,
+    found: Option<&(ProjectConfig, PathBuf)>,
 ) -> Vec<String> {
-    let (config, config_dir) = match found {
-        Some(pair) => pair,
-        None => return vec![],
+    let Some((config, config_dir)) = found else {
+        return vec![];
     };
 
-    let paths = match expand_paths(files) {
-        Ok(p) => p,
-        Err(_) => return vec![],
+    let Ok(paths) = expand_paths(files) else {
+        return vec![];
     };
 
     if let Some(first) = paths.first() {
@@ -837,7 +835,7 @@ fn resolve_schemas_from_config_with(
 }
 
 /// Build `CheckConfig` by merging defaults, schema presence, config file, and CLI flags.
-/// Resolution order: defaults → has_schema → config file `[checks]` → CLI `-A`/`-W`/`-D`.
+/// Resolution order: defaults → `has_schema` → config file `[checks]` → CLI `-A`/`-W`/`-D`.
 fn build_check_config(
     has_schema: bool,
     file_opts: Option<&config::CheckOptions>,

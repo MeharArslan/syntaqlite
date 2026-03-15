@@ -107,6 +107,10 @@ pub enum CheckLevel {
 
 impl CheckLevel {
     /// Parse from a string (`"allow"`, `"warn"`, `"deny"`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `s` is not a recognized level name.
     pub fn parse(s: &str) -> Result<Self, String> {
         match s {
             "allow" => Ok(CheckLevel::Allow),
@@ -275,6 +279,9 @@ impl CheckConfig {
     pub const GROUP_NAMES: &[&str] = &["schema", "all"];
 
     /// Set a category by name. For CLI and config file dispatch.
+    ///
+    /// # Errors
+    ///
     /// Returns `Err` if the name is unknown.
     pub fn set_by_name(mut self, name: &str, level: CheckLevel) -> Result<Self, String> {
         match name {

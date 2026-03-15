@@ -18,7 +18,7 @@ use super::catalog::{
     AritySpec, Catalog, CatalogLayer, ColumnResolution, FunctionCategory, FunctionCheckResult,
     columns_from_select,
 };
-use super::diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
+use super::diagnostics::{Diagnostic, DiagnosticMessage, Help};
 use super::fuzzy::best_suggestion;
 use super::model::{
     CompletionContext, CompletionInfo, DefinitionLocation, Resolution, ResolvedSymbol,
@@ -738,7 +738,7 @@ struct ValidationPass<'a> {
 
 impl CheckConfig {
     /// Get the check level for a diagnostic message's category.
-    pub(crate) fn level_for(&self, message: &DiagnosticMessage) -> CheckLevel {
+    pub(crate) fn level_for(self, message: &DiagnosticMessage) -> CheckLevel {
         match message {
             DiagnosticMessage::UnknownTable { .. } => self.unknown_table,
             DiagnosticMessage::UnknownColumn { .. } => self.unknown_column,
@@ -1566,7 +1566,7 @@ mod tests {
     use super::super::catalog::{
         AritySpec, CatalogLayer, ColumnResolution, FunctionCategory, FunctionCheckResult,
     };
-    use super::super::diagnostics::{DiagnosticMessage, Help};
+    use super::super::diagnostics::{DiagnosticMessage, Help, Severity};
     use super::super::render::DiagnosticRenderer;
     use super::*;
 

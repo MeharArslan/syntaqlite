@@ -280,7 +280,13 @@ impl Formatter {
     }
 
     /// Dump the raw interpreter bytecode for each statement.
+    ///
+    /// # Errors
+    ///
+    /// Returns `FormatError` if the source cannot be parsed.
+    #[expect(clippy::too_many_lines)]
     pub fn dump_bytecode(&mut self, source: &str) -> Result<String, FormatError> {
+        use std::fmt::Write;
         use syntaqlite_common::fmt::bytecode::opcodes;
 
         let mut session = self.parser.parse(source);
@@ -306,7 +312,7 @@ impl Formatter {
             };
 
             let node_name = self.dialect.grammar().node_name(tag);
-            result.push_str(&format!("=== {node_name} (tag={}) ===\n", u32::from(tag)));
+            let _ = writeln!(result, "=== {node_name} (tag={}) ===", u32::from(tag));
 
             let Some((ops_bytes, ops_len)) = self.dialect.fmt_dispatch(tag) else {
                 result.push_str("  <no fmt bytecode>\n");
@@ -345,22 +351,22 @@ impl Formatter {
                     opcodes::SOFTLINE => "SoftLine".to_string(),
                     opcodes::HARDLINE => "HardLine".to_string(),
                     opcodes::GROUP_START => "Group {".to_string(),
-                    opcodes::GROUP_END => "}".to_string(),
+                    opcodes::GROUP_END
+                    | opcodes::NEST_END
+                    | opcodes::END_IF
+                    | opcodes::FOR_EACH_END => "}".to_string(),
                     opcodes::NEST_START => {
                         let indent = i16::from_le_bytes(b.to_le_bytes());
                         format!("Nest({indent}) {{")
                     }
-                    opcodes::NEST_END => "}".to_string(),
                     opcodes::IF_SET => format!("IfSet(field={a}) {{"),
                     opcodes::ELSE_OP => "} Else {".to_string(),
-                    opcodes::END_IF => "}".to_string(),
                     opcodes::FOR_EACH_START => format!("ForEach(field={a}) {{"),
                     opcodes::CHILD_ITEM => "ChildItem".to_string(),
                     opcodes::FOR_EACH_SEP => {
                         let s = self.dialect.fmt_string(b);
                         format!("Sep \"{s}\"")
                     }
-                    opcodes::FOR_EACH_END => "}".to_string(),
                     opcodes::IF_BOOL => format!("IfBool(field={a}) {{"),
                     opcodes::IF_FLAG => format!("IfFlag(field={a}, mask={b:#x}) {{"),
                     opcodes::IF_ENUM => format!("IfEnum(field={a}, val={b}) {{"),
@@ -375,7 +381,7 @@ impl Formatter {
                     _ => format!("Unknown(opcode={opcode}, a={a}, b={b}, c={c})"),
                 };
 
-                result.push_str(&format!("  {ip:3}: {indent_str}{desc}\n"));
+                let _ = writeln!(result, "  {ip:3}: {indent_str}{desc}");
 
                 // Indent openers after printing.
                 match opcode {
@@ -400,7 +406,12 @@ impl Formatter {
     }
 
     /// Dump the Wadler-Lindig document tree after bytecode interpretation.
+    ///
+    /// # Errors
+    ///
+    /// Returns `FormatError` if the source cannot be parsed.
     pub fn dump_doc_tree(&mut self, source: &str) -> Result<String, FormatError> {
+        use std::fmt::Write;
         let mut session = self.parser.parse(source);
         let mut result = String::new();
         let mut stmt_num = 0usize;
@@ -424,7 +435,7 @@ impl Formatter {
 
             if let Some((tag, _)) = erased.extract_fields(root_id) {
                 let node_name = self.dialect.grammar().node_name(tag);
-                result.push_str(&format!("=== {node_name} ===\n"));
+                let _ = writeln!(result, "=== {node_name} ===");
             }
 
             let has_comments = !self.comment_entries.is_empty();

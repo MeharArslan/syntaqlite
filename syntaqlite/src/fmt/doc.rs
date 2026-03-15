@@ -322,6 +322,7 @@ impl<'a> DocArena<'a> {
 
     /// Dump the document tree as an indented text representation (for debugging).
     pub(crate) fn dump(&self, root: DocId) -> String {
+        use std::fmt::Write;
         let mut out = String::new();
         let mut stack: Vec<(DocId, usize)> = vec![(root, 0)];
 
@@ -332,25 +333,25 @@ impl<'a> DocArena<'a> {
             let indent_str: String = "  ".repeat(depth);
             match self.get(id) {
                 Doc::Text(s) => {
-                    out.push_str(&format!("{indent_str}Text({s:?})\n"));
+                    let _ = writeln!(out, "{indent_str}Text({s:?})");
                 }
                 Doc::Keyword(s) => {
-                    out.push_str(&format!("{indent_str}Keyword({s:?})\n"));
+                    let _ = writeln!(out, "{indent_str}Keyword({s:?})");
                 }
                 Doc::Line => {
-                    out.push_str(&format!("{indent_str}Line\n"));
+                    let _ = writeln!(out, "{indent_str}Line");
                 }
                 Doc::SoftLine => {
-                    out.push_str(&format!("{indent_str}SoftLine\n"));
+                    let _ = writeln!(out, "{indent_str}SoftLine");
                 }
                 Doc::HardLine => {
-                    out.push_str(&format!("{indent_str}HardLine\n"));
+                    let _ = writeln!(out, "{indent_str}HardLine");
                 }
                 Doc::BreakParent => {
-                    out.push_str(&format!("{indent_str}BreakParent\n"));
+                    let _ = writeln!(out, "{indent_str}BreakParent");
                 }
                 Doc::LineSuffix { child } => {
-                    out.push_str(&format!("{indent_str}LineSuffix\n"));
+                    let _ = writeln!(out, "{indent_str}LineSuffix");
                     stack.push((*child, depth + 1));
                 }
                 Doc::Cat { left, right } => {
@@ -359,11 +360,11 @@ impl<'a> DocArena<'a> {
                     stack.push((*left, depth));
                 }
                 Doc::Nest { indent, child } => {
-                    out.push_str(&format!("{indent_str}Nest({indent})\n"));
+                    let _ = writeln!(out, "{indent_str}Nest({indent})");
                     stack.push((*child, depth + 1));
                 }
                 Doc::Group { child } => {
-                    out.push_str(&format!("{indent_str}Group\n"));
+                    let _ = writeln!(out, "{indent_str}Group");
                     stack.push((*child, depth + 1));
                 }
             }

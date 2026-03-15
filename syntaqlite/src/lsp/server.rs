@@ -43,6 +43,7 @@ use crate::semantic::diagnostics::Severity;
 // ── LspConfig ─────────────────────────────────────────────────────────────
 
 /// Configuration for the LSP server, resolved from a project config file.
+#[derive(Default)]
 pub struct LspConfig {
     /// Format config from project config file.
     pub format_config: Option<FormatConfig>,
@@ -52,17 +53,6 @@ pub struct LspConfig {
     pub validation_config: Option<ValidationConfig>,
     /// Per-file schema resolution from `[schemas]` globs.
     pub schema_map: Option<SchemaMap>,
-}
-
-impl Default for LspConfig {
-    fn default() -> Self {
-        LspConfig {
-            format_config: None,
-            schema_catalog: None,
-            validation_config: None,
-            schema_map: None,
-        }
-    }
 }
 
 // ── LspServer ─────────────────────────────────────────────────────────────
