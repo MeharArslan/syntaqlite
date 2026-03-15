@@ -17,18 +17,11 @@ Start the language server:
 syntaqlite lsp
 ```
 
-This runs on stdio. Point your editor's LSP client at this command.
+This runs on stdio. Point your editor's LSP client at this command. You get
+diagnostics, formatting, completions, and semantic highlighting.
 
-The server discovers [`syntaqlite.toml`](@/reference/config-file.md) from the
-working directory at startup. Create one in your project root to configure
-schemas and formatting — no editor-specific configuration needed.
-
-The server supports:
-
-- `textDocument/publishDiagnostics` — syntax and semantic errors
-- `textDocument/formatting` — format document or range
-- `textDocument/completion` — keywords, functions, table/column names
-- `textDocument/semanticTokens/full` — context-aware highlighting
+Configure schemas and formatting via
+[`syntaqlite.toml`](@/reference/config-file.md) in your project root.
 
 ## Neovim
 

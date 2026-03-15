@@ -44,11 +44,7 @@ syntaqlite --help
 ## Format SQL
 
 ```bash
-# Inline expression
 syntaqlite fmt -e "select a,b,c from users where id=1 and active=true"
-
-# From stdin
-echo "select a,b,c from users where id=1 and active=true" | syntaqlite fmt
 ```
 
 Output:
@@ -66,98 +62,42 @@ Format a file in place:
 syntaqlite fmt -i query.sql
 ```
 
-Format all SQL files in a project:
-
-```bash
-syntaqlite fmt -i "**/*.sql"
-```
-
-Options:
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-w, --line-width` | 80 | Target maximum line width |
-| `-k, --keyword-case` | `upper` | `upper` or `lower` |
-| `--semicolons` | `true` | Append semicolons after statements |
-| `-i, --in-place` | | Write output back to files |
-| `--check` | | Check formatting without modifying (exit 1 if unformatted) |
-
-Formatting defaults can also be set in a
-[`syntaqlite.toml` config file](@/reference/config-file.md). CLI flags override
-config file values.
+See [CLI reference](@/reference/cli.md) for all formatting flags and
+[`syntaqlite.toml`](@/reference/config-file.md) for project-wide defaults.
 
 ## Validate SQL
 
-Separate your schema (DDL) from the queries you want to check:
-
-```bash
-syntaqlite validate --schema schema.sql queries.sql
-```
-
-Multiple schema files are supported — use `--schema` more than once or pass a
-glob:
-
-```bash
-syntaqlite validate --schema "db/*.sql" queries.sql
-```
-
-If you have a [`syntaqlite.toml` config file](@/reference/config-file.md), you
-can skip `--schema` entirely — schemas are resolved from the config:
-
-```bash
-syntaqlite validate queries.sql
-```
-
-Example schema file (`schema.sql`):
+Create a schema file (`schema.sql`):
 
 ```sql
 CREATE TABLE users (id INTEGER, name TEXT, email TEXT);
 ```
 
-Example query file (`queries.sql`):
+Validate a query against it:
 
-```sql
-SELECT nme FROM users;
+```bash
+syntaqlite validate --schema schema.sql -e "SELECT nme FROM users"
 ```
 
 ```text
 error: unknown column 'nme'
- --> queries.sql:1:8
+ --> <expression>:1:8
   |
-1 | SELECT nme FROM users;
+1 | SELECT nme FROM users
   |        ^^^
   |
   = help: did you mean 'name'?
 ```
 
-You can also put DDL and queries in the same file (without `--schema`) for quick
-one-off checks:
+You can also put DDL and queries in the same file for quick one-off checks:
 
 ```bash
 echo "CREATE TABLE t (a INT); SELECT b FROM t;" | syntaqlite validate
 ```
 
-### Embedded SQL (experimental)
-
-Validate SQL strings extracted from Python or TypeScript source files:
-
-```bash
-syntaqlite validate --experimental-lang python app.py
-syntaqlite validate --experimental-lang typescript app.ts
-```
-
-### SQLite version pinning
-
-Match your production SQLite version and compile flags:
-
-```bash
-syntaqlite validate --sqlite-version 3.41.0 \
-  --sqlite-cflag SQLITE_ENABLE_MATH_FUNCTIONS \
-  query.sql
-```
-
-See [SQLite version and compile flags](@/guides/sqlite-versions.md) for
-details.
+See [CLI reference](@/reference/cli.md) for all validation flags and
+[`syntaqlite.toml`](@/reference/config-file.md) for configuring schemas
+per project.
 
 ## Inspect the parse tree
 
