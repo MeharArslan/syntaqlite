@@ -16,6 +16,7 @@ fn main() {
     cc::Build::new()
         .file(sources_dir.join("lemon.c"))
         .define("main", "lemon_main")
+        .flag_if_supported("-Wno-type-limits")
         .compile("lemon");
 
     // Compile pre-transformed mkkeywordhash.c (keyword hash tool).
