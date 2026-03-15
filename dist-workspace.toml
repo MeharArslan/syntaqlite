@@ -17,5 +17,8 @@ install-path = "CARGO_HOME"
 hosting = "github"
 # Whether to install an updater program
 install-updater = false
+# Don't generate sha256 sidecar files or source tarballs — GitHub provides these
+checksum = "false"
+source-tarball = false
 # Allow our custom release.yml changes (we handle release creation ourselves)
 allow-dirty = ["ci"]
