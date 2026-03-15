@@ -8,37 +8,32 @@ weight = 3
 
 ## Install
 
-**Download and run (all platforms, no install):**
-
-```bash
-curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
-```
-
-Downloads the binary on first run, caches at `~/.local/share/syntaqlite/`, auto-updates weekly.
-
-**mise:**
-
-```bash
-mise use github:LalitMaganti/syntaqlite
-```
-
-**pip (all platforms, bundled binary):**
-
-```bash
-pip install syntaqlite
-```
-
-**Homebrew (macOS):**
-
-```bash
-brew install LalitMaganti/tap/syntaqlite
-```
-
-**Cargo:**
-
-```bash
-cargo install syntaqlite-cli
-```
+<div class="tabs" data-tab-group="cli-install">
+  <div class="tab-buttons">
+    <button class="active" data-tab="binary" onclick="switchTab('cli-install','binary')">Download &amp; run</button>
+    <button data-tab="mise" onclick="switchTab('cli-install','mise')">mise</button>
+    <button data-tab="pip" onclick="switchTab('cli-install','pip')">pip</button>
+    <button data-tab="brew" onclick="switchTab('cli-install','brew')">Homebrew</button>
+    <button data-tab="cargo" onclick="switchTab('cli-install','cargo')">Cargo</button>
+  </div>
+  <div class="tab-panel active" data-tab="binary">
+    <pre><code class="language-bash">curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"</code></pre>
+    <p>Downloads the binary on first run, caches at <code>~/.local/share/syntaqlite/</code>, auto-updates weekly. Works on macOS, Linux, and Windows.</p>
+  </div>
+  <div class="tab-panel" data-tab="mise">
+    <pre><code class="language-bash">mise use github:LalitMaganti/syntaqlite</code></pre>
+  </div>
+  <div class="tab-panel" data-tab="pip">
+    <pre><code class="language-bash">pip install syntaqlite</code></pre>
+    <p>Installs a bundled platform-specific binary — no Rust toolchain needed.</p>
+  </div>
+  <div class="tab-panel" data-tab="brew">
+    <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
+  </div>
+  <div class="tab-panel" data-tab="cargo">
+    <pre><code class="language-bash">cargo install syntaqlite-cli</code></pre>
+  </div>
+</div>
 
 Verify it works:
 
@@ -85,6 +80,7 @@ Options:
 | `-k, --keyword-case` | `upper` | `upper` or `lower` |
 | `--semicolons` | `true` | Append semicolons after statements |
 | `-i, --in-place` | | Write output back to files |
+| `--check` | | Check formatting without modifying (exit 1 if unformatted) |
 
 ## Validate SQL
 
@@ -158,4 +154,5 @@ details.
 echo "SELECT 1 + 2" | syntaqlite parse -o text
 ```
 
-Prints a text dump of the abstract syntax tree.
+Prints a text dump of the abstract syntax tree. See
+[parsing guide](@/guides/parsing.md) for details.
