@@ -17,6 +17,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: cargo
     steps:
       - uses: actions/checkout@v6
         with:
