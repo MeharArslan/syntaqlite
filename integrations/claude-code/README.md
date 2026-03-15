@@ -9,8 +9,8 @@ server.
 - **LSP integration** — Automatically starts the syntaqlite language server for
   `.sql` files, providing diagnostics, formatting, completions, and semantic
   highlighting.
-- **`/syntaqlite` skill** — Format SQL, inspect parse trees, and analyze queries
-  directly from the Claude Code prompt.
+- **`/syntaqlite:format` skill** — Format SQL files with configurable options.
+- **`/syntaqlite:parse` skill** — Inspect SQL parse trees and ASTs.
 
 ## Prerequisites
 
@@ -45,11 +45,11 @@ claude plugin marketplace add LalitMaganti/syntaqlite
 ## Usage
 
 Once installed, the LSP server starts automatically when you open `.sql` files.
-Use the `/syntaqlite` skill for CLI operations:
+Use the skills for CLI operations:
 
 ```
-/syntaqlite format this file
-/syntaqlite parse and show the AST for this query
+/syntaqlite:format query.sql
+/syntaqlite:parse query.sql
 ```
 
 ## License
