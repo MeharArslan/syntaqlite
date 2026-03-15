@@ -3,7 +3,7 @@
 
 import m from "mithril";
 import type {Attrs} from "../app/app";
-import {VERSION_OPTIONS} from "@syntaqlite/js";
+import {VERSION_OPTIONS} from "syntaqlite";
 import {HelpTooltip} from "./help_tooltip";
 import {SegmentedSwitch} from "./switch";
 import "./header.css";

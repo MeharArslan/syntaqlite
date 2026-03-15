@@ -1,7 +1,7 @@
-# Publish @syntaqlite/js to npm on release tags.
+# Publish syntaqlite to npm on release tags.
 #
 # Uses npm trusted publishing (OIDC) — no NPM_TOKEN needed.
-# Configure at https://www.npmjs.com/package/@syntaqlite/js/access
+# Configure at https://www.npmjs.com/package/syntaqlite/access
 # with: Owner: LalitMaganti, Repo: syntaqlite, Workflow: publish-npm.yml
 #
 # NOTE: Initial publish requires a token. After first publish,

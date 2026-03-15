@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {DialectConfigManager, versionToInt} from "@syntaqlite/js";
+import {DialectConfigManager, versionToInt} from "syntaqlite";
 
 describe("versionToInt", () => {
   it("returns max int for 'latest'", () => {
@@ -47,7 +47,7 @@ describe("DialectConfigManager", () => {
       setCflag: (name: string) => {
         setCflagCalls.push(name);
       },
-    } as unknown as import("@syntaqlite/js").Engine;
+    } as unknown as import("syntaqlite").Engine;
     mgr.apply(fakeEngine, "latest", ["SQLITE_OMIT_ALTERTABLE"]);
     expect(setCflagCalls).toEqual(["SQLITE_OMIT_ALTERTABLE"]);
   });

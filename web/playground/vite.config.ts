@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [checker({ typescript: true })],
   resolve: {
     alias: {
-      "@syntaqlite/js": path.resolve(__dirname, "../syntaqlite-js/src/index.ts"),
+      "syntaqlite": path.resolve(__dirname, "../syntaqlite-js/src/index.ts"),
     },
   },
   server: {

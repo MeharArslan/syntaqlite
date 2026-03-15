@@ -180,7 +180,7 @@ Thin wrappers over a stable C API. Can be done incrementally per language.
 
 ### 5.4 Update npm package
 
-- Already exists as `@syntaqlite/js` with WASM — ensure the API surface matches
+- Already exists as `syntaqlite` with WASM — ensure the API surface matches
   (format, validate, completions, semantic tokens)
 
 ## Phase 6: Release artifacts & CI

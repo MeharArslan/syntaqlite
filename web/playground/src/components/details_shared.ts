@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 import m from "mithril";
-import type {DiagnosticEntry} from "@syntaqlite/js";
+import type {DiagnosticEntry} from "syntaqlite";
 import type {App} from "../app/app";
 import {Table} from "../widgets/table";
 import type {TableColumn} from "../widgets/table";

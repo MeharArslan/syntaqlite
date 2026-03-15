@@ -7,8 +7,8 @@ import {
   DialectManager,
   DialectConfigManager,
   SchemaContextManager,
-} from "@syntaqlite/js";
-import type {DiagnosticEntry, EmbeddedFragment, EmbeddedLanguage} from "@syntaqlite/js";
+} from "syntaqlite";
+import type {DiagnosticEntry, EmbeddedFragment, EmbeddedLanguage} from "syntaqlite";
 import {ThemeManager} from "./theme_manager";
 import {WindowManager} from "./window_manager";
 import {UrlStateManager} from "./url_state";

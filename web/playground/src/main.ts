@@ -8,7 +8,7 @@ import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
 import "monaco-editor/esm/vs/basic-languages/python/python.contribution";
 import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
 import {FORMATTED_MODEL_URI, INPUT_MODEL_URI} from "./app/editor_models";
-import type {Engine} from "@syntaqlite/js";
+import type {Engine} from "syntaqlite";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
 

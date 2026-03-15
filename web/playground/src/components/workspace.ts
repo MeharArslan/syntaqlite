@@ -4,7 +4,7 @@
 import m from "mithril";
 import * as monaco from "monaco-editor";
 import type {App, Attrs} from "../app/app";
-import type {Engine} from "@syntaqlite/js";
+import type {Engine} from "syntaqlite";
 import type {Dialect, LanguageMode} from "../app/url_state";
 import {getSqlPresetLibrary} from "./workspace/sql_presets";
 import {debounce} from "../base/debounce";

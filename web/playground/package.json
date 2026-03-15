@@ -13,7 +13,7 @@
     "test:e2e:ci": "npm run build && playwright test"
   },
   "dependencies": {
-    "@syntaqlite/js": "file:../syntaqlite-js",
+    "syntaqlite": "file:../syntaqlite-js",
     "lz-string": "^1.5.0",
     "mithril": "^2.2.7",
     "monaco-editor": "^0.52.2"

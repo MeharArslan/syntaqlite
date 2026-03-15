@@ -8,14 +8,14 @@ weight = 6
 
 syntaqlite compiles to WebAssembly and provides a TypeScript/JavaScript API
 via the
-[`@syntaqlite/js`](https://github.com/LalitMaganti/syntaqlite/tree/main/web/syntaqlite-js)
+[`syntaqlite`](https://github.com/LalitMaganti/syntaqlite/tree/main/web/syntaqlite-js)
 package. This is the same engine that powers the
 [online playground](https://playground.syntaqlite.com).
 
 ## Install
 
 ```bash
-npm install @syntaqlite/js
+npm install syntaqlite
 ```
 
 The package has zero npm dependencies. You also need the WASM binary files
@@ -26,7 +26,7 @@ directory.
 ## Quick start
 
 ```typescript
-import { Engine, DialectManager } from "@syntaqlite/js";
+import { Engine, DialectManager } from "syntaqlite";
 
 // 1. Create and load the engine
 const engine = new Engine({
@@ -66,7 +66,7 @@ The `keywordCase` parameter uses numeric values:
 | `2` | lower case |
 
 ```typescript
-import type { FormatOptions } from "@syntaqlite/js";
+import type { FormatOptions } from "syntaqlite";
 
 const opts: FormatOptions = {
   lineWidth: 120,
@@ -82,7 +82,7 @@ The WASM build includes the full semantic analyzer. To validate SQL against a
 schema, define the schema first:
 
 ```typescript
-import { SchemaContextManager } from "@syntaqlite/js";
+import { SchemaContextManager } from "syntaqlite";
 
 // Define schema (simple format: "table: col1,col2,col3")
 const schema = new SchemaContextManager();

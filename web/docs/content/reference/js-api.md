@@ -1,15 +1,15 @@
 +++
 title = "JavaScript API reference"
-description = "Types and methods for @syntaqlite/js."
+description = "Types and methods for syntaqlite."
 weight = 5
 +++
 
 # JavaScript API reference
 
-The `@syntaqlite/js` package provides a TypeScript API backed by WASM.
+The `syntaqlite` package provides a TypeScript API backed by WASM.
 
 ```bash
-npm install @syntaqlite/js
+npm install syntaqlite
 ```
 
 For a getting-started guide, see

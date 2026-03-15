@@ -225,7 +225,7 @@ def main() -> int:
     if os.path.isfile(out_dialect_debug):
         print("wrote %s" % out_dialect_debug)
 
-    # Also copy runtime + SQLite dialect to @syntaqlite/js package for bundled distribution.
+    # Also copy runtime + SQLite dialect to syntaqlite package for bundled distribution.
     js_pkg_wasm_dir = os.path.join(ROOT_DIR, "web", "syntaqlite-js", "wasm")
     os.makedirs(js_pkg_wasm_dir, exist_ok=True)
     for src, name in [

@@ -23,4 +23,4 @@ Initial release of syntaqlite — a fast, accurate SQL toolkit for SQLite, built
 - Self-downloading script: `curl ... | python3 -` with weekly auto-updates
 - VS Code extension with bundled LSP (VS Code Marketplace + Open VSX)
 - Rust crates: `syntaqlite`, `syntaqlite-cli`, `syntaqlite-syntax`, `syntaqlite-common`
-- NPM package: `@syntaqlite/js`
+- NPM package: `syntaqlite`

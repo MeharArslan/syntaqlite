@@ -195,7 +195,7 @@ syntaqlite = { version = "0.0.21", features = ["fmt"] }
 **JavaScript / WASM** ([API docs](https://docs.syntaqlite.com/main/reference/js-api/))
 
 ```bash
-npm install @syntaqlite/js
+npm install syntaqlite
 ```
 
 **C** — the parser, tokenizer, formatter, and validator all have C APIs. See the [C API docs](https://docs.syntaqlite.com/reference/c-api/) for details.

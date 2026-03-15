@@ -27,7 +27,7 @@ jobs:
       - name: Build WASM modules
         run: python3 tools/build-web-playground --hermetic
 
-      - name: Build @syntaqlite/js
+      - name: Build syntaqlite
         working-directory: web/syntaqlite-js
         run: |
           export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"

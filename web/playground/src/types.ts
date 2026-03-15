@@ -22,7 +22,7 @@ export type {
   DiagnosticsResult,
   CompletionEntry,
   CompletionsResult,
-} from "@syntaqlite/js";
+} from "syntaqlite";
 
 // ── Playground-only types ──
 
