@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.26
+
+- Fix config file discovery with relative paths — `discover()` now resolves to absolute paths before walking up, fixing cases where `syntaqlite.toml` in the project root wasn't found
+- Add `syntaqlite.toml` to the syntaqlite repo itself (dogfooding)
+- Fix Claude Code plugin install instructions (two-step marketplace add + install)
+- Add 5 integration tests for config file: schema resolution, glob routing, format options, CLI override, nearest-config-wins
+- Documentation: rewrite all getting-started pages as guided walkthroughs, split Claude Code and MCP into separate pages, add config file reference page
+
 ## 0.0.25
 
 ### Project configuration file
