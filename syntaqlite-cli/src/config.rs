@@ -33,31 +33,25 @@ pub(crate) struct FormatOptions {
     pub semicolons: Option<bool>,
 }
 
+/// Load config from an explicit file path.
+/// Returns `(config, directory containing the config file)`.
+pub(crate) fn load(config_path: &Path) -> Option<(ProjectConfig, PathBuf)> {
+    let contents = std::fs::read_to_string(config_path).ok()?;
+    let config: ProjectConfig = toml::from_str(&contents).ok()?;
+    let dir = config_path.parent()?.to_path_buf();
+    Some((config, dir))
+}
+
 /// Walk up from `start` looking for `syntaqlite.toml`.
 /// Returns `(config, directory containing the config file)`.
 pub(crate) fn discover(start: &Path) -> Option<(ProjectConfig, PathBuf)> {
-    let start = if start.is_relative() {
-        std::env::current_dir().ok()?.join(start)
-    } else {
-        start.to_path_buf()
-    };
-    let mut dir = if start.is_file() {
-        start.parent()?.to_path_buf()
-    } else {
-        start
-    };
+    let mut dir = start.to_path_buf();
     loop {
         let candidate = dir.join("syntaqlite.toml");
         if candidate.is_file() {
-            let contents = std::fs::read_to_string(&candidate).ok()?;
-            let config: ProjectConfig = toml::from_str(&contents).ok()?;
-            return Some((config, dir));
+            return load(&candidate);
         }
-        let parent = dir.parent()?.to_path_buf();
-        if parent == dir {
-            return None;
-        }
-        dir = parent;
+        dir = dir.parent()?.to_path_buf();
     }
 }
 

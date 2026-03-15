@@ -91,9 +91,20 @@ export async function activate(
 
   outputChannel.appendLine(`Using server binary: ${serverCommand}`);
 
+  // Build LSP args. Pass --config if we found a syntaqlite.toml so the server
+  // doesn't have to rely on its cwd (which VS Code doesn't guarantee).
+  const lspArgs: string[] = [];
+  if (workspaceRoot) {
+    const configPath = path.join(workspaceRoot, "syntaqlite.toml");
+    if (fs.existsSync(configPath)) {
+      lspArgs.push("--config", configPath);
+    }
+  }
+  lspArgs.push("lsp");
+
   const serverOptions: ServerOptions = {
     command: serverCommand,
-    args: ["lsp"],
+    args: lspArgs,
   };
 
   const clientOptions: LanguageClientOptions = {

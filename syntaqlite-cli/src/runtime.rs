@@ -85,7 +85,7 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
         None => None,
     };
 
-    dispatch_commands(cli.command, configured)
+    dispatch_commands(cli.command, configured, cli.config)
 }
 
 fn apply_version_cflags(
@@ -114,7 +114,7 @@ fn apply_version_cflags(
     Ok(dialect)
 }
 
-fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<(), String> {
+fn dispatch_commands(command: Command, dialect: Option<AnyDialect>, config_path: Option<String>) -> Result<(), String> {
     match command {
         Command::Parse {
             files,
@@ -132,11 +132,11 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             let resolved_schemas = if !schema.is_empty() {
                 schema
             } else {
-                resolve_schemas_from_config(&files)
+                resolve_schemas_from_config(&files, config_path.as_deref())
             };
             cmd_validate(&d, &files, expression.as_deref(), &resolved_schemas, lang)
         }),
-        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d)),
+        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, config_path.as_deref())),
         #[cfg(feature = "mcp")]
         Command::Mcp => require_dialect(dialect).and_then(crate::mcp::cmd_mcp),
         Command::Fmt {
@@ -150,7 +150,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             semicolons,
             output,
         } => {
-            let file_config = discover_config_for_paths(&files);
+            let file_config = discover_config_for_paths(&files, config_path.as_deref());
             let config = build_format_config(
                 file_config.as_ref().map(|(c, _)| &c.format),
                 line_width,
@@ -343,11 +343,17 @@ fn cmd_parse_source(
     (count, n_err, json_nodes)
 }
 
-fn cmd_lsp(dialect: AnyDialect) -> Result<(), String> {
-    let cwd = std::env::current_dir().unwrap_or_default();
+fn cmd_lsp(dialect: AnyDialect, config_path: Option<&str>) -> Result<(), String> {
     let mut lsp_config = syntaqlite::lsp::LspConfig::default();
 
-    if let Some((project_config, config_dir)) = config::discover(&cwd) {
+    let found = if let Some(p) = config_path {
+        config::load(std::path::Path::new(p))
+    } else {
+        let cwd = std::env::current_dir().unwrap_or_default();
+        config::discover(&cwd)
+    };
+
+    if let Some((project_config, config_dir)) = found {
         eprintln!(
             "syntaqlite-lsp: found config at {}",
             config_dir.join("syntaqlite.toml").display()
@@ -648,35 +654,15 @@ fn validate_embedded_source(
 // Config file helpers
 // ---------------------------------------------------------------------------
 
-/// Discover `syntaqlite.toml` starting from the first file path, or the current directory.
-fn discover_config_for_paths(files: &[String]) -> Option<(ProjectConfig, PathBuf)> {
-    let start = if let Some(first) = files.first() {
-        // Use the first file/glob pattern's directory as the starting point.
-        // For globs, use the literal prefix (before any wildcard).
-        let literal = first.split(['*', '?', '[']).next().unwrap_or(first);
-        let p = std::path::Path::new(literal);
-        if p.is_file() {
-            p.parent()
-                .unwrap_or(std::path::Path::new("."))
-                .to_path_buf()
-        } else if p.is_dir() {
-            p.to_path_buf()
-        } else {
-            // Could be a glob prefix like "src/" — try it, fall back to cwd.
-            let dir = if p.is_dir() {
-                p.to_path_buf()
-            } else {
-                p.parent()
-                    .filter(|d| d.is_dir())
-                    .map(|d| d.to_path_buf())
-                    .unwrap_or_else(|| std::env::current_dir().unwrap_or_default())
-            };
-            dir
-        }
+/// Discover `syntaqlite.toml` from an explicit path or by walking up from the current directory.
+fn discover_config_for_paths(files: &[String], config_path: Option<&str>) -> Option<(ProjectConfig, PathBuf)> {
+    let _ = files; // config discovery is always cwd-based (or explicit --config)
+    if let Some(p) = config_path {
+        config::load(std::path::Path::new(p))
     } else {
-        std::env::current_dir().unwrap_or_default()
-    };
-    config::discover(&start)
+        let cwd = std::env::current_dir().unwrap_or_default();
+        config::discover(&cwd)
+    }
 }
 
 /// Build a `FormatConfig` by merging config file options with CLI overrides.
@@ -722,8 +708,8 @@ fn build_format_config(
 
 /// Resolve schema files from `syntaqlite.toml` for the given input file paths.
 /// Returns schema file paths as strings suitable for `build_schema_catalog`.
-fn resolve_schemas_from_config(files: &[String]) -> Vec<String> {
-    let (config, config_dir) = match discover_config_for_paths(files) {
+fn resolve_schemas_from_config(files: &[String], config_path: Option<&str>) -> Vec<String> {
+    let (config, config_dir) = match discover_config_for_paths(files, config_path) {
         Some(pair) => pair,
         None => return vec![],
     };

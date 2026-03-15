@@ -49,6 +49,12 @@ pub(crate) enum FmtOutput {
     version
 )]
 pub(crate) struct Cli {
+    /// Path to `syntaqlite.toml` config file.
+    /// When omitted, discovered by walking up from the current directory.
+    #[cfg(feature = "builtin-sqlite")]
+    #[arg(short = 'c', long = "config", global = true)]
+    pub(crate) config: Option<String>,
+
     /// Path to a shared library (.so/.dylib/.dll) providing a dialect.
     #[cfg(feature = "builtin-sqlite")]
     #[arg(long = "dialect")]

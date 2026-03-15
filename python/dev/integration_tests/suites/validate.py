@@ -213,6 +213,7 @@ def _test_config_file_format(ctx: SuiteContext) -> bool:
             [str(ctx.binary), "fmt", str(query)],
             capture_output=True,
             text=True,
+            cwd=tmp,
         )
         if "select" not in result.stdout:
             _fail("config_file_format",
