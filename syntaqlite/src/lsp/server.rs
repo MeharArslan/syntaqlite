@@ -683,8 +683,9 @@ impl LspServer {
                 DiagnosticPublisher::publish(connection, host, uri)?;
             }
             DidChangeConfiguration::METHOD => {
-                // Schema and format config are now read from syntaqlite.toml by the CLI.
-                // This handler is kept for protocol compliance but is a no-op.
+                let params: lsp_types::DidChangeConfigurationParams =
+                    serde_json::from_value(notif.params)?;
+                Self::load_schema_from_settings(&params.settings, host);
             }
             DidCloseTextDocument::METHOD => {
                 let params: lsp_types::DidCloseTextDocumentParams =
