@@ -127,6 +127,30 @@ warning: unknown function 'ROUDN'
   = help: did you mean 'round'?
 ```
 
+### Project configuration
+
+Create a `syntaqlite.toml` in your project root to configure schemas and formatting. The LSP, CLI, and all editor integrations read it automatically:
+
+```toml
+# Map SQL files to schema DDL files for validation and completions.
+[schemas]
+"src/**/*.sql" = ["schema/main.sql", "schema/views.sql"]
+"tests/**/*.sql" = ["schema/main.sql", "schema/test_fixtures.sql"]
+"migrations/*.sql" = []  # no schema validation for migrations
+
+# Default schema for SQL files that don't match any glob above.
+# schema = ["schema.sql"]
+
+# Formatting options (all optional, shown with defaults).
+[format]
+line-width = 80
+indent-width = 2
+keyword-case = "upper"    # "upper" | "lower"
+semicolons = true
+```
+
+The config file is discovered by walking up from the file being processed — same as `rustfmt.toml` or `ruff.toml`. CLI flags override config file values.
+
 ### Editor integration ([docs](https://docs.syntaqlite.com/main/getting-started/vscode/))
 
 Full language server — no database connection required. Diagnostics, format on save, completions, and semantic highlighting.

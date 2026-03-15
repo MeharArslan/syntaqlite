@@ -39,6 +39,21 @@ From the GitHub marketplace:
 claude plugin marketplace add LalitMaganti/claude-code-plugin
 ```
 
+## Configuration
+
+Create a `syntaqlite.toml` in your project root to configure schemas and
+formatting. The LSP reads it automatically — no plugin settings needed.
+
+```toml
+[schemas]
+"src/**/*.sql" = ["schema/main.sql"]
+
+[format]
+line-width = 100
+```
+
+See the [main README](../../README.md#project-configuration) for the full format.
+
 ## Usage
 
 Once installed, the LSP server starts automatically when you open `.sql` files.

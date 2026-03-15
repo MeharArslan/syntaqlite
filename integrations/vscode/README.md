@@ -16,7 +16,20 @@ syntaqlite binary for your platform — no additional setup required.
 
 ## Configuration
 
-| Setting                  | Default | Description                                   |
+Schemas and formatting are configured via `syntaqlite.toml` in your project
+root — the LSP reads it automatically. See the
+[main README](../../README.md#project-configuration) for the full format.
+
+```toml
+[schemas]
+"src/**/*.sql" = ["schema/main.sql"]
+
+[format]
+line-width = 100
+keyword-case = "lower"
+```
+
+| VS Code Setting          | Default | Description                                   |
 |--------------------------|---------|-----------------------------------------------|
 | `syntaqlite.serverPath`  | `""`    | Override path to the syntaqlite binary.       |
 
@@ -24,6 +37,7 @@ syntaqlite binary for your platform — no additional setup required.
 
 - **syntaqlite: Restart Language Server** — restart the LSP server
 - **syntaqlite: Format Document** — format the active SQL file
+- **syntaqlite: Open Config File** — open the project's `syntaqlite.toml`
 
 ## Development
 
