@@ -94,25 +94,8 @@ Useful for code generation, migration tooling, or static analysis. See
 
 ## What's next
 
-<div class="entry-cards">
-  <a href="{{ get_url(path='getting-started/cli') }}" class="entry-card">
-    <span class="entry-card__title">CLI reference</span>
-    <span class="entry-card__desc">All commands, flags, and options.</span>
-  </a>
-  <a href="{{ get_url(path='getting-started/vscode') }}" class="entry-card">
-    <span class="entry-card__title">VS Code</span>
-    <span class="entry-card__desc">Diagnostics, formatting, and completions in your editor.</span>
-  </a>
-  <a href="{{ get_url(path='getting-started/claude-code') }}" class="entry-card">
-    <span class="entry-card__title">Claude Code / MCP</span>
-    <span class="entry-card__desc">Plugin and MCP server for AI coding assistants.</span>
-  </a>
-  <a href="{{ get_url(path='getting-started/other-editors') }}" class="entry-card">
-    <span class="entry-card__title">Other editors</span>
-    <span class="entry-card__desc">Neovim, Helix, or any editor with LSP support.</span>
-  </a>
-  <a href="{{ get_url(path='getting-started/wasm-js') }}" class="entry-card">
-    <span class="entry-card__title">WASM / JavaScript</span>
-    <span class="entry-card__desc">Use syntaqlite in the browser or Node.js.</span>
-  </a>
-</div>
+- [**CLI reference**](@/getting-started/cli.md) — all commands, flags, and options
+- [**VS Code**](@/getting-started/vscode.md) — diagnostics, formatting, and completions in your editor
+- [**Claude Code / MCP**](@/getting-started/claude-code.md) — plugin and MCP server for AI coding assistants
+- [**Other editors**](@/getting-started/other-editors.md) — Neovim, Helix, or any editor with LSP support
+- [**WASM / JavaScript**](@/getting-started/wasm-js.md) — use syntaqlite in the browser or Node.js
