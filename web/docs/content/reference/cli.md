@@ -55,11 +55,18 @@ syntaqlite validate [OPTIONS] [FILES...]
 |--------|---------|-------------|
 | `-e, --expression <SQL>` | | SQL to validate directly (instead of files or stdin) |
 | `--schema <FILE>` | | Schema DDL file(s) to load (repeatable, supports globs) |
+| `-A, --allow <CHECK>` | | Suppress a check category (repeatable) |
+| `-W, --warn <CHECK>` | | Warn on a check category (repeatable) |
+| `-D, --deny <CHECK>` | | Error on a check category (repeatable) |
 | `--experimental-lang <LANG>` | | Extract SQL from `python` or `typescript` source |
 | `--dialect <PATH>` | | Path to custom dialect shared library |
 | `--dialect-name <NAME>` | | Symbol name in dialect library |
 | `--sqlite-version <VER>` | `latest` | Target SQLite version |
 | `--sqlite-cflag <FLAG>` | | Enable a compile-time flag (repeatable) |
+
+Check categories: `parse-errors`, `unknown-table`, `unknown-column`,
+`unknown-function`, `function-arity`, `cte-columns`. Groups: `schema` (all 4
+schema checks), `all`.
 
 When `--schema` is provided, the validator loads `CREATE TABLE` / `CREATE VIEW`
 statements from the schema files and checks the remaining input files against
@@ -72,8 +79,10 @@ Exit codes:
 - `0` — no errors (warnings may still be printed)
 - `1` — one or more error-level diagnostics
 
-When a schema is provided (`--schema` or `syntaqlite.toml`), unresolved names
-are errors (exit 1). Without a schema, they are warnings (exit 0).
+When a schema is provided (`--schema` or `syntaqlite.toml`), schema checks
+default to `deny` (errors). Without a schema, they default to `warn`. Explicit
+`-A`/`-W`/`-D` flags or `[checks]` in `syntaqlite.toml` override these
+defaults.
 
 ## syntaqlite parse
 

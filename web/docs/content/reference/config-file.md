@@ -11,8 +11,8 @@ editor integrations read it.
 
 ## Discovery
 
-syntaqlite walks up from the file being processed (or the current directory for
-CLI commands) and uses the first `syntaqlite.toml` it finds.
+syntaqlite walks up from the current working directory and uses the first
+`syntaqlite.toml` it finds. Use `--config <path>` to point at a specific file.
 
 ## File format
 
@@ -34,6 +34,16 @@ line-width = 80
 indent-width = 2
 keyword-case = "upper"    # "upper" | "lower"
 semicolons = true
+
+# Per-category check levels (all optional, shown with defaults).
+[checks]
+parse-errors = "deny"       # "allow" | "warn" | "deny"
+unknown-table = "warn"
+unknown-column = "warn"
+unknown-function = "warn"
+function-arity = "warn"
+cte-columns = "deny"
+# schema = "deny"           # shorthand for all 4 schema checks
 ```
 
 ## `schema`
@@ -76,6 +86,27 @@ built-in defaults. CLI flags override these values.
 
 See [Formatting options](@/reference/formatting-options.md) for detailed
 descriptions of each option.
+
+## `[checks]`
+
+Per-category diagnostic levels. Each field accepts `"allow"` (suppress),
+`"warn"`, or `"deny"` (error). Omitted fields use built-in defaults.
+CLI flags (`-A`/`-W`/`-D`) override these values.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `parse-errors` | string | `"deny"` | Syntax errors from the parser |
+| `unknown-table` | string | `"warn"` | Unresolved table/view references |
+| `unknown-column` | string | `"warn"` | Unresolved column references |
+| `unknown-function` | string | `"warn"` | Unresolved function names |
+| `function-arity` | string | `"warn"` | Wrong number of function arguments |
+| `cte-columns` | string | `"deny"` | CTE column count mismatches |
+| `schema` | string | — | Shorthand for `unknown-table`, `unknown-column`, `unknown-function`, `function-arity` |
+| `all` | string | — | Shorthand for all categories |
+
+When a schema is provided (`--schema` or `syntaqlite.toml`), schema checks
+default to `"deny"` instead of `"warn"`. Explicit `[checks]` values override
+this.
 
 ## Precedence
 

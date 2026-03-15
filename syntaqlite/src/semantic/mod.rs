@@ -284,8 +284,6 @@ impl ValidationConfig {
 
     /// Set all schema checks to `deny` (errors).
     ///
-    /// Set all schema checks to `deny` (errors).
-    ///
     /// Convenience method equivalent to setting `unknown-table`,
     /// `unknown-column`, `unknown-function`, and `function-arity` to
     /// [`CheckLevel::Deny`].
