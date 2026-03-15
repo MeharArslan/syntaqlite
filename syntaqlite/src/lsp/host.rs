@@ -15,7 +15,7 @@ use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::diagnostics::Diagnostic;
 use crate::semantic::model::{
-    ResolvedSymbol, SemanticModel, SemanticToken, StoredToken, SymbolIdentity,
+    DefinitionResult, ResolvedSymbol, SemanticModel, SemanticToken, StoredToken, SymbolIdentity,
 };
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind};
@@ -572,14 +572,11 @@ impl LspHost {
     // ── Go-to-definition ───────────────────────────────────────────────────
 
     /// Return the definition location for the symbol at `offset`.
-    ///
-    /// Returns `(file_uri, start, end)` where `file_uri` is `None` for
-    /// same-file definitions or `Some(uri)` for cross-file (schema) definitions.
     pub(crate) fn definition_info(
         &mut self,
         uri: &str,
         offset: usize,
-    ) -> Option<(Option<String>, usize, usize)> {
+    ) -> Option<DefinitionResult> {
         ensure_model_for(
             uri,
             &mut self.documents,
@@ -590,8 +587,7 @@ impl LspHost {
         );
         let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
-        let def = model.definition_at(offset)?;
-        Some((def.file_uri.clone(), def.start, def.end))
+        model.definition_at(offset)
     }
 
     // ── Find references ──────────────────────────────────────────────────────
@@ -1363,11 +1359,11 @@ mod tests {
         let ref_offset = "SELECT * FROM ".len();
         let result = host.definition_info(uri, ref_offset);
         assert!(result.is_some(), "expected definition for schema table");
-        let (target_uri, start, end) = result.unwrap();
-        assert_eq!(target_uri.as_deref(), Some(file_uri));
+        let def = result.unwrap();
+        assert_eq!(def.target.file_uri.as_deref(), Some(file_uri));
         let schema_offset = schema.find("orders").unwrap();
-        assert_eq!(start, schema_offset);
-        assert_eq!(end, schema_offset + "orders".len());
+        assert_eq!(def.target.start, schema_offset);
+        assert_eq!(def.target.end, schema_offset + "orders".len());
     }
 
     #[test]
@@ -1384,11 +1380,11 @@ mod tests {
         let ref_offset = "SELECT ".len(); // points to "total"
         let result = host.definition_info(uri, ref_offset);
         assert!(result.is_some(), "expected definition for schema column");
-        let (target_uri, start, end) = result.unwrap();
-        assert_eq!(target_uri.as_deref(), Some(file_uri));
+        let def = result.unwrap();
+        assert_eq!(def.target.file_uri.as_deref(), Some(file_uri));
         let schema_offset = schema.find("total").unwrap();
-        assert_eq!(start, schema_offset);
-        assert_eq!(end, schema_offset + "total".len());
+        assert_eq!(def.target.start, schema_offset);
+        assert_eq!(def.target.end, schema_offset + "total".len());
     }
 
     #[test]

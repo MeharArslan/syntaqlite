@@ -131,7 +131,7 @@ class LspClient:
 def _spawn_lsp(binary: Path, init_options: dict[str, Any] | None = None) -> LspClient:
     """Spawn the LSP server and complete the initialize handshake."""
     proc = subprocess.Popen(
-        [str(binary), "lsp"],
+        [str(binary), "--no-config", "lsp"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

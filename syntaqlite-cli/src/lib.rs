@@ -58,6 +58,11 @@ pub(crate) struct Cli {
     #[arg(short = 'c', long = "config", global = true)]
     pub(crate) config: Option<String>,
 
+    /// Disable automatic config file discovery.
+    #[cfg(feature = "builtin-sqlite")]
+    #[arg(long = "no-config", global = true, conflicts_with = "config")]
+    pub(crate) no_config: bool,
+
     /// Path to a shared library (.so/.dylib/.dll) providing a dialect.
     #[cfg(feature = "builtin-sqlite")]
     #[arg(long = "dialect")]

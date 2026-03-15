@@ -337,17 +337,25 @@ impl LspServer {
         let position = params.text_document_position_params.position;
         let uri_str = uri.as_str();
 
-        let Some(source) = host.document_source(uri_str) else {
-            return Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None);
-        };
-        let offset = SourcePositionMap::new(source).position_to_offset(position);
-
-        let Some((target_file_uri, def_start, def_end)) = host.definition_info(uri_str, offset)
-        else {
-            return Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None);
+        let offset = {
+            let Some(source) = host.document_source(uri_str) else {
+                return Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None);
+            };
+            SourcePositionMap::new(source).position_to_offset(position)
         };
 
-        let (target_uri, source) = if let Some(ref file_uri) = target_file_uri {
+        let Some(def) = host.definition_info(uri_str, offset) else {
+            return Response::new_ok(req.id, Option::<GotoDefinitionResponse>::None);
+        };
+
+        // Re-borrow source (immutably) to compute ranges.
+        let source = host
+            .document_source(uri_str)
+            .expect("document must exist")
+            .to_string();
+        let origin_range = offsets_to_range(&source, def.origin_start, def.origin_end);
+
+        let (target_uri, target_source) = if let Some(ref file_uri) = def.target.file_uri {
             let target: Uri = file_uri.parse().unwrap_or(uri);
             let file_path = file_uri.strip_prefix("file://").unwrap_or(file_uri);
             (
@@ -355,18 +363,19 @@ impl LspServer {
                 std::fs::read_to_string(file_path).unwrap_or_default(),
             )
         } else {
-            let source = host
-                .document_source(uri_str)
-                .expect("document must exist for definition")
-                .to_string();
-            (uri, source)
+            (uri, source.clone())
         };
-        let range = offsets_to_range(&source, def_start, def_end);
-        let location = Location {
-            uri: target_uri,
-            range,
+        let target_range = offsets_to_range(&target_source, def.target.start, def.target.end);
+        let link = lsp_types::LocationLink {
+            origin_selection_range: Some(origin_range),
+            target_uri,
+            target_range,
+            target_selection_range: target_range,
         };
-        Response::new_ok(req.id, GotoDefinitionResponse::Scalar(location))
+        Response::new_ok(
+            req.id,
+            GotoDefinitionResponse::Link(vec![link]),
+        )
     }
 
     fn handle_signature_help(req: Request, host: &mut LspHost) -> Response {

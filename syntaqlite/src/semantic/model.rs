@@ -88,6 +88,18 @@ pub(crate) struct DefinitionLocation {
     pub file_uri: Option<String>,
 }
 
+/// Result of a go-to-definition lookup: the origin span (reference token the
+/// user clicked on) plus the target definition location.
+#[derive(Debug, Clone)]
+pub(crate) struct DefinitionResult {
+    /// Byte offset of the start of the reference token.
+    pub origin_start: usize,
+    /// Byte offset of the end of the reference token.
+    pub origin_end: usize,
+    /// The definition site this reference resolves to.
+    pub target: DefinitionLocation,
+}
+
 /// A symbol resolution recorded during the validation pass.
 #[derive(Debug, Clone)]
 pub(crate) enum ResolvedSymbol {
@@ -187,13 +199,19 @@ impl SemanticModel {
     }
 
     /// Find the definition location for the symbol at a byte offset, if any.
-    pub(crate) fn definition_at(&self, offset: usize) -> Option<&DefinitionLocation> {
+    pub(crate) fn definition_at(&self, offset: usize) -> Option<DefinitionResult> {
         self.resolutions
             .iter()
             .find(|r| offset >= r.start && offset < r.end)
             .and_then(|r| match &r.symbol {
                 ResolvedSymbol::Table { definition, .. }
-                | ResolvedSymbol::Column { definition, .. } => definition.as_ref(),
+                | ResolvedSymbol::Column { definition, .. } => {
+                    definition.as_ref().map(|d| DefinitionResult {
+                        origin_start: r.start,
+                        origin_end: r.end,
+                        target: d.clone(),
+                    })
+                }
                 ResolvedSymbol::Function { .. } => None,
             })
     }

@@ -2216,10 +2216,10 @@ mod tests {
         let def = def.unwrap();
         let cte_def_offset = src.find("cte").unwrap();
         assert_eq!(
-            def.start, cte_def_offset,
+            def.target.start, cte_def_offset,
             "definition should point to CTE name"
         );
-        assert_eq!(def.end, cte_def_offset + "cte".len());
+        assert_eq!(def.target.end, cte_def_offset + "cte".len());
     }
 
     #[test]
@@ -2240,10 +2240,10 @@ mod tests {
         let def = def.unwrap();
         let ddl_offset = src.find("users").unwrap();
         assert_eq!(
-            def.start, ddl_offset,
+            def.target.start, ddl_offset,
             "definition should point to CREATE TABLE name"
         );
-        assert_eq!(def.end, ddl_offset + "users".len());
+        assert_eq!(def.target.end, ddl_offset + "users".len());
     }
 
     #[test]
@@ -2265,7 +2265,7 @@ mod tests {
         // CTE "t" starts at "WITH t" — offset 29
         let cte_t_offset = src[29..].find('t').unwrap() + 29;
         assert_eq!(
-            def.start, cte_t_offset,
+            def.target.start, cte_t_offset,
             "definition should point to CTE, not DDL"
         );
     }
@@ -2308,7 +2308,7 @@ mod tests {
         // The definition should point to "name" in the CREATE TABLE column list
         let ddl_name_offset = src.find("name").unwrap();
         assert_eq!(
-            def.start, ddl_name_offset,
+            def.target.start, ddl_name_offset,
             "definition should point to column in DDL, not SELECT"
         );
     }
@@ -2348,7 +2348,7 @@ mod tests {
         // Should point to "a" in "1 AS a" inside the CTE
         let cte_a_offset = src.find("AS a").unwrap() + "AS ".len();
         assert_eq!(
-            def.start, cte_a_offset,
+            def.target.start, cte_a_offset,
             "definition should point to alias in CTE body"
         );
     }
@@ -2371,7 +2371,7 @@ mod tests {
         // Should point to "x" in "foo(x)"
         let decl_x_offset = src.find("(x)").unwrap() + 1;
         assert_eq!(
-            def.start, decl_x_offset,
+            def.target.start, decl_x_offset,
             "definition should point to declared column in CTE"
         );
     }
@@ -2393,10 +2393,10 @@ mod tests {
         let def = model.definition_at(ref_offset);
         assert!(def.is_some(), "expected definition for schema table");
         let def = def.unwrap();
-        assert_eq!(def.file_uri.as_deref(), Some(file_uri));
+        assert_eq!(def.target.file_uri.as_deref(), Some(file_uri));
         let schema_offset = schema.find("users").unwrap();
-        assert_eq!(def.start, schema_offset);
-        assert_eq!(def.end, schema_offset + "users".len());
+        assert_eq!(def.target.start, schema_offset);
+        assert_eq!(def.target.end, schema_offset + "users".len());
     }
 
     #[test]
@@ -2416,8 +2416,8 @@ mod tests {
         assert!(def.is_some(), "expected definition");
         let def = def.unwrap();
         // Should point to same-file definition, not external schema.
-        assert!(def.file_uri.is_none(), "same-file DDL should shadow schema");
-        assert_eq!(def.start, src.find('t').unwrap());
+        assert!(def.target.file_uri.is_none(), "same-file DDL should shadow schema");
+        assert_eq!(def.target.start, src.find('t').unwrap());
     }
 
     // ── Analyzer: function validation ──────────────────────────────────────────

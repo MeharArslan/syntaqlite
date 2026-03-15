@@ -85,7 +85,14 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
         None => None,
     };
 
-    dispatch_commands(cli.command, configured, cli.config.as_deref())
+    let config = if cli.no_config {
+        ConfigMode::Disabled
+    } else if let Some(ref path) = cli.config {
+        ConfigMode::Explicit(path)
+    } else {
+        ConfigMode::Discover
+    };
+    dispatch_commands(cli.command, configured, config)
 }
 
 fn apply_version_cflags(
@@ -114,10 +121,20 @@ fn apply_version_cflags(
     Ok(dialect)
 }
 
+/// How the config file should be resolved.
+enum ConfigMode<'a> {
+    /// Use an explicit config file path (`--config`).
+    Explicit(&'a str),
+    /// Auto-discover by walking up from the current directory (default).
+    Discover,
+    /// Disable config file loading entirely (`--no-config`).
+    Disabled,
+}
+
 fn dispatch_commands(
     command: Command,
     dialect: Option<AnyDialect>,
-    config_path: Option<&str>,
+    config: ConfigMode<'_>,
 ) -> Result<(), String> {
     match command {
         Command::Parse {
@@ -135,7 +152,7 @@ fn dispatch_commands(
             deny,
             lang,
         } => require_dialect(dialect).and_then(|d| {
-            let file_config = discover_config_for_paths(&files, config_path);
+            let file_config = discover_config_for_paths(&files, &config);
             // If --schema is given, use it directly. Otherwise, resolve from config file.
             let resolved_schemas = if schema.is_empty() {
                 resolve_schemas_from_config_with(&files, file_config.as_ref())
@@ -159,7 +176,7 @@ fn dispatch_commands(
                 checks,
             )
         }),
-        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, config_path)),
+        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, &config)),
         #[cfg(feature = "mcp")]
         Command::Mcp => require_dialect(dialect).and_then(crate::mcp::cmd_mcp),
         Command::Fmt {
@@ -173,7 +190,7 @@ fn dispatch_commands(
             semicolons,
             output,
         } => {
-            let file_config = discover_config_for_paths(&files, config_path);
+            let file_config = discover_config_for_paths(&files, &config);
             let config = build_format_config(
                 file_config.as_ref().map(|(c, _)| &c.format),
                 line_width,
@@ -366,14 +383,16 @@ fn cmd_parse_source(
     (count, n_err, json_nodes)
 }
 
-fn cmd_lsp(dialect: AnyDialect, config_path: Option<&str>) -> Result<(), String> {
+fn cmd_lsp(dialect: AnyDialect, config: &ConfigMode<'_>) -> Result<(), String> {
     let mut lsp_config = syntaqlite::lsp::LspConfig::default();
 
-    let found = if let Some(p) = config_path {
-        config::load(std::path::Path::new(p))
-    } else {
-        let cwd = std::env::current_dir().unwrap_or_default();
-        config::discover(&cwd)
+    let found = match config {
+        ConfigMode::Explicit(p) => config::load(std::path::Path::new(p)),
+        ConfigMode::Discover => {
+            let cwd = std::env::current_dir().unwrap_or_default();
+            config::discover(&cwd)
+        }
+        ConfigMode::Disabled => None,
     };
 
     if let Some((project_config, config_dir)) = found {
@@ -761,14 +780,16 @@ fn emit_no_schema_hint() {
 /// Discover `syntaqlite.toml` from an explicit path or by walking up from the current directory.
 fn discover_config_for_paths(
     files: &[String],
-    config_path: Option<&str>,
+    config: &ConfigMode<'_>,
 ) -> Option<(ProjectConfig, PathBuf)> {
     let _ = files; // config discovery is always cwd-based (or explicit --config)
-    if let Some(p) = config_path {
-        config::load(std::path::Path::new(p))
-    } else {
-        let cwd = std::env::current_dir().unwrap_or_default();
-        config::discover(&cwd)
+    match config {
+        ConfigMode::Explicit(p) => config::load(std::path::Path::new(p)),
+        ConfigMode::Discover => {
+            let cwd = std::env::current_dir().unwrap_or_default();
+            config::discover(&cwd)
+        }
+        ConfigMode::Disabled => None,
     }
 }
 
