@@ -1,1 +1,0 @@
-"""syntaqlite MCP server."""

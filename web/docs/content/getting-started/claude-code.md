@@ -35,11 +35,27 @@ you can also set up syntaqlite as an MCP server. This exposes three tools:
 
 ### Install
 
+The MCP server is built into the `syntaqlite` binary — no extra dependencies
+needed. Install via any method:
+
 ```bash
-pip install syntaqlite[mcp]
+# Download script (all platforms, recommended)
+curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - install
+
+# Homebrew (macOS)
+brew install LalitMaganti/tap/syntaqlite
+
+# Cargo
+cargo install syntaqlite-cli
+
+# pip
+pip install syntaqlite
+
+# mise
+mise use github:LalitMaganti/syntaqlite
 ```
 
-The `syntaqlite` CLI must be on your `PATH`.
+See the [CLI install docs](@/getting-started/cli.md) for all options.
 
 ### Claude Desktop
 
@@ -53,7 +69,8 @@ Add to your config file:
 {
   "mcpServers": {
     "syntaqlite": {
-      "command": "syntaqlite-mcp"
+      "command": "syntaqlite",
+      "args": ["mcp"]
     }
   }
 }
@@ -67,7 +84,8 @@ Add to `.cursor/mcp.json`:
 {
   "mcpServers": {
     "syntaqlite": {
-      "command": "syntaqlite-mcp"
+      "command": "syntaqlite",
+      "args": ["mcp"]
     }
   }
 }
@@ -81,7 +99,8 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 {
   "mcpServers": {
     "syntaqlite": {
-      "command": "syntaqlite-mcp"
+      "command": "syntaqlite",
+      "args": ["mcp"]
     }
   }
 }

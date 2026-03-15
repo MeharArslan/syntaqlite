@@ -14,6 +14,10 @@ mod runtime;
 #[cfg(feature = "builtin-sqlite")]
 mod codegen;
 
+#[cfg(feature = "mcp")]
+#[expect(clippy::needless_pass_by_value, reason = "rmcp #[tool(aggr)] requires by-value params")]
+mod mcp;
+
 #[derive(Clone, Copy, ValueEnum)]
 pub(crate) enum ParseOutput {
     /// Print statement/error counts (compact, for benchmarks)
@@ -131,6 +135,9 @@ pub(crate) enum Command {
     /// Start the language server (stdio)
     #[cfg(feature = "builtin-sqlite")]
     Lsp,
+    /// Start the MCP server (stdio)
+    #[cfg(feature = "mcp")]
+    Mcp,
     /// Generate dialect C sources and Rust bindings for external dialects.
     #[cfg(feature = "builtin-sqlite")]
     Dialect(codegen::DialectArgs),

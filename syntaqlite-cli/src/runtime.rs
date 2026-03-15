@@ -130,6 +130,8 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
         Command::Lsp => require_dialect(dialect).and_then(|d| {
             syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
         }),
+        #[cfg(feature = "mcp")]
+        Command::Mcp => require_dialect(dialect).and_then(crate::mcp::cmd_mcp),
         Command::Fmt {
             files,
             expression,

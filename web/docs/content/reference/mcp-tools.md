@@ -6,10 +6,8 @@ weight = 3
 
 # MCP tools reference
 
-The syntaqlite MCP server exposes three tools. It's implemented as a thin
-Python wrapper
-([`server.py`](https://github.com/LalitMaganti/syntaqlite/blob/main/integrations/mcp/src/syntaqlite_mcp/server.py))
-that calls the `syntaqlite` CLI under the hood, so the CLI must be on `PATH`.
+The syntaqlite MCP server exposes three tools. It is built into the
+`syntaqlite` binary and runs over stdio via `syntaqlite mcp`.
 
 For setup instructions, see
 [Claude Code / MCP server](@/getting-started/claude-code.md).

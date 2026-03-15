@@ -77,8 +77,6 @@ def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path) -> Path:
         "License: Apache-2.0\n"
         "Home-page: https://github.com/LalitMaganti/syntaqlite\n"
         "Requires-Python: >=3.10\n"
-        "Provides-Extra: mcp\n"
-        'Requires-Dist: mcp>=1.0; extra == "mcp"\n'
         "Description-Content-Type: text/markdown\n"
         "\n"
         f"{readme_text}"
@@ -100,7 +98,6 @@ def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path) -> Path:
     entry_points = (
         "[console_scripts]\n"
         f"syntaqlite = {name}:main\n"
-        f"syntaqlite-mcp = {name}.mcp.server:mcp.run\n"
     )
     files[f"{dist_info}/entry_points.txt"] = entry_points.encode()
 

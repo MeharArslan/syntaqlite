@@ -21,7 +21,7 @@ Initial release of syntaqlite — a fast, accurate SQL toolkit for SQLite, built
 ### Install
 
 - CLI binaries for macOS (arm64, x86_64), Linux (arm64, x86_64), and Windows (x86_64)
-- `pip install syntaqlite` — bundled platform-specific binary, includes MCP server via `syntaqlite[mcp]`
+- `pip install syntaqlite` — bundled platform-specific binary, includes built-in MCP server (`syntaqlite mcp`)
 - `brew install LalitMaganti/tap/syntaqlite`
 - `cargo install syntaqlite-cli`
 - `mise use github:LalitMaganti/syntaqlite`
