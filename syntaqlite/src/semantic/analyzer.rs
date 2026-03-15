@@ -24,7 +24,7 @@ use super::model::{
     CompletionContext, CompletionInfo, DefinitionLocation, Resolution, ResolvedSymbol,
     SemanticModel, SemanticToken, StoredComment, StoredToken,
 };
-use super::{AnalysisMode, CheckConfig, ValidationConfig};
+use super::{AnalysisMode, CheckConfig, CheckLevel, ValidationConfig};
 
 /// Long-lived semantic analysis engine.
 ///
@@ -288,8 +288,8 @@ impl SemanticAnalyzer {
                         severity: Severity::Error,
                         help: None,
                     };
-                    if config.checks().is_enabled_for(&diag.message) {
-                        diagnostics.push(diag);
+                    if let Some(severity) = config.checks().level_for(&diag.message).to_severity() {
+                        diagnostics.push(Diagnostic { severity, ..diag });
                     }
                     // Collect tokens from the partial parse so completion_info
                     // can replay them through the incremental parser.
@@ -737,8 +737,8 @@ struct ValidationPass<'a> {
 }
 
 impl CheckConfig {
-    /// Check whether a diagnostic message's category is enabled.
-    pub(crate) fn is_enabled_for(&self, message: &DiagnosticMessage) -> bool {
+    /// Get the check level for a diagnostic message's category.
+    pub(crate) fn level_for(&self, message: &DiagnosticMessage) -> CheckLevel {
         match message {
             DiagnosticMessage::UnknownTable { .. } => self.unknown_table,
             DiagnosticMessage::UnknownColumn { .. } => self.unknown_column,
@@ -751,9 +751,12 @@ impl CheckConfig {
 }
 
 impl<'a> ValidationPass<'a> {
-    /// Push a diagnostic if its check category is enabled.
-    fn emit_if(&mut self, diagnostic: Diagnostic) {
-        if self.config.checks().is_enabled_for(&diagnostic.message) {
+    /// Push a diagnostic if its check category is not `allow`.
+    /// The severity is determined by the check level (`warn` or `deny`),
+    /// overriding whatever severity was set on the diagnostic.
+    fn emit_if(&mut self, mut diagnostic: Diagnostic) {
+        if let Some(severity) = self.config.checks().level_for(&diagnostic.message).to_severity() {
+            diagnostic.severity = severity;
             self.diagnostics.push(diagnostic);
         }
     }
@@ -955,7 +958,7 @@ impl<'a> ValidationPass<'a> {
                 message: DiagnosticMessage::UnknownTable {
                     name: name.to_string(),
                 },
-                severity: self.config.severity(),
+                severity: Severity::Warning, // overridden by emit_if from CheckConfig
                 help: suggestion.map(Help::Suggestion),
             });
         }
@@ -1043,7 +1046,7 @@ impl<'a> ValidationPass<'a> {
                         message: DiagnosticMessage::UnknownFunction {
                             name: name.to_string(),
                         },
-                        severity: self.config.severity(),
+                        severity: Severity::Warning, // overridden by emit_if from CheckConfig
                         help: suggestion.map(Help::Suggestion),
                     });
                 }
@@ -1056,7 +1059,7 @@ impl<'a> ValidationPass<'a> {
                             expected,
                             got: arg_count,
                         },
-                        severity: self.config.severity(),
+                        severity: Severity::Warning, // overridden by emit_if from CheckConfig
                         help: None,
                     });
                 }
@@ -1136,7 +1139,7 @@ impl<'a> ValidationPass<'a> {
                         column: column.to_string(),
                         table: Some(tbl.to_string()),
                     },
-                    severity: self.config.severity(),
+                    severity: Severity::Warning, // overridden by emit_if from CheckConfig
                     help: suggestion.map(Help::Suggestion),
                 });
             }
@@ -1157,7 +1160,7 @@ impl<'a> ValidationPass<'a> {
                         column: column.to_string(),
                         table: None,
                     },
-                    severity: self.config.severity(),
+                    severity: Severity::Warning, // overridden by emit_if from CheckConfig
                     help: suggestion.map(Help::Suggestion),
                 });
             }
@@ -1571,7 +1574,7 @@ mod tests {
     }
 
     fn strict() -> ValidationConfig {
-        ValidationConfig::default().with_strict_schema(true)
+        ValidationConfig::default().with_strict_schema()
     }
 
     fn lenient() -> ValidationConfig {

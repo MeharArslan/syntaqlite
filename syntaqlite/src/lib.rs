@@ -182,7 +182,7 @@ pub use semantic::SemanticAnalyzer;
 pub use semantic::ValidationConfig;
 #[doc(inline)]
 #[cfg(feature = "validation")]
-pub use semantic::CheckConfig;
+pub use semantic::{CheckConfig, CheckLevel};
 
 // Dialect.
 #[doc(inline)]

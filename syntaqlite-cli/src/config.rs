@@ -27,20 +27,21 @@ pub(crate) struct ProjectConfig {
     pub checks: CheckOptions,
 }
 
-/// Per-category check toggles from the `[checks]` section.
+/// Per-category check levels from the `[checks]` section.
+/// Values are strings: `"allow"`, `"warn"`, or `"deny"`.
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct CheckOptions {
-    pub parse_errors: Option<bool>,
-    pub unknown_table: Option<bool>,
-    pub unknown_column: Option<bool>,
-    pub unknown_function: Option<bool>,
-    pub function_arity: Option<bool>,
-    pub cte_columns: Option<bool>,
-    /// Shorthand: disables/enables all schema checks.
-    pub schema: Option<bool>,
-    /// Shorthand: disables/enables all checks.
-    pub all: Option<bool>,
+    pub parse_errors: Option<String>,
+    pub unknown_table: Option<String>,
+    pub unknown_column: Option<String>,
+    pub unknown_function: Option<String>,
+    pub function_arity: Option<String>,
+    pub cte_columns: Option<String>,
+    /// Shorthand: sets all schema checks.
+    pub schema: Option<String>,
+    /// Shorthand: sets all checks.
+    pub all: Option<String>,
 }
 
 /// Formatting options from the `[format]` section.

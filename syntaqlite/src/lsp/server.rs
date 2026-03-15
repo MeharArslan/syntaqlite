@@ -173,7 +173,7 @@ impl LspServer {
         if let Some(catalog) = config.schema_catalog {
             host.set_session_context(catalog);
             host.set_validation_config(
-                ValidationConfig::default().with_strict_schema(true),
+                ValidationConfig::default().with_strict_schema(),
             );
             eprintln!("syntaqlite-lsp: using project config schema");
         }
@@ -744,7 +744,7 @@ impl LspServer {
             Ok(contents) => match host.set_session_context_from_ddl(&contents, Some(&file_uri)) {
                 Ok(()) => {
                     host.set_validation_config(
-                        ValidationConfig::default().with_strict_schema(true),
+                        ValidationConfig::default().with_strict_schema(),
                     );
                     eprintln!("syntaqlite-lsp: loaded schema from {}", path.display());
                 }

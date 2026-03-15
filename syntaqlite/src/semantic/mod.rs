@@ -91,49 +91,86 @@ pub enum AnalysisMode {
     Execute,
 }
 
-/// Per-category check toggles.
+/// Severity level for a check category.
 ///
-/// Each field controls whether a category of diagnostic is emitted.
-/// All checks are enabled by default.
+/// Follows the Rust/Clippy convention: `allow` suppresses the diagnostic,
+/// `warn` emits a warning, `deny` emits an error.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CheckLevel {
+    /// Suppress the diagnostic entirely.
+    Allow,
+    /// Emit a warning (does not cause a non-zero exit code).
+    Warn,
+    /// Emit an error (causes a non-zero exit code).
+    Deny,
+}
+
+impl CheckLevel {
+    /// Parse from a string (`"allow"`, `"warn"`, `"deny"`).
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match s {
+            "allow" => Ok(CheckLevel::Allow),
+            "warn" => Ok(CheckLevel::Warn),
+            "deny" => Ok(CheckLevel::Deny),
+            _ => Err(format!("invalid check level: {s:?} (expected allow, warn, or deny)")),
+        }
+    }
+
+    /// Convert to [`Severity`] for diagnostic emission.
+    /// Returns `None` for `Allow` (diagnostic should be suppressed).
+    pub fn to_severity(self) -> Option<Severity> {
+        match self {
+            CheckLevel::Allow => None,
+            CheckLevel::Warn => Some(Severity::Warning),
+            CheckLevel::Deny => Some(Severity::Error),
+        }
+    }
+}
+
+/// Per-category check levels.
+///
+/// Each field controls whether and at what severity a category of diagnostic
+/// is emitted. Uses the Rust/Clippy convention: `allow` (suppressed), `warn`,
+/// `deny` (error).
 ///
 /// # Categories
 ///
-/// | Name | Field | What it controls |
-/// |------|-------|-----------------|
-/// | `parse-errors` | [`parse_errors`](Self::parse_errors) | Syntax errors from the parser |
-/// | `unknown-table` | [`unknown_table`](Self::unknown_table) | Unresolved table/view references |
-/// | `unknown-column` | [`unknown_column`](Self::unknown_column) | Unresolved column references |
-/// | `unknown-function` | [`unknown_function`](Self::unknown_function) | Unresolved function names |
-/// | `function-arity` | [`function_arity`](Self::function_arity) | Wrong number of function arguments |
-/// | `cte-columns` | [`cte_columns`](Self::cte_columns) | CTE column count mismatches |
+/// | Name | Field | What it controls | Default |
+/// |------|-------|-----------------|---------|
+/// | `parse-errors` | [`parse_errors`](Self::parse_errors) | Syntax errors from the parser | `deny` |
+/// | `unknown-table` | [`unknown_table`](Self::unknown_table) | Unresolved table/view references | `warn` |
+/// | `unknown-column` | [`unknown_column`](Self::unknown_column) | Unresolved column references | `warn` |
+/// | `unknown-function` | [`unknown_function`](Self::unknown_function) | Unresolved function names | `warn` |
+/// | `function-arity` | [`function_arity`](Self::function_arity) | Wrong number of function arguments | `warn` |
+/// | `cte-columns` | [`cte_columns`](Self::cte_columns) | CTE column count mismatches | `deny` |
 ///
 /// The group name `schema` is a shorthand for `unknown-table`,
 /// `unknown-column`, `unknown-function`, and `function-arity`.
 #[derive(Clone, Copy, Debug)]
 pub struct CheckConfig {
     /// Syntax errors from the parser.
-    pub parse_errors: bool,
+    pub parse_errors: CheckLevel,
     /// Unresolved table/view references.
-    pub unknown_table: bool,
+    pub unknown_table: CheckLevel,
     /// Unresolved column references.
-    pub unknown_column: bool,
+    pub unknown_column: CheckLevel,
     /// Unresolved function names.
-    pub unknown_function: bool,
+    pub unknown_function: CheckLevel,
     /// Wrong number of function arguments.
-    pub function_arity: bool,
+    pub function_arity: CheckLevel,
     /// CTE column count mismatches.
-    pub cte_columns: bool,
+    pub cte_columns: CheckLevel,
 }
 
 impl Default for CheckConfig {
     fn default() -> Self {
         CheckConfig {
-            parse_errors: true,
-            unknown_table: true,
-            unknown_column: true,
-            unknown_function: true,
-            function_arity: true,
-            cte_columns: true,
+            parse_errors: CheckLevel::Deny,
+            unknown_table: CheckLevel::Warn,
+            unknown_column: CheckLevel::Warn,
+            unknown_function: CheckLevel::Warn,
+            function_arity: CheckLevel::Warn,
+            cte_columns: CheckLevel::Deny,
         }
     }
 }
@@ -152,28 +189,28 @@ impl CheckConfig {
     /// Group names that expand to multiple categories.
     pub const GROUP_NAMES: &[&str] = &["schema", "all"];
 
-    /// Set a category by name. Returns `Err` if the name is unknown.
-    pub fn set(&mut self, name: &str, enabled: bool) -> Result<(), String> {
+    /// Set a category by name to a level. Returns `Err` if the name is unknown.
+    pub fn set(&mut self, name: &str, level: CheckLevel) -> Result<(), String> {
         match name {
-            "parse-errors" => self.parse_errors = enabled,
-            "unknown-table" => self.unknown_table = enabled,
-            "unknown-column" => self.unknown_column = enabled,
-            "unknown-function" => self.unknown_function = enabled,
-            "function-arity" => self.function_arity = enabled,
-            "cte-columns" => self.cte_columns = enabled,
+            "parse-errors" => self.parse_errors = level,
+            "unknown-table" => self.unknown_table = level,
+            "unknown-column" => self.unknown_column = level,
+            "unknown-function" => self.unknown_function = level,
+            "function-arity" => self.function_arity = level,
+            "cte-columns" => self.cte_columns = level,
             "schema" => {
-                self.unknown_table = enabled;
-                self.unknown_column = enabled;
-                self.unknown_function = enabled;
-                self.function_arity = enabled;
+                self.unknown_table = level;
+                self.unknown_column = level;
+                self.unknown_function = level;
+                self.function_arity = level;
             }
             "all" => {
-                self.parse_errors = enabled;
-                self.unknown_table = enabled;
-                self.unknown_column = enabled;
-                self.unknown_function = enabled;
-                self.function_arity = enabled;
-                self.cte_columns = enabled;
+                self.parse_errors = level;
+                self.unknown_table = level;
+                self.unknown_column = level;
+                self.unknown_function = level;
+                self.function_arity = level;
+                self.cte_columns = level;
             }
             _ => return Err(format!("unknown check category: {name}")),
         }
@@ -183,37 +220,30 @@ impl CheckConfig {
 
 /// Configuration for semantic validation.
 ///
-/// Controls how the [`SemanticAnalyzer`] reports unresolved names and
+/// Controls how the [`SemanticAnalyzer`] reports diagnostics and
 /// generates "did you mean?" suggestions:
 ///
-/// - **`strict_schema`** (`false` by default) — when `false`, unresolved
-///   table/column/function names produce [`Severity::Warning`]; when `true`,
-///   they produce [`Severity::Error`]. Use strict mode for CI pipelines where
-///   schema mismatches should block deployment.
+/// - **`checks`** — per-category severity levels (`allow`/`warn`/`deny`).
+///   See [`CheckConfig`].
 /// - **`suggestion_threshold`** (`2` by default) — maximum Levenshtein
 ///   distance for "did you mean?" suggestions. Set to `0` to disable
 ///   suggestions entirely.
-/// - **`checks`** — per-category toggles. See [`CheckConfig`].
 ///
 /// # Example
 ///
 /// ```
-/// # use syntaqlite::semantic::Severity;
+/// # use syntaqlite::semantic::{CheckLevel, Severity};
 /// # use syntaqlite::ValidationConfig;
-/// // Default: warnings + suggestions within edit distance 2.
 /// let config = ValidationConfig::default();
-/// assert_eq!(config.severity(), Severity::Warning);
 /// assert_eq!(config.suggestion_threshold(), 2);
 ///
-/// // Strict mode for CI: errors + tighter suggestions.
-/// let strict = ValidationConfig::default()
-///     .with_strict_schema(true)
-///     .with_suggestion_threshold(1);
-/// assert_eq!(strict.severity(), Severity::Error);
+/// // Deny all schema checks (errors instead of warnings).
+/// let mut checks = config.checks();
+/// checks.set("schema", CheckLevel::Deny).unwrap();
+/// let strict = config.with_checks(checks);
 /// ```
 #[derive(Clone, Copy)]
 pub struct ValidationConfig {
-    strict_schema: bool,
     suggestion_threshold: usize,
     checks: CheckConfig,
 }
@@ -221,7 +251,6 @@ pub struct ValidationConfig {
 impl Default for ValidationConfig {
     fn default() -> Self {
         ValidationConfig {
-            strict_schema: false,
             suggestion_threshold: 2,
             checks: CheckConfig::default(),
         }
@@ -229,35 +258,14 @@ impl Default for ValidationConfig {
 }
 
 impl ValidationConfig {
-    /// Whether unresolved names are reported as errors (`true`) or warnings (`false`).
-    pub fn strict_schema(&self) -> bool {
-        self.strict_schema
-    }
-
     /// Maximum Levenshtein distance for "did you mean?" suggestions.
     pub fn suggestion_threshold(&self) -> usize {
         self.suggestion_threshold
     }
 
-    /// Per-category check toggles.
-    pub fn checks(&self) -> &CheckConfig {
-        &self.checks
-    }
-
-    /// Returns the effective diagnostic severity for unresolved schema names.
-    pub fn severity(&self) -> Severity {
-        if self.strict_schema {
-            Severity::Error
-        } else {
-            Severity::Warning
-        }
-    }
-
-    /// Set whether unresolved names are reported as errors.
-    #[must_use]
-    pub fn with_strict_schema(mut self, strict: bool) -> Self {
-        self.strict_schema = strict;
-        self
+    /// Per-category check levels.
+    pub fn checks(&self) -> CheckConfig {
+        self.checks
     }
 
     /// Set the maximum Levenshtein distance for suggestions.
@@ -272,5 +280,97 @@ impl ValidationConfig {
     pub fn with_checks(mut self, checks: CheckConfig) -> Self {
         self.checks = checks;
         self
+    }
+
+    /// Set all schema checks to `deny` (errors).
+    ///
+    /// Set all schema checks to `deny` (errors).
+    ///
+    /// Convenience method equivalent to setting `unknown-table`,
+    /// `unknown-column`, `unknown-function`, and `function-arity` to
+    /// [`CheckLevel::Deny`].
+    #[must_use]
+    pub fn with_strict_schema(mut self) -> Self {
+        self.checks.set("schema", CheckLevel::Deny).unwrap();
+        self
+    }
+}
+
+#[cfg(test)]
+mod check_config_tests {
+    use super::*;
+
+    #[test]
+    fn check_level_parse() {
+        assert_eq!(CheckLevel::parse("allow").unwrap(), CheckLevel::Allow);
+        assert_eq!(CheckLevel::parse("warn").unwrap(), CheckLevel::Warn);
+        assert_eq!(CheckLevel::parse("deny").unwrap(), CheckLevel::Deny);
+        assert!(CheckLevel::parse("invalid").is_err());
+    }
+
+    #[test]
+    fn check_level_to_severity() {
+        assert_eq!(CheckLevel::Allow.to_severity(), None);
+        assert_eq!(CheckLevel::Warn.to_severity(), Some(Severity::Warning));
+        assert_eq!(CheckLevel::Deny.to_severity(), Some(Severity::Error));
+    }
+
+    #[test]
+    fn default_levels() {
+        let c = CheckConfig::default();
+        assert_eq!(c.parse_errors, CheckLevel::Deny);
+        assert_eq!(c.unknown_table, CheckLevel::Warn);
+        assert_eq!(c.unknown_column, CheckLevel::Warn);
+        assert_eq!(c.unknown_function, CheckLevel::Warn);
+        assert_eq!(c.function_arity, CheckLevel::Warn);
+        assert_eq!(c.cte_columns, CheckLevel::Deny);
+    }
+
+    #[test]
+    fn set_individual_category() {
+        let mut c = CheckConfig::default();
+        c.set("unknown-table", CheckLevel::Deny).unwrap();
+        assert_eq!(c.unknown_table, CheckLevel::Deny);
+        assert_eq!(c.unknown_column, CheckLevel::Warn); // unchanged
+    }
+
+    #[test]
+    fn set_schema_group() {
+        let mut c = CheckConfig::default();
+        c.set("schema", CheckLevel::Allow).unwrap();
+        assert_eq!(c.unknown_table, CheckLevel::Allow);
+        assert_eq!(c.unknown_column, CheckLevel::Allow);
+        assert_eq!(c.unknown_function, CheckLevel::Allow);
+        assert_eq!(c.function_arity, CheckLevel::Allow);
+        // Non-schema checks unchanged.
+        assert_eq!(c.parse_errors, CheckLevel::Deny);
+        assert_eq!(c.cte_columns, CheckLevel::Deny);
+    }
+
+    #[test]
+    fn set_all_group() {
+        let mut c = CheckConfig::default();
+        c.set("all", CheckLevel::Allow).unwrap();
+        assert_eq!(c.parse_errors, CheckLevel::Allow);
+        assert_eq!(c.unknown_table, CheckLevel::Allow);
+        assert_eq!(c.cte_columns, CheckLevel::Allow);
+    }
+
+    #[test]
+    fn set_unknown_category_errors() {
+        let mut c = CheckConfig::default();
+        assert!(c.set("nonexistent", CheckLevel::Warn).is_err());
+    }
+
+    #[test]
+    fn with_strict_schema_sets_deny() {
+        let config = ValidationConfig::default().with_strict_schema();
+        assert_eq!(config.checks().unknown_table, CheckLevel::Deny);
+        assert_eq!(config.checks().unknown_column, CheckLevel::Deny);
+        assert_eq!(config.checks().unknown_function, CheckLevel::Deny);
+        assert_eq!(config.checks().function_arity, CheckLevel::Deny);
+        // Non-schema checks unchanged.
+        assert_eq!(config.checks().cte_columns, CheckLevel::Deny);
+        assert_eq!(config.checks().parse_errors, CheckLevel::Deny);
     }
 }

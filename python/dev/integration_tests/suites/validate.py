@@ -465,6 +465,144 @@ def _test_config_file_valid_exits_zero(ctx: SuiteContext) -> bool:
     return True
 
 
+# ── Check level tests (-A/-W/-D) ─────────────────────────────────────────
+
+
+def _test_allow_suppresses_diagnostic(ctx: SuiteContext) -> bool:
+    """-A unknown-table should suppress unknown table diagnostics entirely."""
+    result = _run(ctx.binary, "-A", "unknown-table", "-e", "SELECT 1 FROM bad")
+    if "bad" in result.stderr:
+        _fail("allow_suppresses_diagnostic",
+              f"expected no 'bad' diagnostic with -A, got: {result.stderr}")
+        return False
+    if result.returncode != 0:
+        _fail("allow_suppresses_diagnostic",
+              f"expected exit 0 with -A, got {result.returncode}")
+        return False
+    _pass("allow_suppresses_diagnostic")
+    return True
+
+
+def _test_warn_emits_warning_exit_zero(ctx: SuiteContext) -> bool:
+    """-W unknown-table should emit a warning and exit 0."""
+    result = _run(ctx.binary, "-W", "unknown-table", "-e", "SELECT 1 FROM bad")
+    if "warning:" not in result.stderr:
+        _fail("warn_emits_warning_exit_zero",
+              f"expected 'warning:' in stderr, got: {result.stderr}")
+        return False
+    if result.returncode != 0:
+        _fail("warn_emits_warning_exit_zero",
+              f"expected exit 0 with -W, got {result.returncode}")
+        return False
+    _pass("warn_emits_warning_exit_zero")
+    return True
+
+
+def _test_deny_emits_error_exit_one(ctx: SuiteContext) -> bool:
+    """-D unknown-table should emit an error and exit 1."""
+    result = _run(ctx.binary, "-D", "unknown-table", "-e", "SELECT 1 FROM bad")
+    if "error:" not in result.stderr:
+        _fail("deny_emits_error_exit_one",
+              f"expected 'error:' in stderr, got: {result.stderr}")
+        return False
+    if result.returncode == 0:
+        _fail("deny_emits_error_exit_one",
+              "expected non-zero exit with -D")
+        return False
+    _pass("deny_emits_error_exit_one")
+    return True
+
+
+def _test_allow_schema_group(ctx: SuiteContext) -> bool:
+    """-A schema should suppress all schema checks."""
+    with _Project(ddl=_USERS_DDL, query="SELECT bogus FROM users;\n") as p:
+        result = subprocess.run(
+            [str(ctx.binary), "validate", "-A", "schema",
+             "--schema", p.schema, p.query],
+            capture_output=True, text=True,
+        )
+        if "bogus" in result.stderr:
+            _fail("allow_schema_group",
+                  f"expected no 'bogus' diagnostic with -A schema, got: {result.stderr}")
+            return False
+        if result.returncode != 0:
+            _fail("allow_schema_group",
+                  f"expected exit 0 with -A schema, got {result.returncode}")
+            return False
+    _pass("allow_schema_group")
+    return True
+
+
+def _test_deny_overrides_default_warn(ctx: SuiteContext) -> bool:
+    """-D unknown-column without schema should promote warnings to errors."""
+    result = _run(ctx.binary, "-D", "unknown-column",
+                  "-e", "CREATE TABLE t(a INT); SELECT bogus FROM t")
+    if "error:" not in result.stderr:
+        _fail("deny_overrides_default_warn",
+              f"expected 'error:' with -D, got: {result.stderr}")
+        return False
+    if result.returncode == 0:
+        _fail("deny_overrides_default_warn",
+              "expected non-zero exit with -D")
+        return False
+    _pass("deny_overrides_default_warn")
+    return True
+
+
+def _test_config_file_check_levels(ctx: SuiteContext) -> bool:
+    """[checks] section in config file should set check levels."""
+    with tempfile.TemporaryDirectory() as tmp:
+        schema = Path(tmp) / "schema.sql"
+        query = Path(tmp) / "query.sql"
+        config = Path(tmp) / "syntaqlite.toml"
+
+        schema.write_text(_USERS_DDL)
+        query.write_text("SELECT bogus FROM users;\n")
+        config.write_text(
+            'schema = ["schema.sql"]\n\n'
+            '[checks]\n'
+            'unknown-column = "allow"\n'
+        )
+
+        result = subprocess.run(
+            [str(ctx.binary), "validate", str(query)],
+            capture_output=True, text=True, cwd=tmp,
+        )
+        if "bogus" in result.stderr:
+            _fail("config_file_check_levels",
+                  f"expected 'bogus' suppressed by config allow, got: {result.stderr}")
+            return False
+    _pass("config_file_check_levels")
+    return True
+
+
+def _test_cli_overrides_config_file_level(ctx: SuiteContext) -> bool:
+    """CLI -D should override config file allow level."""
+    with tempfile.TemporaryDirectory() as tmp:
+        schema = Path(tmp) / "schema.sql"
+        query = Path(tmp) / "query.sql"
+        config = Path(tmp) / "syntaqlite.toml"
+
+        schema.write_text(_USERS_DDL)
+        query.write_text("SELECT bogus FROM users;\n")
+        config.write_text(
+            'schema = ["schema.sql"]\n\n'
+            '[checks]\n'
+            'unknown-column = "allow"\n'
+        )
+
+        result = subprocess.run(
+            [str(ctx.binary), "validate", "-D", "unknown-column", str(query)],
+            capture_output=True, text=True, cwd=tmp,
+        )
+        if "error:" not in result.stderr:
+            _fail("cli_overrides_config_file_level",
+                  f"expected 'error:' with -D override, got: {result.stderr}")
+            return False
+    _pass("cli_overrides_config_file_level")
+    return True
+
+
 # ── Suite entry point ─────────────────────────────────────────────────────
 
 def run(ctx: SuiteContext) -> int:
@@ -492,6 +630,14 @@ def run(ctx: SuiteContext) -> int:
         _test_schema_flag_unknown_table_is_error,
         _test_config_file_severity_is_error,
         _test_config_file_valid_exits_zero,
+        # Check levels (-A/-W/-D)
+        _test_allow_suppresses_diagnostic,
+        _test_warn_emits_warning_exit_zero,
+        _test_deny_emits_error_exit_one,
+        _test_allow_schema_group,
+        _test_deny_overrides_default_warn,
+        _test_config_file_check_levels,
+        _test_cli_overrides_config_file_level,
     ]
     results = [t(ctx) for t in tests]
     passed = sum(results)

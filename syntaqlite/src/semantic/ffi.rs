@@ -277,7 +277,7 @@ pub unsafe extern "C" fn syntaqlite_validator_add_tables(
     }
 
     // Schema was provided — switch to strict mode so unresolved names are errors.
-    state.validation_config = ValidationConfig::default().with_strict_schema(true);
+    state.validation_config = ValidationConfig::default().with_strict_schema();
 }
 
 /// Number of diagnostics from the last `analyze()` call.

@@ -126,8 +126,9 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>, config_path:
             files,
             expression,
             schema,
-            enable,
-            disable,
+            allow,
+            warn,
+            deny,
             lang,
         } => require_dialect(dialect).and_then(|d| {
             let file_config = discover_config_for_paths(&files, config_path.as_deref());
@@ -137,10 +138,13 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>, config_path:
             } else {
                 resolve_schemas_from_config_with(&files, &file_config)
             };
+            let has_schema = !resolved_schemas.is_empty();
             let checks = build_check_config(
+                has_schema,
                 file_config.as_ref().map(|(c, _)| &c.checks),
-                &enable,
-                &disable,
+                &allow,
+                &warn,
+                &deny,
             )?;
             cmd_validate(&d, &files, expression.as_deref(), &resolved_schemas, lang, &checks)
         }),
@@ -572,9 +576,7 @@ fn cmd_validate(
 ) -> Result<(), String> {
     let has_schema = !schema_files.is_empty();
     let schema_catalog = build_schema_catalog(dialect, schema_files)?;
-    let config = ValidationConfig::default()
-        .with_strict_schema(has_schema)
-        .with_checks(*checks);
+    let config = ValidationConfig::default().with_checks(*checks);
     let mut any_errors = false;
     let mut any_diagnostics = false;
 
@@ -771,51 +773,63 @@ fn resolve_schemas_from_config_with(
     }
 }
 
-/// Build `CheckConfig` by merging config file options with CLI `--enable`/`--disable` flags.
-/// Resolution order: defaults → config file `[checks]` → CLI flags (last wins per category).
+/// Build `CheckConfig` by merging defaults, schema presence, config file, and CLI flags.
+/// Resolution order: defaults → has_schema → config file `[checks]` → CLI `-A`/`-W`/`-D`.
 fn build_check_config(
+    has_schema: bool,
     file_opts: Option<&config::CheckOptions>,
-    cli_enable: &[String],
-    cli_disable: &[String],
+    cli_allow: &[String],
+    cli_warn: &[String],
+    cli_deny: &[String],
 ) -> Result<syntaqlite::CheckConfig, String> {
+    use syntaqlite::semantic::CheckLevel;
+
     let mut checks = syntaqlite::CheckConfig::default();
+
+    // When a schema is provided, default schema checks to deny (errors).
+    if has_schema {
+        checks.set("schema", CheckLevel::Deny).unwrap();
+    }
 
     // Apply config file options.
     if let Some(opts) = file_opts {
         // Group shorthands first (so per-category overrides them).
-        if let Some(v) = opts.all {
-            checks.set("all", v).unwrap();
+        if let Some(ref v) = opts.all {
+            checks.set("all", CheckLevel::parse(v)?)?;
         }
-        if let Some(v) = opts.schema {
-            checks.set("schema", v).unwrap();
+        if let Some(ref v) = opts.schema {
+            checks.set("schema", CheckLevel::parse(v)?)?;
         }
         // Per-category overrides.
-        if let Some(v) = opts.parse_errors {
-            checks.parse_errors = v;
+        if let Some(ref v) = opts.parse_errors {
+            checks.parse_errors = CheckLevel::parse(v)?;
         }
-        if let Some(v) = opts.unknown_table {
-            checks.unknown_table = v;
+        if let Some(ref v) = opts.unknown_table {
+            checks.unknown_table = CheckLevel::parse(v)?;
         }
-        if let Some(v) = opts.unknown_column {
-            checks.unknown_column = v;
+        if let Some(ref v) = opts.unknown_column {
+            checks.unknown_column = CheckLevel::parse(v)?;
         }
-        if let Some(v) = opts.unknown_function {
-            checks.unknown_function = v;
+        if let Some(ref v) = opts.unknown_function {
+            checks.unknown_function = CheckLevel::parse(v)?;
         }
-        if let Some(v) = opts.function_arity {
-            checks.function_arity = v;
+        if let Some(ref v) = opts.function_arity {
+            checks.function_arity = CheckLevel::parse(v)?;
         }
-        if let Some(v) = opts.cte_columns {
-            checks.cte_columns = v;
+        if let Some(ref v) = opts.cte_columns {
+            checks.cte_columns = CheckLevel::parse(v)?;
         }
     }
 
-    // Apply CLI --enable/--disable (last wins).
-    for name in cli_enable {
-        checks.set(name, true)?;
+    // Apply CLI flags (last wins per category).
+    for name in cli_allow {
+        checks.set(name, CheckLevel::Allow)?;
     }
-    for name in cli_disable {
-        checks.set(name, false)?;
+    for name in cli_warn {
+        checks.set(name, CheckLevel::Warn)?;
+    }
+    for name in cli_deny {
+        checks.set(name, CheckLevel::Deny)?;
     }
 
     Ok(checks)
