@@ -29,6 +29,11 @@ OTHER_MANIFESTS = [
     "python/pyproject.toml",
 ]
 
+# Files with `"version": "X.Y.Z"` (package.json style).
+JSON_MANIFESTS = [
+    "integrations/vscode/package.json",
+]
+
 # Files with inline version references (docs, lib.rs, etc.).
 VERSION_REF_FILES = [
     "README.md",
@@ -75,17 +80,22 @@ def bump(old_ver, new_ver):
         if replace_in_file(f, f'version = "{old_ver}"', f'version = "{new_ver}"'):
             changed.append(f)
 
-    # 2. Cargo.toml dependency versions
+    # 2. JSON package versions (package.json)
+    for f in JSON_MANIFESTS:
+        if replace_in_file(f, f'"version": "{old_ver}"', f'"version": "{new_ver}"'):
+            changed.append(f)
+
+    # 3. Cargo.toml dependency versions
     for f in CARGO_DEP_FILES:
         if replace_in_file(f, f'version = "{old_ver}", path', f'version = "{new_ver}", path'):
             changed.append(f)
 
-    # 3. Inline version references in docs/code
+    # 4. Inline version references in docs/code
     for f in VERSION_REF_FILES:
         if replace_in_file(f, f'version = "{old_ver}"', f'version = "{new_ver}"'):
             changed.append(f)
 
-    # 4. CHANGELOG header
+    # 5. CHANGELOG header
     replace_in_file("CHANGELOG.md", f"## {old_ver}", f"## {new_ver}")
 
     return list(dict.fromkeys(changed))  # dedupe preserving order

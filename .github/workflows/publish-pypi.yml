@@ -28,19 +28,22 @@ jobs:
       matrix:
         include:
           - target: aarch64-apple-darwin
-            archive: syntaqlite-aarch64-apple-darwin.tar.xz
+            archive: syntaqlite-macos-arm64.tar.gz
             binary: syntaqlite
           - target: x86_64-apple-darwin
-            archive: syntaqlite-x86_64-apple-darwin.tar.xz
+            archive: syntaqlite-macos-x64.tar.gz
             binary: syntaqlite
           - target: x86_64-unknown-linux-gnu
-            archive: syntaqlite-x86_64-unknown-linux-gnu.tar.xz
+            archive: syntaqlite-linux-x64.tar.gz
             binary: syntaqlite
           - target: aarch64-unknown-linux-gnu
-            archive: syntaqlite-aarch64-unknown-linux-gnu.tar.xz
+            archive: syntaqlite-linux-arm64.tar.gz
             binary: syntaqlite
           - target: x86_64-pc-windows-msvc
-            archive: syntaqlite-x86_64-pc-windows-msvc.zip
+            archive: syntaqlite-windows-x64.zip
+            binary: syntaqlite.exe
+          - target: aarch64-pc-windows-msvc
+            archive: syntaqlite-windows-arm64.zip
             binary: syntaqlite.exe
 
     steps:

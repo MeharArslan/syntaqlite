@@ -31,11 +31,12 @@ REPO = "LalitMaganti/syntaqlite"
 UPDATE_CHECK_INTERVAL = 7 * 24 * 60 * 60  # 7 days
 
 TARGETS = {
-    ("Darwin", "arm64"): "aarch64-apple-darwin",
-    ("Darwin", "x86_64"): "x86_64-apple-darwin",
-    ("Linux", "x86_64"): "x86_64-unknown-linux-gnu",
-    ("Linux", "aarch64"): "aarch64-unknown-linux-gnu",
-    ("Windows", "AMD64"): "x86_64-pc-windows-msvc",
+    ("Darwin", "arm64"): "macos-arm64",
+    ("Darwin", "x86_64"): "macos-x64",
+    ("Linux", "x86_64"): "linux-x64",
+    ("Linux", "aarch64"): "linux-arm64",
+    ("Windows", "AMD64"): "windows-x64",
+    ("Windows", "ARM64"): "windows-arm64",
 }
 
 
@@ -68,7 +69,7 @@ def _latest_version() -> str:
 def _download(target: str, dest: Path) -> None:
     is_windows = "windows" in target
     binary_name = _binary_name()
-    archive = f"syntaqlite-cli-{target}.{'zip' if is_windows else 'tar.xz'}"
+    archive = f"syntaqlite-{target}.{'zip' if is_windows else 'tar.gz'}"
     url = f"https://github.com/{REPO}/releases/latest/download/{archive}"
 
     print(f"Downloading syntaqlite ({target})...", file=sys.stderr)
@@ -82,7 +83,7 @@ def _download(target: str, dest: Path) -> None:
                     dest.write_bytes(zf.read(name))
                     return
     else:
-        with tarfile.open(fileobj=io.BytesIO(data), mode="r:xz") as tf:
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tf:
             for member in tf.getmembers():
                 if member.name.endswith(binary_name):
                     f = tf.extractfile(member)
