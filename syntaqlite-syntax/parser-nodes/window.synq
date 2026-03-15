@@ -54,7 +54,7 @@ node WindowDef {
           if_set(partition_by) { "PARTITION BY" nest { line child(partition_by) } }
           if_set(orderby) {
             if_set(partition_by) { line }
-            "ORDER BY" nest { line child(orderby) }
+            "ORDER BY" group { nest { line child(orderby) } }
           }
           if_set(frame) {
             if_set(partition_by) { line } else {

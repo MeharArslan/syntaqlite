@@ -149,8 +149,17 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
                     KeywordCasing::Lower => KeywordCase::Lower,
                 })
                 .with_semicolons(semicolons);
-            require_dialect(dialect)
-                .and_then(|d| cmd_fmt(&d, &files, expression.as_deref(), &config, in_place, check, output))
+            require_dialect(dialect).and_then(|d| {
+                cmd_fmt(
+                    &d,
+                    &files,
+                    expression.as_deref(),
+                    &config,
+                    in_place,
+                    check,
+                    output,
+                )
+            })
         }
         Command::Version => {
             println!("syntaqlite {}", env!("CARGO_PKG_VERSION"));
@@ -414,7 +423,9 @@ fn cmd_fmt_debug(
 
     let dump = |formatter: &mut Formatter, source: &str| -> Result<String, String> {
         match output {
-            crate::FmtOutput::Bytecode => formatter.dump_bytecode(source).map_err(|e| e.to_string()),
+            crate::FmtOutput::Bytecode => {
+                formatter.dump_bytecode(source).map_err(|e| e.to_string())
+            }
             crate::FmtOutput::DocTree => formatter.dump_doc_tree(source).map_err(|e| e.to_string()),
             crate::FmtOutput::Formatted => unreachable!(),
         }

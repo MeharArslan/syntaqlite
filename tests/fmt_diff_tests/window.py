@@ -63,8 +63,7 @@ class WindowFunctionFormat(TestSuite):
                   rank() OVER (
                     PARTITION BY
                       customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
-                    ORDER BY
-                      order_total DESC
+                    ORDER BY order_total DESC
                   ) AS customer_rank,
                   dense_rank() OVER (PARTITION BY customer_id ORDER BY order_total DESC) AS customer_dense_rank,
                   count(*) OVER (PARTITION BY customer_id) AS customer_order_count
@@ -88,8 +87,7 @@ class WindowFunctionFormat(TestSuite):
                   w AS (
                     PARTITION BY
                       customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
-                    ORDER BY
-                      order_total DESC
+                    ORDER BY order_total DESC
                   );
             """,
         )
@@ -110,8 +108,7 @@ class WindowFunctionFormat(TestSuite):
                     PARTITION BY
                       upid,
                       android_standardize_thread_name(thread.name)
-                    ORDER BY
-                      thread.start_ts
+                    ORDER BY thread.start_ts
                     RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur) FOLLOWING
                   )
                 FROM thread;
@@ -122,6 +119,76 @@ class WindowFunctionFormat(TestSuite):
         return DiffTestBlueprint(
             sql="SELECT sum(x) OVER (PARTITION BY id ORDER BY ts) FROM t",
             out="SELECT sum(x) OVER (PARTITION BY id ORDER BY ts) FROM t;",
+        )
+
+    def test_order_by_multi_col_stays_inline(self):
+        return DiffTestBlueprint(
+            sql="select row_number() over (order by a, b, c) from t",
+            out="SELECT row_number() OVER (ORDER BY a, b, c) FROM t;",
+        )
+
+    def test_order_by_long_list_wraps(self):
+        return DiffTestBlueprint(
+            sql="SELECT row_number() OVER (ORDER BY some_really_long_column_name DESC, another_long_column_name ASC) FROM t",
+            out="""\
+                SELECT
+                  row_number() OVER (
+                    ORDER BY some_really_long_column_name DESC, another_long_column_name
+                  )
+                FROM t;
+            """,
+        )
+
+    def test_order_by_very_long_list_wraps(self):
+        return DiffTestBlueprint(
+            sql="SELECT row_number() OVER (ORDER BY some_really_long_column_name DESC, another_really_long_column_name_here ASC) FROM t",
+            out="""\
+                SELECT
+                  row_number() OVER (
+                    ORDER BY
+                      some_really_long_column_name DESC,
+                      another_really_long_column_name_here
+                  )
+                FROM t;
+            """,
+        )
+
+    def test_order_by_expr(self):
+        return DiffTestBlueprint(
+            sql="select row_number() over (order by a + b desc) from t",
+            out="SELECT row_number() OVER (ORDER BY a + b DESC) FROM t;",
+        )
+
+    def test_partition_order_frame_all_present(self):
+        return DiffTestBlueprint(
+            sql="SELECT SUM(x) OVER (PARTITION BY dept ORDER BY hire_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM emp",
+            out="""\
+                SELECT
+                  SUM(x) OVER (
+                    PARTITION BY
+                      dept
+                    ORDER BY hire_date
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                  )
+                FROM emp;
+            """,
+        )
+
+    def test_partition_only_multi_col_stays_inline(self):
+        return DiffTestBlueprint(
+            sql="select count(*) over (partition by region, department, team, project) from emp",
+            out="SELECT count(*) OVER (PARTITION BY region, department, team, project) FROM emp;",
+        )
+
+    def test_multiple_windows_mixed(self):
+        return DiffTestBlueprint(
+            sql="SELECT SUM(x) OVER (PARTITION BY a ORDER BY b), AVG(y) OVER (ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t",
+            out="""\
+                SELECT
+                  SUM(x) OVER (PARTITION BY a ORDER BY b),
+                  AVG(y) OVER (ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                FROM t;
+            """,
         )
 
 
@@ -168,8 +235,7 @@ class FrameSpecFormat(TestSuite):
             out="""\
                 SELECT
                   sum(x) OVER (
-                    ORDER BY
-                      y
+                    ORDER BY y
                     GROUPS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE TIES
                   )
                 FROM t;
@@ -180,4 +246,55 @@ class FrameSpecFormat(TestSuite):
         return DiffTestBlueprint(
             sql="select sum(x) over (order by y rows 2 preceding) from t",
             out="SELECT sum(x) OVER (ORDER BY y ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) FROM t;",
+        )
+
+    def test_frame_only_no_orderby(self):
+        return DiffTestBlueprint(
+            sql="SELECT SUM(x) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t",
+            out="SELECT SUM(x) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t;",
+        )
+
+    def test_frame_exclude_current_row(self):
+        return DiffTestBlueprint(
+            sql="SELECT SUM(x) OVER (ORDER BY y ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE CURRENT ROW) FROM t",
+            out="""\
+                SELECT
+                  SUM(x) OVER (
+                    ORDER BY y
+                    ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE CURRENT ROW
+                  )
+                FROM t;
+            """,
+        )
+
+    def test_frame_exclude_no_others(self):
+        return DiffTestBlueprint(
+            sql="SELECT SUM(x) OVER (ORDER BY y ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE NO OTHERS) FROM t",
+            out="""\
+                SELECT
+                  SUM(x) OVER (
+                    ORDER BY y
+                    ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE NO OTHERS
+                  )
+                FROM t;
+            """,
+        )
+
+    def test_frame_range_type(self):
+        return DiffTestBlueprint(
+            sql="select avg(x) over (order by y range between unbounded preceding and current row) from t",
+            out="""\
+                SELECT
+                  avg(x) OVER (ORDER BY y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                FROM t;
+            """,
+        )
+
+    def test_frame_groups_type(self):
+        return DiffTestBlueprint(
+            sql="select sum(x) over (order by y groups between 1 preceding and 1 following) from t",
+            out="""\
+                SELECT sum(x) OVER (ORDER BY y GROUPS BETWEEN 1 PRECEDING AND 1 FOLLOWING)
+                FROM t;
+            """,
         )
