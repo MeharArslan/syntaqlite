@@ -15,6 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Cache third_party
+        uses: actions/cache@v5
+        with:
+          path: third_party
+          key: third-party-ui-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+
       - name: Install build dependencies
         run: python3 tools/install-build-deps --ui
 

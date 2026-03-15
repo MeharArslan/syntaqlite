@@ -42,6 +42,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache third_party
+        if: runner.os == 'Linux'
+        uses: actions/cache@v5
+        with:
+          path: third_party
+          key: third-party-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+
       - name: Install build dependencies
         if: runner.os == 'Linux'
         run: python3 tools/install-build-deps
