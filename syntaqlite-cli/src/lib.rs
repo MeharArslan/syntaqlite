@@ -24,6 +24,17 @@ pub(crate) enum ParseOutput {
     Json,
 }
 
+#[derive(Clone, Copy, Default, ValueEnum)]
+pub(crate) enum FmtOutput {
+    /// Formatted SQL (default)
+    #[default]
+    Formatted,
+    /// Dump raw interpreter bytecode for each statement
+    Bytecode,
+    /// Dump the Wadler-Lindig document tree after interpretation
+    DocTree,
+}
+
 #[derive(Parser)]
 #[command(
     name = "syntaqlite",
@@ -98,6 +109,9 @@ pub(crate) enum Command {
         /// Append semicolons after each statement
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         semicolons: bool,
+        /// Output mode (formatted, bytecode, doc-tree)
+        #[arg(short, long, value_enum, default_value_t = FmtOutput::Formatted)]
+        output: FmtOutput,
     },
     /// Validate SQL and report diagnostics
     #[cfg(feature = "builtin-sqlite")]

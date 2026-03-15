@@ -319,6 +319,58 @@ impl<'a> DocArena<'a> {
 
         remaining >= 0
     }
+
+    /// Dump the document tree as an indented text representation (for debugging).
+    pub(crate) fn dump(&self, root: DocId) -> String {
+        let mut out = String::new();
+        let mut stack: Vec<(DocId, usize)> = vec![(root, 0)];
+
+        while let Some((id, depth)) = stack.pop() {
+            if id == NIL_DOC {
+                continue;
+            }
+            let indent_str: String = "  ".repeat(depth);
+            match self.get(id) {
+                Doc::Text(s) => {
+                    out.push_str(&format!("{indent_str}Text({s:?})\n"));
+                }
+                Doc::Keyword(s) => {
+                    out.push_str(&format!("{indent_str}Keyword({s:?})\n"));
+                }
+                Doc::Line => {
+                    out.push_str(&format!("{indent_str}Line\n"));
+                }
+                Doc::SoftLine => {
+                    out.push_str(&format!("{indent_str}SoftLine\n"));
+                }
+                Doc::HardLine => {
+                    out.push_str(&format!("{indent_str}HardLine\n"));
+                }
+                Doc::BreakParent => {
+                    out.push_str(&format!("{indent_str}BreakParent\n"));
+                }
+                Doc::LineSuffix { child } => {
+                    out.push_str(&format!("{indent_str}LineSuffix\n"));
+                    stack.push((*child, depth + 1));
+                }
+                Doc::Cat { left, right } => {
+                    // Push right first so left is processed first (stack LIFO).
+                    stack.push((*right, depth));
+                    stack.push((*left, depth));
+                }
+                Doc::Nest { indent, child } => {
+                    out.push_str(&format!("{indent_str}Nest({indent})\n"));
+                    stack.push((*child, depth + 1));
+                }
+                Doc::Group { child } => {
+                    out.push_str(&format!("{indent_str}Group\n"));
+                    stack.push((*child, depth + 1));
+                }
+            }
+        }
+
+        out
+    }
 }
 
 // ── Private helpers ──────────────────────────────────────────────────────

@@ -278,6 +278,219 @@ impl Formatter {
 
         Ok(result)
     }
+
+    /// Dump the raw interpreter bytecode for each statement.
+    pub fn dump_bytecode(&mut self, source: &str) -> Result<String, FormatError> {
+        use syntaqlite_common::fmt::bytecode::opcodes;
+
+        let mut session = self.parser.parse(source);
+        let mut result = String::new();
+
+        loop {
+            let stmt = match session.next() {
+                ParseOutcome::Done => break,
+                ParseOutcome::Ok(stmt) => stmt,
+                ParseOutcome::Err(e) => {
+                    return Err(FormatError {
+                        message: e.message().to_owned(),
+                        offset: e.offset(),
+                        length: e.length(),
+                    });
+                }
+            };
+
+            let erased = stmt.erase();
+            let root_id = erased.root_id();
+            let Some((tag, _fields)) = erased.extract_fields(root_id) else {
+                continue;
+            };
+
+            let node_name = self.dialect.grammar().node_name(tag);
+            result.push_str(&format!("=== {node_name} (tag={}) ===\n", u32::from(tag)));
+
+            let Some((ops_bytes, ops_len)) = self.dialect.fmt_dispatch(tag) else {
+                result.push_str("  <no fmt bytecode>\n");
+                continue;
+            };
+
+            let mut depth: usize = 0;
+            for ip in 0..ops_len {
+                let base = ip * 6;
+                let opcode = ops_bytes[base];
+                let a = ops_bytes[base + 1];
+                let b = u16::from_le_bytes([ops_bytes[base + 2], ops_bytes[base + 3]]);
+                let c = u16::from_le_bytes([ops_bytes[base + 4], ops_bytes[base + 5]]);
+
+                // Dedent closers before printing.
+                match opcode {
+                    opcodes::END_IF
+                    | opcodes::ELSE_OP
+                    | opcodes::GROUP_END
+                    | opcodes::NEST_END
+                    | opcodes::FOR_EACH_END => {
+                        depth = depth.saturating_sub(1);
+                    }
+                    _ => {}
+                }
+
+                let indent_str = "  ".repeat(depth);
+                let desc = match opcode {
+                    opcodes::KEYWORD => {
+                        let s = self.dialect.fmt_string(b);
+                        format!("Keyword \"{s}\"")
+                    }
+                    opcodes::SPAN => format!("Span(field={a})"),
+                    opcodes::CHILD => format!("Child(field={a})"),
+                    opcodes::LINE => "Line".to_string(),
+                    opcodes::SOFTLINE => "SoftLine".to_string(),
+                    opcodes::HARDLINE => "HardLine".to_string(),
+                    opcodes::GROUP_START => "Group {".to_string(),
+                    opcodes::GROUP_END => "}".to_string(),
+                    opcodes::NEST_START => {
+                        let indent = i16::from_le_bytes(b.to_le_bytes());
+                        format!("Nest({indent}) {{")
+                    }
+                    opcodes::NEST_END => "}".to_string(),
+                    opcodes::IF_SET => format!("IfSet(field={a}) {{"),
+                    opcodes::ELSE_OP => "} Else {".to_string(),
+                    opcodes::END_IF => "}".to_string(),
+                    opcodes::FOR_EACH_START => format!("ForEach(field={a}) {{"),
+                    opcodes::CHILD_ITEM => "ChildItem".to_string(),
+                    opcodes::FOR_EACH_SEP => {
+                        let s = self.dialect.fmt_string(b);
+                        format!("Sep \"{s}\"")
+                    }
+                    opcodes::FOR_EACH_END => "}".to_string(),
+                    opcodes::IF_BOOL => format!("IfBool(field={a}) {{"),
+                    opcodes::IF_FLAG => format!("IfFlag(field={a}, mask={b:#x}) {{"),
+                    opcodes::IF_ENUM => format!("IfEnum(field={a}, val={b}) {{"),
+                    opcodes::IF_SPAN => format!("IfSpan(field={a}) {{"),
+                    opcodes::ENUM_DISPLAY => format!("EnumDisplay(field={a}, base={b})"),
+                    opcodes::FOR_EACH_SELF_START => "ForEachSelf {".to_string(),
+                    opcodes::CHILD_PREC => format!("ChildPrec(field={a}, table={b}, packed={c})"),
+                    opcodes::CHILD_PAREN_LIST => format!("ChildParenList(field={a})"),
+                    opcodes::CHILD_PREC_FIXED => {
+                        format!("ChildPrecFixed(field={a}, packed={b}, is_right={c})")
+                    }
+                    _ => format!("Unknown(opcode={opcode}, a={a}, b={b}, c={c})"),
+                };
+
+                result.push_str(&format!("  {ip:3}: {indent_str}{desc}\n"));
+
+                // Indent openers after printing.
+                match opcode {
+                    opcodes::IF_SET
+                    | opcodes::IF_BOOL
+                    | opcodes::IF_FLAG
+                    | opcodes::IF_ENUM
+                    | opcodes::IF_SPAN
+                    | opcodes::ELSE_OP
+                    | opcodes::GROUP_START
+                    | opcodes::NEST_START
+                    | opcodes::FOR_EACH_START
+                    | opcodes::FOR_EACH_SELF_START => {
+                        depth += 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Dump the Wadler-Lindig document tree after bytecode interpretation.
+    pub fn dump_doc_tree(&mut self, source: &str) -> Result<String, FormatError> {
+        let mut session = self.parser.parse(source);
+        let mut result = String::new();
+        let mut stmt_num = 0usize;
+
+        loop {
+            let stmt = match session.next() {
+                ParseOutcome::Done => break,
+                ParseOutcome::Ok(stmt) => stmt,
+                ParseOutcome::Err(e) => {
+                    return Err(FormatError {
+                        message: e.message().to_owned(),
+                        offset: e.offset(),
+                        length: e.length(),
+                    });
+                }
+            };
+
+            let erased = stmt.erase();
+            self.collect_side_channels(&erased);
+            let root_id = erased.root_id();
+
+            if let Some((tag, _)) = erased.extract_fields(root_id) {
+                let node_name = self.dialect.grammar().node_name(tag);
+                result.push_str(&format!("=== {node_name} ===\n"));
+            }
+
+            let has_comments = !self.comment_entries.is_empty();
+            let has_macros = !self.macro_regions.is_empty();
+            let needs_token_ctx = has_comments || has_macros;
+
+            let comment_ctx = if needs_token_ctx {
+                Some(CommentCtx::new(
+                    std::mem::take(&mut self.comment_entries),
+                    std::mem::take(&mut self.token_entries),
+                ))
+            } else {
+                None
+            };
+
+            let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
+            let mut arena = DocArena::recycle(prev_arena);
+            self.parts.clear();
+
+            let stmt_source = erased.source();
+            if stmt_num > 0 {
+                emit_stmt_separator(
+                    comment_ctx.as_ref(),
+                    false, // no semicolons in debug output
+                    stmt_source,
+                    &mut arena,
+                    &mut self.parts,
+                );
+            } else if let Some(cctx) = comment_ctx.as_ref()
+                && let Some((next_offset, _)) = cctx.peek_next_token()
+            {
+                drain_gap_comments(cctx, next_offset, stmt_source, &mut arena, &mut self.parts);
+            }
+
+            let ctx = FmtCtx {
+                dialect: self.dialect.clone(),
+                reader: erased,
+                comment_ctx,
+                macro_regions: std::mem::take(&mut self.macro_regions),
+            };
+            let interpreted = self.interpret_node(&ctx, root_id, &mut arena);
+            self.parts.push(interpreted);
+
+            if let Some(cctx) = ctx.comment_ctx.as_ref() {
+                self.parts
+                    .push(cctx.drain_remaining(stmt_source, &mut arena));
+            }
+
+            let doc = arena.cats(&self.parts);
+            result.push_str(&arena.dump(doc));
+            result.push('\n');
+
+            // Recycle buffers.
+            if let Some(cctx) = ctx.comment_ctx {
+                let (comments, tokens) = cctx.into_parts();
+                self.comment_entries = comments;
+                self.token_entries = tokens;
+            }
+            self.macro_regions = ctx.macro_regions;
+            self.arena = DocArena::recycle(arena);
+
+            stmt_num += 1;
+        }
+
+        Ok(result)
+    }
 }
 
 // ── Multi-statement helpers ─────────────────────────────────────────────

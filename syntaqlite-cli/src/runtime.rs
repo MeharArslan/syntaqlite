@@ -139,6 +139,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             in_place,
             check,
             semicolons,
+            output,
         } => {
             let config = FormatConfig::default()
                 .with_line_width(line_width)
@@ -149,7 +150,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
                 })
                 .with_semicolons(semicolons);
             require_dialect(dialect)
-                .and_then(|d| cmd_fmt(&d, &files, expression.as_deref(), &config, in_place, check))
+                .and_then(|d| cmd_fmt(&d, &files, expression.as_deref(), &config, in_place, check, output))
         }
         Command::Version => {
             println!("syntaqlite {}", env!("CARGO_PKG_VERSION"));
@@ -331,7 +332,13 @@ fn cmd_fmt(
     config: &FormatConfig,
     in_place: bool,
     check: bool,
+    output: crate::FmtOutput,
 ) -> Result<(), String> {
+    // Debug output modes bypass normal formatting.
+    if !matches!(output, crate::FmtOutput::Formatted) {
+        return cmd_fmt_debug(dialect, files, expression, config, output);
+    }
+
     let mut errors = Vec::new();
     let mut unformatted = Vec::new();
     process_files(
@@ -392,6 +399,46 @@ fn cmd_fmt(
             "{} file(s) would be reformatted",
             unformatted.len()
         ));
+    }
+    Ok(())
+}
+
+fn cmd_fmt_debug(
+    dialect: &AnyDialect,
+    files: &[String],
+    expression: Option<&str>,
+    config: &FormatConfig,
+    output: crate::FmtOutput,
+) -> Result<(), String> {
+    let mut formatter = Formatter::with_dialect_config(dialect.clone(), config);
+
+    let dump = |formatter: &mut Formatter, source: &str| -> Result<String, String> {
+        match output {
+            crate::FmtOutput::Bytecode => formatter.dump_bytecode(source).map_err(|e| e.to_string()),
+            crate::FmtOutput::DocTree => formatter.dump_doc_tree(source).map_err(|e| e.to_string()),
+            crate::FmtOutput::Formatted => unreachable!(),
+        }
+    };
+
+    if let Some(expr) = expression {
+        print!("{}", dump(&mut formatter, expr)?);
+        return Ok(());
+    }
+
+    let paths = expand_paths(files)?;
+    if paths.is_empty() {
+        let source = read_stdin()?;
+        print!("{}", dump(&mut formatter, &source)?);
+        return Ok(());
+    }
+
+    let multi = paths.len() > 1;
+    for path in &paths {
+        let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        if multi {
+            println!("==> {} <==", path.display());
+        }
+        print!("{}", dump(&mut formatter, &source)?);
     }
     Ok(())
 }
