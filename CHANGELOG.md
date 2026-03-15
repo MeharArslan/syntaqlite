@@ -2,7 +2,32 @@
 
 ## 0.0.25
 
-*No changes yet.*
+### Project configuration file
+
+syntaqlite now reads project settings from a `syntaqlite.toml` file. This is the single, editor-agnostic source of truth for schemas and formatting — it works across VS Code, Claude Code, Neovim, Helix, and the CLI with no additional setup.
+
+```toml
+[schemas]
+"src/**/*.sql" = ["schema/main.sql"]
+"tests/**/*.sql" = ["schema/main.sql", "schema/test_fixtures.sql"]
+"migrations/*.sql" = []
+
+[format]
+line-width = 100
+keyword-case = "lower"
+```
+
+- **CLI**: `syntaqlite fmt` and `syntaqlite validate` discover `syntaqlite.toml` automatically. CLI flags override config file values.
+- **LSP**: The language server reads format config and schema mappings from `syntaqlite.toml` on startup.
+- **VS Code extension**: Simplified — `syntaqlite.schemaPath` and `syntaqlite.schemas` settings removed in favor of `syntaqlite.toml`. Only `syntaqlite.serverPath` remains.
+
+### Other changes
+
+- Formatter: improved formatting of RETURNING clauses, WITH/CTE clauses, and window clause ORDER BY
+- Formatter: added `--output bytecode` and `--output doc-tree` debug modes
+- MCP server: moved from Python to native Rust binary (`syntaqlite mcp`)
+- Claude Code plugin: restructured for marketplace, added validate skill
+- Documentation: rewrote all getting-started pages as guided walkthroughs, added config file reference page, split Claude Code and MCP docs
 
 ## 0.0.24
 
