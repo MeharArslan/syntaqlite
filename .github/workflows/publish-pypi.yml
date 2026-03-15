@@ -1,0 +1,105 @@
+# Build platform-specific Python wheels with the pre-built CLI binary
+# and publish to PyPI on release tags.
+#
+# Waits for the Release workflow (cargo-dist) to complete, then downloads
+# the CLI binaries from the GitHub Release and packages them into wheels.
+name: Publish PyPI
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+jobs:
+  build-wheels:
+    name: Build wheel (${{ matrix.target }})
+    if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            archive: syntaqlite-aarch64-apple-darwin.tar.xz
+            binary: syntaqlite
+          - target: x86_64-apple-darwin
+            archive: syntaqlite-x86_64-apple-darwin.tar.xz
+            binary: syntaqlite
+          - target: x86_64-unknown-linux-gnu
+            archive: syntaqlite-x86_64-unknown-linux-gnu.tar.xz
+            binary: syntaqlite
+          - target: aarch64-unknown-linux-gnu
+            archive: syntaqlite-aarch64-unknown-linux-gnu.tar.xz
+            binary: syntaqlite
+          - target: x86_64-pc-windows-msvc
+            archive: syntaqlite-x86_64-pc-windows-msvc.zip
+            binary: syntaqlite.exe
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Get release tag
+        id: tag
+        run: echo "tag=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+
+      - name: Download binary from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          gh release download "$TAG" --pattern "${{ matrix.archive }}" --dir tmp/
+
+      - name: Extract binary
+        run: |
+          mkdir -p bin/
+          ARCHIVE="tmp/${{ matrix.archive }}"
+          if [[ "$ARCHIVE" == *.zip ]]; then
+            unzip "$ARCHIVE" -d extracted/
+          else
+            tar -xf "$ARCHIVE" -C extracted/
+          fi
+          # cargo-dist archives have the binary inside a directory
+          find extracted/ -name "${{ matrix.binary }}" -exec cp {} bin/ \;
+          chmod +x bin/${{ matrix.binary }}
+
+      - name: Build wheel
+        run: |
+          python python/scripts/build_wheel.py \
+            --binary bin/${{ matrix.binary }} \
+            --platform ${{ matrix.target }} \
+            --out dist/
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheel-${{ matrix.target }}
+          path: dist/*.whl
+
+  publish:
+    name: Publish to PyPI
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all wheels
+        uses: actions/download-artifact@v7
+        with:
+          pattern: wheel-*
+          path: dist/
+          merge-multiple: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install twine
+        run: pip install twine
+
+      - name: Publish
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/*

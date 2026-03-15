@@ -36,7 +36,7 @@ you can also set up syntaqlite as an MCP server. This exposes three tools:
 ### Install
 
 ```bash
-pip install syntaqlite-mcp
+pip install syntaqlite[mcp]
 ```
 
 The `syntaqlite` CLI must be on your `PATH`.

@@ -3,7 +3,7 @@
 
 """SELECT clause AST tests: WHERE, GROUP BY, HAVING, ORDER BY, LIMIT."""
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class SelectWhere(TestSuite):

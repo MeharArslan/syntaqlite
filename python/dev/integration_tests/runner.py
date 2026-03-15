@@ -29,16 +29,16 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 
 # Suites in canonical run order.
 _SUITE_MODULES = [
-    "python.syntaqlite.integration_tests.suites.ast",
-    "python.syntaqlite.integration_tests.suites.fmt",
-    "python.syntaqlite.integration_tests.suites.perfetto_fmt",
-    "python.syntaqlite.integration_tests.suites.perfetto_val",
-    "python.syntaqlite.integration_tests.suites.amalg",
-    "python.syntaqlite.integration_tests.suites.grammar",
-    "python.syntaqlite.integration_tests.suites.sql_idempotency",
-    "python.syntaqlite.integration_tests.suites.upstream_sqlite",
-    "python.syntaqlite.integration_tests.suites.lsp",
-    "python.syntaqlite.integration_tests.suites.validate",
+    "python.dev.integration_tests.suites.ast",
+    "python.dev.integration_tests.suites.fmt",
+    "python.dev.integration_tests.suites.perfetto_fmt",
+    "python.dev.integration_tests.suites.perfetto_val",
+    "python.dev.integration_tests.suites.amalg",
+    "python.dev.integration_tests.suites.grammar",
+    "python.dev.integration_tests.suites.sql_idempotency",
+    "python.dev.integration_tests.suites.upstream_sqlite",
+    "python.dev.integration_tests.suites.lsp",
+    "python.dev.integration_tests.suites.validate",
 ]
 
 _BLUE = "\033[1;34m"
@@ -59,7 +59,7 @@ def _print_suite_header(name: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    from python.syntaqlite.integration_tests.suite import SuiteContext
+    from python.dev.integration_tests.suite import SuiteContext
 
     parser = argparse.ArgumentParser(
         description="Run syntaqlite integration test suites.",

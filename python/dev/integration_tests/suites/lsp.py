@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.integration_tests.suite import SuiteContext
 
 NAME = "lsp"
 DESCRIPTION = "LSP server integration tests (schema loading, diagnostics)"

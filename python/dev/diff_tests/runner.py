@@ -11,9 +11,9 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import List, Optional
 
-from python.syntaqlite.diff_tests.test_executor import TestResult, execute_test
-from python.syntaqlite.diff_tests.test_loader import load_all_tests
-from python.syntaqlite.diff_tests.utils import Colors, colorize, format_diff
+from python.dev.diff_tests.test_executor import TestResult, execute_test
+from python.dev.diff_tests.test_loader import load_all_tests
+from python.dev.diff_tests.utils import Colors, colorize, format_diff
 
 
 def _run_single_test(args: tuple) -> TestResult:
@@ -77,7 +77,7 @@ def _apply_rebaseline(root_dir: Path, test_dir: str, results: List[TestResult]) 
         module_name = str(relative.with_suffix("")).replace("/", ".")
         module = importlib.import_module(module_name)
 
-        from python.syntaqlite.diff_tests.testing import TestSuite
+        from python.dev.diff_tests.testing import TestSuite
         for _, obj in inspect.getmembers(module, inspect.isclass):
             if not (issubclass(obj, TestSuite) and obj is not TestSuite):
                 continue

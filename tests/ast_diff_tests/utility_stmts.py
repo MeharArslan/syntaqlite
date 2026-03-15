@@ -3,7 +3,7 @@
 
 """Utility statement AST tests (PRAGMA, ANALYZE, ATTACH, DETACH, VACUUM, REINDEX, EXPLAIN, CREATE INDEX, CREATE VIEW)."""
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class PragmaStmts(TestSuite):

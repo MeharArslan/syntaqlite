@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.integration_tests.suite import SuiteContext
 
 NAME = "grammar"
 DESCRIPTION = "Grammar token-ID ordering invariants across all dialect extensions"

@@ -33,9 +33,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from python.syntaqlite.diff_tests.test_loader import load_all_tests
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint
-from python.syntaqlite.diff_tests.utils import Colors, colorize, format_diff
+from python.dev.diff_tests.test_loader import load_all_tests
+from python.dev.diff_tests.testing import DiffTestBlueprint
+from python.dev.diff_tests.utils import Colors, colorize, format_diff
 
 
 # Statements where EXPLAIN bytecode comparison is not applicable — either

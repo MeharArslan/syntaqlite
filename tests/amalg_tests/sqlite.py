@@ -7,7 +7,7 @@ These tests verify that the amalgamated syntaqlite_sqlite.{h,c} compiles
 and produces correct AST output — the same as the non-amalgamated CLI.
 """
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class SqliteAmalgBasic(TestSuite):

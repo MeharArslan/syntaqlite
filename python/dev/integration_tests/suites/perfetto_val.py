@@ -3,14 +3,14 @@
 
 """Perfetto dialect validation diff test suite."""
 
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.integration_tests.suite import SuiteContext
 
 NAME = "perfetto-val"
 DESCRIPTION = "Perfetto dialect validation diff tests (tests/perfetto_validation_diff_tests/)"
 
 
 def run(ctx: SuiteContext) -> int:
-    from python.syntaqlite.diff_tests.perfetto_common import run_perfetto_tests
+    from python.dev.diff_tests.perfetto_common import run_perfetto_tests
 
     argv = [
         "--binary", str(ctx.binary),

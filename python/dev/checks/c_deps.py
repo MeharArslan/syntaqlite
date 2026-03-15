@@ -15,7 +15,7 @@ Rules enforced:
             when <ns> is owned by crate X itself or a declared dependency.
 
 Usage:
-    python3 python/syntaqlite/checks/c_deps.py   # exits 0 on success
+    python3 python/dev/checks/c_deps.py   # exits 0 on success
     tools/check-c-deps                            # thin wrapper
 """
 

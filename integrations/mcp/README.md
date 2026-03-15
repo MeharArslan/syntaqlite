@@ -8,21 +8,13 @@ MCP server exposing syntaqlite SQL tools for use with Claude Desktop, Claude Cod
 - **`parse_sql`** — Return the AST text dump for a SQL string
 - **`validate_sql`** — Check for syntax errors; returns `{valid, errors}` JSON
 
-## Prerequisites
-
-The `syntaqlite` CLI must be on your `PATH`:
-
-```sh
-cargo install --path syntaqlite-cli
-```
-
 ## Install
 
 ```sh
-pip install -e integrations/mcp
+pip install syntaqlite[mcp]
 ```
 
-This gives you the `syntaqlite-mcp` command, or you can run `python -m syntaqlite_mcp`.
+This installs the `syntaqlite` CLI binary and the `syntaqlite-mcp` MCP server command. You can also run the server as `python -m syntaqlite.mcp`.
 
 ## Provider Configuration
 
@@ -95,7 +87,7 @@ If you have [uv](https://docs.astral.sh/uv/) installed, you can skip `pip instal
   "mcpServers": {
     "syntaqlite": {
       "command": "uvx",
-      "args": ["--from", "/path/to/integrations/mcp", "syntaqlite-mcp"]
+      "args": ["--extra", "mcp", "syntaqlite-mcp"]
     }
   }
 }

@@ -8,7 +8,7 @@ are correctly merged with the base SQLite grammar and produce a working
 amalgamated parser.
 """
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class PerfettoExtension(TestSuite):

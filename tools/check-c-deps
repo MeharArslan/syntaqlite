@@ -3,9 +3,9 @@
 # Licensed under the Apache License, Version 2.0.
 
 # Check C header dependency boundaries between crates.
-# See python/syntaqlite/checks/c_deps.py for details.
+# See python/dev/checks/c_deps.py for details.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-exec python3 "$ROOT_DIR/python/syntaqlite/checks/c_deps.py" "$@"
+exec python3 "$ROOT_DIR/python/dev/checks/c_deps.py" "$@"

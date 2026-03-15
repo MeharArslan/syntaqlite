@@ -1,0 +1,25 @@
+[project]
+name = "syntaqlite"
+version = "0.0.7"
+description = "SQLite SQL tools — parser, formatter, validator, and MCP server"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+readme = "../README.md"
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0"]
+
+[project.scripts]
+syntaqlite-mcp = "syntaqlite.mcp.server:mcp.run"
+
+[project.urls]
+Homepage = "https://github.com/LalitMaganti/syntaqlite"
+Documentation = "https://docs.syntaqlite.com"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["syntaqlite"]

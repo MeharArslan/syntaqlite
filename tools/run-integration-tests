@@ -37,5 +37,5 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT_DIR)
 
 if __name__ == "__main__":
-    from python.syntaqlite.integration_tests.runner import main
+    from python.dev.integration_tests.runner import main
     sys.exit(main())

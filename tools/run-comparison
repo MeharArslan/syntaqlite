@@ -149,8 +149,8 @@ def main():
         do_setup()
         return
 
-    from syntaqlite.comparison.collect import collect_all, load_results
-    from syntaqlite.comparison.render import write_docs
+    from python.dev.comparison.collect import collect_all, load_results
+    from python.dev.comparison.render import write_docs
 
     if args.markdown:
         # Just render from cached JSON

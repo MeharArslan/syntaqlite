@@ -10,7 +10,7 @@ This is the primary test for the dialect-only build mode since extension
 dialects are the meaningful use case.
 """
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class PerfettoAmalgDialectOnly(TestSuite):

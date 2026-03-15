@@ -7,7 +7,7 @@ Verifies that the full amalgamation (runtime inlined into dialect) compiles
 and parses correctly without any external dependencies.
 """
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class SqliteAmalgFull(TestSuite):

@@ -3,7 +3,7 @@
 
 """Conditional expression AST tests: IS, BETWEEN, LIKE, CASE."""
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class IsExprBasic(TestSuite):

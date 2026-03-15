@@ -11,7 +11,7 @@ from glob import glob
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 def _discover_test_suites(root_dir: Path, test_dir: str = "tests/ast_diff_tests") -> List[TestSuite]:

@@ -16,15 +16,15 @@ import sys
 import time
 from pathlib import Path
 
-from python.syntaqlite.diff_tests.amalg_executor import (
+from python.dev.diff_tests.amalg_executor import (
     AmalgMode,
     AmalgTestContext,
     DialectConfig,
 )
-from python.syntaqlite.diff_tests.test_executor import execute_test
-from python.syntaqlite.diff_tests.test_loader import load_all_tests
-from python.syntaqlite.diff_tests.utils import Colors, colorize, format_diff
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.diff_tests.test_executor import execute_test
+from python.dev.diff_tests.test_loader import load_all_tests
+from python.dev.diff_tests.utils import Colors, colorize, format_diff
+from python.dev.integration_tests.suite import SuiteContext
 
 NAME = "amalg"
 DESCRIPTION = "Amalgamation compilation + AST diff tests (tests/amalg_tests/)"

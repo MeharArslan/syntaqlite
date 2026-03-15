@@ -7,14 +7,14 @@ Verifies that formatting SQL preserves its AST by harvesting SQL from all
 existing diff test suites and checking that parse(sql) == parse(format(sql)).
 """
 
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.integration_tests.suite import SuiteContext
 
 NAME = "sql-idempotency"
 DESCRIPTION = "Verify formatting preserves AST semantics (harvests SQL from ast/fmt tests)"
 
 
 def run(ctx: SuiteContext) -> int:
-    from python.syntaqlite.diff_tests.idempotency_runner import main
+    from python.dev.diff_tests.idempotency_runner import main
 
     argv = [
         "--binary", str(ctx.binary),

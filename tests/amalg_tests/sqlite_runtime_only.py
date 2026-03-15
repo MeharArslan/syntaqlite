@@ -7,7 +7,7 @@ Verifies that the runtime-only amalgamation (syntaqlite_runtime.{h,c})
 compiles and works as a standalone parser using the built-in sqlite dialect.
 """
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class SqliteAmalgRuntimeOnly(TestSuite):

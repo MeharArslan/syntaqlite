@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint
+from python.dev.diff_tests.testing import DiffTestBlueprint
 
 
 class AmalgMode(enum.Enum):

@@ -30,7 +30,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.integration_tests.suite import SuiteContext
 
 NAME = "upstream-sqlite"
 DESCRIPTION = "Upstream SQLite test files through syntaqlite parser/validator"

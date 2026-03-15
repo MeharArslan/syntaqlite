@@ -147,7 +147,7 @@ def run_perfetto_tests(
         tempfile_prefix: Prefix for temporary directory name.
         argv: Command-line arguments (sys.argv[1:]).
     """
-    from python.syntaqlite.diff_tests.runner import main
+    from python.dev.diff_tests.runner import main
 
     if not _has_opt(argv, "--binary"):
         argv = ["--binary", "target/debug/syntaqlite"] + argv

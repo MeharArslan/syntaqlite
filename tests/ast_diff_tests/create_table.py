@@ -3,7 +3,7 @@
 
 """CREATE TABLE AST tests."""
 
-from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
+from python.dev.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class CreateTableBasic(TestSuite):

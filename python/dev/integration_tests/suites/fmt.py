@@ -1,21 +1,21 @@
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-"""SQLite AST diff test suite."""
+"""SQLite formatter diff test suite."""
 
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.integration_tests.suite import SuiteContext
 
-NAME = "ast"
-DESCRIPTION = "SQLite AST diff tests (tests/ast_diff_tests/)"
+NAME = "fmt"
+DESCRIPTION = "SQLite formatter diff tests (tests/fmt_diff_tests/)"
 
 
 def run(ctx: SuiteContext) -> int:
-    from python.syntaqlite.diff_tests.runner import main
+    from python.dev.diff_tests.runner import main
 
     argv = [
         "--binary", str(ctx.binary),
-        "--subcommand", "parse -o text",
-        "--test-dir", "tests/ast_diff_tests",
+        "--subcommand", "fmt",
+        "--test-dir", "tests/fmt_diff_tests",
     ]
     if ctx.filter_pattern:
         argv += ["--filter", ctx.filter_pattern]

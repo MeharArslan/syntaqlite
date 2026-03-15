@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from python.syntaqlite.integration_tests.suite import SuiteContext
+from python.dev.integration_tests.suite import SuiteContext
 
 NAME = "validate"
 DESCRIPTION = "Validate CLI tests (--schema flag, DDL/query separation)"
