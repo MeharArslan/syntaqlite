@@ -112,7 +112,9 @@ impl CheckLevel {
             "allow" => Ok(CheckLevel::Allow),
             "warn" => Ok(CheckLevel::Warn),
             "deny" => Ok(CheckLevel::Deny),
-            _ => Err(format!("invalid check level: {s:?} (expected allow, warn, or deny)")),
+            _ => Err(format!(
+                "invalid check level: {s:?} (expected allow, warn, or deny)"
+            )),
         }
     }
 
@@ -173,49 +175,67 @@ impl CheckConfig {
     // ── Getters ──────────────────────────────────────────────────────────
 
     /// Level for parse errors.
-    pub fn parse_errors(&self) -> CheckLevel { self.parse_errors }
+    pub fn parse_errors(&self) -> CheckLevel {
+        self.parse_errors
+    }
     /// Level for unknown table references.
-    pub fn unknown_table(&self) -> CheckLevel { self.unknown_table }
+    pub fn unknown_table(&self) -> CheckLevel {
+        self.unknown_table
+    }
     /// Level for unknown column references.
-    pub fn unknown_column(&self) -> CheckLevel { self.unknown_column }
+    pub fn unknown_column(&self) -> CheckLevel {
+        self.unknown_column
+    }
     /// Level for unknown function references.
-    pub fn unknown_function(&self) -> CheckLevel { self.unknown_function }
+    pub fn unknown_function(&self) -> CheckLevel {
+        self.unknown_function
+    }
     /// Level for function arity mismatches.
-    pub fn function_arity(&self) -> CheckLevel { self.function_arity }
+    pub fn function_arity(&self) -> CheckLevel {
+        self.function_arity
+    }
     /// Level for CTE column count mismatches.
-    pub fn cte_columns(&self) -> CheckLevel { self.cte_columns }
+    pub fn cte_columns(&self) -> CheckLevel {
+        self.cte_columns
+    }
 
     // ── Builders ─────────────────────────────────────────────────────────
 
     /// Set the level for parse errors.
     #[must_use]
     pub fn with_parse_errors(mut self, level: CheckLevel) -> Self {
-        self.parse_errors = level; self
+        self.parse_errors = level;
+        self
     }
     /// Set the level for unknown table references.
     #[must_use]
     pub fn with_unknown_table(mut self, level: CheckLevel) -> Self {
-        self.unknown_table = level; self
+        self.unknown_table = level;
+        self
     }
     /// Set the level for unknown column references.
     #[must_use]
     pub fn with_unknown_column(mut self, level: CheckLevel) -> Self {
-        self.unknown_column = level; self
+        self.unknown_column = level;
+        self
     }
     /// Set the level for unknown function references.
     #[must_use]
     pub fn with_unknown_function(mut self, level: CheckLevel) -> Self {
-        self.unknown_function = level; self
+        self.unknown_function = level;
+        self
     }
     /// Set the level for function arity mismatches.
     #[must_use]
     pub fn with_function_arity(mut self, level: CheckLevel) -> Self {
-        self.function_arity = level; self
+        self.function_arity = level;
+        self
     }
     /// Set the level for CTE column count mismatches.
     #[must_use]
     pub fn with_cte_columns(mut self, level: CheckLevel) -> Self {
-        self.cte_columns = level; self
+        self.cte_columns = level;
+        self
     }
     /// Set all schema checks (`unknown-table`, `unknown-column`,
     /// `unknown-function`, `function-arity`).
@@ -407,14 +427,14 @@ mod check_config_tests {
     #[test]
     fn set_by_name_works() {
         let c = CheckConfig::default()
-            .set_by_name("unknown-table", CheckLevel::Deny).unwrap();
+            .set_by_name("unknown-table", CheckLevel::Deny)
+            .unwrap();
         assert_eq!(c.unknown_table(), CheckLevel::Deny);
     }
 
     #[test]
     fn set_by_name_unknown_category_errors() {
-        let result = CheckConfig::default()
-            .set_by_name("nonexistent", CheckLevel::Warn);
+        let result = CheckConfig::default().set_by_name("nonexistent", CheckLevel::Warn);
         assert!(result.is_err());
     }
 

@@ -114,7 +114,11 @@ fn apply_version_cflags(
     Ok(dialect)
 }
 
-fn dispatch_commands(command: Command, dialect: Option<AnyDialect>, config_path: Option<String>) -> Result<(), String> {
+fn dispatch_commands(
+    command: Command,
+    dialect: Option<AnyDialect>,
+    config_path: Option<String>,
+) -> Result<(), String> {
     match command {
         Command::Parse {
             files,
@@ -146,7 +150,14 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>, config_path:
                 &warn,
                 &deny,
             )?;
-            cmd_validate(&d, &files, expression.as_deref(), &resolved_schemas, lang, &checks)
+            cmd_validate(
+                &d,
+                &files,
+                expression.as_deref(),
+                &resolved_schemas,
+                lang,
+                &checks,
+            )
         }),
         Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, config_path.as_deref())),
         #[cfg(feature = "mcp")]
@@ -382,7 +393,8 @@ fn cmd_lsp(dialect: AnyDialect, config_path: Option<&str>) -> Result<(), String>
 
         // Build per-file schema map from [schemas] globs and top-level `schema` key.
         let default_catalog = if let Some(ref schema) = project_config.schema {
-            let paths: Vec<String> = schema.iter()
+            let paths: Vec<String> = schema
+                .iter()
                 .map(|s| config_dir.join(s).to_string_lossy().into_owned())
                 .collect();
             match build_schema_catalog(&dialect, &paths) {
@@ -405,7 +417,8 @@ fn cmd_lsp(dialect: AnyDialect, config_path: Option<&str>) -> Result<(), String>
                     continue;
                 }
             };
-            let paths: Vec<String> = schema_files.iter()
+            let paths: Vec<String> = schema_files
+                .iter()
                 .map(|s| config_dir.join(s).to_string_lossy().into_owned())
                 .collect();
             match build_schema_catalog(&dialect, &paths) {
@@ -625,7 +638,14 @@ fn cmd_validate(
         |source, label| {
             let (errors, _diags) = match lang {
                 Some(lang) => {
-                    let e = validate_embedded_source(dialect, source, label, &config, lang, schema_files);
+                    let e = validate_embedded_source(
+                        dialect,
+                        source,
+                        label,
+                        &config,
+                        lang,
+                        schema_files,
+                    );
                     (e, e)
                 }
                 None => validate_source(dialect, source, label, &config, &schema_catalog),
@@ -642,7 +662,14 @@ fn cmd_validate(
             }
             let (errors, diags) = match lang {
                 Some(lang) => {
-                    let e = validate_embedded_source(dialect, source, &file, &config, lang, schema_files);
+                    let e = validate_embedded_source(
+                        dialect,
+                        source,
+                        &file,
+                        &config,
+                        lang,
+                        schema_files,
+                    );
                     (e, e)
                 }
                 None => validate_source(dialect, source, &file, &config, &schema_catalog),
@@ -732,7 +759,10 @@ fn emit_no_schema_hint() {
 // ---------------------------------------------------------------------------
 
 /// Discover `syntaqlite.toml` from an explicit path or by walking up from the current directory.
-fn discover_config_for_paths(files: &[String], config_path: Option<&str>) -> Option<(ProjectConfig, PathBuf)> {
+fn discover_config_for_paths(
+    files: &[String],
+    config_path: Option<&str>,
+) -> Option<(ProjectConfig, PathBuf)> {
     let _ = files; // config discovery is always cwd-based (or explicit --config)
     if let Some(p) = config_path {
         config::load(std::path::Path::new(p))
@@ -754,12 +784,8 @@ fn build_format_config(
     let file_opts_default = FormatOptions::default();
     let file_opts = file_opts.unwrap_or(&file_opts_default);
 
-    let line_width = cli_line_width
-        .or(file_opts.line_width)
-        .unwrap_or(80);
-    let indent_width = cli_indent_width
-        .or(file_opts.indent_width)
-        .unwrap_or(2);
+    let line_width = cli_line_width.or(file_opts.line_width).unwrap_or(80);
+    let indent_width = cli_indent_width.or(file_opts.indent_width).unwrap_or(2);
     let keyword_case = cli_keyword_case
         .map(|k| match k {
             KeywordCasing::Upper => KeywordCase::Upper,
@@ -772,9 +798,7 @@ fn build_format_config(
             })
         })
         .unwrap_or(KeywordCase::Upper);
-    let semicolons = cli_semicolons
-        .or(file_opts.semicolons)
-        .unwrap_or(true);
+    let semicolons = cli_semicolons.or(file_opts.semicolons).unwrap_or(true);
 
     FormatConfig::default()
         .with_line_width(line_width)

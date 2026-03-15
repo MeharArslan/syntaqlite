@@ -60,20 +60,14 @@ pub(crate) fn load(config_path: &Path) -> Option<(ProjectConfig, PathBuf)> {
     let contents = match std::fs::read_to_string(config_path) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!(
-                "warning: failed to read {}: {e}",
-                config_path.display()
-            );
+            eprintln!("warning: failed to read {}: {e}", config_path.display());
             return None;
         }
     };
     let config: ProjectConfig = match toml::from_str(&contents) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!(
-                "warning: failed to parse {}: {e}",
-                config_path.display()
-            );
+            eprintln!("warning: failed to parse {}: {e}", config_path.display());
             return None;
         }
     };
@@ -181,11 +175,7 @@ line-width = 120
             "schema = [\"outer.sql\"]\n",
         )
         .unwrap();
-        fs::write(
-            inner.join("syntaqlite.toml"),
-            "schema = [\"inner.sql\"]\n",
-        )
-        .unwrap();
+        fs::write(inner.join("syntaqlite.toml"), "schema = [\"inner.sql\"]\n").unwrap();
 
         let (config, config_dir) = discover(&inner).expect("should find inner config");
         assert_eq!(config_dir, inner);

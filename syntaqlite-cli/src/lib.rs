@@ -18,7 +18,10 @@ mod runtime;
 mod codegen;
 
 #[cfg(feature = "mcp")]
-#[expect(clippy::needless_pass_by_value, reason = "rmcp #[tool(aggr)] requires by-value params")]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "rmcp #[tool(aggr)] requires by-value params"
+)]
 mod mcp;
 
 #[derive(Clone, Copy, ValueEnum)]

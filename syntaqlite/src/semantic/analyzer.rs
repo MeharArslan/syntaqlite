@@ -966,7 +966,9 @@ impl<'a> ValidationPass<'a> {
             self.emit(
                 offset,
                 offset + name.len(),
-                DiagnosticMessage::UnknownTable { name: name.to_string() },
+                DiagnosticMessage::UnknownTable {
+                    name: name.to_string(),
+                },
                 suggestion.map(Help::Suggestion),
             );
         }
@@ -1051,7 +1053,9 @@ impl<'a> ValidationPass<'a> {
                     self.emit(
                         offset,
                         offset + name.len(),
-                        DiagnosticMessage::UnknownFunction { name: name.to_string() },
+                        DiagnosticMessage::UnknownFunction {
+                            name: name.to_string(),
+                        },
                         suggestion.map(Help::Suggestion),
                     );
                 }

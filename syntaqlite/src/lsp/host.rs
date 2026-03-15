@@ -318,11 +318,19 @@ impl LspHost {
 
     /// Parse-error diagnostics for a document, lazily computed.
     pub(crate) fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
-        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config) {
+        if !ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        ) {
             return &[];
         }
-        self.documents.get(uri).unwrap()
+        self.documents
+            .get(uri)
+            .unwrap()
             .cached_parse_diags
             .as_deref()
             .expect("ensure_model sets cached_parse_diags")
@@ -338,8 +346,14 @@ impl LspHost {
         uri: &str,
         range: Option<(usize, usize)>,
     ) -> Vec<u32> {
-        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config) {
+        if !ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        ) {
             return Vec::new();
         }
         let doc = self.documents.get_mut(uri).unwrap();
@@ -358,8 +372,14 @@ impl LspHost {
 
     /// Expected parser tokens and semantic context at a byte offset.
     pub(crate) fn completion_info_at_offset(&mut self, uri: &str, offset: usize) -> CompletionInfo {
-        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config) {
+        if !ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        ) {
             return CompletionInfo {
                 tokens: Vec::new(),
                 context: super::CompletionContext::Unknown,
@@ -450,8 +470,14 @@ impl LspHost {
         &mut self,
         uri: &str,
     ) -> Option<(i32, String, Vec<Diagnostic>)> {
-        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config) {
+        if !ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        ) {
             return None;
         }
         let doc = self.documents.get(uri).unwrap();
@@ -513,8 +539,14 @@ impl LspHost {
         uri: &str,
         offset: usize,
     ) -> Option<(String, usize, usize)> {
-        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config);
+        ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        );
         let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
 
@@ -540,8 +572,14 @@ impl LspHost {
         uri: &str,
         offset: usize,
     ) -> Option<(Option<String>, usize, usize)> {
-        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config);
+        ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        );
         let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let def = model.definition_at(offset)?;
@@ -571,9 +609,17 @@ impl LspHost {
         // Collect matching resolutions from all open documents.
         let uris: Vec<String> = self.documents.keys().cloned().collect();
         for doc_uri in &uris {
-            ensure_model_for(doc_uri, &mut self.documents, &mut self.analyzer,
-                &self.schema_map, &self.user_catalog, &self.validation_config);
-            let doc = self.documents.get(doc_uri.as_str())
+            ensure_model_for(
+                doc_uri,
+                &mut self.documents,
+                &mut self.analyzer,
+                &self.schema_map,
+                &self.user_catalog,
+                &self.validation_config,
+            );
+            let doc = self
+                .documents
+                .get(doc_uri.as_str())
                 .expect("doc_uri came from keys()");
             let model = doc.model.as_ref().expect("ensure_model sets model");
             for (start, end) in model.references_matching(&identity) {
@@ -614,8 +660,14 @@ impl LspHost {
         uri: &str,
         offset: usize,
     ) -> Option<(usize, usize, String)> {
-        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config);
+        ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        );
         let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let res = model
@@ -655,8 +707,14 @@ impl LspHost {
     /// Determine the symbol identity at `offset` — either from a resolution or
     /// from a definition site (CREATE TABLE / column-def).
     fn symbol_identity_at(&mut self, uri: &str, offset: usize) -> Option<SymbolIdentity> {
-        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config);
+        ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        );
         let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
 
@@ -703,8 +761,14 @@ impl LspHost {
     /// Signature help at a byte offset: finds enclosing function call and returns
     /// (`function_name`, `active_parameter`, overloads).
     pub(crate) fn signature_help(&mut self, uri: &str, offset: usize) -> Option<SignatureHelpInfo> {
-        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
-            &self.schema_map, &self.user_catalog, &self.validation_config);
+        ensure_model_for(
+            uri,
+            &mut self.documents,
+            &mut self.analyzer,
+            &self.schema_map,
+            &self.user_catalog,
+            &self.validation_config,
+        );
         let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let source = model.source();
@@ -1670,13 +1734,19 @@ mod tests {
             let glob_ptr = resolved as *const Catalog;
             // The glob entry catalog lives in map.entries, not map.default.
             let expected_glob_ptr = &map.entries[0].1 as *const Catalog;
-            assert_eq!(glob_ptr, expected_glob_ptr, "matched file should get glob catalog");
+            assert_eq!(
+                glob_ptr, expected_glob_ptr,
+                "matched file should get glob catalog"
+            );
 
             // Unmatched file should get the default catalog.
             let (resolved, _) = map.resolve("file:///project/other/q.sql").unwrap();
             let default_ptr = resolved as *const Catalog;
             let expected_default_ptr = map.default.as_ref().unwrap() as *const Catalog;
-            assert_eq!(default_ptr, expected_default_ptr, "unmatched file should get default catalog");
+            assert_eq!(
+                default_ptr, expected_default_ptr,
+                "unmatched file should get default catalog"
+            );
         }
 
         #[test]
@@ -1738,7 +1808,8 @@ mod tests {
         host.open_document(matched_uri, 1, "SELECT id FROM users;".to_string());
         let diags = host.document_all_diagnostics(matched_uri);
         let (_, _, diags) = diags.unwrap();
-        let schema_errors: Vec<_> = diags.iter()
+        let schema_errors: Vec<_> = diags
+            .iter()
             .filter(|d| d.severity() == Severity::Error)
             .collect();
         assert!(
@@ -1752,7 +1823,8 @@ mod tests {
         host.open_document(unmatched_uri, 1, "SELECT id FROM users;".to_string());
         let diags = host.document_all_diagnostics(unmatched_uri);
         let (_, _, diags) = diags.unwrap();
-        let errors: Vec<_> = diags.iter()
+        let errors: Vec<_> = diags
+            .iter()
             .filter(|d| d.severity() == Severity::Error)
             .collect();
         assert!(

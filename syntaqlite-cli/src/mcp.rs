@@ -8,7 +8,7 @@ use std::ops::Deref;
 
 use rmcp::model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo};
 use rmcp::schemars;
-use rmcp::{tool, ServerHandler};
+use rmcp::{ServerHandler, tool};
 use serde::Deserialize;
 use syntaqlite::any::{AnyDialect, AnyParser, ParseOutcome};
 use syntaqlite::fmt::KeywordCase;

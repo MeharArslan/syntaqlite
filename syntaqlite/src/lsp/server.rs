@@ -35,8 +35,8 @@ use lsp_types::{
 
 use crate::dialect::AnyDialect;
 use crate::fmt::FormatConfig;
-use crate::lsp::{CompletionKind, LspHost, SEMANTIC_TOKEN_LEGEND};
 use crate::lsp::host::SchemaMap;
+use crate::lsp::{CompletionKind, LspHost, SEMANTIC_TOKEN_LEGEND};
 use crate::semantic::Catalog;
 use crate::semantic::diagnostics::Severity;
 
@@ -189,9 +189,7 @@ impl LspServer {
             // If no explicit validation config was provided, default schema
             // checks to deny when a schema is present.
             if !has_validation_config {
-                host.set_validation_config(
-                    ValidationConfig::default().with_strict_schema(),
-                );
+                host.set_validation_config(ValidationConfig::default().with_strict_schema());
             }
             eprintln!("syntaqlite-lsp: using project config schema");
         }
@@ -761,9 +759,7 @@ impl LspServer {
         match std::fs::read_to_string(&path) {
             Ok(contents) => match host.set_session_context_from_ddl(&contents, Some(&file_uri)) {
                 Ok(()) => {
-                    host.set_validation_config(
-                        ValidationConfig::default().with_strict_schema(),
-                    );
+                    host.set_validation_config(ValidationConfig::default().with_strict_schema());
                     eprintln!("syntaqlite-lsp: loaded schema from {}", path.display());
                 }
                 Err(errors) => {

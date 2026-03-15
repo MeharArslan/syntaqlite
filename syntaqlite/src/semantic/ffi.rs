@@ -172,7 +172,9 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(source.cast(), len as usize))
     };
 
-    let model = state.analyzer.analyze(src, &state.user_catalog, &state.validation_config);
+    let model = state
+        .analyzer
+        .analyze(src, &state.user_catalog, &state.validation_config);
 
     // Retain source + diagnostics for diagnostic rendering.
     state.last_source.clear();
@@ -774,7 +776,10 @@ mod tests {
         unsafe { analyze(v, "SELECT 1 FROM bad_table") };
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
-        assert_eq!(d.severity, SEVERITY_WARNING, "should be warning without schema");
+        assert_eq!(
+            d.severity, SEVERITY_WARNING,
+            "should be warning without schema"
+        );
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
@@ -824,7 +829,10 @@ mod tests {
 
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
-        assert_eq!(d.severity, SEVERITY_ERROR, "unknown table should be error with schema");
+        assert_eq!(
+            d.severity, SEVERITY_ERROR,
+            "unknown table should be error with schema"
+        );
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
     }
@@ -858,7 +866,10 @@ mod tests {
         unsafe { analyze(v, "SELECT 1 FROM gone") };
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
-        assert_eq!(d.severity, SEVERITY_WARNING, "should revert to warning after reset");
+        assert_eq!(
+            d.severity, SEVERITY_WARNING,
+            "should revert to warning after reset"
+        );
 
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };
