@@ -36,9 +36,7 @@ line-width = 100
 keyword-case = "lower"
 ```
 
-The LSP reads this file automatically — no VS Code settings needed. Every
-editor that uses the LSP (VS Code, Neovim, Helix, Claude Code) will use the
-same configuration.
+The LSP reads this file automatically — no VS Code settings needed.
 
 ## Extension settings
 

@@ -6,31 +6,27 @@ weight = 3
 
 # Config file
 
-syntaqlite reads project settings from a `syntaqlite.toml` file. This is the
-single source of truth for schemas, formatting options, and other project
-configuration — it works across every editor and the CLI with no additional
-setup.
+Project configuration lives in `syntaqlite.toml`. The CLI, LSP server, and all
+editor integrations read it.
 
 ## Discovery
 
 syntaqlite walks up from the file being processed (or the current directory for
-CLI commands) and uses the first `syntaqlite.toml` it finds. This is the same
-convention as `rustfmt.toml`, `ruff.toml`, and `.prettierrc`.
+CLI commands) and uses the first `syntaqlite.toml` it finds.
 
 ## File format
 
 ```toml
+# Default schema for SQL files that don't match any glob in [schemas].
+# Optional — if omitted, unmatched files get no schema.
+# schema = ["schema.sql"]
+
 # Schema DDL files for validation and completions.
 # Each entry maps a glob pattern to schema file(s).
-# SQL files matching the glob get validated against those schemas.
 [schemas]
 "src/**/*.sql" = ["schema/main.sql", "schema/views.sql"]
 "tests/**/*.sql" = ["schema/main.sql", "schema/test_fixtures.sql"]
-"migrations/*.sql" = []  # no schema validation for migrations
-
-# Default schema for SQL files that don't match any glob above.
-# Optional — if omitted, unmatched files get no schema.
-# schema = ["schema.sql"]
+"migrations/*.sql" = []  # no schema validation
 
 # Formatting options (all optional, shown with defaults).
 [format]
@@ -40,107 +36,57 @@ keyword-case = "upper"    # "upper" | "lower"
 semicolons = true
 ```
 
-## Schemas
+## `schema`
 
-The `[schemas]` section maps glob patterns to schema DDL files. Globs are
-matched against the SQL file's path relative to the directory containing
-`syntaqlite.toml`.
+Top-level key. Default schemas applied to SQL files that don't match any
+`[schemas]` glob.
 
-Resolution order (first match wins):
+- Type: array of strings (file paths relative to the config file directory)
+- Optional
 
-1. `[schemas]` glob entries — checked in file order, first match wins
-2. `schema` top-level key — fallback for files that don't match any glob
-3. No schema — syntax-only validation (no table/column checks)
+## `[schemas]`
 
-Schema file paths are relative to the directory containing `syntaqlite.toml`.
+Maps glob patterns to schema DDL file(s). Globs are matched against the SQL
+file's path relative to the directory containing `syntaqlite.toml`. Entries are
+checked in file order; first match wins.
 
-### Why glob-based routing
+- Type: table of `"glob pattern" = ["schema_file.sql", ...]`
+- Optional
 
-Real projects have multiple schemas. A web app might have the main application
-schema, a separate analytics schema, and test fixture tables. Migration files
-shouldn't be validated against any schema because they *define* the schema.
-Glob routing handles all of these:
+Schema resolution order:
 
-```toml
-[schemas]
-"src/analytics/**/*.sql" = ["schema/analytics.sql"]
-"src/**/*.sql" = ["schema/app.sql"]
-"tests/**/*.sql" = ["schema/app.sql", "schema/test_fixtures.sql"]
-"migrations/**/*.sql" = []
-```
+1. `[schemas]` glob entries — first matching glob wins
+2. `schema` top-level key — fallback for unmatched files
+3. No schema — syntax-only checks
 
-### Schema files
+Schema files contain SQL DDL (`CREATE TABLE`, `CREATE VIEW`, etc.) — the same
+format as `sqlite3 mydb.db .schema` output.
 
-Schema files are SQL DDL — the same format you'd get from `sqlite3 mydb.db .schema`:
+## `[format]`
 
-```sql
-CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE);
-CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id), amount REAL);
-```
+Default formatting options. All fields are optional — omitted fields use
+built-in defaults. CLI flags override these values.
 
-You can split your schema across multiple files and reference them all in the
-config:
-
-```toml
-[schemas]
-"**/*.sql" = ["schema/tables.sql", "schema/views.sql", "schema/functions.sql"]
-```
-
-## Format options
-
-The `[format]` section sets default formatting options. All fields are optional —
-omitted fields use the built-in defaults.
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `line-width` | `80` | Target maximum line width |
-| `indent-width` | `2` | Spaces per indentation level |
-| `keyword-case` | `"upper"` | `"upper"` or `"lower"` |
-| `semicolons` | `true` | Append semicolons after statements |
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `line-width` | integer | `80` | Target maximum line width |
+| `indent-width` | integer | `2` | Spaces per indentation level |
+| `keyword-case` | string | `"upper"` | `"upper"` or `"lower"` |
+| `semicolons` | boolean | `true` | Append semicolons after statements |
 
 See [Formatting options](@/reference/formatting-options.md) for detailed
-descriptions and examples of each option.
+descriptions of each option.
 
-## CLI override
+## Precedence
 
-CLI flags always override config file values. This lets you use the config file
-as the project default while still overriding on a per-invocation basis:
+CLI flags always override config file values. When `--schema` is passed to
+`syntaqlite validate`, it takes precedence over `[schemas]` and `schema`.
 
-```bash
-# Uses config file defaults
-syntaqlite fmt query.sql
+## Consumers
 
-# CLI flag overrides config file
-syntaqlite fmt -w 120 query.sql
-```
-
-The same applies to `--schema` on `syntaqlite validate`:
-
-```bash
-# Uses config file schemas
-syntaqlite validate src/query.sql
-
-# CLI flag overrides config file
-syntaqlite validate --schema other.sql src/query.sql
-```
-
-## Where config is read
-
-| Consumer | How it works |
-|----------|--------------|
-| `syntaqlite fmt` | Discovers config from input file directory or cwd. Format options from config are defaults; CLI flags override. |
+| Consumer | Behavior |
+|----------|----------|
+| `syntaqlite fmt` | Discovers config from input file directory or cwd. Format options are defaults; CLI flags override. |
 | `syntaqlite validate` | Discovers config from input file directory or cwd. Schema resolution from config when `--schema` is not given. |
-| `syntaqlite lsp` | Discovers config from cwd at startup. Loads schema catalog and format config for all LSP operations. |
-| VS Code extension | No configuration needed — the LSP reads `syntaqlite.toml` directly. |
-| Claude Code plugin | No configuration needed — the LSP reads `syntaqlite.toml` directly. |
-| Neovim, Helix, etc. | No configuration needed — the LSP reads `syntaqlite.toml` directly. |
-
-## Minimal example
-
-For a project with a single schema file:
-
-```toml
-schema = ["schema.sql"]
-```
-
-This validates all SQL files against `schema.sql` and uses default formatting.
+| `syntaqlite lsp` | Discovers config from cwd at startup. Loads schema catalog and format config. |
+| VS Code, Claude Code, Neovim, Helix | The LSP reads `syntaqlite.toml` directly — no editor-specific configuration needed. |

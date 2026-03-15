@@ -10,9 +10,9 @@ syntaqlite's formatter has four configuration options. All have sensible
 defaults — you can use `syntaqlite fmt` with no flags and get well-formatted
 SQL. Every option is available across the CLI, Rust, C, and JavaScript APIs.
 
-For project-wide defaults, set options in
-[`syntaqlite.toml`](@/reference/config-file.md) so every team member and CI
-job uses the same settings without passing flags:
+Options can also be set in
+[`syntaqlite.toml`](@/reference/config-file.md). CLI flags override config
+file values.
 
 ## Options
 
