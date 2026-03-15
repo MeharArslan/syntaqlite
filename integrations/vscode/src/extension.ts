@@ -91,6 +91,8 @@ export async function activate(
 
   outputChannel.appendLine(`Using server binary: ${serverCommand}`);
 
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
   // Build LSP args. Pass --config if we found a syntaqlite.toml so the server
   // doesn't have to rely on its cwd (which VS Code doesn't guarantee).
   const lspArgs: string[] = [];
@@ -123,9 +125,6 @@ export async function activate(
     serverOptions,
     clientOptions,
   );
-
-  // Status bar item showing config file status
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   schemaStatusItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
     100,
