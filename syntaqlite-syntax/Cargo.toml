@@ -6,6 +6,7 @@ links = "syntaqlite_syntax"
 description = "Internal parser and tokenizer for syntaqlite — not intended for direct use"
 license = "Apache-2.0"
 repository.workspace = true
+homepage.workspace = true
 readme = "README.md"
 
 [features]

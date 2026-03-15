@@ -5,6 +5,7 @@ edition = "2024"
 description = "Internal codegen and build tools for syntaqlite — not intended for direct use"
 license = "Apache-2.0"
 repository.workspace = true
+homepage.workspace = true
 readme = "README.md"
 
 [lints]

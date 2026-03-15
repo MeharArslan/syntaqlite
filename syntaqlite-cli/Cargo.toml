@@ -4,7 +4,7 @@ version = "0.0.10"
 edition = "2024"
 repository.workspace = true
 description = "Fast, accurate SQLite SQL formatter, validator, and language server — built on SQLite's own grammar"
-homepage = "https://github.com/LalitMaganti/syntaqlite"
+homepage.workspace = true
 license = "Apache-2.0"
 readme = "../README.md"
 
