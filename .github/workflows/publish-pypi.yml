@@ -1,8 +1,9 @@
 # Build platform-specific Python wheels with the pre-built CLI binary
 # and publish to PyPI on release tags.
 #
-# Waits for the Release workflow (cargo-dist) to complete, then downloads
-# the CLI binaries from the GitHub Release and packages them into wheels.
+# Waits for the Release workflow (cargo-dist) to complete, downloads
+# CLI binaries from the GitHub Release, and packages them into wheels
+# using python/dev/build_wheel.py (following the go-to-wheel pattern).
 name: Publish PyPI
 
 on:
@@ -22,23 +23,18 @@ jobs:
           - target: aarch64-apple-darwin
             archive: syntaqlite-aarch64-apple-darwin.tar.xz
             binary: syntaqlite
-            tag: py3-none-macosx_11_0_arm64
           - target: x86_64-apple-darwin
             archive: syntaqlite-x86_64-apple-darwin.tar.xz
             binary: syntaqlite
-            tag: py3-none-macosx_10_12_x86_64
           - target: x86_64-unknown-linux-gnu
             archive: syntaqlite-x86_64-unknown-linux-gnu.tar.xz
             binary: syntaqlite
-            tag: py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64
           - target: aarch64-unknown-linux-gnu
             archive: syntaqlite-aarch64-unknown-linux-gnu.tar.xz
             binary: syntaqlite
-            tag: py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64
           - target: x86_64-pc-windows-msvc
             archive: syntaqlite-x86_64-pc-windows-msvc.zip
             binary: syntaqlite.exe
-            tag: py3-none-win_amd64
 
     steps:
       - uses: actions/checkout@v6
@@ -47,15 +43,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install hatch
-        run: pip install hatch
-
       - name: Get release tag
         id: tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Find the latest release tag
           TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
@@ -64,56 +56,30 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release download "${{ steps.tag.outputs.tag }}" --pattern "${{ matrix.archive }}" --dir tmp/
 
-      - name: Extract binary and place in python/bin/
+      - name: Extract binary
         run: |
-          mkdir -p python/bin/
+          mkdir -p bin/
           ARCHIVE="tmp/${{ matrix.archive }}"
           if [[ "$ARCHIVE" == *.zip ]]; then
             unzip "$ARCHIVE" -d extracted/
           else
             tar -xf "$ARCHIVE" -C extracted/
           fi
-          find extracted/ -name "${{ matrix.binary }}" -exec cp {} python/bin/ \;
-          chmod +x python/bin/${{ matrix.binary }}
-
-      - name: Configure wheel to include binary
-        working-directory: python
-        run: |
-          cat >> pyproject.toml <<'TOML'
-
-          [tool.hatch.build.targets.wheel.shared-scripts]
-          "bin/${{ matrix.binary }}" = "${{ matrix.binary }}"
-          TOML
+          find extracted/ -name "${{ matrix.binary }}" -exec cp {} bin/ \;
+          chmod +x bin/${{ matrix.binary }}
 
       - name: Build wheel
-        working-directory: python
-        run: hatch build -t wheel
-
-      - name: Retag wheel with platform tag
         run: |
-          pip install wheel
-          for whl in python/dist/*.whl; do
-            # Unpack, patch the WHEEL metadata tag, repack
-            TMPDIR=$(mktemp -d)
-            cd "$TMPDIR"
-            python -m zipfile -e "$GITHUB_WORKSPACE/$whl" .
-            # Update the Tag line in WHEEL metadata
-            DISTINFO=$(ls -d *.dist-info)
-            sed -i 's/Tag: py3-none-any/Tag: ${{ matrix.tag }}/' "$DISTINFO/WHEEL"
-            # Also mark as not pure
-            sed -i 's/Root-Is-Purelib: true/Root-Is-Purelib: false/' "$DISTINFO/WHEEL"
-            # Repack with correct filename
-            rm "$GITHUB_WORKSPACE/$whl"
-            NEW_NAME=$(basename "$whl" | sed 's/py3-none-any/${{ matrix.tag }}/')
-            python -m zipfile -c "$GITHUB_WORKSPACE/python/dist/$NEW_NAME" *
-            cd "$GITHUB_WORKSPACE"
-          done
+          python python/dev/build_wheel.py \
+            --binary bin/${{ matrix.binary }} \
+            --platform ${{ matrix.target }} \
+            --out dist/
 
       - name: Upload wheel
         uses: actions/upload-artifact@v6
         with:
           name: wheel-${{ matrix.target }}
-          path: python/dist/*.whl
+          path: dist/*.whl
 
   publish:
     name: Publish to PyPI
@@ -131,11 +97,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install twine
-        run: pip install twine
-
       - name: Publish
+        run: |
+          pip install twine
+          twine upload dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: twine upload dist/*

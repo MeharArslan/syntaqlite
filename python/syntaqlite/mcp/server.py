@@ -5,12 +5,14 @@ import subprocess
 
 from mcp.server.fastmcp import FastMCP
 
+from syntaqlite import get_binary_path
+
 mcp = FastMCP("syntaqlite")
 
 
 def _run(args: list[str], sql: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["syntaqlite", *args],
+        [get_binary_path(), *args],
         input=sql,
         capture_output=True,
         text=True,
