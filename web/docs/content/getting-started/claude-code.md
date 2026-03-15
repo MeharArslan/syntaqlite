@@ -12,9 +12,10 @@ weight = 2
 claude plugin install syntaqlite
 ```
 
-The plugin starts the syntaqlite language server automatically for `.sql`
-files. Open any `.sql` file and you'll see syntax errors underlined, keyword
-completions, and formatting via your editor's format command.
+The plugin starts the syntaqlite language server for `.sql` files. When Claude
+writes or edits SQL, the server feeds back syntax errors, unknown
+tables/columns, and function typos — so Claude catches and fixes mistakes
+automatically without you having to ask.
 
 ## Format a query
 
@@ -42,16 +43,16 @@ suggestions.
 
 ## Set up schema validation
 
-Create a `syntaqlite.toml` in your project root so the LSP and CLI
-automatically know which schema to use:
+Create a `syntaqlite.toml` in your project root so the language server knows
+which schema to validate against:
 
 ```toml
 schema = ["schema.sql"]
 ```
 
-Now the language server provides table and column diagnostics, completions, and
-hover info as you edit `.sql` files — and `syntaqlite validate` picks up the
-schema without needing `--schema`.
+Now when Claude writes SQL that references a column or table that doesn't exist
+in your schema, it sees the error immediately and fixes it — the same way a
+type checker catches mistakes in code.
 
 See the [config file reference](@/reference/config-file.md) for glob-based
 schema routing and formatting options.
