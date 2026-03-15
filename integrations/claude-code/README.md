@@ -37,6 +37,7 @@ From the GitHub marketplace:
 
 ```bash
 claude plugin marketplace add LalitMaganti/claude-code-plugin
+claude plugin install syntaqlite@LalitMaganti/claude-code-plugin
 ```
 
 ## Configuration

@@ -10,6 +10,7 @@ weight = 2
 
 ```bash
 claude plugin marketplace add LalitMaganti/claude-code-plugin
+claude plugin install syntaqlite@LalitMaganti/claude-code-plugin
 ```
 
 The plugin starts the syntaqlite language server for `.sql` files. When Claude

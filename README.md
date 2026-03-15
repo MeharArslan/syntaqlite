@@ -157,7 +157,7 @@ Full language server — no database connection required. Diagnostics, format on
 
 **VS Code** — install the [syntaqlite extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite) from the marketplace.
 
-**Claude Code** — `claude plugin marketplace add LalitMaganti/claude-code-plugin` ([docs](https://docs.syntaqlite.com/main/getting-started/claude-code/)) · **Claude Desktop / Cursor / Windsurf** — `syntaqlite mcp` ([docs](https://docs.syntaqlite.com/main/getting-started/mcp/))
+**Claude Code** — `claude plugin install syntaqlite@LalitMaganti/claude-code-plugin` ([docs](https://docs.syntaqlite.com/main/getting-started/claude-code/)) · **Claude Desktop / Cursor / Windsurf** — `syntaqlite mcp` ([docs](https://docs.syntaqlite.com/main/getting-started/mcp/))
 
 **[Other editors](https://docs.syntaqlite.com/main/getting-started/other-editors/)** — point your LSP client at:
 
