@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.29
+
+*No changes yet.*
+
 ## 0.0.28
 
 - Fix VS Code extension crash: `workspaceRoot` was referenced before declaration (TDZ error), silently preventing the extension from activating
