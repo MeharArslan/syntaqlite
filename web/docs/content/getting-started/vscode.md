@@ -6,18 +6,71 @@ weight = 1
 
 # VS Code
 
-Install the **syntaqlite** extension from the
-[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite).
-It bundles the syntaqlite binary for your platform — no separate install
-needed.
+## Install the extension
 
-Open any `.sql` file. You'll see:
+Search for **syntaqlite** in the Extensions panel (`Cmd+Shift+X` /
+`Ctrl+Shift+X`) and click Install. The extension bundles the syntaqlite binary
+for your platform — no separate install needed.
 
-- Syntax errors underlined as you type
-- Format on save (or run "Format Document" from the command palette)
-- Keyword and function completions
-- Semantic syntax coloring
+## Try it out
 
-To enable table and column validation, create a
-[`syntaqlite.toml`](@/reference/config-file.md) in your project root pointing
-at your schema DDL files.
+Create a file called `demo.sql` and paste this in:
+
+```sql
+select id,name,email from users wehre active=1 order by name
+```
+
+You should immediately see `wehre` underlined in red — syntaqlite caught the
+typo. Fix it to `where` and the error disappears.
+
+## Format your SQL
+
+Open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and run **Format
+Document**. The query becomes:
+
+```sql
+SELECT id, name, email
+FROM users
+WHERE active = 1
+ORDER BY name;
+```
+
+Keywords are uppercased, clauses are broken onto separate lines, and a
+semicolon is appended. To format automatically on every save, enable
+`editor.formatOnSave` in your VS Code settings.
+
+## Get completions
+
+In your SQL file, type `SEL` and you'll see a completion popup offering
+`SELECT`. After `FROM `, completions include SQL keywords like `WHERE` and
+`ORDER`. If you've set up a schema (next step), you'll also see table and
+column names.
+
+## Add schema validation
+
+Without a schema, syntaqlite checks syntax only. To validate table and column
+names, create a `syntaqlite.toml` in your project root:
+
+```toml
+schema = ["schema.sql"]
+```
+
+Then create `schema.sql` next to it:
+
+```sql
+CREATE TABLE users (id INTEGER, name TEXT, email TEXT, active INTEGER);
+```
+
+Now go back to `demo.sql` and change `name` to `nme`:
+
+```sql
+SELECT id, nme, email
+FROM users
+WHERE active = 1
+ORDER BY name;
+```
+
+You'll see a warning on `nme` with a suggestion: *did you mean 'name'?*
+
+See the [config file reference](@/reference/config-file.md) for glob-based
+schema routing, formatting options, and the full `syntaqlite.toml` format.
