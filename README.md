@@ -189,7 +189,7 @@ cargo install syntaqlite-cli
 
 ```toml
 [dependencies]
-syntaqlite = { version = "0.0.19", features = ["fmt"] }
+syntaqlite = { version = "0.0.20", features = ["fmt"] }
 ```
 
 **JavaScript / WASM** ([API docs](https://docs.syntaqlite.com/main/reference/js-api/))
