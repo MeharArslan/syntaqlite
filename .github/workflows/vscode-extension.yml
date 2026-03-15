@@ -38,7 +38,7 @@ jobs:
             binary: syntaqlite.exe
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -61,7 +61,7 @@ jobs:
       - name: Build CLI
         run: cargo build --release -p syntaqlite-cli --target ${{ matrix.rust-target }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -78,7 +78,7 @@ jobs:
         run: node scripts/package-target.mjs --target ${{ matrix.vscode-target }} --binary ../../target/${{ matrix.rust-target }}/release/${{ matrix.binary }}
 
       - name: Upload .vsix
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: vsix-${{ matrix.vscode-target }}
           path: integrations/vscode/*.vsix
