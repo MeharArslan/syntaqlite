@@ -180,6 +180,9 @@ pub use semantic::SemanticAnalyzer;
 #[doc(inline)]
 #[cfg(feature = "validation")]
 pub use semantic::ValidationConfig;
+#[doc(inline)]
+#[cfg(feature = "validation")]
+pub use semantic::CheckConfig;
 
 // Dialect.
 #[doc(inline)]

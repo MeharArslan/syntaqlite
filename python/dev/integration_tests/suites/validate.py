@@ -351,12 +351,15 @@ def _test_no_ddl_leak_across_files(ctx: SuiteContext) -> bool:
 
 
 def _test_no_schema_shows_hint(ctx: SuiteContext) -> bool:
-    """Without a schema, stderr should include a 'no schema provided' note."""
-    result = _run(ctx.binary, "-e", "SELECT 1")
-    if "no schema provided" not in result.stderr:
-        _fail("no_schema_shows_hint",
-              f"expected 'no schema provided' in stderr, got: {result.stderr}")
-        return False
+    """Without a schema, unresolved names in files should trigger a 'no schema provided' hint."""
+    with tempfile.TemporaryDirectory() as tmp:
+        query = Path(tmp) / "query.sql"
+        query.write_text("SELECT x FROM no_such_table;\n")
+        result = _run(ctx.binary, str(query))
+        if "no schema provided" not in result.stderr:
+            _fail("no_schema_shows_hint",
+                  f"expected 'no schema provided' in stderr, got: {result.stderr}")
+            return False
     _pass("no_schema_shows_hint")
     return True
 

@@ -21,6 +21,26 @@ pub(crate) struct ProjectConfig {
     /// Formatting options.
     #[serde(default)]
     pub format: FormatOptions,
+
+    /// Per-category check toggles.
+    #[serde(default)]
+    pub checks: CheckOptions,
+}
+
+/// Per-category check toggles from the `[checks]` section.
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct CheckOptions {
+    pub parse_errors: Option<bool>,
+    pub unknown_table: Option<bool>,
+    pub unknown_column: Option<bool>,
+    pub unknown_function: Option<bool>,
+    pub function_arity: Option<bool>,
+    pub cte_columns: Option<bool>,
+    /// Shorthand: disables/enables all schema checks.
+    pub schema: Option<bool>,
+    /// Shorthand: disables/enables all checks.
+    pub all: Option<bool>,
 }
 
 /// Formatting options from the `[format]` section.

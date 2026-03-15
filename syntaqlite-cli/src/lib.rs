@@ -137,6 +137,12 @@ pub(crate) enum Command {
         /// Schema DDL file(s) to load before validation (repeatable, supports globs)
         #[arg(long)]
         schema: Vec<String>,
+        /// Enable a check category (repeatable; use "schema" or "all" for groups)
+        #[arg(long = "enable")]
+        enable: Vec<String>,
+        /// Disable a check category (repeatable; use "schema" or "all" for groups)
+        #[arg(long = "disable")]
+        disable: Vec<String>,
         /// [experimental] Host language for embedded SQL extraction (python, typescript)
         #[arg(long = "experimental-lang")]
         lang: Option<runtime::HostLanguage>,

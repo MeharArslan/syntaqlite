@@ -24,7 +24,7 @@ use super::model::{
     CompletionContext, CompletionInfo, DefinitionLocation, Resolution, ResolvedSymbol,
     SemanticModel, SemanticToken, StoredComment, StoredToken,
 };
-use super::{AnalysisMode, ValidationConfig};
+use super::{AnalysisMode, CheckConfig, ValidationConfig};
 
 /// Long-lived semantic analysis engine.
 ///
@@ -281,13 +281,16 @@ impl SemanticAnalyzer {
                 ParseOutcome::Ok(s) => s,
                 ParseOutcome::Err(e) => {
                     let (start, end) = parse_error_span(&e, source);
-                    diagnostics.push(Diagnostic {
+                    let diag = Diagnostic {
                         start_offset: start,
                         end_offset: end,
                         message: DiagnosticMessage::Other(e.message().to_owned()),
                         severity: Severity::Error,
                         help: None,
-                    });
+                    };
+                    if config.checks().is_enabled_for(&diag.message) {
+                        diagnostics.push(diag);
+                    }
                     // Collect tokens from the partial parse so completion_info
                     // can replay them through the incremental parser.
                     for tok in e.tokens() {
@@ -733,7 +736,28 @@ struct ValidationPass<'a> {
     definition_offsets: &'a mut HashMap<String, (usize, usize)>,
 }
 
+impl CheckConfig {
+    /// Check whether a diagnostic message's category is enabled.
+    pub(crate) fn is_enabled_for(&self, message: &DiagnosticMessage) -> bool {
+        match message {
+            DiagnosticMessage::UnknownTable { .. } => self.unknown_table,
+            DiagnosticMessage::UnknownColumn { .. } => self.unknown_column,
+            DiagnosticMessage::UnknownFunction { .. } => self.unknown_function,
+            DiagnosticMessage::FunctionArity { .. } => self.function_arity,
+            DiagnosticMessage::CteColumnCountMismatch { .. } => self.cte_columns,
+            DiagnosticMessage::Other(_) => self.parse_errors,
+        }
+    }
+}
+
 impl<'a> ValidationPass<'a> {
+    /// Push a diagnostic if its check category is enabled.
+    fn emit_if(&mut self, diagnostic: Diagnostic) {
+        if self.config.checks().is_enabled_for(&diagnostic.message) {
+            self.diagnostics.push(diagnostic);
+        }
+    }
+
     #[expect(clippy::too_many_arguments)]
     fn run(
         stmt: &AnyParsedStatement<'a>,
@@ -925,7 +949,7 @@ impl<'a> ValidationPass<'a> {
             let mut candidates = self.catalog.all_relation_names();
             candidates.extend(self.catalog.all_table_function_names());
             let suggestion = best_suggestion(name, &candidates, self.config.suggestion_threshold());
-            self.diagnostics.push(Diagnostic {
+            self.emit_if(Diagnostic {
                 start_offset: offset,
                 end_offset: offset + name.len(),
                 message: DiagnosticMessage::UnknownTable {
@@ -1013,7 +1037,7 @@ impl<'a> ValidationPass<'a> {
                     let candidates = self.catalog.all_function_names();
                     let suggestion =
                         best_suggestion(name, &candidates, self.config.suggestion_threshold());
-                    self.diagnostics.push(Diagnostic {
+                    self.emit_if(Diagnostic {
                         start_offset: offset,
                         end_offset: offset + name.len(),
                         message: DiagnosticMessage::UnknownFunction {
@@ -1024,7 +1048,7 @@ impl<'a> ValidationPass<'a> {
                     });
                 }
                 FunctionCheckResult::WrongArity { expected } => {
-                    self.diagnostics.push(Diagnostic {
+                    self.emit_if(Diagnostic {
                         start_offset: offset,
                         end_offset: offset + name.len(),
                         message: DiagnosticMessage::FunctionArity {
@@ -1105,7 +1129,7 @@ impl<'a> ValidationPass<'a> {
                 let candidates = self.scope.all_column_names(Some(tbl));
                 let suggestion =
                     best_suggestion(column, &candidates, self.config.suggestion_threshold());
-                self.diagnostics.push(Diagnostic {
+                self.emit_if(Diagnostic {
                     start_offset: offset,
                     end_offset: offset + column.len(),
                     message: DiagnosticMessage::UnknownColumn {
@@ -1126,7 +1150,7 @@ impl<'a> ValidationPass<'a> {
                 let candidates = self.scope.all_column_names(None);
                 let suggestion =
                     best_suggestion(column, &candidates, self.config.suggestion_threshold());
-                self.diagnostics.push(Diagnostic {
+                self.emit_if(Diagnostic {
                     start_offset: offset,
                     end_offset: offset + column.len(),
                     message: DiagnosticMessage::UnknownColumn {
@@ -1439,7 +1463,7 @@ impl<'a> ValidationPass<'a> {
             && actual != declared.len()
         {
             let offset = self.span_offset(cte_name);
-            self.diagnostics.push(Diagnostic {
+            self.emit_if(Diagnostic {
                 start_offset: offset,
                 end_offset: offset + cte_name.len(),
                 message: DiagnosticMessage::CteColumnCountMismatch {

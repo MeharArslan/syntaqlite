@@ -126,15 +126,23 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>, config_path:
             files,
             expression,
             schema,
+            enable,
+            disable,
             lang,
         } => require_dialect(dialect).and_then(|d| {
+            let file_config = discover_config_for_paths(&files, config_path.as_deref());
             // If --schema is given, use it directly. Otherwise, resolve from config file.
             let resolved_schemas = if !schema.is_empty() {
                 schema
             } else {
-                resolve_schemas_from_config(&files, config_path.as_deref())
+                resolve_schemas_from_config_with(&files, &file_config)
             };
-            cmd_validate(&d, &files, expression.as_deref(), &resolved_schemas, lang)
+            let checks = build_check_config(
+                file_config.as_ref().map(|(c, _)| &c.checks),
+                &enable,
+                &disable,
+            )?;
+            cmd_validate(&d, &files, expression.as_deref(), &resolved_schemas, lang, &checks)
         }),
         Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, config_path.as_deref())),
         #[cfg(feature = "mcp")]
@@ -560,33 +568,28 @@ fn cmd_validate(
     expression: Option<&str>,
     schema_files: &[String],
     lang: Option<HostLanguage>,
+    checks: &syntaqlite::CheckConfig,
 ) -> Result<(), String> {
     let has_schema = !schema_files.is_empty();
     let schema_catalog = build_schema_catalog(dialect, schema_files)?;
-    let config = ValidationConfig::default().with_strict_schema(has_schema);
+    let config = ValidationConfig::default()
+        .with_strict_schema(has_schema)
+        .with_checks(*checks);
     let mut any_errors = false;
-
-    if !has_schema {
-        eprintln!(
-            "note: no schema provided; table and column references will not be checked. \
-             Add a `syntaqlite.toml` with `schema = [\"schema.sql\"]` or pass `--schema`."
-        );
-    }
-
-    let validate = |source: &str, file: &str| -> bool {
-        match lang {
-            Some(lang) => {
-                validate_embedded_source(dialect, source, file, &config, lang, schema_files)
-            }
-            None => validate_source(dialect, source, file, &config, &schema_catalog),
-        }
-    };
+    let mut any_diagnostics = false;
 
     process_files(
         files,
         expression,
         |source, label| {
-            if validate(source, label) {
+            let (errors, _diags) = match lang {
+                Some(lang) => {
+                    let e = validate_embedded_source(dialect, source, label, &config, lang, schema_files);
+                    (e, e)
+                }
+                None => validate_source(dialect, source, label, &config, &schema_catalog),
+            };
+            if errors {
                 std::process::exit(1);
             }
             Ok(())
@@ -596,12 +599,26 @@ fn cmd_validate(
             if multi {
                 println!("==> {file} <==");
             }
-            if validate(source, &file) {
+            let (errors, diags) = match lang {
+                Some(lang) => {
+                    let e = validate_embedded_source(dialect, source, &file, &config, lang, schema_files);
+                    (e, e)
+                }
+                None => validate_source(dialect, source, &file, &config, &schema_catalog),
+            };
+            if errors {
                 any_errors = true;
+            }
+            if diags {
+                any_diagnostics = true;
             }
             Ok(())
         },
     )?;
+
+    if any_diagnostics && !has_schema {
+        emit_no_schema_hint();
+    }
 
     if any_errors {
         std::process::exit(1);
@@ -609,18 +626,21 @@ fn cmd_validate(
     Ok(())
 }
 
+/// Returns `(has_errors, has_any_diagnostics)`.
 fn validate_source(
     dialect: &AnyDialect,
     source: &str,
     file: &str,
     config: &ValidationConfig,
     schema_catalog: &Catalog,
-) -> bool {
+) -> (bool, bool) {
     let mut analyzer = SemanticAnalyzer::with_dialect(dialect.clone());
     let model = analyzer.analyze(source, schema_catalog, config);
-    DiagnosticRenderer::new(source, file)
+    let any_diags = !model.diagnostics().is_empty();
+    let has_errors = DiagnosticRenderer::new(source, file)
         .render_diagnostics(model.diagnostics(), &mut io::stderr())
-        .unwrap_or(false)
+        .unwrap_or(false);
+    (has_errors, any_diags)
 }
 
 fn validate_embedded_source(
@@ -656,6 +676,13 @@ fn validate_embedded_source(
     DiagnosticRenderer::new(source, file)
         .render_diagnostics(&diags, &mut io::stderr())
         .unwrap_or(false)
+}
+
+fn emit_no_schema_hint() {
+    eprintln!(
+        "note: no schema provided; table and column references will not be checked. \
+         Add a `syntaqlite.toml` with `schema = [\"schema.sql\"]` or pass `--schema`."
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -714,34 +741,81 @@ fn build_format_config(
         .with_semicolons(semicolons)
 }
 
-/// Resolve schema files from `syntaqlite.toml` for the given input file paths.
-/// Returns schema file paths as strings suitable for `build_schema_catalog`.
-fn resolve_schemas_from_config(files: &[String], config_path: Option<&str>) -> Vec<String> {
-    let (config, config_dir) = match discover_config_for_paths(files, config_path) {
+/// Resolve schema files from an already-discovered config.
+fn resolve_schemas_from_config_with(
+    files: &[String],
+    found: &Option<(ProjectConfig, PathBuf)>,
+) -> Vec<String> {
+    let (config, config_dir) = match found {
         Some(pair) => pair,
         None => return vec![],
     };
 
-    // For validate, we need to resolve schemas per file. If all files map to the same
-    // schemas, we can return a single set. For simplicity, use the first file's schemas.
-    // (Per-file schema routing is handled in Phase 2 / LSP.)
     let paths = match expand_paths(files) {
         Ok(p) => p,
         Err(_) => return vec![],
     };
 
     if let Some(first) = paths.first() {
-        let canonical = first
-            .canonicalize()
-            .unwrap_or_else(|_| first.clone());
+        let canonical = first.canonicalize().unwrap_or_else(|_| first.clone());
         let config_dir_canonical = config_dir
             .canonicalize()
             .unwrap_or_else(|_| config_dir.clone());
-        config::resolve_schemas(&canonical, &config, &config_dir_canonical)
+        config::resolve_schemas(&canonical, config, &config_dir_canonical)
             .into_iter()
             .map(|p| p.to_string_lossy().into_owned())
             .collect()
     } else {
         vec![]
     }
+}
+
+/// Build `CheckConfig` by merging config file options with CLI `--enable`/`--disable` flags.
+/// Resolution order: defaults → config file `[checks]` → CLI flags (last wins per category).
+fn build_check_config(
+    file_opts: Option<&config::CheckOptions>,
+    cli_enable: &[String],
+    cli_disable: &[String],
+) -> Result<syntaqlite::CheckConfig, String> {
+    let mut checks = syntaqlite::CheckConfig::default();
+
+    // Apply config file options.
+    if let Some(opts) = file_opts {
+        // Group shorthands first (so per-category overrides them).
+        if let Some(v) = opts.all {
+            checks.set("all", v).unwrap();
+        }
+        if let Some(v) = opts.schema {
+            checks.set("schema", v).unwrap();
+        }
+        // Per-category overrides.
+        if let Some(v) = opts.parse_errors {
+            checks.parse_errors = v;
+        }
+        if let Some(v) = opts.unknown_table {
+            checks.unknown_table = v;
+        }
+        if let Some(v) = opts.unknown_column {
+            checks.unknown_column = v;
+        }
+        if let Some(v) = opts.unknown_function {
+            checks.unknown_function = v;
+        }
+        if let Some(v) = opts.function_arity {
+            checks.function_arity = v;
+        }
+        if let Some(v) = opts.cte_columns {
+            checks.cte_columns = v;
+        }
+    }
+
+    // Apply CLI --enable/--disable (last wins).
+    for name in cli_enable {
+        checks.set(name, true)?;
+    }
+    for name in cli_disable {
+        checks.set(name, false)?;
+    }
+
+    Ok(checks)
 }
