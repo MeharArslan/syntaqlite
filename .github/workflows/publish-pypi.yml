@@ -58,8 +58,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # Get the tag from the workflow run that triggered us
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          echo "tag=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Download binary from release
         env:
