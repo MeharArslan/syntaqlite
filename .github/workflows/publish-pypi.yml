@@ -18,6 +18,10 @@ on:
     workflows: ["Release"]
     types: [completed]
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   build-wheels:
     name: Build wheel (${{ matrix.target }})
