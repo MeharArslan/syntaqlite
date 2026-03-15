@@ -34,7 +34,27 @@ use lsp_types::{
 use crate::dialect::AnyDialect;
 use crate::fmt::FormatConfig;
 use crate::lsp::{CompletionKind, LspHost, SEMANTIC_TOKEN_LEGEND};
+use crate::semantic::Catalog;
 use crate::semantic::diagnostics::Severity;
+
+// ── LspConfig ─────────────────────────────────────────────────────────────
+
+/// Configuration for the LSP server, resolved from a project config file.
+pub struct LspConfig {
+    /// Format config from project config file.
+    pub format_config: Option<FormatConfig>,
+    /// Pre-loaded schema catalog from project config file.
+    pub schema_catalog: Option<Catalog>,
+}
+
+impl Default for LspConfig {
+    fn default() -> Self {
+        LspConfig {
+            format_config: None,
+            schema_catalog: None,
+        }
+    }
+}
 
 // ── LspServer ─────────────────────────────────────────────────────────────
 
@@ -76,6 +96,17 @@ impl LspServer {
     /// # Errors
     /// Returns `Err` if the LSP connection fails or an unrecoverable I/O error occurs.
     pub fn run(dialect: impl Into<AnyDialect>) -> Result<(), Box<dyn Error + Sync + Send>> {
+        Self::run_with_config(dialect, LspConfig::default())
+    }
+
+    /// Start the LSP server with project configuration pre-loaded.
+    ///
+    /// # Errors
+    /// Returns `Err` if the LSP connection fails or an unrecoverable I/O error occurs.
+    pub fn run_with_config(
+        dialect: impl Into<AnyDialect>,
+        config: LspConfig,
+    ) -> Result<(), Box<dyn Error + Sync + Send>> {
         let dialect = dialect.into();
         let (connection, io_threads) = Connection::stdio();
 
@@ -132,8 +163,21 @@ impl LspServer {
 
         let mut host = LspHost::with_dialect(dialect);
 
-        // Load schema from initializationOptions.schemaPath if provided.
-        Self::load_schema_from_options(&init_params, &mut host);
+        // Apply project config if provided.
+        let has_config_schema = config.schema_catalog.is_some();
+        if let Some(fmt) = config.format_config {
+            host.set_format_config(fmt);
+        }
+        if let Some(catalog) = config.schema_catalog {
+            host.set_session_context(catalog);
+            eprintln!("syntaqlite-lsp: using project config schema");
+        }
+
+        // Load schema from initializationOptions.schemaPath if no config file schema
+        // (legacy path for VS Code extension — will be removed in Phase 3).
+        if !has_config_schema {
+            Self::load_schema_from_options(&init_params, &mut host);
+        }
 
         for msg in &connection.receiver {
             match msg {
@@ -410,7 +454,8 @@ impl LspServer {
             }
         };
         let uri = params.text_document.uri.as_str();
-        match host.format(uri, &FormatConfig::default()) {
+        let config = host.format_config();
+        match host.format(uri, &config) {
             Ok(formatted) => {
                 let edit = TextEdit {
                     range: Range::new(Position::new(0, 0), Position::new(u32::MAX, 0)),

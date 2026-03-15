@@ -136,9 +136,7 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             };
             cmd_validate(&d, &files, expression.as_deref(), &resolved_schemas, lang)
         }),
-        Command::Lsp => require_dialect(dialect).and_then(|d| {
-            syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
-        }),
+        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d)),
         #[cfg(feature = "mcp")]
         Command::Mcp => require_dialect(dialect).and_then(crate::mcp::cmd_mcp),
         Command::Fmt {
@@ -343,6 +341,43 @@ fn cmd_parse_source(
             .ok();
     }
     (count, n_err, json_nodes)
+}
+
+fn cmd_lsp(dialect: AnyDialect) -> Result<(), String> {
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let mut lsp_config = syntaqlite::lsp::LspConfig::default();
+
+    if let Some((project_config, config_dir)) = config::discover(&cwd) {
+        eprintln!(
+            "syntaqlite-lsp: found config at {}",
+            config_dir.join("syntaqlite.toml").display()
+        );
+
+        // Apply format config.
+        lsp_config.format_config = Some(build_format_config(
+            Some(&project_config.format),
+            None,
+            None,
+            None,
+            None,
+        ));
+
+        // Load default schema from config file.
+        let schema_paths: Vec<String> = if let Some(ref schema) = project_config.schema {
+            schema.iter().map(|s| config_dir.join(s).to_string_lossy().into_owned()).collect()
+        } else {
+            vec![]
+        };
+        if !schema_paths.is_empty() {
+            match build_schema_catalog(&dialect, &schema_paths) {
+                Ok(catalog) => lsp_config.schema_catalog = Some(catalog),
+                Err(e) => eprintln!("syntaqlite-lsp: failed to load schema: {e}"),
+            }
+        }
+    }
+
+    syntaqlite::lsp::LspServer::run_with_config(dialect, lsp_config)
+        .map_err(|e| format!("LSP error: {e}"))
 }
 
 fn cmd_fmt(

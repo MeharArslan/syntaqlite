@@ -43,7 +43,7 @@ pub(crate) const SEMANTIC_TOKEN_LEGEND: &[&str] = &[
 #[doc(inline)]
 pub use host::LspHost;
 #[doc(inline)]
-pub use server::LspServer;
+pub use server::{LspConfig, LspServer};
 
 // Re-export shared types from semantic layer.
 pub(crate) use crate::semantic::model::{CompletionContext, CompletionInfo};

@@ -95,6 +95,8 @@ pub struct LspHost {
     user_catalog: Catalog,
     analyzer: SemanticAnalyzer,
     documents: HashMap<String, Document>,
+    /// Format config from project config file. `None` means use defaults.
+    format_config: Option<FormatConfig>,
 }
 
 #[cfg(feature = "sqlite")]
@@ -114,6 +116,7 @@ impl LspHost {
             analyzer: SemanticAnalyzer::new(),
             dialect,
             documents: HashMap::new(),
+            format_config: None,
         }
     }
 
@@ -125,10 +128,21 @@ impl LspHost {
             analyzer: SemanticAnalyzer::with_dialect(dialect.clone()),
             dialect,
             documents: HashMap::new(),
+            format_config: None,
         }
     }
 
     // ── Configuration ─────────────────────────────────────────────────────────
+
+    /// Set the format config from a project config file.
+    pub fn set_format_config(&mut self, config: FormatConfig) {
+        self.format_config = Some(config);
+    }
+
+    /// Get the format config (project config or default).
+    pub(crate) fn format_config(&self) -> FormatConfig {
+        self.format_config.clone().unwrap_or_default()
+    }
 
     /// Set the session context (user-provided schema and functions).
     /// Invalidates all cached analysis.
