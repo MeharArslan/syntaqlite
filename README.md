@@ -157,16 +157,10 @@ syntaqlite parse -e "SELECT 1 + 2" --output text
 brew install LalitMaganti/tap/syntaqlite
 ```
 
-**Shell (macOS / Linux)**
+**pip**
 
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.sh | sh
-```
-
-**PowerShell (Windows)**
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.ps1 | iex"
+pip install syntaqlite
 ```
 
 **Cargo**
