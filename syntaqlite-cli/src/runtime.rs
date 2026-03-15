@@ -680,8 +680,9 @@ fn validate_embedded_source(
 
 fn emit_no_schema_hint() {
     eprintln!(
-        "note: no schema provided; table and column references will not be checked. \
-         Add a `syntaqlite.toml` with `schema = [\"schema.sql\"]` or pass `--schema`."
+        "note: no schema provided; unresolved names are reported as warnings. \
+         Add a `syntaqlite.toml` with `schema = [\"schema.sql\"]` or pass `--schema` \
+         to treat them as errors."
     );
 }
 
