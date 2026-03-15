@@ -1,0 +1,9 @@
+# syntaqlite project configuration.
+# See https://docs.syntaqlite.com/main/reference/config-file/
+
+[schemas]
+"tests/lsp_tests/query.sql" = ["tests/lsp_tests/schema.sql"]
+"tests/comparison/test_statements.sql" = ["tests/comparison/schema.sql"]
+"tests/comparison/bench_statements.sql" = ["tests/comparison/schema.sql"]
+"tests/comparison/validator/**/*.sql" = ["tests/comparison/schema.sql"]
+"tests/comparison/lsp/test*.sql" = ["tests/comparison/lsp/schema.sql"]
