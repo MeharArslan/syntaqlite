@@ -162,7 +162,9 @@ will be accepted.
 
 ### Strict mode
 
-By default, unresolved names produce warnings. To make them errors:
+When a schema is provided (via `--schema` or `syntaqlite.toml`), the CLI and
+LSP automatically enable strict mode — unresolved names are errors instead of
+warnings. When using the Rust API directly, set this explicitly:
 
 ```rust
 let config = ValidationConfig::default()

@@ -68,6 +68,13 @@ that schema. When `--schema` is omitted and a
 from the config file's glob patterns. Without either, inline DDL in the input
 is used instead. Diagnostics are printed to stderr in rustc-style format.
 
+Exit codes:
+- `0` — no errors (warnings may still be printed)
+- `1` — one or more error-level diagnostics
+
+When a schema is provided (`--schema` or `syntaqlite.toml`), unresolved names
+are errors (exit 1). Without a schema, they are warnings (exit 0).
+
 ## syntaqlite parse
 
 Parse SQL and report results.

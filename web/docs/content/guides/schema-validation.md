@@ -41,8 +41,15 @@ automatically. Once configured:
   in your editor as you type
 - **CI** checks work the same way (`syntaqlite validate "**/*.sql"`)
 
-Queries referencing unknown tables, columns, or functions produce warnings with
-source locations and "did you mean?" suggestions.
+## Warnings vs errors
+
+When a schema is provided (via `syntaqlite.toml` or `--schema`), unresolved
+table and column references are reported as **errors** and cause a non-zero
+exit code. Without a schema, the same issues are reported as **warnings** and
+the exit code remains zero.
+
+This means `syntaqlite validate` in CI will fail the build only when you've
+explicitly declared your schema — no false positives from missing configuration.
 
 ## Passing schema on the command line
 
