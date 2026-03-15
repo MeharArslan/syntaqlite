@@ -86,7 +86,7 @@ syntaqlite --sqlite-version 3.32.0 validate query.sql
 Inspect the full abstract syntax tree:
 
 ```bash
-syntaqlite parse -e "SELECT 1 + 2" --output text
+syntaqlite parse -e "SELECT 1 + 2"
 ```
 
 Useful for code generation, migration tooling, or static analysis. See

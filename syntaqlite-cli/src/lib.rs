@@ -20,7 +20,7 @@ mod mcp;
 
 #[derive(Clone, Copy, ValueEnum)]
 pub(crate) enum ParseOutput {
-    /// Print statement/error counts (compact, for benchmarks)
+    /// Print statement/error counts (compact, for benchmarks) [maintainer]
     Summary,
     /// Print the AST as human-readable text
     Text,
@@ -33,9 +33,9 @@ pub(crate) enum FmtOutput {
     /// Formatted SQL (default)
     #[default]
     Formatted,
-    /// Dump raw interpreter bytecode for each statement
+    /// Dump raw interpreter bytecode for each statement [maintainer]
     Bytecode,
-    /// Dump the Wadler-Lindig document tree after interpretation
+    /// Dump the Wadler-Lindig document tree after interpretation [maintainer]
     DocTree,
 }
 
@@ -84,7 +84,7 @@ pub(crate) enum Command {
         #[arg(short = 'e', long = "expression", conflicts_with = "files")]
         expression: Option<String>,
         /// Output format
-        #[arg(short, long, value_enum, default_value_t = ParseOutput::Summary)]
+        #[arg(short, long, value_enum, default_value_t = ParseOutput::Text)]
         output: ParseOutput,
     },
     /// Format SQL

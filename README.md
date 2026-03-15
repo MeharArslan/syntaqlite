@@ -146,7 +146,7 @@ syntaqlite lsp
 Full abstract syntax tree with side tables for tokens, comments, and whitespace — for code generation, migration tooling, or static analysis.
 
 ```bash
-syntaqlite parse -e "SELECT 1 + 2" --output text
+syntaqlite parse -e "SELECT 1 + 2"
 ```
 
 ## Install ([all methods](https://docs.syntaqlite.com/main/getting-started/cli/))

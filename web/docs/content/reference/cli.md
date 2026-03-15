@@ -26,10 +26,16 @@ printed to stderr.
 | `--semicolons <BOOL>` | `true` | Append semicolons after statements |
 | `-i, --in-place` | | Write formatted output back to files |
 | `--check` | | Check if files are formatted (exit 1 if not, conflicts with `-i`) |
+| `-o, --output <FORMAT>` | `formatted` | Output mode: `formatted`, `bytecode`, or `doc-tree` |
 | `--dialect <PATH>` | | Path to custom dialect shared library |
 | `--dialect-name <NAME>` | | Symbol name in dialect library |
 | `--sqlite-version <VER>` | `latest` | Target SQLite version (e.g., `3.47.0`) |
 | `--sqlite-cflag <FLAG>` | | Enable a compile-time flag (repeatable) |
+
+Output modes:
+- `formatted` — formatted SQL (default)
+- `bytecode` — dump raw interpreter bytecode for each statement (maintainer)
+- `doc-tree` — dump the Wadler-Lindig document tree after interpretation (maintainer)
 
 Exit codes:
 - `0` — success (or all files already formatted with `--check`)
@@ -72,12 +78,12 @@ printed to stderr.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-e, --expression <SQL>` | | SQL to parse directly (instead of files or stdin) |
-| `-o, --output <FORMAT>` | `summary` | Output format: `summary`, `text`, or `json` |
+| `-o, --output <FORMAT>` | `text` | Output format: `text`, `json`, or `summary` |
 
 Output formats:
-- `summary` — print statement/error counts (compact, for benchmarks)
-- `text` — print the AST as human-readable text
+- `text` — print the AST as human-readable text (default)
 - `json` — print the AST as JSON
+- `summary` — print statement/error counts (compact, for benchmarks) (maintainer)
 
 When `text` output is used with multiple files, each is prefixed with
 `==> filename <==`.

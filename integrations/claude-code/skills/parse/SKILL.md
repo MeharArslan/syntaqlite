@@ -11,29 +11,28 @@ Parse SQLite SQL and display the abstract syntax tree (AST) using the syntaqlite
 
 ```bash
 # Print AST from a file
-syntaqlite parse --output text query.sql
+syntaqlite parse query.sql
 
 # Print AST from stdin
-echo "SELECT 1 + 2 FROM t" | syntaqlite parse --output text
+echo "SELECT 1 + 2 FROM t" | syntaqlite parse
+
+# Parse an inline expression
+syntaqlite parse -e "SELECT 1"
 
 # Output as JSON
-syntaqlite parse --output json query.sql
-
-# Show bytecodes (parser internals)
-syntaqlite parse --output bytecode query.sql
-
-# Show doc-tree (formatting structure)
-syntaqlite parse --output doc-tree query.sql
+syntaqlite parse -o json query.sql
 ```
+
+## Options
+
+- `-e, --expression <SQL>` — parse an inline SQL expression instead of files
+- `-o, --output <FORMAT>` — output format (default: text)
 
 ## Output modes
 
-- `text` — Human-readable indented tree (default)
+- `text` — Human-readable indented AST tree (default)
 - `json` — Machine-readable JSON AST
-- `bytecode` — Parser bytecode sequence (debugging)
-- `doc-tree` — Formatter document tree (debugging formatting)
 
 ## Notes
 
-- Use `text` output for quick inspection and `json` for programmatic use.
-- If the user is debugging why something formats incorrectly, `doc-tree` shows the formatter's internal representation.
+- Use the default `text` output for quick inspection and `json` for programmatic use.
