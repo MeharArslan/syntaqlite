@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.27
+
+- Add global `--config` flag to explicitly pass `syntaqlite.toml` path (VS Code extension uses this to avoid cwd dependency)
+- Schema-aware diagnostic severity: with a schema (`--schema` or `syntaqlite.toml`), unresolved names are errors (exit 1); without, they are warnings (exit 0)
+- "No schema provided" hint printed to stderr when running validate without any schema source
+- VS Code extension passes `--config` to LSP server when `syntaqlite.toml` exists in workspace root
+- Documentation: add schema validation guide, document severity behavior in CLI reference
+
 ## 0.0.26
 
 - Fix config file discovery with relative paths — `discover()` now resolves to absolute paths before walking up, fixing cases where `syntaqlite.toml` in the project root wasn't found
