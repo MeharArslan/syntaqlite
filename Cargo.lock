@@ -1029,6 +1029,7 @@ dependencies = [
 name = "syntaqlite"
 version = "0.0.28"
 dependencies = [
+ "glob",
  "libloading",
  "lsp-server",
  "lsp-types",

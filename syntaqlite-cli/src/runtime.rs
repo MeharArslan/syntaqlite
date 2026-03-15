@@ -380,18 +380,47 @@ fn cmd_lsp(dialect: AnyDialect, config_path: Option<&str>) -> Result<(), String>
             None,
         ));
 
-        // Load default schema from config file.
-        let schema_paths: Vec<String> = if let Some(ref schema) = project_config.schema {
-            schema.iter().map(|s| config_dir.join(s).to_string_lossy().into_owned()).collect()
-        } else {
-            vec![]
-        };
-        let has_schema = !schema_paths.is_empty();
-        if has_schema {
-            match build_schema_catalog(&dialect, &schema_paths) {
-                Ok(catalog) => lsp_config.schema_catalog = Some(catalog),
-                Err(e) => eprintln!("syntaqlite-lsp: failed to load schema: {e}"),
+        // Build per-file schema map from [schemas] globs and top-level `schema` key.
+        let default_catalog = if let Some(ref schema) = project_config.schema {
+            let paths: Vec<String> = schema.iter()
+                .map(|s| config_dir.join(s).to_string_lossy().into_owned())
+                .collect();
+            match build_schema_catalog(&dialect, &paths) {
+                Ok(catalog) => Some(catalog),
+                Err(e) => {
+                    eprintln!("syntaqlite-lsp: failed to load default schema: {e}");
+                    None
+                }
             }
+        } else {
+            None
+        };
+
+        let mut schema_entries = Vec::new();
+        for (glob_str, schema_files) in &project_config.schemas {
+            let pattern = match glob::Pattern::new(glob_str) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("syntaqlite-lsp: bad glob pattern {glob_str:?}: {e}");
+                    continue;
+                }
+            };
+            let paths: Vec<String> = schema_files.iter()
+                .map(|s| config_dir.join(s).to_string_lossy().into_owned())
+                .collect();
+            match build_schema_catalog(&dialect, &paths) {
+                Ok(catalog) => schema_entries.push((pattern, catalog)),
+                Err(e) => eprintln!("syntaqlite-lsp: failed to load schema for {glob_str:?}: {e}"),
+            }
+        }
+
+        let has_schema = default_catalog.is_some() || !schema_entries.is_empty();
+        if has_schema {
+            lsp_config.schema_map = Some(syntaqlite::lsp::SchemaMap::new(
+                config_dir.clone(),
+                default_catalog,
+                schema_entries,
+            ));
         }
 
         // Apply check levels from config file.

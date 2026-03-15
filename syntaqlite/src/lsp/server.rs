@@ -36,6 +36,7 @@ use lsp_types::{
 use crate::dialect::AnyDialect;
 use crate::fmt::FormatConfig;
 use crate::lsp::{CompletionKind, LspHost, SEMANTIC_TOKEN_LEGEND};
+use crate::lsp::host::SchemaMap;
 use crate::semantic::Catalog;
 use crate::semantic::diagnostics::Severity;
 
@@ -49,6 +50,8 @@ pub struct LspConfig {
     pub schema_catalog: Option<Catalog>,
     /// Validation config (check levels) from project config file.
     pub validation_config: Option<ValidationConfig>,
+    /// Per-file schema resolution from `[schemas]` globs.
+    pub schema_map: Option<SchemaMap>,
 }
 
 impl Default for LspConfig {
@@ -57,6 +60,7 @@ impl Default for LspConfig {
             format_config: None,
             schema_catalog: None,
             validation_config: None,
+            schema_map: None,
         }
     }
 }
@@ -169,7 +173,7 @@ impl LspServer {
         let mut host = LspHost::with_dialect(dialect);
 
         // Apply project config if provided.
-        let has_config_schema = config.schema_catalog.is_some();
+        let has_config_schema = config.schema_catalog.is_some() || config.schema_map.is_some();
         let has_validation_config = config.validation_config.is_some();
         if let Some(fmt) = config.format_config {
             host.set_format_config(fmt);
@@ -177,7 +181,10 @@ impl LspServer {
         if let Some(validation) = config.validation_config {
             host.set_validation_config(validation);
         }
-        if let Some(catalog) = config.schema_catalog {
+        if let Some(map) = config.schema_map {
+            host.set_schema_map(map);
+            eprintln!("syntaqlite-lsp: using per-file schema map");
+        } else if let Some(catalog) = config.schema_catalog {
             host.set_session_context(catalog);
             // If no explicit validation config was provided, default schema
             // checks to deny when a schema is present.

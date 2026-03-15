@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 use syntaqlite_syntax::any::TokenCategory;
 use syntaqlite_syntax::util::is_suggestable_keyword;
@@ -18,6 +19,63 @@ use crate::semantic::model::{
 };
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind};
+
+// ── SchemaMap ─────────────────────────────────────────────────────────────────
+
+/// Per-file schema resolution: maps glob patterns to pre-built [`Catalog`]s.
+///
+/// The LSP uses this to resolve the correct schema catalog for each open
+/// document based on the `[schemas]` section of `syntaqlite.toml`. Files
+/// matching a glob pattern get that pattern's catalog with `strict_schema=true`;
+/// unmatched files fall back to the `default` catalog (from the top-level
+/// `schema` key) or no catalog at all.
+pub struct SchemaMap {
+    config_dir: PathBuf,
+    default: Option<Catalog>,
+    entries: Vec<(glob::Pattern, Catalog)>,
+}
+
+impl SchemaMap {
+    /// Create a new schema map.
+    ///
+    /// - `config_dir`: the directory containing `syntaqlite.toml` (used to
+    ///   resolve relative glob patterns against file URIs).
+    /// - `default`: catalog built from the top-level `schema` key (if any).
+    /// - `entries`: `(glob_pattern, catalog)` pairs from `[schemas]`.
+    pub fn new(
+        config_dir: PathBuf,
+        default: Option<Catalog>,
+        entries: Vec<(glob::Pattern, Catalog)>,
+    ) -> Self {
+        SchemaMap {
+            config_dir,
+            default,
+            entries,
+        }
+    }
+
+    /// Resolve a `file://` URI to its matching catalog.
+    ///
+    /// Returns `Some((catalog, true))` if a glob pattern matched (strict mode),
+    /// `Some((catalog, false))` if only the default catalog matched (strict mode
+    /// for default too), or `None` if no catalog applies.
+    pub fn resolve(&self, file_uri: &str) -> Option<(&Catalog, bool)> {
+        let path = file_uri.strip_prefix("file://")?;
+        let path = Path::new(path);
+        let relative = path.strip_prefix(&self.config_dir).ok()?;
+        let relative_str = relative.to_string_lossy();
+        let match_opts = glob::MatchOptions {
+            require_literal_separator: true,
+            ..Default::default()
+        };
+        for (pattern, catalog) in &self.entries {
+            if pattern.matches_with(&relative_str, match_opts) {
+                return Some((catalog, true));
+            }
+        }
+        self.default.as_ref().map(|cat| (cat, true))
+    }
+}
 
 // ── Document store ────────────────────────────────────────────────────────────
 
@@ -51,6 +109,33 @@ fn ensure_model(
         .collect();
     doc.cached_parse_diags = Some(parse_diags);
     doc.model = Some(model);
+}
+
+/// Resolve the correct catalog for `uri` via `schema_map`, then call
+/// [`ensure_model`]. Returns `false` if the document is not found.
+fn ensure_model_for(
+    uri: &str,
+    documents: &mut HashMap<String, Document>,
+    analyzer: &mut SemanticAnalyzer,
+    schema_map: &Option<SchemaMap>,
+    user_catalog: &Catalog,
+    base_validation_config: &ValidationConfig,
+) -> bool {
+    let doc = match documents.get_mut(uri) {
+        Some(d) => d,
+        None => return false,
+    };
+    let (catalog, config) = if let Some(map) = schema_map {
+        if let Some((cat, _strict)) = map.resolve(uri) {
+            (cat, base_validation_config.with_strict_schema())
+        } else {
+            (user_catalog, *base_validation_config)
+        }
+    } else {
+        (user_catalog, *base_validation_config)
+    };
+    ensure_model(doc, analyzer, catalog, &config);
+    true
 }
 
 // ── LspHost ───────────────────────────────────────────────────────────────────
@@ -104,6 +189,8 @@ pub struct LspHost {
     format_config: Option<FormatConfig>,
     /// Validation config (strict_schema is set when a schema is provided).
     validation_config: ValidationConfig,
+    /// Per-file schema resolution from `[schemas]` globs.
+    schema_map: Option<SchemaMap>,
 }
 
 #[cfg(feature = "sqlite")]
@@ -125,6 +212,7 @@ impl LspHost {
             documents: HashMap::new(),
             format_config: None,
             validation_config: ValidationConfig::default(),
+            schema_map: None,
         }
     }
 
@@ -138,6 +226,7 @@ impl LspHost {
             documents: HashMap::new(),
             format_config: None,
             validation_config: ValidationConfig::default(),
+            schema_map: None,
         }
     }
 
@@ -156,6 +245,18 @@ impl LspHost {
     /// Set the validation config.
     pub fn set_validation_config(&mut self, config: ValidationConfig) {
         self.validation_config = config;
+        for doc in self.documents.values_mut() {
+            doc.model = None;
+            doc.cached_parse_diags = None;
+            doc.cached_sem_tokens = None;
+        }
+    }
+
+    /// Set the per-file schema map from `[schemas]` config globs.
+    /// When set, each document is resolved against the map to find its
+    /// matching catalog and strict_schema is set automatically.
+    pub fn set_schema_map(&mut self, map: SchemaMap) {
+        self.schema_map = Some(map);
         for doc in self.documents.values_mut() {
             doc.model = None;
             doc.cached_parse_diags = None;
@@ -217,11 +318,12 @@ impl LspHost {
 
     /// Parse-error diagnostics for a document, lazily computed.
     pub(crate) fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
-        let Some(doc) = self.documents.get_mut(uri) else {
+        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config) {
             return &[];
-        };
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
-        doc.cached_parse_diags
+        }
+        self.documents.get(uri).unwrap()
+            .cached_parse_diags
             .as_deref()
             .expect("ensure_model sets cached_parse_diags")
     }
@@ -236,10 +338,11 @@ impl LspHost {
         uri: &str,
         range: Option<(usize, usize)>,
     ) -> Vec<u32> {
-        let Some(doc) = self.documents.get_mut(uri) else {
+        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config) {
             return Vec::new();
-        };
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        }
+        let doc = self.documents.get_mut(uri).unwrap();
         if doc.cached_sem_tokens.is_none() {
             let tokens = self
                 .analyzer
@@ -255,14 +358,15 @@ impl LspHost {
 
     /// Expected parser tokens and semantic context at a byte offset.
     pub(crate) fn completion_info_at_offset(&mut self, uri: &str, offset: usize) -> CompletionInfo {
-        let Some(doc) = self.documents.get_mut(uri) else {
+        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config) {
             return CompletionInfo {
                 tokens: Vec::new(),
                 context: super::CompletionContext::Unknown,
                 qualifier: None,
             };
-        };
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        }
+        let doc = self.documents.get(uri).unwrap();
         self.analyzer
             .completion_info(doc.model.as_ref().expect("ensure_model sets model"), offset)
     }
@@ -346,8 +450,11 @@ impl LspHost {
         &mut self,
         uri: &str,
     ) -> Option<(i32, String, Vec<Diagnostic>)> {
-        let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        if !ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config) {
+            return None;
+        }
+        let doc = self.documents.get(uri).unwrap();
         let version = doc.version;
         let source = doc.source.clone();
         let diags = doc
@@ -406,8 +513,9 @@ impl LspHost {
         uri: &str,
         offset: usize,
     ) -> Option<(String, usize, usize)> {
-        let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config);
+        let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
 
         let resolution = model.resolution_at(offset)?;
@@ -432,8 +540,9 @@ impl LspHost {
         uri: &str,
         offset: usize,
     ) -> Option<(Option<String>, usize, usize)> {
-        let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config);
+        let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let def = model.definition_at(offset)?;
         Some((def.file_uri.clone(), def.start, def.end))
@@ -462,11 +571,10 @@ impl LspHost {
         // Collect matching resolutions from all open documents.
         let uris: Vec<String> = self.documents.keys().cloned().collect();
         for doc_uri in &uris {
-            let doc = self
-                .documents
-                .get_mut(doc_uri.as_str())
+            ensure_model_for(doc_uri, &mut self.documents, &mut self.analyzer,
+                &self.schema_map, &self.user_catalog, &self.validation_config);
+            let doc = self.documents.get(doc_uri.as_str())
                 .expect("doc_uri came from keys()");
-            ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
             let model = doc.model.as_ref().expect("ensure_model sets model");
             for (start, end) in model.references_matching(&identity) {
                 results.push((doc_uri.clone(), start, end));
@@ -506,8 +614,9 @@ impl LspHost {
         uri: &str,
         offset: usize,
     ) -> Option<(usize, usize, String)> {
-        let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config);
+        let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let res = model
             .resolutions
@@ -546,8 +655,9 @@ impl LspHost {
     /// Determine the symbol identity at `offset` — either from a resolution or
     /// from a definition site (CREATE TABLE / column-def).
     fn symbol_identity_at(&mut self, uri: &str, offset: usize) -> Option<SymbolIdentity> {
-        let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config);
+        let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
 
         // First check resolutions (references in DML/queries).
@@ -593,8 +703,9 @@ impl LspHost {
     /// Signature help at a byte offset: finds enclosing function call and returns
     /// (`function_name`, `active_parameter`, overloads).
     pub(crate) fn signature_help(&mut self, uri: &str, offset: usize) -> Option<SignatureHelpInfo> {
-        let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
+        ensure_model_for(uri, &mut self.documents, &mut self.analyzer,
+            &self.schema_map, &self.user_catalog, &self.validation_config);
+        let doc = self.documents.get(uri)?;
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let source = model.source();
 
@@ -1490,6 +1601,163 @@ mod tests {
              first column at {}, first function at {}",
             first_column_pos.unwrap(),
             first_function_pos.unwrap(),
+        );
+    }
+
+    // ── SchemaMap tests ──────────────────────────────────────────────────
+
+    mod schema_map_tests {
+        use std::path::PathBuf;
+
+        use super::super::SchemaMap;
+        use crate::semantic::Catalog;
+
+        fn empty_catalog() -> Catalog {
+            Catalog::new(crate::sqlite::dialect::any_dialect())
+        }
+
+        #[test]
+        fn resolve_matches_glob_pattern() {
+            let config_dir = PathBuf::from("/project");
+            let pattern = glob::Pattern::new("queries/**/*.sql").unwrap();
+            let map = SchemaMap::new(config_dir, None, vec![(pattern, empty_catalog())]);
+
+            assert!(
+                map.resolve("file:///project/queries/foo/bar.sql").is_some(),
+                "should match queries/**/*.sql"
+            );
+            assert!(
+                map.resolve("file:///project/queries/top.sql").is_some(),
+                "should match queries/*.sql via **"
+            );
+            assert!(
+                map.resolve("file:///project/other/bar.sql").is_none(),
+                "should not match files outside queries/"
+            );
+        }
+
+        #[test]
+        fn resolve_returns_none_for_no_match_no_default() {
+            let config_dir = PathBuf::from("/project");
+            let pattern = glob::Pattern::new("src/*.sql").unwrap();
+            let map = SchemaMap::new(config_dir, None, vec![(pattern, empty_catalog())]);
+
+            assert!(map.resolve("file:///project/other/q.sql").is_none());
+        }
+
+        #[test]
+        fn resolve_falls_back_to_default() {
+            let config_dir = PathBuf::from("/project");
+            let map = SchemaMap::new(config_dir, Some(empty_catalog()), vec![]);
+
+            let result = map.resolve("file:///project/any/file.sql");
+            assert!(result.is_some(), "should fall back to default catalog");
+        }
+
+        #[test]
+        fn resolve_prefers_glob_over_default() {
+            let config_dir = PathBuf::from("/project");
+            let pattern = glob::Pattern::new("special/*.sql").unwrap();
+
+            let map = SchemaMap::new(
+                config_dir,
+                Some(empty_catalog()),
+                vec![(pattern, empty_catalog())],
+            );
+
+            // Matched file should get the glob catalog (from entries[0]).
+            let (resolved, _) = map.resolve("file:///project/special/q.sql").unwrap();
+            let glob_ptr = resolved as *const Catalog;
+            // The glob entry catalog lives in map.entries, not map.default.
+            let expected_glob_ptr = &map.entries[0].1 as *const Catalog;
+            assert_eq!(glob_ptr, expected_glob_ptr, "matched file should get glob catalog");
+
+            // Unmatched file should get the default catalog.
+            let (resolved, _) = map.resolve("file:///project/other/q.sql").unwrap();
+            let default_ptr = resolved as *const Catalog;
+            let expected_default_ptr = map.default.as_ref().unwrap() as *const Catalog;
+            assert_eq!(default_ptr, expected_default_ptr, "unmatched file should get default catalog");
+        }
+
+        #[test]
+        fn resolve_requires_file_uri_prefix() {
+            let config_dir = PathBuf::from("/project");
+            let map = SchemaMap::new(config_dir, Some(empty_catalog()), vec![]);
+            assert!(map.resolve("untitled:Untitled-1").is_none());
+        }
+
+        #[test]
+        fn resolve_requires_path_under_config_dir() {
+            let config_dir = PathBuf::from("/project");
+            let map = SchemaMap::new(config_dir, Some(empty_catalog()), vec![]);
+            assert!(
+                map.resolve("file:///other-project/foo.sql").is_none(),
+                "files outside config_dir should not match"
+            );
+        }
+
+        #[test]
+        fn resolve_strict_flag() {
+            let config_dir = PathBuf::from("/project");
+            let pattern = glob::Pattern::new("*.sql").unwrap();
+            let map = SchemaMap::new(config_dir, None, vec![(pattern, empty_catalog())]);
+
+            let (_cat, strict) = map.resolve("file:///project/q.sql").unwrap();
+            assert!(strict, "matched files should have strict=true");
+        }
+    }
+
+    // ── LspHost + SchemaMap integration test ─────────────────────────────
+
+    #[test]
+    fn schema_map_selects_correct_catalog_per_document() {
+        use crate::semantic::diagnostics::Severity;
+        use std::path::PathBuf;
+
+        let mut host = LspHost::new();
+
+        // Build a catalog that knows about "users" table.
+        let dialect = crate::sqlite::dialect::any_dialect();
+        let (users_catalog, _) = Catalog::from_ddl(
+            dialect.clone(),
+            &[("CREATE TABLE users (id INTEGER, name TEXT);", None)],
+        );
+
+        // Build a SchemaMap where "matched/*.sql" gets the users catalog,
+        // unmatched files get nothing.
+        let pattern = glob::Pattern::new("matched/*.sql").unwrap();
+        let map = super::SchemaMap::new(
+            PathBuf::from("/workspace"),
+            None,
+            vec![(pattern, users_catalog)],
+        );
+        host.set_schema_map(map);
+
+        // Open a matched file referencing `users` — should get no "unknown table" error.
+        let matched_uri = "file:///workspace/matched/query.sql";
+        host.open_document(matched_uri, 1, "SELECT id FROM users;".to_string());
+        let diags = host.document_all_diagnostics(matched_uri);
+        let (_, _, diags) = diags.unwrap();
+        let schema_errors: Vec<_> = diags.iter()
+            .filter(|d| d.severity() == Severity::Error)
+            .collect();
+        assert!(
+            schema_errors.is_empty(),
+            "matched file should have no errors with correct schema, got: {schema_errors:?}"
+        );
+
+        // Open an unmatched file referencing `users` — should get a warning
+        // (not an error, because no catalog = lenient mode).
+        let unmatched_uri = "file:///workspace/other/query.sql";
+        host.open_document(unmatched_uri, 1, "SELECT id FROM users;".to_string());
+        let diags = host.document_all_diagnostics(unmatched_uri);
+        let (_, _, diags) = diags.unwrap();
+        let errors: Vec<_> = diags.iter()
+            .filter(|d| d.severity() == Severity::Error)
+            .collect();
+        assert!(
+            errors.is_empty(),
+            "unmatched file should have no errors (lenient mode), got: {errors:?}"
         );
     }
 }
