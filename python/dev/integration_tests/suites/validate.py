@@ -249,6 +249,51 @@ def _test_config_file_cli_override(ctx: SuiteContext) -> bool:
         return True
 
 
+def _test_config_file_nearest_wins(ctx: SuiteContext) -> bool:
+    """Innermost syntaqlite.toml should take precedence over outer one."""
+    with tempfile.TemporaryDirectory() as tmp:
+        # Outer config points at a schema with table "outer_t".
+        outer_schema = Path(tmp) / "outer.sql"
+        outer_schema.write_text("CREATE TABLE outer_t (id INTEGER);\n")
+        (Path(tmp) / "syntaqlite.toml").write_text('schema = ["outer.sql"]\n')
+
+        # Inner config points at a schema with table "inner_t".
+        inner = Path(tmp) / "sub"
+        inner.mkdir()
+        inner_schema = inner / "inner.sql"
+        inner_schema.write_text("CREATE TABLE inner_t (id INTEGER);\n")
+        (inner / "syntaqlite.toml").write_text('schema = ["inner.sql"]\n')
+
+        # Query in sub/ references inner_t — should pass with inner config.
+        query = inner / "query.sql"
+        query.write_text("SELECT id FROM inner_t;\n")
+        r1 = subprocess.run(
+            [str(ctx.binary), "validate", str(query)],
+            capture_output=True,
+            text=True,
+        )
+        if r1.returncode != 0:
+            _fail("config_file_nearest_wins",
+                   f"inner_t should be valid: {r1.stderr}")
+            return False
+
+        # Same query referencing outer_t — should warn (inner config doesn't
+        # know about outer_t).
+        query.write_text("SELECT id FROM outer_t;\n")
+        r2 = subprocess.run(
+            [str(ctx.binary), "validate", str(query)],
+            capture_output=True,
+            text=True,
+        )
+        if "outer_t" not in r2.stderr:
+            _fail("config_file_nearest_wins",
+                   f"expected 'outer_t' warning, got: {r2.stderr}")
+            return False
+
+        _pass("config_file_nearest_wins")
+        return True
+
+
 def _test_no_ddl_leak_across_files(ctx: SuiteContext) -> bool:
     """DDL in one query file should NOT leak to the next query file."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -282,6 +327,7 @@ def run(ctx: SuiteContext) -> int:
         _test_config_file_glob_routing,
         _test_config_file_format,
         _test_config_file_cli_override,
+        _test_config_file_nearest_wins,
     ]
     results = [t(ctx) for t in tests]
     passed = sum(results)
