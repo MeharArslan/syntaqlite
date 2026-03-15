@@ -264,8 +264,10 @@ jobs:
           merge-multiple: true
       - name: Cleanup
         run: |
-          # Remove the granular manifests
+          # Remove cargo-dist metadata and Homebrew formula — not needed in release assets
           rm -f artifacts/*-dist-manifest.json
+          rm -f artifacts/dist-manifest.json
+          rm -f artifacts/*.rb
       - name: Rename artifacts to friendly names
         run: |
           cd artifacts
