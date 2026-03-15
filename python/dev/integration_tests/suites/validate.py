@@ -126,6 +126,129 @@ def _test_no_schema_inline_ddl(ctx: SuiteContext) -> bool:
         return True
 
 
+def _test_config_file_schema(ctx: SuiteContext) -> bool:
+    """syntaqlite.toml schema should be picked up without --schema."""
+    with tempfile.TemporaryDirectory() as tmp:
+        schema = Path(tmp) / "schema.sql"
+        query = Path(tmp) / "src" / "query.sql"
+        config = Path(tmp) / "syntaqlite.toml"
+
+        schema.write_text("CREATE TABLE users (id INTEGER, name TEXT);\n")
+        query.parent.mkdir()
+        query.write_text("SELECT name FROM users;\n")
+        config.write_text('schema = ["schema.sql"]\n')
+
+        result = subprocess.run(
+            [str(ctx.binary), "validate", str(query)],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            _fail("config_file_schema",
+                   f"exit {result.returncode}: {result.stderr}")
+            return False
+        _pass("config_file_schema")
+        return True
+
+
+def _test_config_file_glob_routing(ctx: SuiteContext) -> bool:
+    """[schemas] glob routing should match files to the right schema."""
+    with tempfile.TemporaryDirectory() as tmp:
+        schema_a = Path(tmp) / "schema_a.sql"
+        schema_b = Path(tmp) / "schema_b.sql"
+        src_dir = Path(tmp) / "src"
+        test_dir = Path(tmp) / "tests"
+        src_dir.mkdir()
+        test_dir.mkdir()
+
+        schema_a.write_text("CREATE TABLE users (id INTEGER, name TEXT);\n")
+        schema_b.write_text("CREATE TABLE fixtures (id INTEGER, data TEXT);\n")
+
+        (src_dir / "query.sql").write_text("SELECT name FROM users;\n")
+        (test_dir / "query.sql").write_text("SELECT data FROM fixtures;\n")
+
+        config = Path(tmp) / "syntaqlite.toml"
+        config.write_text(
+            '[schemas]\n'
+            '"src/**/*.sql" = ["schema_a.sql"]\n'
+            '"tests/**/*.sql" = ["schema_b.sql"]\n'
+        )
+
+        # src/query.sql should validate against schema_a (users table).
+        r1 = subprocess.run(
+            [str(ctx.binary), "validate", str(src_dir / "query.sql")],
+            capture_output=True,
+            text=True,
+        )
+        if r1.returncode != 0:
+            _fail("config_file_glob_routing",
+                   f"src/query.sql failed: {r1.stderr}")
+            return False
+
+        # tests/query.sql should validate against schema_b (fixtures table).
+        r2 = subprocess.run(
+            [str(ctx.binary), "validate", str(test_dir / "query.sql")],
+            capture_output=True,
+            text=True,
+        )
+        if r2.returncode != 0:
+            _fail("config_file_glob_routing",
+                   f"tests/query.sql failed: {r2.stderr}")
+            return False
+
+        _pass("config_file_glob_routing")
+        return True
+
+
+def _test_config_file_format(ctx: SuiteContext) -> bool:
+    """[format] section should apply to fmt command."""
+    with tempfile.TemporaryDirectory() as tmp:
+        query = Path(tmp) / "query.sql"
+        config = Path(tmp) / "syntaqlite.toml"
+
+        query.write_text("select 1;\n")
+        config.write_text('[format]\nkeyword-case = "lower"\n')
+
+        result = subprocess.run(
+            [str(ctx.binary), "fmt", str(query)],
+            capture_output=True,
+            text=True,
+        )
+        if "select" not in result.stdout:
+            _fail("config_file_format",
+                   f"expected lowercase 'select', got: {result.stdout!r}")
+            return False
+        if "SELECT" in result.stdout:
+            _fail("config_file_format",
+                   f"got uppercase 'SELECT' despite keyword-case=lower: {result.stdout!r}")
+            return False
+        _pass("config_file_format")
+        return True
+
+
+def _test_config_file_cli_override(ctx: SuiteContext) -> bool:
+    """CLI flags should override config file values."""
+    with tempfile.TemporaryDirectory() as tmp:
+        query = Path(tmp) / "query.sql"
+        config = Path(tmp) / "syntaqlite.toml"
+
+        query.write_text("select 1;\n")
+        config.write_text('[format]\nkeyword-case = "lower"\n')
+
+        # --keyword-case upper should override config's "lower".
+        result = subprocess.run(
+            [str(ctx.binary), "fmt", "-k", "upper", str(query)],
+            capture_output=True,
+            text=True,
+        )
+        if "SELECT" not in result.stdout:
+            _fail("config_file_cli_override",
+                   f"expected uppercase 'SELECT' with -k upper override, got: {result.stdout!r}")
+            return False
+        _pass("config_file_cli_override")
+        return True
+
+
 def _test_no_ddl_leak_across_files(ctx: SuiteContext) -> bool:
     """DDL in one query file should NOT leak to the next query file."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -155,6 +278,10 @@ def run(ctx: SuiteContext) -> int:
         _test_schema_glob,
         _test_no_schema_inline_ddl,
         _test_no_ddl_leak_across_files,
+        _test_config_file_schema,
+        _test_config_file_glob_routing,
+        _test_config_file_format,
+        _test_config_file_cli_override,
     ]
     results = [t(ctx) for t in tests]
     passed = sum(results)
