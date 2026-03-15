@@ -65,7 +65,14 @@ jobs:
       - name: Download binary from release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download "${{ steps.tag.outputs.tag }}" --pattern "${{ matrix.archive }}" --dir tmp/
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          # Use gh api to find the release (including drafts) and download the asset
+          ASSET_URL=$(gh api "repos/${{ github.repository }}/releases" --paginate -q \
+            ".[] | select(.tag_name == \"$TAG\") | .assets[] | select(.name == \"${{ matrix.archive }}\") | .url")
+          mkdir -p tmp/
+          curl -fSL -H "Authorization: token $GH_TOKEN" -H "Accept: application/octet-stream" \
+            "$ASSET_URL" -o "tmp/${{ matrix.archive }}"
 
       - name: Extract binary
         run: |
