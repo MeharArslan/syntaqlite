@@ -25,3 +25,5 @@ jobs:
           cargo publish -p syntaqlite-common --no-verify
           cargo publish -p syntaqlite-syntax --no-verify
           cargo publish -p syntaqlite --no-verify
+          cargo publish -p syntaqlite-buildtools --no-verify
+          cargo publish -p syntaqlite-cli --no-verify

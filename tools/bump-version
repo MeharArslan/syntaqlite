@@ -41,6 +41,8 @@ VERSION_REF_FILES = [
 # Cargo.toml dependency version refs (e.g. version = "X.Y.Z", path = ...).
 CARGO_DEP_FILES = [
     "syntaqlite/Cargo.toml",
+    "syntaqlite-cli/Cargo.toml",
+    "syntaqlite-buildtools/Cargo.toml",
 ]
 
 
