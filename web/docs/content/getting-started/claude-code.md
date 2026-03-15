@@ -9,7 +9,7 @@ weight = 2
 ## Install the plugin
 
 ```bash
-claude plugin install syntaqlite
+claude plugin marketplace add LalitMaganti/claude-code-plugin
 ```
 
 The plugin starts the syntaqlite language server for `.sql` files. When Claude
