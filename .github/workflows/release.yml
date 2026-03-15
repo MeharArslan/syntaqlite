@@ -266,17 +266,21 @@ jobs:
         run: |
           # Remove the granular manifests
           rm -f artifacts/*-dist-manifest.json
-      - name: Create GitHub Release
+      - name: Upload artifacts to GitHub Release
         env:
-          PRERELEASE_FLAG: "${{ fromJson(steps.host.outputs.manifest).announcement_is_prerelease && '--prerelease' || '' }}"
-          ANNOUNCEMENT_TITLE: "${{ fromJson(steps.host.outputs.manifest).announcement_title }}"
-          ANNOUNCEMENT_BODY: "${{ fromJson(steps.host.outputs.manifest).announcement_github_body }}"
+          RELEASE_TAG: "${{ needs.plan.outputs.tag }}"
           RELEASE_COMMIT: "${{ github.sha }}"
         run: |
-          # Write and read notes from a file to avoid quoting breaking things
-          echo "$ANNOUNCEMENT_BODY" > $RUNNER_TEMP/notes.txt
-
-          gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+          # If the release was already created manually, just upload artifacts.
+          # Otherwise create a draft release so artifacts have somewhere to go.
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG exists — uploading artifacts"
+            gh release upload "$RELEASE_TAG" artifacts/* --clobber
+          else
+            echo "Release $RELEASE_TAG not found — creating draft"
+            gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" \
+              --draft --title "$RELEASE_TAG" --generate-notes artifacts/*
+          fi
 
   announce:
     needs:
