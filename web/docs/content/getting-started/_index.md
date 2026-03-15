@@ -14,23 +14,21 @@ Install the CLI (or [try it in the browser](https://playground.syntaqlite.com) f
 <div class="tabs" data-tab-group="install">
   <div class="tab-buttons">
     <button class="active" data-tab="brew" onclick="switchTab('install','brew')">Homebrew</button>
-    <button data-tab="shell" onclick="switchTab('install','shell')">Shell</button>
-    <button data-tab="windows" onclick="switchTab('install','windows')">Windows</button>
+    <button data-tab="pip" onclick="switchTab('install','pip')">pip</button>
     <button data-tab="cargo" onclick="switchTab('install','cargo')">Cargo</button>
+    <button data-tab="binary" onclick="switchTab('install','binary')">Binary</button>
   </div>
   <div class="tab-panel active" data-tab="brew">
     <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
   </div>
-  <div class="tab-panel" data-tab="shell">
-    <pre><code class="language-bash">curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.sh \
-  | sh</code></pre>
-  </div>
-  <div class="tab-panel" data-tab="windows">
-    <pre><code class="language-powershell">powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.ps1 | iex"</code></pre>
+  <div class="tab-panel" data-tab="pip">
+    <pre><code class="language-bash">pip install syntaqlite</code></pre>
   </div>
   <div class="tab-panel" data-tab="cargo">
     <pre><code class="language-bash">cargo install syntaqlite-cli</code></pre>
+  </div>
+  <div class="tab-panel" data-tab="binary">
+    <pre><code class="language-bash">curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"</code></pre>
   </div>
 </div>
 

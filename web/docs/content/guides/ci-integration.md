@@ -30,10 +30,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install syntaqlite
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.sh \
-            | sh
+        run: pip install syntaqlite
 
       - name: Check formatting
         run: syntaqlite fmt --check "**/*.sql"

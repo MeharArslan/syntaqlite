@@ -8,24 +8,16 @@ weight = 3
 
 ## Install
 
-**macOS / Linux (Homebrew):**
+**Homebrew (macOS):**
 
 ```bash
 brew install LalitMaganti/tap/syntaqlite
 ```
 
-**macOS / Linux (shell installer):**
+**pip (all platforms):**
 
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.sh \
-  | sh
-```
-
-**Windows:**
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-cli-installer.ps1 | iex"
+pip install syntaqlite
 ```
 
 **Cargo:**
@@ -33,6 +25,14 @@ powershell -ExecutionPolicy ByPass -c "irm https://github.com/LalitMaganti/synta
 ```bash
 cargo install syntaqlite-cli
 ```
+
+**Download binary (all platforms):**
+
+```bash
+curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
+```
+
+Downloads the binary to `~/.local/share/syntaqlite/` on first run, then executes it. Subsequent runs use the cached binary.
 
 Verify it works:
 
