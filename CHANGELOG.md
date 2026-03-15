@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.11
+## 0.0.12
 
 Initial release of syntaqlite — a fast, accurate SQL toolkit for SQLite, built from SQLite's own grammar.
 

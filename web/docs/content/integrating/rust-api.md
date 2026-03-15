@@ -10,7 +10,7 @@ weight = 1
 
 ```toml
 [dependencies]
-syntaqlite = { version = "0.0.11", features = ["fmt"] }
+syntaqlite = { version = "0.0.12", features = ["fmt"] }
 ```
 
 ## Format a query

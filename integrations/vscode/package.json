@@ -2,7 +2,7 @@
   "name": "syntaqlite",
   "displayName": "syntaqlite",
   "description": "SQL language support powered by syntaqlite — diagnostics, formatting, completions, and semantic highlighting",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "publisher": "syntaqlite",
   "license": "MIT",
   "icon": "icon.png",
