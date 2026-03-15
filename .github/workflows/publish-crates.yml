@@ -1,11 +1,18 @@
 # Publish Rust crates to crates.io on release tags.
 # Crates are published in dependency order.
+#
+# Uses crates.io trusted publishing (OIDC) — no API token needed.
+# Configure each crate at https://crates.io/crates/<name>/settings
+# with: Owner: LalitMaganti, Repo: syntaqlite, Workflow: publish-crates.yml
 name: Publish Crates
 
 on:
   push:
     tags:
       - '**[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  id-token: write
 
 jobs:
   publish:
@@ -24,9 +31,13 @@ jobs:
       - name: Install build dependencies
         run: python3 tools/install-build-deps
 
+      - name: Get OIDC token
+        uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
       - name: Publish crates (dependency order)
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: |
           cargo publish -p syntaqlite-common --no-verify
           cargo publish -p syntaqlite-syntax --no-verify
