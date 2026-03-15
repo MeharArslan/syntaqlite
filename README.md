@@ -163,10 +163,10 @@ brew install LalitMaganti/tap/syntaqlite
 pip install syntaqlite
 ```
 
-**Download binary (all platforms, no package manager)**
+**Download and run (all platforms, no package manager)**
 
 ```bash
-curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - --install
+curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
 ```
 
 **Cargo**

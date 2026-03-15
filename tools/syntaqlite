@@ -6,33 +6,29 @@
 
 Downloads the binary to ~/.local/share/syntaqlite/ (Unix) or
 %LOCALAPPDATA%\\syntaqlite\\ (Windows) on first run, then executes it.
-Subsequent runs use the cached binary.
+Subsequent runs use the cached binary. Auto-checks for updates every 7 days.
 
 Usage:
-    # Download and run directly:
     curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
 
-    # Install to ~/.local/bin (or %LOCALAPPDATA%\\syntaqlite on Windows):
-    curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - --install
-
-    # Force re-download (cache invalidation):
-    curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - --update
+For permanent installation, use: pip install syntaqlite
 """
 
 import io
 import json
 import os
 import platform
-import shutil
 import stat
 import subprocess
 import sys
 import tarfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
 
 REPO = "LalitMaganti/syntaqlite"
+UPDATE_CHECK_INTERVAL = 7 * 24 * 60 * 60  # 7 days
 
 TARGETS = {
     ("Darwin", "arm64"): "aarch64-apple-darwin",
@@ -51,12 +47,6 @@ def _cache_dir() -> Path:
     return base / "syntaqlite"
 
 
-def _install_dir() -> Path:
-    if platform.system() == "Windows":
-        return _cache_dir()
-    return Path.home() / ".local" / "bin"
-
-
 def _binary_name() -> str:
     return "syntaqlite.exe" if platform.system() == "Windows" else "syntaqlite"
 
@@ -69,23 +59,10 @@ def _detect_target() -> str:
 
 
 def _latest_version() -> str:
-    """Fetch the latest release tag from GitHub."""
     url = f"https://api.github.com/repos/{REPO}/releases/latest"
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
     data = json.loads(urllib.request.urlopen(req).read())
     return data["tag_name"]
-
-
-def _cached_version(cache_dir: Path) -> str | None:
-    version_file = cache_dir / "version"
-    if version_file.exists():
-        return version_file.read_text().strip()
-    return None
-
-
-def _save_version(cache_dir: Path, version: str) -> None:
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    (cache_dir / "version").write_text(version)
 
 
 def _download(target: str, dest: Path) -> None:
@@ -118,48 +95,65 @@ def _download(target: str, dest: Path) -> None:
     sys.exit("Binary not found in archive")
 
 
-def _ensure_binary(force: bool = False) -> Path:
-    """Ensure the binary is downloaded and up to date. Returns path."""
+def _needs_update_check(cache: Path) -> bool:
+    stamp = cache / ".last-check"
+    if not stamp.exists():
+        return True
+    return (time.time() - stamp.stat().st_mtime) > UPDATE_CHECK_INTERVAL
+
+
+def _touch_stamp(cache: Path) -> None:
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / ".last-check").write_text("")
+
+
+def _read_version(cache: Path) -> str | None:
+    f = cache / "version"
+    return f.read_text().strip() if f.exists() else None
+
+
+def _write_version(cache: Path, version: str) -> None:
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "version").write_text(version)
+
+
+def _ensure_binary() -> Path:
     cache = _cache_dir()
     binary = cache / _binary_name()
 
-    if force or not binary.exists():
-        latest = _latest_version()
+    if not binary.exists():
+        # First download.
+        version = _latest_version()
         _download(_detect_target(), binary)
-        _save_version(cache, latest)
-        print(f"syntaqlite {latest} cached at {binary}", file=sys.stderr)
+        _write_version(cache, version)
+        _touch_stamp(cache)
+        print(f"syntaqlite {version} cached at {binary}", file=sys.stderr)
+        return binary
+
+    # Binary exists — check for updates if stamp is stale.
+    if _needs_update_check(cache):
+        try:
+            latest = _latest_version()
+            cached = _read_version(cache)
+            if cached != latest:
+                print(f"Updating syntaqlite {cached} → {latest}...", file=sys.stderr)
+                _download(_detect_target(), binary)
+                _write_version(cache, latest)
+            _touch_stamp(cache)
+        except Exception:
+            # Network failure during update check — use cached binary.
+            pass
+
     return binary
 
 
 def main():
-    # Parse our own flags before passing the rest to the binary.
-    args = sys.argv[1:]
-
-    if "--update" in args:
-        args.remove("--update")
-        binary = _ensure_binary(force=True)
-        if not args:
-            return
-
-    elif "--install" in args:
-        args.remove("--install")
-        binary = _ensure_binary()
-        dest_dir = _install_dir()
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / _binary_name()
-        shutil.copy2(str(binary), str(dest))
-        print(f"Installed to {dest}", file=sys.stderr)
-        if str(dest_dir) not in os.environ.get("PATH", ""):
-            print(f"Note: add {dest_dir} to your PATH", file=sys.stderr)
-        return
-
-    else:
-        binary = _ensure_binary()
+    binary = _ensure_binary()
 
     if platform.system() == "Windows":
-        sys.exit(subprocess.call([str(binary)] + args))
+        sys.exit(subprocess.call([str(binary)] + sys.argv[1:]))
     else:
-        os.execvp(str(binary), [str(binary)] + args)
+        os.execvp(str(binary), [str(binary)] + sys.argv[1:])
 
 
 if __name__ == "__main__":
