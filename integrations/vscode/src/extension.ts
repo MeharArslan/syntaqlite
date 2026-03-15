@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { minimatch } from "minimatch";
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -10,96 +9,26 @@ import {
 } from "vscode-languageclient/node";
 
 let client: LanguageClient | undefined;
-let lastSentSchemaPath: string | undefined;
 let schemaStatusItem: vscode.StatusBarItem | undefined;
 
-interface SchemaEntry {
-  schema: string;
-  files: string[];
-}
-
 /**
- * Resolve which schema path applies to a given document URI.
- *
- * Checks `syntaqlite.schemas` entries first (glob matching against workspace-
- * relative path), then falls back to `syntaqlite.schemaPath`.
+ * Update the status bar item to show syntaqlite config status.
  */
-function resolveSchemaForUri(uri: vscode.Uri): string {
-  const config = vscode.workspace.getConfiguration("syntaqlite");
-  const schemas = config.get<SchemaEntry[]>("schemas", []);
-
-  if (schemas.length > 0) {
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-    const relativePath = workspaceFolder
-      ? path.relative(workspaceFolder.uri.fsPath, uri.fsPath)
-      : uri.fsPath;
-
-    for (const entry of schemas) {
-      for (const pattern of entry.files) {
-        if (minimatch(relativePath, pattern)) {
-          // Resolve schema path relative to workspace root if not absolute.
-          if (path.isAbsolute(entry.schema)) {
-            return entry.schema;
-          }
-          if (workspaceFolder) {
-            return path.join(workspaceFolder.uri.fsPath, entry.schema);
-          }
-          return entry.schema;
-        }
-      }
-    }
-  }
-
-  const schemaPath = config.get<string>("schemaPath", "");
-  if (schemaPath && !path.isAbsolute(schemaPath)) {
-    const workspaceFolder = uri
-      ? vscode.workspace.getWorkspaceFolder(uri)
-      : vscode.workspace.workspaceFolders?.[0];
-    if (workspaceFolder) {
-      return path.join(workspaceFolder.uri.fsPath, schemaPath);
-    }
-  }
-  return schemaPath;
-}
-
-/**
- * Send a didChangeConfiguration notification if the resolved schema for the
- * given URI differs from the last one sent.
- */
-function sendSchemaIfChanged(
-  uri: vscode.Uri,
-  outputChannel: vscode.OutputChannel,
-): void {
-  if (!client) return;
-
-  const resolved = resolveSchemaForUri(uri);
-  if (resolved === lastSentSchemaPath) return;
-
-  lastSentSchemaPath = resolved;
-  const exists = resolved ? fs.existsSync(resolved) : false;
-  void client.sendNotification("workspace/didChangeConfiguration", {
-    settings: { schemaPath: resolved },
-  });
-  updateSchemaStatusItem(resolved);
-  outputChannel.appendLine(
-    `Schema path changed: ${resolved || "(cleared)"} (exists: ${exists})`,
-  );
-}
-
-/**
- * Update the status bar item with the current schema path.
- */
-function updateSchemaStatusItem(schemaPath: string): void {
+function updateStatusItem(workspaceRoot: string | undefined): void {
   if (!schemaStatusItem) return;
-  if (schemaPath) {
-    schemaStatusItem.text = `$(database) ${path.basename(schemaPath)}`;
-    schemaStatusItem.tooltip = `syntaqlite schema: ${schemaPath} (click to open)`;
-    schemaStatusItem.show();
-  } else {
-    schemaStatusItem.text = "$(database) No schema";
-    schemaStatusItem.tooltip = "syntaqlite: No schema configured (click to configure)";
-    schemaStatusItem.show();
+  if (workspaceRoot) {
+    const configPath = path.join(workspaceRoot, "syntaqlite.toml");
+    if (fs.existsSync(configPath)) {
+      schemaStatusItem.text = "$(database) syntaqlite.toml";
+      schemaStatusItem.tooltip = `syntaqlite config: ${configPath} (click to open)`;
+      schemaStatusItem.show();
+      return;
+    }
   }
+  schemaStatusItem.text = "$(database) No config";
+  schemaStatusItem.tooltip =
+    "syntaqlite: No syntaqlite.toml found. Create one to configure schemas and formatting.";
+  schemaStatusItem.show();
 }
 
 /**
@@ -167,23 +96,6 @@ export async function activate(
     args: ["lsp"],
   };
 
-  // Resolve initial schema from the active editor if available, else fall back
-  // to the simple schemaPath setting.
-  const activeUri = vscode.window.activeTextEditor?.document.uri;
-  let initialSchemaPath: string;
-  if (activeUri) {
-    initialSchemaPath = resolveSchemaForUri(activeUri);
-  } else {
-    let sp = vscode.workspace.getConfiguration("syntaqlite").get<string>("schemaPath", "");
-    if (sp && !path.isAbsolute(sp)) {
-      const wf = vscode.workspace.workspaceFolders?.[0];
-      if (wf) { sp = path.join(wf.uri.fsPath, sp); }
-    }
-    initialSchemaPath = sp;
-  }
-  lastSentSchemaPath = initialSchemaPath;
-  outputChannel.appendLine(`Initial schema path: ${initialSchemaPath || "(none)"}`);
-
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { scheme: "file", language: "sql" },
@@ -192,15 +104,6 @@ export async function activate(
       { scheme: "untitled", language: "sqlite" },
     ],
     outputChannel,
-    initializationOptions: {
-      ...(initialSchemaPath ? { schemaPath: initialSchemaPath } : {}),
-    },
-    middleware: {
-      didOpen: (document, next) => {
-        sendSchemaIfChanged(document.uri, outputChannel);
-        return next(document);
-      },
-    },
   };
 
   client = new LanguageClient(
@@ -210,33 +113,34 @@ export async function activate(
     clientOptions,
   );
 
-  // Status bar item showing active schema
+  // Status bar item showing config file status
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   schemaStatusItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
     100,
   );
-  schemaStatusItem.command = "syntaqlite.openSchema";
-  updateSchemaStatusItem(initialSchemaPath);
+  schemaStatusItem.command = "syntaqlite.openConfig";
+  updateStatusItem(workspaceRoot);
   context.subscriptions.push(schemaStatusItem);
 
-  // Register open schema command
+  // Register open config command
   context.subscriptions.push(
-    vscode.commands.registerCommand("syntaqlite.openSchema", async () => {
-      const editor = vscode.window.activeTextEditor;
-      const resolved = editor
-        ? resolveSchemaForUri(editor.document.uri)
-        : vscode.workspace.getConfiguration("syntaqlite").get<string>("schemaPath", "");
-      if (!resolved) {
+    vscode.commands.registerCommand("syntaqlite.openConfig", async () => {
+      const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!wsRoot) {
         void vscode.window.showInformationMessage(
-          "No schema configured. Set syntaqlite.schemaPath or syntaqlite.schemas in settings.",
+          "No workspace folder open.",
         );
         return;
       }
-      const uri = vscode.Uri.file(resolved);
-      try {
+      const configPath = path.join(wsRoot, "syntaqlite.toml");
+      if (fs.existsSync(configPath)) {
+        const uri = vscode.Uri.file(configPath);
         await vscode.window.showTextDocument(uri);
-      } catch {
-        void vscode.window.showErrorMessage(`Could not open schema file: ${resolved}`);
+      } else {
+        void vscode.window.showInformationMessage(
+          "No syntaqlite.toml found. Create one in your project root to configure schemas and formatting.",
+        );
       }
     }),
   );
@@ -264,46 +168,13 @@ export async function activate(
     }),
   );
 
-  // When the active editor changes, resolve and send the appropriate schema.
+  // Show/hide status bar based on active editor language
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (editor && (editor.document.languageId === "sql" || editor.document.languageId === "sqlite")) {
-        sendSchemaIfChanged(editor.document.uri, outputChannel);
-        updateSchemaStatusItem(resolveSchemaForUri(editor.document.uri));
+        updateStatusItem(workspaceRoot);
       } else {
         schemaStatusItem?.hide();
-      }
-    }),
-  );
-
-  // Watch for schemaPath/schemas configuration changes and notify the server.
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration((e) => {
-      if (
-        (e.affectsConfiguration("syntaqlite.schemaPath") ||
-          e.affectsConfiguration("syntaqlite.schemas")) &&
-        client
-      ) {
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-          // Force re-resolution by clearing last-sent value.
-          lastSentSchemaPath = undefined;
-          sendSchemaIfChanged(editor.document.uri, outputChannel);
-        } else {
-          // No active editor — just send the fallback schemaPath.
-          const updated = vscode.workspace.getConfiguration("syntaqlite");
-          const newSchemaPath = updated.get<string>("schemaPath") || "";
-          if (newSchemaPath !== lastSentSchemaPath) {
-            lastSentSchemaPath = newSchemaPath;
-            void client.sendNotification("workspace/didChangeConfiguration", {
-              settings: { schemaPath: newSchemaPath },
-            });
-            updateSchemaStatusItem(newSchemaPath);
-            outputChannel.appendLine(
-              `Schema path changed: ${newSchemaPath || "(cleared)"}`,
-            );
-          }
-        }
       }
     }),
   );

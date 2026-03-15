@@ -173,8 +173,9 @@ impl LspServer {
             eprintln!("syntaqlite-lsp: using project config schema");
         }
 
-        // Load schema from initializationOptions.schemaPath if no config file schema
-        // (legacy path for VS Code extension — will be removed in Phase 3).
+        // Legacy fallback: load schema from initializationOptions.schemaPath
+        // if no project config schema was provided. This supports older VS Code
+        // extension versions that still send schemaPath.
         if !has_config_schema {
             Self::load_schema_from_options(&init_params, &mut host);
         }
@@ -682,9 +683,8 @@ impl LspServer {
                 DiagnosticPublisher::publish(connection, host, uri)?;
             }
             DidChangeConfiguration::METHOD => {
-                let params: lsp_types::DidChangeConfigurationParams =
-                    serde_json::from_value(notif.params)?;
-                Self::load_schema_from_settings(&params.settings, host);
+                // Schema and format config are now read from syntaqlite.toml by the CLI.
+                // This handler is kept for protocol compliance but is a no-op.
             }
             DidCloseTextDocument::METHOD => {
                 let params: lsp_types::DidCloseTextDocumentParams =
