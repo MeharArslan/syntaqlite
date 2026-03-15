@@ -798,48 +798,48 @@ fn build_check_config(
 
     // When a schema is provided, default schema checks to deny (errors).
     if has_schema {
-        checks.set("schema", CheckLevel::Deny).unwrap();
+        checks = checks.with_schema(CheckLevel::Deny);
     }
 
     // Apply config file options.
     if let Some(opts) = file_opts {
         // Group shorthands first (so per-category overrides them).
         if let Some(ref v) = opts.all {
-            checks.set("all", CheckLevel::parse(v)?)?;
+            checks = checks.with_all(CheckLevel::parse(v)?);
         }
         if let Some(ref v) = opts.schema {
-            checks.set("schema", CheckLevel::parse(v)?)?;
+            checks = checks.with_schema(CheckLevel::parse(v)?);
         }
         // Per-category overrides.
         if let Some(ref v) = opts.parse_errors {
-            checks.parse_errors = CheckLevel::parse(v)?;
+            checks = checks.with_parse_errors(CheckLevel::parse(v)?);
         }
         if let Some(ref v) = opts.unknown_table {
-            checks.unknown_table = CheckLevel::parse(v)?;
+            checks = checks.with_unknown_table(CheckLevel::parse(v)?);
         }
         if let Some(ref v) = opts.unknown_column {
-            checks.unknown_column = CheckLevel::parse(v)?;
+            checks = checks.with_unknown_column(CheckLevel::parse(v)?);
         }
         if let Some(ref v) = opts.unknown_function {
-            checks.unknown_function = CheckLevel::parse(v)?;
+            checks = checks.with_unknown_function(CheckLevel::parse(v)?);
         }
         if let Some(ref v) = opts.function_arity {
-            checks.function_arity = CheckLevel::parse(v)?;
+            checks = checks.with_function_arity(CheckLevel::parse(v)?);
         }
         if let Some(ref v) = opts.cte_columns {
-            checks.cte_columns = CheckLevel::parse(v)?;
+            checks = checks.with_cte_columns(CheckLevel::parse(v)?);
         }
     }
 
     // Apply CLI flags (last wins per category).
     for name in cli_allow {
-        checks.set(name, CheckLevel::Allow)?;
+        checks = checks.set_by_name(name, CheckLevel::Allow)?;
     }
     for name in cli_warn {
-        checks.set(name, CheckLevel::Warn)?;
+        checks = checks.set_by_name(name, CheckLevel::Warn)?;
     }
     for name in cli_deny {
-        checks.set(name, CheckLevel::Deny)?;
+        checks = checks.set_by_name(name, CheckLevel::Deny)?;
     }
 
     Ok(checks)

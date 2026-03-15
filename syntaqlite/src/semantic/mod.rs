@@ -148,18 +148,12 @@ impl CheckLevel {
 /// `unknown-column`, `unknown-function`, and `function-arity`.
 #[derive(Clone, Copy, Debug)]
 pub struct CheckConfig {
-    /// Syntax errors from the parser.
-    pub parse_errors: CheckLevel,
-    /// Unresolved table/view references.
-    pub unknown_table: CheckLevel,
-    /// Unresolved column references.
-    pub unknown_column: CheckLevel,
-    /// Unresolved function names.
-    pub unknown_function: CheckLevel,
-    /// Wrong number of function arguments.
-    pub function_arity: CheckLevel,
-    /// CTE column count mismatches.
-    pub cte_columns: CheckLevel,
+    pub(crate) parse_errors: CheckLevel,
+    pub(crate) unknown_table: CheckLevel,
+    pub(crate) unknown_column: CheckLevel,
+    pub(crate) unknown_function: CheckLevel,
+    pub(crate) function_arity: CheckLevel,
+    pub(crate) cte_columns: CheckLevel,
 }
 
 impl Default for CheckConfig {
@@ -176,6 +170,77 @@ impl Default for CheckConfig {
 }
 
 impl CheckConfig {
+    // ── Getters ──────────────────────────────────────────────────────────
+
+    /// Level for parse errors.
+    pub fn parse_errors(&self) -> CheckLevel { self.parse_errors }
+    /// Level for unknown table references.
+    pub fn unknown_table(&self) -> CheckLevel { self.unknown_table }
+    /// Level for unknown column references.
+    pub fn unknown_column(&self) -> CheckLevel { self.unknown_column }
+    /// Level for unknown function references.
+    pub fn unknown_function(&self) -> CheckLevel { self.unknown_function }
+    /// Level for function arity mismatches.
+    pub fn function_arity(&self) -> CheckLevel { self.function_arity }
+    /// Level for CTE column count mismatches.
+    pub fn cte_columns(&self) -> CheckLevel { self.cte_columns }
+
+    // ── Builders ─────────────────────────────────────────────────────────
+
+    /// Set the level for parse errors.
+    #[must_use]
+    pub fn with_parse_errors(mut self, level: CheckLevel) -> Self {
+        self.parse_errors = level; self
+    }
+    /// Set the level for unknown table references.
+    #[must_use]
+    pub fn with_unknown_table(mut self, level: CheckLevel) -> Self {
+        self.unknown_table = level; self
+    }
+    /// Set the level for unknown column references.
+    #[must_use]
+    pub fn with_unknown_column(mut self, level: CheckLevel) -> Self {
+        self.unknown_column = level; self
+    }
+    /// Set the level for unknown function references.
+    #[must_use]
+    pub fn with_unknown_function(mut self, level: CheckLevel) -> Self {
+        self.unknown_function = level; self
+    }
+    /// Set the level for function arity mismatches.
+    #[must_use]
+    pub fn with_function_arity(mut self, level: CheckLevel) -> Self {
+        self.function_arity = level; self
+    }
+    /// Set the level for CTE column count mismatches.
+    #[must_use]
+    pub fn with_cte_columns(mut self, level: CheckLevel) -> Self {
+        self.cte_columns = level; self
+    }
+    /// Set all schema checks (`unknown-table`, `unknown-column`,
+    /// `unknown-function`, `function-arity`).
+    #[must_use]
+    pub fn with_schema(mut self, level: CheckLevel) -> Self {
+        self.unknown_table = level;
+        self.unknown_column = level;
+        self.unknown_function = level;
+        self.function_arity = level;
+        self
+    }
+    /// Set all checks.
+    #[must_use]
+    pub fn with_all(mut self, level: CheckLevel) -> Self {
+        self.parse_errors = level;
+        self.unknown_table = level;
+        self.unknown_column = level;
+        self.unknown_function = level;
+        self.function_arity = level;
+        self.cte_columns = level;
+        self
+    }
+
+    // ── Name-based dispatch (for CLI/config file) ────────────────────────
+
     /// All check category names (for CLI help and error messages).
     pub const CATEGORY_NAMES: &[&str] = &[
         "parse-errors",
@@ -189,8 +254,9 @@ impl CheckConfig {
     /// Group names that expand to multiple categories.
     pub const GROUP_NAMES: &[&str] = &["schema", "all"];
 
-    /// Set a category by name to a level. Returns `Err` if the name is unknown.
-    pub fn set(&mut self, name: &str, level: CheckLevel) -> Result<(), String> {
+    /// Set a category by name. For CLI and config file dispatch.
+    /// Returns `Err` if the name is unknown.
+    pub fn set_by_name(mut self, name: &str, level: CheckLevel) -> Result<Self, String> {
         match name {
             "parse-errors" => self.parse_errors = level,
             "unknown-table" => self.unknown_table = level,
@@ -198,23 +264,11 @@ impl CheckConfig {
             "unknown-function" => self.unknown_function = level,
             "function-arity" => self.function_arity = level,
             "cte-columns" => self.cte_columns = level,
-            "schema" => {
-                self.unknown_table = level;
-                self.unknown_column = level;
-                self.unknown_function = level;
-                self.function_arity = level;
-            }
-            "all" => {
-                self.parse_errors = level;
-                self.unknown_table = level;
-                self.unknown_column = level;
-                self.unknown_function = level;
-                self.function_arity = level;
-                self.cte_columns = level;
-            }
+            "schema" => self = self.with_schema(level),
+            "all" => self = self.with_all(level),
             _ => return Err(format!("unknown check category: {name}")),
         }
-        Ok(())
+        Ok(self)
     }
 }
 
@@ -289,7 +343,7 @@ impl ValidationConfig {
     /// [`CheckLevel::Deny`].
     #[must_use]
     pub fn with_strict_schema(mut self) -> Self {
-        self.checks.set("schema", CheckLevel::Deny).unwrap();
+        self.checks = self.checks.with_schema(CheckLevel::Deny);
         self
     }
 }
@@ -316,59 +370,64 @@ mod check_config_tests {
     #[test]
     fn default_levels() {
         let c = CheckConfig::default();
-        assert_eq!(c.parse_errors, CheckLevel::Deny);
-        assert_eq!(c.unknown_table, CheckLevel::Warn);
-        assert_eq!(c.unknown_column, CheckLevel::Warn);
-        assert_eq!(c.unknown_function, CheckLevel::Warn);
-        assert_eq!(c.function_arity, CheckLevel::Warn);
-        assert_eq!(c.cte_columns, CheckLevel::Deny);
+        assert_eq!(c.parse_errors(), CheckLevel::Deny);
+        assert_eq!(c.unknown_table(), CheckLevel::Warn);
+        assert_eq!(c.unknown_column(), CheckLevel::Warn);
+        assert_eq!(c.unknown_function(), CheckLevel::Warn);
+        assert_eq!(c.function_arity(), CheckLevel::Warn);
+        assert_eq!(c.cte_columns(), CheckLevel::Deny);
     }
 
     #[test]
-    fn set_individual_category() {
-        let mut c = CheckConfig::default();
-        c.set("unknown-table", CheckLevel::Deny).unwrap();
-        assert_eq!(c.unknown_table, CheckLevel::Deny);
-        assert_eq!(c.unknown_column, CheckLevel::Warn); // unchanged
+    fn builder_individual() {
+        let c = CheckConfig::default().with_unknown_table(CheckLevel::Deny);
+        assert_eq!(c.unknown_table(), CheckLevel::Deny);
+        assert_eq!(c.unknown_column(), CheckLevel::Warn); // unchanged
     }
 
     #[test]
-    fn set_schema_group() {
-        let mut c = CheckConfig::default();
-        c.set("schema", CheckLevel::Allow).unwrap();
-        assert_eq!(c.unknown_table, CheckLevel::Allow);
-        assert_eq!(c.unknown_column, CheckLevel::Allow);
-        assert_eq!(c.unknown_function, CheckLevel::Allow);
-        assert_eq!(c.function_arity, CheckLevel::Allow);
+    fn builder_schema_group() {
+        let c = CheckConfig::default().with_schema(CheckLevel::Allow);
+        assert_eq!(c.unknown_table(), CheckLevel::Allow);
+        assert_eq!(c.unknown_column(), CheckLevel::Allow);
+        assert_eq!(c.unknown_function(), CheckLevel::Allow);
+        assert_eq!(c.function_arity(), CheckLevel::Allow);
         // Non-schema checks unchanged.
-        assert_eq!(c.parse_errors, CheckLevel::Deny);
-        assert_eq!(c.cte_columns, CheckLevel::Deny);
+        assert_eq!(c.parse_errors(), CheckLevel::Deny);
+        assert_eq!(c.cte_columns(), CheckLevel::Deny);
     }
 
     #[test]
-    fn set_all_group() {
-        let mut c = CheckConfig::default();
-        c.set("all", CheckLevel::Allow).unwrap();
-        assert_eq!(c.parse_errors, CheckLevel::Allow);
-        assert_eq!(c.unknown_table, CheckLevel::Allow);
-        assert_eq!(c.cte_columns, CheckLevel::Allow);
+    fn builder_all_group() {
+        let c = CheckConfig::default().with_all(CheckLevel::Allow);
+        assert_eq!(c.parse_errors(), CheckLevel::Allow);
+        assert_eq!(c.unknown_table(), CheckLevel::Allow);
+        assert_eq!(c.cte_columns(), CheckLevel::Allow);
     }
 
     #[test]
-    fn set_unknown_category_errors() {
-        let mut c = CheckConfig::default();
-        assert!(c.set("nonexistent", CheckLevel::Warn).is_err());
+    fn set_by_name_works() {
+        let c = CheckConfig::default()
+            .set_by_name("unknown-table", CheckLevel::Deny).unwrap();
+        assert_eq!(c.unknown_table(), CheckLevel::Deny);
+    }
+
+    #[test]
+    fn set_by_name_unknown_category_errors() {
+        let result = CheckConfig::default()
+            .set_by_name("nonexistent", CheckLevel::Warn);
+        assert!(result.is_err());
     }
 
     #[test]
     fn with_strict_schema_sets_deny() {
         let config = ValidationConfig::default().with_strict_schema();
-        assert_eq!(config.checks().unknown_table, CheckLevel::Deny);
-        assert_eq!(config.checks().unknown_column, CheckLevel::Deny);
-        assert_eq!(config.checks().unknown_function, CheckLevel::Deny);
-        assert_eq!(config.checks().function_arity, CheckLevel::Deny);
+        assert_eq!(config.checks().unknown_table(), CheckLevel::Deny);
+        assert_eq!(config.checks().unknown_column(), CheckLevel::Deny);
+        assert_eq!(config.checks().unknown_function(), CheckLevel::Deny);
+        assert_eq!(config.checks().function_arity(), CheckLevel::Deny);
         // Non-schema checks unchanged.
-        assert_eq!(config.checks().cte_columns, CheckLevel::Deny);
-        assert_eq!(config.checks().parse_errors, CheckLevel::Deny);
+        assert_eq!(config.checks().cte_columns(), CheckLevel::Deny);
+        assert_eq!(config.checks().parse_errors(), CheckLevel::Deny);
     }
 }
