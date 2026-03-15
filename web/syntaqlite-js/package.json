@@ -1,6 +1,15 @@
 {
   "name": "@syntaqlite/js",
-  "version": "0.0.1",
+  "version": "0.0.19",
+  "description": "SQLite SQL parser, formatter, and validator for the browser — powered by WebAssembly",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LalitMaganti/syntaqlite",
+    "directory": "web/syntaqlite-js"
+  },
+  "homepage": "https://syntaqlite.com",
+  "keywords": ["sqlite", "sql", "parser", "formatter", "wasm", "webassembly"],
   "type": "module",
   "files": ["dist", "wasm"],
   "exports": {
