@@ -4,6 +4,13 @@
 # Waits for the Release workflow (cargo-dist) to complete, downloads
 # CLI binaries from the GitHub Release, and packages them into wheels
 # using python/dev/build_wheel.py (following the go-to-wheel pattern).
+#
+# Uses PyPI trusted publishing (OIDC) — no API token needed. Configure
+# at https://pypi.org/manage/account/publishing/ with:
+#   Owner: LalitMaganti
+#   Repository: syntaqlite
+#   Workflow: publish-pypi.yml
+#   Environment: pypi
 name: Publish PyPI
 
 on:
@@ -85,6 +92,9 @@ jobs:
     name: Publish to PyPI
     needs: build-wheels
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
     steps:
       - name: Download all wheels
         uses: actions/download-artifact@v7
@@ -93,14 +103,7 @@ jobs:
           path: dist/
           merge-multiple: true
 
-      - uses: actions/setup-python@v5
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          python-version: '3.12'
-
-      - name: Publish
-        run: |
-          pip install twine
-          twine upload dist/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          packages-dir: dist/

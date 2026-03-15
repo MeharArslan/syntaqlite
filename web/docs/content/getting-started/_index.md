@@ -91,11 +91,3 @@ syntaqlite parse -e "SELECT 1 + 2" --output text
 
 Useful for code generation, migration tooling, or static analysis. See
 [parsing guide](@/guides/parsing.md) for details.
-
-## What's next
-
-- [**CLI reference**](@/getting-started/cli.md) — all commands, flags, and options
-- [**VS Code**](@/getting-started/vscode.md) — diagnostics, formatting, and completions in your editor
-- [**Claude Code / MCP**](@/getting-started/claude-code.md) — plugin and MCP server for AI coding assistants
-- [**Other editors**](@/getting-started/other-editors.md) — Neovim, Helix, or any editor with LSP support
-- [**WASM / JavaScript**](@/getting-started/wasm-js.md) — use syntaqlite in the browser or Node.js

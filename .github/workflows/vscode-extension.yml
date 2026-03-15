@@ -83,3 +83,38 @@ jobs:
           name: vsix-${{ matrix.vscode-target }}
           path: integrations/vscode/*.vsix
           retention-days: 30
+
+  publish:
+    name: Publish extension
+    needs: build-vsix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all .vsix artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: vsix-*
+          path: vsix/
+          merge-multiple: true
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Install publishing tools
+        run: npm install -g @vscode/vsce ovsx
+
+      - name: Publish to VS Code Marketplace
+        run: |
+          for f in vsix/*.vsix; do
+            vsce publish --packagePath "$f"
+          done
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX
+        run: |
+          for f in vsix/*.vsix; do
+            ovsx publish --packagePath "$f"
+          done
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
