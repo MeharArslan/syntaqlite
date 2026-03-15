@@ -1,9 +1,0 @@
-{
-  "sql": {
-    "command": "syntaqlite",
-    "args": ["lsp"],
-    "extensionToLanguage": {
-      ".sql": "sql"
-    }
-  }
-}

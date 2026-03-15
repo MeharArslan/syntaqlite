@@ -1,6 +1,6 @@
 {
   "name": "syntaqlite",
-  "version": "0.0.24",
+  "version": "0.1.0",
   "description": "SQLite SQL language server — diagnostics, formatting, completions, and semantic tokens",
   "author": {
     "name": "Lalit Maganti"
@@ -9,6 +9,7 @@
   "repository": "https://github.com/LalitMaganti/syntaqlite",
   "license": "Apache-2.0",
   "keywords": ["sql", "sqlite", "lsp", "formatter", "linter"],
+  "skills": "./skills/",
   "lspServers": {
     "sql": {
       "command": "syntaqlite",
