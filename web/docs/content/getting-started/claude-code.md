@@ -19,6 +19,10 @@ Once installed, Claude can format SQL, inspect parse trees, and run the
 language server — you can ask it to format a query, check a `.sql` file for
 errors, or debug a parse issue.
 
+To configure schemas and formatting for your project, create a
+[`syntaqlite.toml`](@/reference/config-file.md) in your project root — the LSP
+reads it automatically with no additional setup needed.
+
 ## What the plugin provides
 
 - **Format SQL** — `syntaqlite fmt` with configurable line width, keyword

@@ -10,14 +10,18 @@ syntaqlite's formatter has four configuration options. All have sensible
 defaults — you can use `syntaqlite fmt` with no flags and get well-formatted
 SQL. Every option is available across the CLI, Rust, C, and JavaScript APIs.
 
+For project-wide defaults, set options in
+[`syntaqlite.toml`](@/reference/config-file.md) so every team member and CI
+job uses the same settings without passing flags:
+
 ## Options
 
-| Option | CLI flag | Default | Description |
-|--------|----------|---------|-------------|
-| Line width | `-w, --line-width <N>` | `80` | Target maximum line width (characters) |
-| Indent width | `-t, --indent-width <N>` | `2` | Spaces per indentation level |
-| Keyword case | `-k, --keyword-case <CASE>` | `upper` | `upper` or `lower` |
-| Semicolons | `--semicolons <BOOL>` | `true` | Append `;` after each statement |
+| Option | CLI flag | Config file key | Default | Description |
+|--------|----------|-----------------|---------|-------------|
+| Line width | `-w, --line-width <N>` | `line-width` | `80` | Target maximum line width (characters) |
+| Indent width | `-t, --indent-width <N>` | `indent-width` | `2` | Spaces per indentation level |
+| Keyword case | `-k, --keyword-case <CASE>` | `keyword-case` | `upper` | `upper` or `lower` |
+| Semicolons | `--semicolons <BOOL>` | `semicolons` | `true` | Append `;` after each statement |
 
 ## Line width
 

@@ -82,6 +82,10 @@ Options:
 | `-i, --in-place` | | Write output back to files |
 | `--check` | | Check formatting without modifying (exit 1 if unformatted) |
 
+Formatting defaults can also be set in a
+[`syntaqlite.toml` config file](@/reference/config-file.md). CLI flags override
+config file values.
+
 ## Validate SQL
 
 Separate your schema (DDL) from the queries you want to check:
@@ -95,6 +99,13 @@ glob:
 
 ```bash
 syntaqlite validate --schema "db/*.sql" queries.sql
+```
+
+If you have a [`syntaqlite.toml` config file](@/reference/config-file.md), you
+can skip `--schema` entirely — schemas are resolved from the config:
+
+```bash
+syntaqlite validate queries.sql
 ```
 
 Example schema file (`schema.sql`):

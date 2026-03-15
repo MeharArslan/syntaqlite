@@ -21,9 +21,28 @@ Open any `.sql` file and you get:
 
 That's it. There's nothing to configure for basic use.
 
-## Configuration
+## Project configuration
 
-The extension has one setting:
+To enable schema validation (table/column checks) and set formatting defaults,
+create a [`syntaqlite.toml`](@/reference/config-file.md) in your project root:
+
+```toml
+[schemas]
+"src/**/*.sql" = ["schema/main.sql"]
+"tests/**/*.sql" = ["schema/main.sql", "schema/test_fixtures.sql"]
+
+[format]
+line-width = 100
+keyword-case = "lower"
+```
+
+The LSP reads this file automatically — no VS Code settings needed. Every
+editor that uses the LSP (VS Code, Neovim, Helix, Claude Code) will use the
+same configuration.
+
+## Extension settings
+
+The extension has one VS Code-specific setting:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -39,3 +58,4 @@ Open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`):
 - **syntaqlite: Restart Language Server** — restart after a crash or config
   change
 - **syntaqlite: Format Document** — format the current file
+- **syntaqlite: Open Config File** — open the project's `syntaqlite.toml`

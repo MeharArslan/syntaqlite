@@ -19,6 +19,10 @@ syntaqlite lsp
 
 This runs on stdio. Point your editor's LSP client at this command.
 
+The server discovers [`syntaqlite.toml`](@/reference/config-file.md) from the
+working directory at startup. Create one in your project root to configure
+schemas and formatting — no editor-specific configuration needed.
+
 The server supports:
 
 - `textDocument/publishDiagnostics` — syntax and semantic errors
@@ -34,7 +38,7 @@ With [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig):
 vim.lsp.config('syntaqlite', {
   cmd = { 'syntaqlite', 'lsp' },
   filetypes = { 'sql' },
-  root_markers = { '.git' },
+  root_markers = { 'syntaqlite.toml', '.git' },
 })
 vim.lsp.enable('syntaqlite')
 ```

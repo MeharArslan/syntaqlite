@@ -17,6 +17,10 @@ them. It exits with code 1 if any file would change:
 syntaqlite fmt --check "**/*.sql"
 ```
 
+If your project has a [`syntaqlite.toml`](@/reference/config-file.md), the
+formatting options are read automatically — no flags needed in CI. This keeps
+your CI config in sync with local development.
+
 ## GitHub Actions
 
 ```yaml

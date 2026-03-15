@@ -15,7 +15,9 @@ syntaqlite fmt [OPTIONS] [FILES...]
 ```
 
 Reads from stdin if no files are given. When stdin is a terminal, a hint is
-printed to stderr.
+printed to stderr. Formatting defaults can be set in
+[`syntaqlite.toml`](@/reference/config-file.md) — CLI flags override config
+file values.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -61,8 +63,10 @@ syntaqlite validate [OPTIONS] [FILES...]
 
 When `--schema` is provided, the validator loads `CREATE TABLE` / `CREATE VIEW`
 statements from the schema files and checks the remaining input files against
-that schema. Without `--schema`, inline DDL in the input is used instead.
-Diagnostics are printed to stderr in rustc-style format.
+that schema. When `--schema` is omitted and a
+[`syntaqlite.toml`](@/reference/config-file.md) exists, schemas are resolved
+from the config file's glob patterns. Without either, inline DDL in the input
+is used instead. Diagnostics are printed to stderr in rustc-style format.
 
 ## syntaqlite parse
 
@@ -94,7 +98,9 @@ Exit codes:
 
 ## syntaqlite lsp
 
-Start the language server on stdio.
+Start the language server on stdio. On startup, the server discovers
+[`syntaqlite.toml`](@/reference/config-file.md) from the current directory and
+uses it for schema loading and formatting defaults.
 
 ```bash
 syntaqlite lsp [OPTIONS]
