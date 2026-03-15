@@ -35,45 +35,70 @@ weight = 3
   </div>
 </div>
 
-Verify it works:
+Check that it installed:
 
 ```bash
-syntaqlite --help
+syntaqlite --version
 ```
 
-## Format SQL
+## Format a query
+
+Run this to see formatting in action:
 
 ```bash
-syntaqlite fmt -e "select a,b,c from users where id=1 and active=true"
+syntaqlite fmt -e "select id,name,email from users where active=1 and role='admin' order by name"
 ```
 
 Output:
 
 ```sql
-SELECT a, b, c
+SELECT id, name, email
 FROM users
-WHERE id = 1
-  AND active = true;
+WHERE active = 1
+  AND role = 'admin'
+ORDER BY name;
 ```
 
-Format a file in place:
+Keywords are uppercased, clauses break onto separate lines, and a semicolon is
+appended.
+
+## Format a file
+
+Create a file called `query.sql`:
+
+```sql
+select u.id,u.name,p.title from users u join posts p on u.id=p.user_id where u.active=1
+```
+
+Format it in place:
 
 ```bash
 syntaqlite fmt -i query.sql
+cat query.sql
 ```
-
-See [CLI reference](@/reference/cli.md) for all formatting flags and
-[`syntaqlite.toml`](@/reference/config-file.md) for project-wide defaults.
-
-## Validate SQL
-
-Create a schema file (`schema.sql`):
 
 ```sql
-CREATE TABLE users (id INTEGER, name TEXT, email TEXT);
+SELECT u.id, u.name, p.title
+FROM users u
+  JOIN posts p ON u.id = p.user_id
+WHERE u.active = 1;
 ```
 
-Validate a query against it:
+To format every SQL file in a project at once:
+
+```bash
+syntaqlite fmt -i "**/*.sql"
+```
+
+## Validate against a schema
+
+Create a schema file (`schema.sql`) with your table definitions:
+
+```sql
+CREATE TABLE users (id INTEGER, name TEXT, email TEXT, active INTEGER);
+```
+
+Now validate a query that has a typo:
 
 ```bash
 syntaqlite validate --schema schema.sql -e "SELECT nme FROM users"
@@ -89,21 +114,53 @@ error: unknown column 'nme'
   = help: did you mean 'name'?
 ```
 
-You can also put DDL and queries in the same file for quick one-off checks:
+syntaqlite found the typo and suggested the correct column name. For quick
+one-off checks, you can put DDL and queries in the same file without
+`--schema`:
 
 ```bash
 echo "CREATE TABLE t (a INT); SELECT b FROM t;" | syntaqlite validate
 ```
 
-See [CLI reference](@/reference/cli.md) for all validation flags and
-[`syntaqlite.toml`](@/reference/config-file.md) for configuring schemas
-per project.
-
-## Inspect the parse tree
-
-```bash
-echo "SELECT 1 + 2" | syntaqlite parse
+```text
+warning: unknown column 'b'
+ --> <stdin>:1:33
+  |
+1 | CREATE TABLE t (a INT); SELECT b FROM t;
+  |                                 ^
+  |
+  = help: did you mean 'a'?
 ```
 
-Prints a text dump of the abstract syntax tree. See
-[parsing guide](@/guides/parsing.md) for details.
+## Set up project config
+
+Instead of passing `--schema` every time, create a `syntaqlite.toml` in your
+project root:
+
+```toml
+schema = ["schema.sql"]
+```
+
+Now `syntaqlite validate query.sql` picks up the schema automatically. The
+config file also sets formatting defaults — see the
+[config file reference](@/reference/config-file.md) for the full format.
+
+## Check formatting in CI
+
+Use `--check` to verify files are formatted without modifying them:
+
+```bash
+syntaqlite fmt --check "**/*.sql"
+```
+
+This exits with code 1 if any file would change — useful in CI pipelines and
+pre-push hooks.
+
+## Next steps
+
+- [CLI reference](@/reference/cli.md) — all flags for `fmt`, `validate`,
+  `parse`, and `lsp`
+- [Config file reference](@/reference/config-file.md) — `syntaqlite.toml`
+  format
+- [Formatting options](@/reference/formatting-options.md) — line width,
+  keyword casing, and more

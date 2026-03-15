@@ -6,27 +6,48 @@ weight = 2
 
 # Claude Code
 
-syntaqlite has a Claude Code plugin that gives Claude access to SQL formatting,
-parsing, and validation tools.
-
 ## Install the plugin
 
 ```bash
 claude plugin install syntaqlite
 ```
 
-Once installed, Claude can format SQL, inspect parse trees, and run the
-language server — you can ask it to format a query, check a `.sql` file for
-errors, or debug a parse issue.
+## Format a query
 
-To configure schemas and formatting for your project, create a
-[`syntaqlite.toml`](@/reference/config-file.md) in your project root — the LSP
-reads it automatically.
+Ask Claude to format some SQL:
 
-## What the plugin provides
+> Format this: `select id,name from users where active=1 order by name`
 
-- **Format SQL** — `syntaqlite fmt` with configurable line width, keyword
-  casing, and semicolons
-- **Parse SQL** — `syntaqlite parse` to inspect the parse tree
-- **Language server** — `syntaqlite lsp` for diagnostics, completions, and
-  semantic tokens
+Claude uses `syntaqlite fmt` under the hood and returns:
+
+```sql
+SELECT id, name
+FROM users
+WHERE active = 1
+ORDER BY name;
+```
+
+## Validate a file
+
+If you have a `.sql` file with errors, ask Claude to check it:
+
+> Run syntaqlite validate on query.sql using schema.sql
+
+Claude will show you any unknown tables, columns, or function typos with
+suggestions.
+
+## Set up schema validation
+
+Create a `syntaqlite.toml` in your project root so the LSP and CLI
+automatically know which schema to use:
+
+```toml
+schema = ["schema.sql"]
+```
+
+Now the language server provides table and column diagnostics, completions, and
+hover info as you edit `.sql` files — and `syntaqlite validate` picks up the
+schema without needing `--schema`.
+
+See the [config file reference](@/reference/config-file.md) for glob-based
+schema routing and formatting options.
