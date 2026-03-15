@@ -93,7 +93,7 @@ jobs:
 
       - name: Extract binary
         run: |
-          mkdir -p bin/
+          mkdir -p bin/ extracted/
           ARCHIVE="tmp/${{ matrix.archive }}"
           if [[ "$ARCHIVE" == *.zip ]]; then
             unzip "$ARCHIVE" -d extracted/
