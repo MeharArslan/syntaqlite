@@ -2,7 +2,8 @@
 
 ## 0.0.29
 
-*No changes yet.*
+- LSP: per-file schema resolution — `[schemas]` glob entries in `syntaqlite.toml` are now respected by the language server. Each open file is matched against glob patterns to select its schema catalog, with `strict_schema` applied automatically for matched files. Previously only the top-level `schema` key was read, so projects using `[schemas]` got no schema validation in the editor.
+- Check levels: replace boolean enable/disable with three-level `allow`/`warn`/`deny` per diagnostic category. CLI flags `--enable`/`--disable` replaced by `-A` (allow), `-W` (warn), `-D` (deny). Config file `[checks]` values are now strings (`"allow"`, `"warn"`, `"deny"`) instead of booleans.
 
 ## 0.0.28
 
