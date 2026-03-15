@@ -2,7 +2,8 @@
 
 ## 0.0.24
 
-*No changes yet.*
+- Fix license field to Apache-2.0 in VS Code extension and comparison test package
+- Fix VS Code extension repository URL
 
 ## 0.0.23
 
