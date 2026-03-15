@@ -13,22 +13,26 @@ Install the CLI (or [try it in the browser](https://playground.syntaqlite.com) f
 
 <div class="tabs" data-tab-group="install">
   <div class="tab-buttons">
-    <button class="active" data-tab="brew" onclick="switchTab('install','brew')">Homebrew</button>
+    <button class="active" data-tab="binary" onclick="switchTab('install','binary')">Download &amp; run</button>
+    <button data-tab="mise" onclick="switchTab('install','mise')">mise</button>
     <button data-tab="pip" onclick="switchTab('install','pip')">pip</button>
+    <button data-tab="brew" onclick="switchTab('install','brew')">Homebrew</button>
     <button data-tab="cargo" onclick="switchTab('install','cargo')">Cargo</button>
-    <button data-tab="binary" onclick="switchTab('install','binary')">Binary</button>
   </div>
-  <div class="tab-panel active" data-tab="brew">
-    <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
+  <div class="tab-panel active" data-tab="binary">
+    <pre><code class="language-bash">curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"</code></pre>
+  </div>
+  <div class="tab-panel" data-tab="mise">
+    <pre><code class="language-bash">mise use ubi:LalitMaganti/syntaqlite</code></pre>
   </div>
   <div class="tab-panel" data-tab="pip">
     <pre><code class="language-bash">pip install syntaqlite</code></pre>
   </div>
+  <div class="tab-panel" data-tab="brew">
+    <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
+  </div>
   <div class="tab-panel" data-tab="cargo">
     <pre><code class="language-bash">cargo install syntaqlite-cli</code></pre>
-  </div>
-  <div class="tab-panel" data-tab="binary">
-    <pre><code class="language-bash">curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"</code></pre>
   </div>
 </div>
 

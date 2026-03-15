@@ -8,16 +8,30 @@ weight = 3
 
 ## Install
 
+**Download and run (all platforms, no install):**
+
+```bash
+curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
+```
+
+Downloads the binary on first run, caches at `~/.local/share/syntaqlite/`, auto-updates weekly.
+
+**mise:**
+
+```bash
+mise use ubi:LalitMaganti/syntaqlite
+```
+
+**pip (all platforms, bundled binary):**
+
+```bash
+pip install syntaqlite
+```
+
 **Homebrew (macOS):**
 
 ```bash
 brew install LalitMaganti/tap/syntaqlite
-```
-
-**pip (all platforms):**
-
-```bash
-pip install syntaqlite
 ```
 
 **Cargo:**
@@ -25,14 +39,6 @@ pip install syntaqlite
 ```bash
 cargo install syntaqlite-cli
 ```
-
-**Download binary (all platforms):**
-
-```bash
-curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
-```
-
-Downloads the binary to `~/.local/share/syntaqlite/` on first run, then executes it. Subsequent runs use the cached binary.
 
 Verify it works:
 

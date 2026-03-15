@@ -151,10 +151,18 @@ syntaqlite parse -e "SELECT 1 + 2" --output text
 
 ## Install ([all methods](https://docs.syntaqlite.com/main/getting-started/cli/))
 
-**Homebrew (macOS)**
+**Download and run (all platforms, no install)**
 
 ```bash
-brew install LalitMaganti/tap/syntaqlite
+curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
+```
+
+Downloads the binary on first run, caches it, auto-updates weekly.
+
+**mise**
+
+```bash
+mise use ubi:LalitMaganti/syntaqlite
 ```
 
 **pip (all platforms, bundled binary)**
@@ -163,10 +171,10 @@ brew install LalitMaganti/tap/syntaqlite
 pip install syntaqlite
 ```
 
-**Download and run (all platforms, no package manager)**
+**Homebrew (macOS)**
 
 ```bash
-curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
+brew install LalitMaganti/tap/syntaqlite
 ```
 
 **Cargo**
