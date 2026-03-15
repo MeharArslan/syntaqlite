@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.25
+
+*No changes yet.*
+
 ## 0.0.24
 
 - Fix license field to Apache-2.0 in VS Code extension and comparison test package
