@@ -30,9 +30,8 @@ jobs:
         run: bash tools/build-versioned-docs
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v2
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: syntaqlite-docs
-          directory: web/docs/public-versioned
+          command: pages deploy web/docs/public-versioned --project-name=syntaqlite-docs

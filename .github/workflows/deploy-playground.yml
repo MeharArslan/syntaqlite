@@ -48,9 +48,8 @@ jobs:
           npx vite build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v2
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: syntaqlite-playground
-          directory: web/playground/dist
+          command: pages deploy web/playground/dist --project-name=syntaqlite-playground
