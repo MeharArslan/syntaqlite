@@ -13,12 +13,14 @@ Initial release of syntaqlite — a fast, accurate SQL toolkit for SQLite, built
 - **WASM / JS** — browser-ready builds powering the interactive playground.
 - **Dialect extensibility** — load custom grammars as shared libraries at runtime.
 
-### Distribution
+### Install
 
 - CLI binaries for macOS (arm64, x86_64), Linux (arm64, x86_64), and Windows (x86_64)
-- Homebrew, shell, and PowerShell installers via cargo-dist
-- VS Code extension
-- MCP server (`syntaqlite-mcp`) for Claude Desktop, Claude Code, and Cursor
-- Claude Code plugin
-- Rust crates: `syntaqlite`, `syntaqlite-syntax`
+- `pip install syntaqlite` — bundled platform-specific binary, includes MCP server via `syntaqlite[mcp]`
+- `brew install LalitMaganti/tap/syntaqlite`
+- `cargo install syntaqlite-cli`
+- `mise use github:LalitMaganti/syntaqlite`
+- Self-downloading script: `curl ... | python3 -` with weekly auto-updates
+- VS Code extension with bundled LSP (VS Code Marketplace + Open VSX)
+- Rust crates: `syntaqlite`, `syntaqlite-cli`, `syntaqlite-syntax`, `syntaqlite-common`
 - NPM package: `@syntaqlite/js`
