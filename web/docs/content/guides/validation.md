@@ -104,7 +104,7 @@ Add syntaqlite with the `validation` feature:
 
 ```toml
 [dependencies]
-syntaqlite = { version = "0.0.17", features = ["validation", "sqlite"] }
+syntaqlite = { version = "0.0.18", features = ["validation", "sqlite"] }
 ```
 
 The main types are
