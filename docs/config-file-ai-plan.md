@@ -33,10 +33,16 @@ directly eliminates this entirely.
 2. **Walk up** — search from the file being processed up to the filesystem root,
    stop at the first `syntaqlite.toml` found (same as rustfmt, Ruff, Prettier)
 3. **CLI flag override** — CLI args always win over config file values
-4. **Editor settings override** — VS Code settings (when present) override config
-   file values, so existing VS Code users aren't broken
+4. **Config file is the single source of truth** — editor extensions do not
+   duplicate tool settings. Following rustfmt, Ruff, Prettier, and Pyright:
+   editors only have settings for editor-specific concerns (binary path,
+   enable/disable), not tool behavior. The VS Code extension's `schemaPath`,
+   `schemas`, and any future formatting settings are removed in favor of
+   `syntaqlite.toml`.
 
 ## Precedent audit
+
+### Config file conventions
 
 | Tool | Config file | Format | Discovery |
 |------|-------------|--------|-----------|
@@ -47,8 +53,22 @@ directly eliminates this entirely.
 | Pyright | `pyrightconfig.json` | JSON | Project root |
 | gopls | None | — | Editor settings only |
 
-We follow the rustfmt/Ruff convention: `syntaqlite.toml`, visible (not a
-dotfile), TOML format, discovered by walking up from the file.
+### Editor extension behavior
+
+Every major tool follows the same pattern: the editor extension does NOT
+duplicate tool settings. The project config file is authoritative.
+
+| Tool | VS Code extension settings | Project config |
+|------|---------------------------|----------------|
+| rustfmt | None — rust-analyzer reads `rustfmt.toml` | `rustfmt.toml` |
+| Ruff | Extension behavior only (enable/disable) | `ruff.toml` / `pyproject.toml` |
+| Prettier | Fallback only when no project config | `.prettierrc` |
+| Pyright | Defers to project config | `pyrightconfig.json` |
+| ESLint | Defers to project config | `eslint.config.js` |
+
+We follow both conventions: `syntaqlite.toml` for tool config, and the VS Code
+extension only keeps `syntaqlite.serverPath` (binary location — genuinely
+editor-specific).
 
 ## File format
 
@@ -62,7 +82,6 @@ dotfile), TOML format, discovered by walking up from the file.
 "migrations/*.sql" = []  # no schema validation for migrations
 
 # Default schema for SQL files that don't match any glob above.
-# Equivalent to VS Code's syntaqlite.schemaPath setting.
 # Optional — if omitted, unmatched files get no schema.
 # schema = "schema.sql"
 
@@ -76,10 +95,9 @@ semicolons = true
 
 ### Schema resolution
 
-The `[schemas]` section is a dictionary of `glob → [schema files]`. This mirrors
-the VS Code extension's `syntaqlite.schemas` array but in a more natural TOML
-structure. The glob is matched against the path of the SQL file relative to the
-directory containing `syntaqlite.toml`.
+The `[schemas]` section is a dictionary of `glob → [schema files]`. The glob is
+matched against the path of the SQL file relative to the directory containing
+`syntaqlite.toml`.
 
 Resolution order (first match wins):
 1. `[schemas]` glob entries — checked in order, first matching glob wins
@@ -119,14 +137,13 @@ requests use the config file's formatting options.
 The LSP should also watch for `syntaqlite.toml` changes (via
 `workspace/didChangeWatchedFiles` or polling) and reload.
 
-**Precedence:** Editor-sent `initializationOptions`/`didChangeConfiguration` >
-`syntaqlite.toml` > defaults. This preserves backwards compatibility — existing
-VS Code users with `syntaqlite.schemaPath` configured keep working. But most
-users will delete their VS Code settings and use `syntaqlite.toml` instead.
+The LSP no longer accepts schema paths from `initializationOptions` or
+`workspace/didChangeConfiguration`. The config file is the only source.
 
 **Files changed:**
 - `syntaqlite/src/lsp/server.rs` — config discovery, schema resolution per
-  document, format config from file
+  document, format config from file, remove `load_schema_from_settings()` and
+  `load_schema_from_options()`
 - `syntaqlite/src/lsp/host.rs` — store `FormatConfig` (currently missing), store
   per-glob schema catalogs
 
@@ -190,21 +207,37 @@ syntaqlite fmt --check "**/*.sql"
 
 No additional files changed beyond the `cmd_format()` changes above.
 
-### 5. VS Code extension (fallback consumer)
+### 5. VS Code extension (simplified)
 
 **Current state:** Schema configuration via `syntaqlite.schemaPath` and
-`syntaqlite.schemas` settings. These are sent to the LSP via
-`initializationOptions` and `workspace/didChangeConfiguration`.
+`syntaqlite.schemas` settings, resolved client-side with `minimatch`, sent to the
+LSP via `initializationOptions` and `workspace/didChangeConfiguration`. The
+extension has ~100 lines of schema resolution logic.
 
-**After:** The VS Code extension continues to work exactly as it does today. The
-LSP handles config file discovery server-side. If a user has both VS Code
-settings and `syntaqlite.toml`, VS Code settings win (because they're sent via
-`initializationOptions` which takes precedence).
+**After:** All schema and formatting configuration moves to `syntaqlite.toml`,
+read server-side by the LSP. The VS Code extension is stripped down to:
 
-Over time, we should add a note in the VS Code extension's README suggesting
-users migrate to `syntaqlite.toml` for portability.
+- Start the LSP server (binary resolution via `syntaqlite.serverPath`)
+- Register commands (`restartServer`, `formatDocument`)
+- Status bar item (can show config file status instead of schema path)
 
-**Files changed:** None immediately. The VS Code extension is unchanged.
+The following are **deleted** from the extension:
+
+- `syntaqlite.schemaPath` setting and its resolution logic
+- `syntaqlite.schemas` setting and glob matching (`minimatch` dependency removed)
+- `resolveSchemaForUri()` function
+- `sendSchemaIfChanged()` function
+- `workspace/didChangeConfiguration` schema notification plumbing
+- `initializationOptions.schemaPath`
+
+The only remaining VS Code setting is `syntaqlite.serverPath` (where to find the
+binary — genuinely editor-specific, not tool behavior).
+
+**Files changed:**
+- `integrations/vscode/src/extension.ts` — delete schema resolution, simplify
+  activation
+- `integrations/vscode/package.json` — remove `schemaPath`, `schemas` settings,
+  remove `minimatch` dependency
 
 ### 6. Claude Code plugin
 
@@ -356,9 +389,11 @@ The LSP server changes are the most involved:
    store in `LspHost`
 2. **On document open/change:** resolve schemas for that document's URI using the
    glob patterns, load the appropriate schema catalog
-3. **On format request:** use the config file's format options (unless overridden
-   by editor-sent settings)
+3. **On format request:** use the config file's format options
 4. **On file watch:** re-read `syntaqlite.toml` when it changes
+5. **Delete:** `load_schema_from_settings()`, `load_schema_from_options()`, and
+   all `initializationOptions.schemaPath` / `didChangeConfiguration` schema
+   handling — editors no longer send schema config
 
 The main architectural question is schema catalog caching. If five SQL files all
 map to the same `schema/main.sql`, we should parse that schema file once, not
@@ -381,13 +416,24 @@ reuse catalogs across documents.
 - Format config from file (currently hardcoded)
 - Schema catalog caching (shared catalogs across documents)
 - File watching for config changes
+- Remove `load_schema_from_settings()` and `load_schema_from_options()` from
+  LSP server
 
-### Phase 3: Documentation + migration
+### Phase 3: Simplify VS Code extension
+
+- Delete `syntaqlite.schemaPath` and `syntaqlite.schemas` settings from
+  `package.json`
+- Delete `resolveSchemaForUri()`, `sendSchemaIfChanged()`, and all
+  `didChangeConfiguration` schema plumbing from `extension.ts`
+- Remove `minimatch` dependency
+- Keep only `syntaqlite.serverPath` setting
+- Update status bar to show config file status instead of schema path
+
+### Phase 4: Documentation
 
 - Document `syntaqlite.toml` format in CLI reference
 - Add getting-started guide for config file
-- Update VS Code docs to mention config file as alternative
-- Update Claude Code plugin docs
+- Update VS Code, Claude Code, and other editor docs
 - Add `syntaqlite init` command to generate a starter config file (stretch)
 
 ## Open questions
