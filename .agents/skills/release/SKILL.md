@@ -5,7 +5,9 @@ asks to "release", "bump version", "tag a release", or "publish".
 
 ## Instructions
 
-1. **Determine the new version.** The user must provide it (e.g. `0.0.3`).
+1. **Determine the new version.** Read the current version from
+   `python/pyproject.toml` and increment the patch number automatically.
+   If the user specifies a version explicitly, use that instead.
 
 2. **Run the bump script:**
    ```sh
