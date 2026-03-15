@@ -292,8 +292,7 @@ impl CheckConfig {
 /// assert_eq!(config.suggestion_threshold(), 2);
 ///
 /// // Deny all schema checks (errors instead of warnings).
-/// let mut checks = config.checks();
-/// checks.set("schema", CheckLevel::Deny).unwrap();
+/// let checks = config.checks().with_schema(CheckLevel::Deny);
 /// let strict = config.with_checks(checks);
 /// ```
 #[derive(Clone, Copy)]
