@@ -1044,11 +1044,12 @@ class CteComment(TestSuite):
                 SELECT * FROM cte
             """,
             out="""\
-                WITH cte AS\x20
-                -- c
-                (
-                  SELECT 1
-                )
+                WITH
+                  cte AS\x20
+                  -- c
+                  (
+                    SELECT 1
+                  )
                 SELECT * FROM cte;
             """,
         )

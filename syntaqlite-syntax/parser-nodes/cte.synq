@@ -28,8 +28,8 @@ node WithClause {
   semantic { cte_scope(recursive: recursive, bindings: ctes, body: select) }
 
   fmt {
-    if_flag(recursive) { "WITH RECURSIVE " } else { "WITH " }
-    if_set(ctes) { child(ctes) }
+    if_flag(recursive) { "WITH RECURSIVE" } else { "WITH" }
+    if_set(ctes) { group { nest { line child(ctes) } } }
     hardline child(select)
   }
 }

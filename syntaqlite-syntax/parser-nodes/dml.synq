@@ -52,7 +52,7 @@ node DeleteStmt {
       clause("WHERE", where_clause)
       clause("ORDER BY", orderby)
       if_set(limit_clause) { line "LIMIT " child(limit_clause) }
-      if_set(returning) { line "RETURNING " child(returning) }
+      if_set(returning) { line "RETURNING" group { nest { line child(returning) } } }
     }
   }
 }
@@ -106,7 +106,7 @@ node UpdateStmt {
       clause("WHERE", where_clause)
       clause("ORDER BY", orderby)
       if_set(limit_clause) { line "LIMIT " child(limit_clause) }
-      if_set(returning) { line "RETURNING " child(returning) }
+      if_set(returning) { line "RETURNING" group { nest { line child(returning) } } }
     }
   }
 }
@@ -136,7 +136,7 @@ node InsertStmt {
       if_set(columns) { group { "(" nest { softline child(columns) } softline ")" } }
       if_set(source) { line child(source) } else { " DEFAULT VALUES" }
       if_set(upsert) { line child(upsert) }
-      if_set(returning) { line "RETURNING " child(returning) }
+      if_set(returning) { line "RETURNING" group { nest { line child(returning) } } }
     }
   }
 }

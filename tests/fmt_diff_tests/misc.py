@@ -109,14 +109,46 @@ class CteFormat(TestSuite):
                 SELECT * FROM cte
             """,
             out="""\
-                WITH cte AS (
-                  SELECT a, b, c, d, e, f, g, h, i, j, k
-                  FROM some_table
-                  WHERE
-                    some_column = 1
-                    AND another_col = 2
-                )
+                WITH
+                  cte AS (
+                    SELECT a, b, c, d, e, f, g, h, i, j, k
+                    FROM some_table
+                    WHERE
+                      some_column = 1
+                      AND another_col = 2
+                  )
                 SELECT * FROM cte;
+            """,
+        )
+
+    def test_multi_cte_with_compound(self):
+        return DiffTestBlueprint(
+            sql="""\
+                WITH a AS (SELECT id, name FROM users WHERE active = 1),
+                b AS (SELECT customer_id AS id FROM orders),
+                c AS (SELECT id FROM a INTERSECT SELECT id FROM b),
+                d AS (SELECT id FROM a EXCEPT SELECT id FROM c)
+                SELECT id, name FROM users WHERE id IN (SELECT id FROM d)
+                UNION ALL
+                SELECT id, name FROM users WHERE id IN (SELECT id FROM c) ORDER BY name
+            """,
+            out="""\
+                WITH
+                  a AS (SELECT id, name FROM users WHERE active = 1),
+                  b AS (SELECT customer_id AS id FROM orders),
+                  c AS (
+                    SELECT id FROM a
+                    INTERSECT
+                    SELECT id FROM b
+                  ),
+                  d AS (
+                    SELECT id FROM a
+                    EXCEPT
+                    SELECT id FROM c
+                  )
+                SELECT id, name FROM users WHERE id IN (SELECT id FROM d)
+                UNION ALL
+                SELECT id, name FROM users WHERE id IN (SELECT id FROM c) ORDER BY name;
             """,
         )
 

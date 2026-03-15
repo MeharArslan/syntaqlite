@@ -148,6 +148,45 @@ class ReturningFormat(TestSuite):
             out="INSERT INTO t DEFAULT VALUES RETURNING *;",
         )
 
+    def test_insert_returning_multiline(self):
+        return DiffTestBlueprint(
+            sql="""\
+                INSERT INTO inventory(sku, warehouse, qty, price)
+                VALUES ('ABC-123', 'WH-EAST', 50, 19.99)
+                ON CONFLICT (sku, warehouse) DO UPDATE
+                SET qty = inventory.qty + excluded.qty
+                ON CONFLICT (sku) WHERE warehouse IS NULL DO NOTHING
+                RETURNING sku, qty AS new_qty, TYPEOF(price) AS price_type
+            """,
+            out="""\
+                INSERT INTO inventory(sku, warehouse, qty, price)
+                VALUES ('ABC-123', 'WH-EAST', 50, 19.99)
+                ON CONFLICT (sku, warehouse) DO UPDATE
+                SET
+                  qty = inventory.qty + excluded.qty
+                ON CONFLICT (sku) WHERE warehouse IS NULL DO NOTHING
+                RETURNING sku, qty AS new_qty, TYPEOF(price) AS price_type;
+            """,
+        )
+
+    def test_insert_returning_wraps_when_long(self):
+        return DiffTestBlueprint(
+            sql="""\
+                INSERT INTO inventory(sku, warehouse, qty, price)
+                VALUES ('ABC-123', 'WH-EAST', 50, 19.99)
+                RETURNING sku AS product_sku, warehouse AS warehouse_name, qty AS current_quantity, price AS unit_price
+            """,
+            out="""\
+                INSERT INTO inventory(sku, warehouse, qty, price)
+                VALUES ('ABC-123', 'WH-EAST', 50, 19.99)
+                RETURNING
+                  sku AS product_sku,
+                  warehouse AS warehouse_name,
+                  qty AS current_quantity,
+                  price AS unit_price;
+            """,
+        )
+
 
 class UpsertFormat(TestSuite):
     def test_on_conflict_do_nothing(self):
