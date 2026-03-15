@@ -151,16 +151,22 @@ syntaqlite parse -e "SELECT 1 + 2" --output text
 
 ## Install ([all methods](https://docs.syntaqlite.com/main/getting-started/cli/))
 
-**Homebrew**
+**Homebrew (macOS)**
 
 ```bash
 brew install LalitMaganti/tap/syntaqlite
 ```
 
-**pip**
+**pip (all platforms, bundled binary)**
 
 ```bash
 pip install syntaqlite
+```
+
+**Download binary (all platforms, no package manager)**
+
+```bash
+curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - --install
 ```
 
 **Cargo**

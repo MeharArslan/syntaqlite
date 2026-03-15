@@ -9,13 +9,21 @@ Downloads the binary to ~/.local/share/syntaqlite/ (Unix) or
 Subsequent runs use the cached binary.
 
 Usage:
-    curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3
+    # Download and run directly:
     curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - fmt -e "select 1"
+
+    # Install to ~/.local/bin (or %LOCALAPPDATA%\\syntaqlite on Windows):
+    curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - --install
+
+    # Force re-download (cache invalidation):
+    curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - --update
 """
 
 import io
+import json
 import os
 import platform
+import shutil
 import stat
 import subprocess
 import sys
@@ -43,6 +51,12 @@ def _cache_dir() -> Path:
     return base / "syntaqlite"
 
 
+def _install_dir() -> Path:
+    if platform.system() == "Windows":
+        return _cache_dir()
+    return Path.home() / ".local" / "bin"
+
+
 def _binary_name() -> str:
     return "syntaqlite.exe" if platform.system() == "Windows" else "syntaqlite"
 
@@ -52,6 +66,26 @@ def _detect_target() -> str:
     if key not in TARGETS:
         sys.exit(f"Unsupported platform: {key[0]} {key[1]}")
     return TARGETS[key]
+
+
+def _latest_version() -> str:
+    """Fetch the latest release tag from GitHub."""
+    url = f"https://api.github.com/repos/{REPO}/releases/latest"
+    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
+    data = json.loads(urllib.request.urlopen(req).read())
+    return data["tag_name"]
+
+
+def _cached_version(cache_dir: Path) -> str | None:
+    version_file = cache_dir / "version"
+    if version_file.exists():
+        return version_file.read_text().strip()
+    return None
+
+
+def _save_version(cache_dir: Path, version: str) -> None:
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "version").write_text(version)
 
 
 def _download(target: str, dest: Path) -> None:
@@ -81,20 +115,51 @@ def _download(target: str, dest: Path) -> None:
                         dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
                         return
 
-    sys.exit(f"Binary not found in archive")
+    sys.exit("Binary not found in archive")
+
+
+def _ensure_binary(force: bool = False) -> Path:
+    """Ensure the binary is downloaded and up to date. Returns path."""
+    cache = _cache_dir()
+    binary = cache / _binary_name()
+
+    if force or not binary.exists():
+        latest = _latest_version()
+        _download(_detect_target(), binary)
+        _save_version(cache, latest)
+        print(f"syntaqlite {latest} cached at {binary}", file=sys.stderr)
+    return binary
 
 
 def main():
-    binary = _cache_dir() / _binary_name()
+    # Parse our own flags before passing the rest to the binary.
+    args = sys.argv[1:]
 
-    if not binary.exists():
-        _download(_detect_target(), binary)
-        print(f"Cached at {binary}", file=sys.stderr)
+    if "--update" in args:
+        args.remove("--update")
+        binary = _ensure_binary(force=True)
+        if not args:
+            return
+
+    elif "--install" in args:
+        args.remove("--install")
+        binary = _ensure_binary()
+        dest_dir = _install_dir()
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / _binary_name()
+        shutil.copy2(str(binary), str(dest))
+        print(f"Installed to {dest}", file=sys.stderr)
+        if str(dest_dir) not in os.environ.get("PATH", ""):
+            print(f"Note: add {dest_dir} to your PATH", file=sys.stderr)
+        return
+
+    else:
+        binary = _ensure_binary()
 
     if platform.system() == "Windows":
-        sys.exit(subprocess.call([str(binary)] + sys.argv[1:]))
+        sys.exit(subprocess.call([str(binary)] + args))
     else:
-        os.execvp(str(binary), [str(binary)] + sys.argv[1:])
+        os.execvp(str(binary), [str(binary)] + args)
 
 
 if __name__ == "__main__":
