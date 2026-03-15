@@ -20,6 +20,8 @@ use syntaqlite::{
     Catalog, Diagnostic, FormatConfig, Formatter, SemanticAnalyzer, ValidationConfig,
 };
 
+use crate::config::{self, FormatOptions, ProjectConfig};
+
 use super::{Cli, Command};
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -125,8 +127,15 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             expression,
             schema,
             lang,
-        } => require_dialect(dialect)
-            .and_then(|d| cmd_validate(&d, &files, expression.as_deref(), &schema, lang)),
+        } => require_dialect(dialect).and_then(|d| {
+            // If --schema is given, use it directly. Otherwise, resolve from config file.
+            let resolved_schemas = if !schema.is_empty() {
+                schema
+            } else {
+                resolve_schemas_from_config(&files)
+            };
+            cmd_validate(&d, &files, expression.as_deref(), &resolved_schemas, lang)
+        }),
         Command::Lsp => require_dialect(dialect).and_then(|d| {
             syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
         }),
@@ -143,14 +152,14 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             semicolons,
             output,
         } => {
-            let config = FormatConfig::default()
-                .with_line_width(line_width)
-                .with_indent_width(indent_width)
-                .with_keyword_case(match keyword_case {
-                    KeywordCasing::Upper => KeywordCase::Upper,
-                    KeywordCasing::Lower => KeywordCase::Lower,
-                })
-                .with_semicolons(semicolons);
+            let file_config = discover_config_for_paths(&files);
+            let config = build_format_config(
+                file_config.as_ref().map(|(c, _)| &c.format),
+                line_width,
+                indent_width,
+                keyword_case,
+                semicolons,
+            );
             require_dialect(dialect).and_then(|d| {
                 cmd_fmt(
                     &d,
@@ -598,4 +607,112 @@ fn validate_embedded_source(
     DiagnosticRenderer::new(source, file)
         .render_diagnostics(&diags, &mut io::stderr())
         .unwrap_or(false)
+}
+
+// ---------------------------------------------------------------------------
+// Config file helpers
+// ---------------------------------------------------------------------------
+
+/// Discover `syntaqlite.toml` starting from the first file path, or the current directory.
+fn discover_config_for_paths(files: &[String]) -> Option<(ProjectConfig, PathBuf)> {
+    let start = if let Some(first) = files.first() {
+        // Use the first file/glob pattern's directory as the starting point.
+        // For globs, use the literal prefix (before any wildcard).
+        let literal = first.split(['*', '?', '[']).next().unwrap_or(first);
+        let p = std::path::Path::new(literal);
+        if p.is_file() {
+            p.parent()
+                .unwrap_or(std::path::Path::new("."))
+                .to_path_buf()
+        } else if p.is_dir() {
+            p.to_path_buf()
+        } else {
+            // Could be a glob prefix like "src/" — try it, fall back to cwd.
+            let dir = if p.is_dir() {
+                p.to_path_buf()
+            } else {
+                p.parent()
+                    .filter(|d| d.is_dir())
+                    .map(|d| d.to_path_buf())
+                    .unwrap_or_else(|| std::env::current_dir().unwrap_or_default())
+            };
+            dir
+        }
+    } else {
+        std::env::current_dir().unwrap_or_default()
+    };
+    config::discover(&start)
+}
+
+/// Build a `FormatConfig` by merging config file options with CLI overrides.
+/// CLI args take precedence over config file values, which take precedence over defaults.
+fn build_format_config(
+    file_opts: Option<&FormatOptions>,
+    cli_line_width: Option<usize>,
+    cli_indent_width: Option<usize>,
+    cli_keyword_case: Option<KeywordCasing>,
+    cli_semicolons: Option<bool>,
+) -> FormatConfig {
+    let file_opts_default = FormatOptions::default();
+    let file_opts = file_opts.unwrap_or(&file_opts_default);
+
+    let line_width = cli_line_width
+        .or(file_opts.line_width)
+        .unwrap_or(80);
+    let indent_width = cli_indent_width
+        .or(file_opts.indent_width)
+        .unwrap_or(2);
+    let keyword_case = cli_keyword_case
+        .map(|k| match k {
+            KeywordCasing::Upper => KeywordCase::Upper,
+            KeywordCasing::Lower => KeywordCase::Lower,
+        })
+        .or_else(|| {
+            file_opts.keyword_case.as_deref().map(|s| match s {
+                "lower" => KeywordCase::Lower,
+                _ => KeywordCase::Upper,
+            })
+        })
+        .unwrap_or(KeywordCase::Upper);
+    let semicolons = cli_semicolons
+        .or(file_opts.semicolons)
+        .unwrap_or(true);
+
+    FormatConfig::default()
+        .with_line_width(line_width)
+        .with_indent_width(indent_width)
+        .with_keyword_case(keyword_case)
+        .with_semicolons(semicolons)
+}
+
+/// Resolve schema files from `syntaqlite.toml` for the given input file paths.
+/// Returns schema file paths as strings suitable for `build_schema_catalog`.
+fn resolve_schemas_from_config(files: &[String]) -> Vec<String> {
+    let (config, config_dir) = match discover_config_for_paths(files) {
+        Some(pair) => pair,
+        None => return vec![],
+    };
+
+    // For validate, we need to resolve schemas per file. If all files map to the same
+    // schemas, we can return a single set. For simplicity, use the first file's schemas.
+    // (Per-file schema routing is handled in Phase 2 / LSP.)
+    let paths = match expand_paths(files) {
+        Ok(p) => p,
+        Err(_) => return vec![],
+    };
+
+    if let Some(first) = paths.first() {
+        let canonical = first
+            .canonicalize()
+            .unwrap_or_else(|_| first.clone());
+        let config_dir_canonical = config_dir
+            .canonicalize()
+            .unwrap_or_else(|_| config_dir.clone());
+        config::resolve_schemas(&canonical, &config, &config_dir_canonical)
+            .into_iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect()
+    } else {
+        vec![]
+    }
 }

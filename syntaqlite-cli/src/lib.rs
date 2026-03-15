@@ -9,6 +9,9 @@
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[cfg(feature = "builtin-sqlite")]
+mod config;
+
+#[cfg(feature = "builtin-sqlite")]
 mod runtime;
 
 #[cfg(feature = "builtin-sqlite")]
@@ -96,14 +99,14 @@ pub(crate) enum Command {
         #[arg(short = 'e', long = "expression", conflicts_with = "files")]
         expression: Option<String>,
         /// Maximum line width
-        #[arg(short = 'w', long, default_value_t = 80)]
-        line_width: usize,
+        #[arg(short = 'w', long)]
+        line_width: Option<usize>,
         /// Spaces per indentation level
-        #[arg(short = 't', long, default_value_t = 2)]
-        indent_width: usize,
+        #[arg(short = 't', long)]
+        indent_width: Option<usize>,
         /// Keyword casing
-        #[arg(short = 'k', long, value_enum, default_value_t = runtime::KeywordCasing::Upper)]
-        keyword_case: runtime::KeywordCasing,
+        #[arg(short = 'k', long, value_enum)]
+        keyword_case: Option<runtime::KeywordCasing>,
         /// Write formatted output back to file(s) in place
         #[arg(short = 'i', long)]
         in_place: bool,
@@ -111,8 +114,8 @@ pub(crate) enum Command {
         #[arg(long, conflicts_with = "in_place")]
         check: bool,
         /// Append semicolons after each statement
-        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
-        semicolons: bool,
+        #[arg(long)]
+        semicolons: Option<bool>,
         /// Output mode (formatted, bytecode, doc-tree)
         #[arg(short, long, value_enum, default_value_t = FmtOutput::Formatted)]
         output: FmtOutput,
