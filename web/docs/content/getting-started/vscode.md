@@ -48,20 +48,12 @@ column names.
 
 ## Add schema validation
 
-Without a schema, syntaqlite checks syntax only. To validate table and column
-names, create a `syntaqlite.toml` in your project root:
+Without a schema, syntaqlite validates against an empty catalog — syntax errors
+and built-in function checks work, but unknown tables and columns won't be
+caught. To enable full validation, set up a schema file — see the
+[schema validation guide](@/guides/schema-validation.md) for instructions.
 
-```toml
-schema = ["schema.sql"]
-```
-
-Then create `schema.sql` next to it:
-
-```sql
-CREATE TABLE users (id INTEGER, name TEXT, email TEXT, active INTEGER);
-```
-
-Now go back to `demo.sql` and change `name` to `nme`:
+Once configured, go back to `demo.sql` and change `name` to `nme`:
 
 ```sql
 SELECT id, nme, email

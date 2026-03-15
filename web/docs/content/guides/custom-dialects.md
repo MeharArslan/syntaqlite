@@ -11,24 +11,10 @@ on top of SQLite — custom statements, additional functions, new clauses — yo
 can define a dialect that syntaqlite will use for parsing, formatting, and
 validation.
 
-## How dialects work
-
-A dialect is a shared library (`.so`, `.dylib`, or `.dll`) that provides:
-
-- A grammar extending SQLite's parser rules
-- AST node definitions for new syntax
-- Formatting rules for the new nodes
-- Semantic role annotations for validation
-
-syntaqlite loads the dialect at runtime using the `--dialect` flag:
-
-```bash
-syntaqlite fmt --dialect /path/to/libmydialect.so query.sql
-syntaqlite validate --dialect /path/to/libmydialect.so query.sql
-syntaqlite lsp --dialect /path/to/libmydialect.so
-```
-
 ## Defining a dialect
+
+A dialect is a shared library loaded at runtime with `--dialect /path/to/lib.so`.
+It extends SQLite's parser, formatter, and validator with custom rules.
 
 Dialects are defined using `.synq` files — the same grammar definition language
 syntaqlite uses internally. A `.synq` file declares nodes, enums, formatting

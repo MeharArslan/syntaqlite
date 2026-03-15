@@ -80,15 +80,8 @@ Keywords are always identified by the parser (they come from SQLite's own
 keyword table). The formatter applies the configured casing at render time —
 `Text` nodes (identifiers, literals, table names) are never modified.
 
-```bash
-# Default: uppercase keywords
-echo "select 1" | syntaqlite fmt
-# SELECT 1;
-
-# Lowercase keywords
-echo "SELECT 1" | syntaqlite fmt -k lower
-# select 1;
-```
+With default settings (`upper`), `select 1` becomes `SELECT 1;`. With
+`keyword-case = "lower"`, `SELECT 1` becomes `select 1;`.
 
 ## Comment preservation
 

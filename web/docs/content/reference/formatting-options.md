@@ -107,55 +107,10 @@ echo "SELECT 1" | syntaqlite fmt --semicolons=false
 SELECT 1
 ```
 
-## Rust API
+## API usage
 
-All options are set via the builder pattern on
-[`FormatConfig`](https://docs.rs/syntaqlite/latest/syntaqlite/fmt/struct.FormatConfig.html):
+These options are available in all embedding APIs:
 
-```rust
-use syntaqlite::{Formatter, FormatConfig, KeywordCase};
-
-let config = FormatConfig::default()
-    .with_line_width(120)
-    .with_indent_width(4)
-    .with_keyword_case(KeywordCase::Lower)
-    .with_semicolons(false);
-
-let mut fmt = Formatter::with_config(&config);
-let output = fmt.format("SELECT 1")?;
-```
-
-See the [Rust API reference](@/reference/rust-api.md) for all types and
-methods.
-
-## C API
-
-The C FFI exposes the same options via `SyntaqliteFormatConfig`:
-
-```c
-SyntaqliteFormatConfig config = {
-    .line_width   = 120,
-    .indent_width = 4,
-    .keyword_case = SYNTAQLITE_KEYWORD_LOWER,
-    .semicolons   = 0,
-};
-SyntaqliteFormatter* f =
-    syntaqlite_formatter_create_sqlite_with_config(&config);
-```
-
-See the [C API reference](@/reference/c-api.md) for all functions and the
-memory model.
-
-## JavaScript (WASM)
-
-```typescript
-import {FormatOptions} from "syntaqlite";
-
-const opts: FormatOptions = {
-  lineWidth: 120,
-  indentWidth: 4,
-  keywordCase: 2, // 0 = preserve, 1 = upper, 2 = lower
-  semicolons: false,
-};
-const result = runtime.runFmt(sql, opts);
-```
+- [Rust API reference](@/reference/rust-api.md) — `FormatConfig` builder pattern
+- [C API reference](@/reference/c-api.md) — `SyntaqliteFormatConfig` struct
+- [JavaScript API reference](@/reference/js-api.md) — `FormatOptions` object

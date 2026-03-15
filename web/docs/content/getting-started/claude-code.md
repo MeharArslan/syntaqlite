@@ -42,22 +42,11 @@ You can also ask Claude to format or validate explicitly:
 
 ## Add schema validation
 
-Without a schema, the language server checks syntax only. To enable table and
-column validation, create a `syntaqlite.toml` in your project root:
+Without a schema, the language server validates against an empty catalog — it
+catches syntax errors and bad function calls, but not unknown tables or columns.
+To enable full validation, set up a schema file — see the
+[schema validation guide](@/guides/schema-validation.md) for instructions.
 
-```toml
-schema = ["schema.sql"]
-```
-
-Then create `schema.sql` with your table definitions:
-
-```sql
-CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT);
-CREATE TABLE orders (id INTEGER, user_id INTEGER, amount REAL);
-```
-
-Now when Claude writes `SELECT nme FROM users`, the language server flags `nme`
-as unknown and suggests `name`. Claude sees this and corrects it automatically.
-
-See the [config file reference](@/reference/config-file.md) for glob-based
-schema routing and formatting options.
+Once configured, when Claude writes `SELECT nme FROM users`, the language server
+flags `nme` as unknown and suggests `name`. Claude sees this and corrects it
+automatically.

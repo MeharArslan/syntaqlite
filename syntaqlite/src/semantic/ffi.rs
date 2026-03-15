@@ -44,6 +44,8 @@ struct ValidatorState {
     analyzer: SemanticAnalyzer,
     user_catalog: Catalog,
     dialect: AnyDialect,
+    /// Validation config — strict mode is enabled when schema tables are added.
+    validation_config: ValidationConfig,
     /// C-compatible diagnostics from the most recent `analyze()` call.
     c_diagnostics: Vec<SyntaqliteDiagnostic>,
     /// Rendered message strings, kept alive for the C pointers.
@@ -106,6 +108,7 @@ pub extern "C" fn syntaqlite_validator_create_sqlite() -> *mut SyntaqliteValidat
         analyzer,
         user_catalog,
         dialect,
+        validation_config: ValidationConfig::default(),
         c_diagnostics: Vec::new(),
         rendered_messages: Vec::new(),
         last_source: String::new(),
@@ -169,8 +172,7 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(source.cast(), len as usize))
     };
 
-    let config = ValidationConfig::default();
-    let model = state.analyzer.analyze(src, &state.user_catalog, &config);
+    let model = state.analyzer.analyze(src, &state.user_catalog, &state.validation_config);
 
     // Retain source + diagnostics for diagnostic rendering.
     state.last_source.clear();
@@ -221,6 +223,7 @@ pub unsafe extern "C" fn syntaqlite_validator_reset_catalog(v: *mut SyntaqliteVa
     let v = unsafe { &mut *v };
     let state = v.state_mut();
     state.user_catalog = Catalog::new(state.dialect.clone());
+    state.validation_config = ValidationConfig::default();
 }
 
 /// Add tables to the database layer of the catalog.
@@ -272,6 +275,9 @@ pub unsafe extern "C" fn syntaqlite_validator_add_tables(
             .layer_mut(CatalogLayer::Database)
             .insert_table(name, columns, false);
     }
+
+    // Schema was provided — switch to strict mode so unresolved names are errors.
+    state.validation_config = ValidationConfig::default().with_strict_schema(true);
 }
 
 /// Number of diagnostics from the last `analyze()` call.
@@ -753,6 +759,106 @@ mod tests {
         let r2 = unsafe { render(v, None) };
         assert!(r2.contains("beta"));
         assert!(!r2.contains("alpha"), "old render should be gone: {r2}");
+
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    // ── Strict schema (severity promotion) ─────────────────────────────
+
+    #[test]
+    fn no_schema_unknown_table_is_warning() {
+        let v = syntaqlite_validator_create_sqlite();
+        // No tables added — empty catalog, strict_schema is false.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { analyze(v, "SELECT 1 FROM bad_table") };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
+        assert_eq!(d.severity, SEVERITY_WARNING, "should be warning without schema");
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn with_schema_unknown_column_is_error() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        let name = CString::new("users").unwrap();
+        let col = CString::new("id").unwrap();
+        let cols: [*const c_char; 1] = [col.as_ptr()];
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: cols.as_ptr(),
+            column_count: 1,
+        };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
+
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { analyze(v, "SELECT bogus FROM users") };
+
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
+        assert_eq!(d.severity, SEVERITY_ERROR, "should be error with schema");
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn with_schema_unknown_table_is_error() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        // Add a table so strict_schema activates.
+        let name = CString::new("users").unwrap();
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: std::ptr::null(),
+            column_count: 0,
+        };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
+
+        // Query a different table that doesn't exist.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { analyze(v, "SELECT 1 FROM nonexistent") };
+
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
+        assert_eq!(d.severity, SEVERITY_ERROR, "unknown table should be error with schema");
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_destroy(v) };
+    }
+
+    #[test]
+    fn reset_catalog_reverts_to_warning_severity() {
+        let v = syntaqlite_validator_create_sqlite();
+
+        // Add a table — activates strict mode.
+        let name = CString::new("t").unwrap();
+        let table = SyntaqliteTableDef {
+            name: name.as_ptr(),
+            columns: std::ptr::null(),
+            column_count: 0,
+        };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
+
+        // Verify it's error-level.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { analyze(v, "SELECT 1 FROM gone") };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
+        assert_eq!(d.severity, SEVERITY_ERROR);
+
+        // Reset catalog — should revert to warnings.
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_reset_catalog(v) };
+
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { analyze(v, "SELECT 1 FROM gone") };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        let d = unsafe { &*syntaqlite_validator_diagnostics(v) };
+        assert_eq!(d.severity, SEVERITY_WARNING, "should revert to warning after reset");
 
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_validator_destroy(v) };

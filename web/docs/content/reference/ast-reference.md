@@ -24,7 +24,7 @@ a **tag** (its type) and a fixed set of **fields**:
 | Inline bool | Boolean | `IF NOT EXISTS` |
 
 List nodes (e.g., `ResultColumnList`) store a count followed by that many
-child references. The Rust layer reads the C arena directly with no copying.
+child references.
 
 ## Statement nodes
 

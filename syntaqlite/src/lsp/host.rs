@@ -33,11 +33,16 @@ struct Document {
 }
 
 /// Run analysis for `doc` if no model is cached yet.
-fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, user_catalog: &Catalog) {
+fn ensure_model(
+    doc: &mut Document,
+    analyzer: &mut SemanticAnalyzer,
+    user_catalog: &Catalog,
+    validation_config: &ValidationConfig,
+) {
     if doc.model.is_some() {
         return;
     }
-    let model = analyzer.analyze(&doc.source, user_catalog, &ValidationConfig::default());
+    let model = analyzer.analyze(&doc.source, user_catalog, validation_config);
     let parse_diags = model
         .diagnostics()
         .iter()
@@ -97,6 +102,8 @@ pub struct LspHost {
     documents: HashMap<String, Document>,
     /// Format config from project config file. `None` means use defaults.
     format_config: Option<FormatConfig>,
+    /// Validation config (strict_schema is set when a schema is provided).
+    validation_config: ValidationConfig,
 }
 
 #[cfg(feature = "sqlite")]
@@ -117,6 +124,7 @@ impl LspHost {
             dialect,
             documents: HashMap::new(),
             format_config: None,
+            validation_config: ValidationConfig::default(),
         }
     }
 
@@ -129,6 +137,7 @@ impl LspHost {
             dialect,
             documents: HashMap::new(),
             format_config: None,
+            validation_config: ValidationConfig::default(),
         }
     }
 
@@ -142,6 +151,16 @@ impl LspHost {
     /// Get the format config (project config or default).
     pub(crate) fn format_config(&self) -> FormatConfig {
         self.format_config.clone().unwrap_or_default()
+    }
+
+    /// Set the validation config.
+    pub fn set_validation_config(&mut self, config: ValidationConfig) {
+        self.validation_config = config;
+        for doc in self.documents.values_mut() {
+            doc.model = None;
+            doc.cached_parse_diags = None;
+            doc.cached_sem_tokens = None;
+        }
     }
 
     /// Set the session context (user-provided schema and functions).
@@ -201,7 +220,7 @@ impl LspHost {
         let Some(doc) = self.documents.get_mut(uri) else {
             return &[];
         };
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         doc.cached_parse_diags
             .as_deref()
             .expect("ensure_model sets cached_parse_diags")
@@ -220,7 +239,7 @@ impl LspHost {
         let Some(doc) = self.documents.get_mut(uri) else {
             return Vec::new();
         };
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         if doc.cached_sem_tokens.is_none() {
             let tokens = self
                 .analyzer
@@ -243,7 +262,7 @@ impl LspHost {
                 qualifier: None,
             };
         };
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         self.analyzer
             .completion_info(doc.model.as_ref().expect("ensure_model sets model"), offset)
     }
@@ -328,7 +347,7 @@ impl LspHost {
         uri: &str,
     ) -> Option<(i32, String, Vec<Diagnostic>)> {
         let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         let version = doc.version;
         let source = doc.source.clone();
         let diags = doc
@@ -388,7 +407,7 @@ impl LspHost {
         offset: usize,
     ) -> Option<(String, usize, usize)> {
         let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         let model = doc.model.as_ref().expect("ensure_model sets model");
 
         let resolution = model.resolution_at(offset)?;
@@ -414,7 +433,7 @@ impl LspHost {
         offset: usize,
     ) -> Option<(Option<String>, usize, usize)> {
         let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let def = model.definition_at(offset)?;
         Some((def.file_uri.clone(), def.start, def.end))
@@ -447,7 +466,7 @@ impl LspHost {
                 .documents
                 .get_mut(doc_uri.as_str())
                 .expect("doc_uri came from keys()");
-            ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+            ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
             let model = doc.model.as_ref().expect("ensure_model sets model");
             for (start, end) in model.references_matching(&identity) {
                 results.push((doc_uri.clone(), start, end));
@@ -488,7 +507,7 @@ impl LspHost {
         offset: usize,
     ) -> Option<(usize, usize, String)> {
         let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let res = model
             .resolutions
@@ -528,7 +547,7 @@ impl LspHost {
     /// from a definition site (CREATE TABLE / column-def).
     fn symbol_identity_at(&mut self, uri: &str, offset: usize) -> Option<SymbolIdentity> {
         let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         let model = doc.model.as_ref().expect("ensure_model sets model");
 
         // First check resolutions (references in DML/queries).
@@ -575,7 +594,7 @@ impl LspHost {
     /// (`function_name`, `active_parameter`, overloads).
     pub(crate) fn signature_help(&mut self, uri: &str, offset: usize) -> Option<SignatureHelpInfo> {
         let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog, &self.validation_config);
         let model = doc.model.as_ref().expect("ensure_model sets model");
         let source = model.source();
 

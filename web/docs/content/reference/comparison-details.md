@@ -9,54 +9,8 @@ Per-statement breakdowns, reproduction instructions, and methodology for the
 
 Generated on `arm64-darwin` with syntaqlite `0.1.0` on 2026-03-14.
 
----
-
-# How to reproduce
-
-```bash
-# 1. Install all competitor tools (npm, cargo, brew, go, uv)
-tools/run-comparison --setup
-
-# 2. Run all comparisons and generate markdown
-tools/run-comparison --all
-
-# 3. Or run a single category
-tools/run-comparison parser
-tools/run-comparison formatter
-tools/run-comparison validator
-tools/run-comparison lsp
-```
-
-**Requirements:** macOS or Linux, with `npm`, `cargo`, `brew` (macOS),
-`go`, `uv`, and `sqlite3` on PATH. The setup script installs:
-
-| Tool | Source | Version pinning |
-|------|--------|-----------------|
-| syntaqlite | Built from this repo (`cargo build --release`) | Current HEAD |
-| lemon-rs | `tests/comparison/parser/` (Cargo workspace) | Pinned in Cargo.lock |
-| sqlparser-rs | `tests/comparison/parser/` (Cargo workspace) | Pinned in Cargo.lock |
-| sql-parser-cst | `tests/comparison/package.json` (npm) | Pinned in package-lock |
-| node-sql-parser | `tests/comparison/package.json` (npm) | Pinned in package-lock |
-| sqlglot | `tests/comparison/pyproject.toml` (uv) | Pinned in uv.lock |
-| sqlfluff | `tests/comparison/pyproject.toml` (uv) | Pinned in uv.lock |
-| sql-formatter | npm global | Latest at install time |
-| prettier + sql-parser-cst | npm + prettier plugin | Pinned in package-lock |
-| sleek | `cargo install sleek` | Latest at install time |
-| sqruff | `brew install sqruff` | Latest at install time |
-| sql-lint | `tests/comparison/package.json` (npm) | Pinned in package-lock |
-| sqls | `go install` | Latest at install time |
-| sql-language-server | npm global | Latest at install time |
-| hyperfine | `brew install hyperfine` | Latest at install time |
-
-**Speed benchmarks** use [hyperfine](https://github.com/sharkdp/hyperfine) with
-`--warmup 3` to fill filesystem caches. Each tool is invoked as a subprocess —
-this measures end-to-end wall time including process startup, which is realistic
-for CLI usage and editor integrations.
-
-**Test statements** are in `tests/comparison/test_statements.sql` (40 statements)
-and `tests/comparison/bench_statements.sql` (25 statements for speed benchmarks).
-The accuracy suite uses deliberately tricky SQLite-specific syntax; the speed
-suite uses representative real-world queries.
+> To reproduce these results: `tools/run-comparison --setup && tools/run-comparison --all`.
+> See the script for requirements and tool versions.
 
 ---
 

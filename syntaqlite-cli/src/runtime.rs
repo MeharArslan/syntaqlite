@@ -561,9 +561,17 @@ fn cmd_validate(
     schema_files: &[String],
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
+    let has_schema = !schema_files.is_empty();
     let schema_catalog = build_schema_catalog(dialect, schema_files)?;
-    let config = ValidationConfig::default();
+    let config = ValidationConfig::default().with_strict_schema(has_schema);
     let mut any_errors = false;
+
+    if !has_schema {
+        eprintln!(
+            "note: no schema provided; table and column references will not be checked. \
+             Add a `syntaqlite.toml` with `schema = [\"schema.sql\"]` or pass `--schema`."
+        );
+    }
 
     let validate = |source: &str, file: &str| -> bool {
         match lang {

@@ -23,15 +23,6 @@ and shows raw, reproducible results.
 validated against `sqlite3` itself (the ground truth), then run through every
 parser. A tool scores "correct" only if it agrees with sqlite3.
 
-**Why syntaqlite scores well:** It embeds SQLite's own Lemon-generated parser.
-If sqlite3 accepts a statement, syntaqlite accepts it too — by construction,
-not by reimplementation. lemon-rs (a Rust port of the same grammar) scores
-similarly for the same reason.
-
-Tools built on hand-written or generic SQL grammars tend to lag behind SQLite's
-full syntax, particularly on features added after 3.35 (RETURNING, MATERIALIZED,
-IS DISTINCT FROM, numeric underscores).
-
 ## Accuracy
 
 | Tool            | Correct                           | Rejects Valid | Accepts Invalid |
@@ -84,12 +75,6 @@ means sqlite3 will execute the exact same operations — the formatter preserved
 semantics, not just validity. Tools that crash or refuse to format score
 "refused". Tools whose output produces different bytecode score "corrupt".
 
-**Why bytecode, not just acceptance?** A formatter could subtly alter your SQL
-(reorder expressions, change operator grouping) in a way sqlite3 still accepts
-but that produces different results. Bytecode comparison catches these silent
-semantic changes. For statements where `EXPLAIN` isn't applicable (e.g.
-`PRAGMA`, `ATTACH`), we fall back to acceptance-only.
-
 ## Accuracy
 
 | Tool          | Correct                           | Corrupt | Refused |
@@ -133,11 +118,6 @@ semantic changes. For statements where `EXPLAIN` isn't applicable (e.g.
 column references, wrong function arity, CTE column mismatches — without
 running the query? We define 24 test cases (15 with intentional errors, 9
 valid) against a known schema, and check each tool's verdict against sqlite3.
-
-**Why syntaqlite is different:** Most SQL "linters" do structural/style checks
-(trailing commas, missing parens). syntaqlite does static *semantic* analysis —
-it resolves table/column references, checks function signatures, and validates
-CTE column counts, all without a database connection.
 
 ## Accuracy
 

@@ -72,15 +72,6 @@ For real projects, separate your schema from your queries:
 syntaqlite validate --schema schema.sql queries.sql
 ```
 
-### Version pinning
-
-If you're targeting a specific SQLite version (e.g. Android 13 ships SQLite
-3.32.2), syntaqlite catches syntax that wouldn't exist yet:
-
-```bash
-syntaqlite --sqlite-version 3.32.0 validate query.sql
-```
-
 ## Parse
 
 Inspect the full abstract syntax tree:

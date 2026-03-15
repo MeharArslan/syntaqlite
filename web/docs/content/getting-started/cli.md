@@ -92,69 +92,13 @@ syntaqlite fmt -i "**/*.sql"
 
 ## Validate against a schema
 
-Create a schema file (`schema.sql`) with your table definitions:
-
-```sql
-CREATE TABLE users (id INTEGER, name TEXT, email TEXT, active INTEGER);
-```
-
-Now validate a query that has a typo:
-
-```bash
-syntaqlite validate --schema schema.sql -e "SELECT nme FROM users"
-```
-
-```text
-error: unknown column 'nme'
- --> <expression>:1:8
-  |
-1 | SELECT nme FROM users
-  |        ^^^
-  |
-  = help: did you mean 'name'?
-```
-
-syntaqlite found the typo and suggested the correct column name. For quick
-one-off checks, you can put DDL and queries in the same file without
-`--schema`:
-
-```bash
-echo "CREATE TABLE t (a INT); SELECT b FROM t;" | syntaqlite validate
-```
-
-```text
-warning: unknown column 'b'
- --> <stdin>:1:33
-  |
-1 | CREATE TABLE t (a INT); SELECT b FROM t;
-  |                                 ^
-  |
-  = help: did you mean 'a'?
-```
-
-## Set up project config
-
-Instead of passing `--schema` every time, create a `syntaqlite.toml` in your
-project root:
-
-```toml
-schema = ["schema.sql"]
-```
-
-Now `syntaqlite validate query.sql` picks up the schema automatically. The
-config file also sets formatting defaults — see the
-[config file reference](@/reference/config-file.md) for the full format.
+syntaqlite can check table and column names against your schema. See the
+[schema validation guide](@/guides/schema-validation.md) for setup instructions.
 
 ## Check formatting in CI
 
-Use `--check` to verify files are formatted without modifying them:
-
-```bash
-syntaqlite fmt --check "**/*.sql"
-```
-
-This exits with code 1 if any file would change — useful in CI pipelines and
-pre-push hooks.
+Use `--check` to verify files are formatted without modifying them — see the
+[CI integration guide](@/guides/ci-integration.md) for full setup.
 
 ## Next steps
 

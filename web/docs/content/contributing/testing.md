@@ -123,16 +123,9 @@ against real SQLite.
 
 ## Idempotency tests
 
-A critical invariant: formatting must not change the semantics of SQL. The
-idempotency test suite:
-
-1. Collects all SQL inputs from the ast and fmt test suites
-2. Formats each one
-3. Parses both the original and formatted versions
-4. Asserts the ASTs are identical
-
-This catches bugs where formatting accidentally alters meaning (e.g., changing
-operator precedence by removing parentheses).
+The idempotency test suite collects all SQL inputs from the ast and fmt test
+suites, formats each one, parses both the original and formatted versions, and
+asserts the ASTs are identical.
 
 ## Unit tests
 

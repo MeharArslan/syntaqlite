@@ -50,21 +50,11 @@ stdin/stdout using JSON-RPC.
 
 ## Add schema validation
 
-By default you get syntax checking only. To enable table and column validation,
-create a `syntaqlite.toml` in your project root:
+Without a schema, syntaqlite validates against an empty catalog — syntax errors
+and built-in function checks work, but unknown tables and columns won't be
+caught. To enable full validation, set up a schema file — see the
+[schema validation guide](@/guides/schema-validation.md) for instructions.
 
-```toml
-schema = ["schema.sql"]
-```
-
-Create `schema.sql` with your table definitions:
-
-```sql
-CREATE TABLE users (id INTEGER, name TEXT, email TEXT);
-```
-
-Restart the language server (or reopen the editor). Now queries referencing
-unknown columns or tables will show warnings with "did you mean?" suggestions.
-
-See the [config file reference](@/reference/config-file.md) for the full
-`syntaqlite.toml` format.
+Restart the language server (or reopen the editor) after adding the config.
+Queries referencing unknown columns or tables will show warnings with "did you
+mean?" suggestions.

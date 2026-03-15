@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 
+use crate::ValidationConfig;
+
 use lsp_server::{Connection, Message, Notification, Request, Response};
 use lsp_types::notification::{
     DidChangeConfiguration, DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
@@ -170,6 +172,9 @@ impl LspServer {
         }
         if let Some(catalog) = config.schema_catalog {
             host.set_session_context(catalog);
+            host.set_validation_config(
+                ValidationConfig::default().with_strict_schema(true),
+            );
             eprintln!("syntaqlite-lsp: using project config schema");
         }
 
@@ -738,6 +743,9 @@ impl LspServer {
         match std::fs::read_to_string(&path) {
             Ok(contents) => match host.set_session_context_from_ddl(&contents, Some(&file_uri)) {
                 Ok(()) => {
+                    host.set_validation_config(
+                        ValidationConfig::default().with_strict_schema(true),
+                    );
                     eprintln!("syntaqlite-lsp: loaded schema from {}", path.display());
                 }
                 Err(errors) => {

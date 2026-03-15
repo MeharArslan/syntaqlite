@@ -78,24 +78,6 @@ console.log(textResult.text);
 const jsonResult = engine.runAstJson("SELECT 1 + 2");
 ```
 
-## Get completions
-
-```typescript
-const completions = engine.runCompletions("SELECT ", 7);
-for (const item of completions.items) {
-  console.log(item);
-}
-```
-
-## Semantic tokens
-
-For syntax highlighting (compatible with Monaco editor):
-
-```typescript
-const tokens = engine.runSemanticTokens("SELECT * FROM users");
-// Returns Uint32Array in LSP semantic tokens encoding
-```
-
 ## Next steps
 
 - [JavaScript API reference](@/reference/js-api.md) — all methods on

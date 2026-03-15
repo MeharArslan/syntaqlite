@@ -65,11 +65,6 @@ The validator checks:
 - **CTE column count** — mismatch between declared CTE column list and the
   number of columns the CTE's `SELECT` produces
 
-### "Did you mean?" suggestions
-
-When a name doesn't match, the validator uses Levenshtein distance to suggest
-corrections. This works for table names, column names, and function names.
-
 ## Embedded SQL
 
 Validate SQL strings embedded in Python or TypeScript source files:
@@ -148,18 +143,10 @@ for diag in model.diagnostics() {
 
 ### Catalog layers
 
-The catalog has a layered resolution order (innermost wins):
-
-| Layer | Purpose |
-|-------|---------|
-| Query | CTEs, subquery aliases (managed automatically) |
-| Document | `CREATE TABLE` statements in the current file |
-| Connection | DDL accumulated across calls (Execute mode) |
-| Database | User-provided schema (the layer you populate) |
-| Dialect | Built-in functions |
-
-For most use cases, populate the `Database` layer with your schema and let the
-analyzer handle the rest.
+The catalog uses a layered resolution order — see
+[validation concepts](@/concepts/validation.md) for details. For most use cases,
+populate the `Database` layer with your schema and let the analyzer handle the
+rest.
 
 ### Tables with unknown columns
 
@@ -184,9 +171,5 @@ let config = ValidationConfig::default()
 
 ### Analysis modes
 
-The analyzer supports two modes (set via `SemanticAnalyzer::with_mode()`):
-
-- **Document** (default) — DDL resets between `analyze()` calls. Use this for
-  file-at-a-time validation (editor, CI).
-- **Execute** — DDL accumulates across calls. Use this for interactive
-  sessions (REPL-style).
+The analyzer supports Document and Execute modes — see
+[validation concepts](@/concepts/validation.md) for details.
