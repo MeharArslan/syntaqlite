@@ -1,7 +1,7 @@
 +++
-title = "Other editors"
-description = "Neovim, Helix, or any editor with LSP support."
-weight = 4
+title = "Neovim, Helix, and other editors"
+description = "Configure syntaqlite's LSP with Neovim, Helix, or any editor."
+weight = 7
 +++
 
 # Other editors

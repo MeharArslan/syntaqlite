@@ -10,7 +10,7 @@ The syntaqlite MCP server exposes three tools. It is built into the
 `syntaqlite` binary and runs over stdio via `syntaqlite mcp`.
 
 For setup instructions, see
-[MCP server](@/getting-started/mcp.md).
+[MCP server setup](@/guides/mcp.md).
 
 ## `format_sql`
 

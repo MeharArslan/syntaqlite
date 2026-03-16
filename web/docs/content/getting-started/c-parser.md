@@ -152,6 +152,6 @@ for (uint32_t i = 0; i < count; i++) {
 ## Next steps
 
 - The source amalgamation gives you the **parser and tokenizer**. For the
-  **formatter and validator**, use the [prebuilt shared library](@/integrating/c-api.md#option-2-prebuilt-shared-library-full-api).
+  **formatter and validator**, use the [prebuilt shared library](@/guides/c-api.md#option-2-prebuilt-shared-library-full-api).
 - See the [C API reference](@/reference/c-api.md) for the full list of
   parser, tokenizer, formatter, and validator functions.

@@ -17,7 +17,7 @@ syntaqlite's C API is available in two forms:
 
 Both are attached to each
 [GitHub release](https://github.com/LalitMaganti/syntaqlite/releases).
-See [Using syntaqlite from C](@/integrating/c-api.md) for compilation
+See [Using syntaqlite from C](@/guides/c-api.md) for compilation
 instructions.
 
 ## Parser

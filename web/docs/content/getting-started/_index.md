@@ -1,5 +1,5 @@
 +++
-title = "Getting started"
+title = "Tutorials"
 sort_by = "weight"
 +++
 
@@ -82,3 +82,4 @@ syntaqlite parse -e "SELECT 1 + 2"
 
 Useful for code generation, migration tooling, or static analysis. See
 [parsing guide](@/guides/parsing.md) for details.
+

@@ -1,7 +1,7 @@
 +++
-title = "C"
+title = "Using from C"
 description = "Link syntaqlite into a C or C++ project."
-weight = 2
+weight = 6
 +++
 
 # Using syntaqlite from C
