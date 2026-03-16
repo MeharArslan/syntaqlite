@@ -1,7 +1,7 @@
 +++
 title = "SQLite version and compile flags"
 description = "Pin validation to your production SQLite version and compile-time flags."
-weight = 5
+weight = 7
 +++
 
 # SQLite version and compile flags

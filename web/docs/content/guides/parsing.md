@@ -1,7 +1,7 @@
 +++
 title = "Parsing and inspecting ASTs"
 description = "Parse SQL and explore the abstract syntax tree from the CLI or Rust."
-weight = 4
+weight = 6
 +++
 
 # Parsing and inspecting ASTs

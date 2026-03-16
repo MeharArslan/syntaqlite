@@ -1,7 +1,7 @@
 +++
 title = "Using from Rust"
 description = "Add syntaqlite to a Rust project and format your first query."
-weight = 8
+weight = 1
 +++
 
 # Using syntaqlite from Rust

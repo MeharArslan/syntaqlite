@@ -1,7 +1,7 @@
 +++
 title = "Browser / JavaScript"
 description = "Use syntaqlite from JavaScript via WebAssembly."
-weight = 5
+weight = 6
 +++
 
 # Using syntaqlite in the browser

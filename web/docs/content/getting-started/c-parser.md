@@ -1,7 +1,7 @@
 +++
 title = "C parser"
 description = "Parse SQL from C using the source amalgamation."
-weight = 4
+weight = 5
 +++
 
 # Parse SQL from C

@@ -1,7 +1,7 @@
 +++
 title = "Schema validation"
 description = "Set up schema-aware validation for tables, columns, and functions."
-weight = 2
+weight = 4
 +++
 
 # Schema validation
