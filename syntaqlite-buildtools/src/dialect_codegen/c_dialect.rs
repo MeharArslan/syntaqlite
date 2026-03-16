@@ -354,13 +354,13 @@ pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     w.line("typedef struct SyntaqliteDialectTemplate SyntaqliteDialectTemplate;");
     w.newline();
     w.line(&format!(
-        "SyntaqliteGrammar syntaqlite_{dialect}_grammar(void);"
+        "SYNTAQLITE_API SyntaqliteGrammar syntaqlite_{dialect}_grammar(void);"
     ));
     w.line(&format!(
-        "SyntaqliteGrammar syntaqlite_{dialect}_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags);"
+        "SYNTAQLITE_API SyntaqliteGrammar syntaqlite_{dialect}_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags);"
     ));
     w.line(&format!(
-        "const SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void);"
+        "SYNTAQLITE_API const SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void);"
     ));
     w.newline();
     w.line("#ifdef __cplusplus");

@@ -67,9 +67,9 @@ extern "C" {
 //   ERROR     = statement has parse/runtime error (may still have recovery
 //   root)
 SYNTAQLITE_API int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
-                                                     uint32_t token_type,
-                                                     const char* text,
-                                                     uint32_t len);
+                                                    uint32_t token_type,
+                                                    const char* text,
+                                                    uint32_t len);
 
 // Signal end-of-input. Synthesizes a SEMI if needed and sends EOF to the
 // parser. Returns a SYNTAQLITE_PARSE_* code.
@@ -82,15 +82,14 @@ SYNTAQLITE_API int32_t syntaqlite_parser_finish(SyntaqliteParser* p);
 // Enumerate terminal tokens that are valid next lookaheads at the parser's
 // current state. Returns the total number of expected tokens.
 // If out_tokens is non-NULL, up to out_cap token IDs are written.
-SYNTAQLITE_API uint32_t syntaqlite_parser_expected_tokens(
-    SyntaqliteParser* p,
-    uint32_t* out_tokens,
-    uint32_t out_cap);
+SYNTAQLITE_API uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
+                                                          uint32_t* out_tokens,
+                                                          uint32_t out_cap);
 
 // Return the semantic completion context at the parser's current state.
 // One of SYNTAQLITE_COMPLETION_CONTEXT_*.
-SYNTAQLITE_API SyntaqliteCompletionContext syntaqlite_parser_completion_context(
-    SyntaqliteParser* p);
+SYNTAQLITE_API SyntaqliteCompletionContext
+syntaqlite_parser_completion_context(SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
 // Macro region tracking
@@ -100,8 +99,8 @@ SYNTAQLITE_API SyntaqliteCompletionContext syntaqlite_parser_completion_context(
 // call_offset/call_length describe the macro call's byte range in the
 // original source. Calls may nest (for nested macro expansions).
 SYNTAQLITE_API void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
-                                                   uint32_t call_offset,
-                                                   uint32_t call_length);
+                                                  uint32_t call_offset,
+                                                  uint32_t call_length);
 
 // End the innermost macro expansion region.
 SYNTAQLITE_API void syntaqlite_parser_end_macro(SyntaqliteParser* p);
@@ -124,8 +123,8 @@ SYNTAQLITE_API int syntaqlite_parser_register_macro(
 
 // Deregister a macro by name.  Returns 0 on success, -1 if not found.
 SYNTAQLITE_API int syntaqlite_parser_deregister_macro(SyntaqliteParser* p,
-                                                       const char* name,
-                                                       uint32_t name_len);
+                                                      const char* name,
+                                                      uint32_t name_len);
 
 #ifdef __cplusplus
 }

@@ -8,7 +8,7 @@ echo "==> Building syntaqlite-buildtools..."
 "$ROOT/tools/cargo" build --release -p syntaqlite-buildtools
 
 echo "==> Generating amalgamation..."
-"$ROOT/target/release/syntaqlite-buildtools" amalgamate \
+"$ROOT/target/release/syntaqlite-buildtools" amalgamate-syntax \
     --dialect sqlite \
     --runtime-dir "$ROOT/syntaqlite-syntax" \
     --dialect-dir "$ROOT/syntaqlite-syntax" \

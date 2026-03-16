@@ -572,11 +572,7 @@ impl LspHost {
     // ── Go-to-definition ───────────────────────────────────────────────────
 
     /// Return the definition location for the symbol at `offset`.
-    pub(crate) fn definition_info(
-        &mut self,
-        uri: &str,
-        offset: usize,
-    ) -> Option<DefinitionResult> {
+    pub(crate) fn definition_info(&mut self, uri: &str, offset: usize) -> Option<DefinitionResult> {
         ensure_model_for(
             uri,
             &mut self.documents,

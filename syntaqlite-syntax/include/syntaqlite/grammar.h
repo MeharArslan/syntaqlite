@@ -32,6 +32,7 @@
 #include <stdio.h>
 
 #include "syntaqlite/cflags.h"
+#include "syntaqlite/config.h"
 
 #ifdef __cplusplus
 extern "C" {

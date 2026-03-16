@@ -185,7 +185,7 @@ SYNTAQLITE_API const SyntaqliteMacroRegion* syntaqlite_result_macros(
 // dialect-specific node union type and use the tag field to determine which
 // member to read.
 SYNTAQLITE_API const void* syntaqlite_parser_node(SyntaqliteParser* p,
-                                                   uint32_t node_id);
+                                                  uint32_t node_id);
 
 // Return a pointer to the source text bound by the last reset() call.
 SYNTAQLITE_API const char* syntaqlite_parser_source(SyntaqliteParser* p);
@@ -278,14 +278,13 @@ static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
 // Enable token/comment collection for result_tokens/result_comments.
 // Default: off (0), in which case those arrays are empty.
 // Returns 0 on success, -1 if the parser has already been used.
-SYNTAQLITE_API int32_t syntaqlite_parser_set_collect_tokens(
-    SyntaqliteParser* p,
-    uint32_t enable);
+SYNTAQLITE_API int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
+                                                            uint32_t enable);
 
 // Enable parser trace output (debug builds only). Default: off (0).
 // Returns 0 on success, -1 if the parser has already been used.
 SYNTAQLITE_API int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p,
-                                                    uint32_t enable);
+                                                   uint32_t enable);
 
 // Enable macro fallback: when the dialect uses SYNQ_MACRO_STYLE_RUST and a
 // name!(args) call is encountered but the name is NOT in the macro registry,
@@ -293,9 +292,8 @@ SYNTAQLITE_API int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p,
 // a parse error. A MacroRegion is recorded so the formatter can emit the
 // call verbatim. Default: off (0).
 // Returns 0 on success, -1 if the parser has already been used.
-SYNTAQLITE_API int32_t syntaqlite_parser_set_macro_fallback(
-    SyntaqliteParser* p,
-    uint32_t enable);
+SYNTAQLITE_API int32_t syntaqlite_parser_set_macro_fallback(SyntaqliteParser* p,
+                                                            uint32_t enable);
 
 // ============================================================================
 // Debugging

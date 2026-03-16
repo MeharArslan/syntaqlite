@@ -2416,7 +2416,10 @@ mod tests {
         assert!(def.is_some(), "expected definition");
         let def = def.unwrap();
         // Should point to same-file definition, not external schema.
-        assert!(def.target.file_uri.is_none(), "same-file DDL should shadow schema");
+        assert!(
+            def.target.file_uri.is_none(),
+            "same-file DDL should shadow schema"
+        );
         assert_eq!(def.target.start, src.find('t').unwrap());
     }
 

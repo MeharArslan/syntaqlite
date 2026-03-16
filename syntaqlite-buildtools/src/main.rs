@@ -245,13 +245,9 @@ fn main() {
             let syntax_dir = Path::new(&args.syntax_dir);
             let lib_dir = Path::new(&args.lib_dir);
             let output = Path::new(&args.output);
-            let header = syntaqlite_buildtools::amalgamate::amalgamate_header(
-                syntax_dir,
-                lib_dir,
-            )?;
+            let header = syntaqlite_buildtools::amalgamate::amalgamate_header(syntax_dir, lib_dir)?;
             if let Some(parent) = output.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("creating output dir: {e}"))?;
+                std::fs::create_dir_all(parent).map_err(|e| format!("creating output dir: {e}"))?;
             }
             std::fs::write(output, &header)
                 .map_err(|e| format!("writing {}: {e}", output.display()))?;

@@ -375,10 +375,7 @@ impl LspServer {
             target_range,
             target_selection_range: target_range,
         };
-        Response::new_ok(
-            req.id,
-            GotoDefinitionResponse::Link(vec![link]),
-        )
+        Response::new_ok(req.id, GotoDefinitionResponse::Link(vec![link]))
     }
 
     fn handle_signature_help(req: Request, host: &mut LspHost) -> Response {

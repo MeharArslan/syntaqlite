@@ -64,14 +64,14 @@ SYNTAQLITE_API SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
 // must remain valid until the next reset() or destroy(). Can be called
 // again to tokenize a new input without reallocating.
 SYNTAQLITE_API void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
-                                                const char* source,
-                                                uint32_t len);
+                                               const char* source,
+                                               uint32_t len);
 
 // Advance to the next token. Returns 1 if a token was written to *out,
 // 0 at end-of-input. Every token is returned, including whitespace and
 // comments.
 SYNTAQLITE_API uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
-                                                   SyntaqliteToken* out);
+                                                  SyntaqliteToken* out);
 
 // Free the tokenizer and all its memory. No-op if tok is NULL.
 SYNTAQLITE_API void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
