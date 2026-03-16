@@ -1,0 +1,131 @@
+# Build prebuilt C shared libraries for all platforms and package them
+# with the amalgamated syntaqlite.h header into a single archive.
+#
+# Produces: syntaqlite-clib-v<version>.tar.gz
+#   syntaqlite.h
+#   macos-arm64/libsyntaqlite.dylib
+#   macos-x64/libsyntaqlite.dylib
+#   linux-x64/libsyntaqlite.so
+#   linux-arm64/libsyntaqlite.so
+#   windows-x64/syntaqlite.dll
+#   windows-arm64/syntaqlite.dll
+name: Release C Library
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    name: Build cdylib (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-arm64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+            lib: libsyntaqlite.dylib
+          - name: macos-x64
+            runner: macos-latest
+            target: x86_64-apple-darwin
+            lib: libsyntaqlite.dylib
+          - name: linux-x64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            lib: libsyntaqlite.so
+          - name: linux-arm64
+            runner: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            lib: libsyntaqlite.so
+          - name: windows-x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            lib: syntaqlite.dll
+          - name: windows-arm64
+            runner: windows-latest
+            target: aarch64-pc-windows-msvc
+            lib: syntaqlite.dll
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install cross-compilation target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install cross-compiler (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build cdylib
+        shell: bash
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          SYNTAQLITE_BUILDING: "1"
+        run: |
+          cargo rustc -p syntaqlite --release --target ${{ matrix.target }} \
+            --crate-type cdylib \
+            -- -C default-linker-libraries
+
+      - name: Upload library
+        uses: actions/upload-artifact@v6
+        with:
+          name: clib-${{ matrix.name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.lib }}
+
+  package:
+    name: Package clib archive
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v5
+        with:
+          path: target
+          key: cargo-clib-header-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-clib-header-${{ runner.os }}-
+
+      - name: Build syntaqlite-buildtools
+        run: cargo build --release -p syntaqlite-buildtools
+
+      - name: Generate amalgamated header
+        run: |
+          target/release/syntaqlite-buildtools amalgamate \
+            --syntax-dir syntaqlite-syntax \
+            --lib-dir syntaqlite \
+            --output staging/syntaqlite.h
+
+      - name: Download all platform libraries
+        uses: actions/download-artifact@v7
+        with:
+          pattern: clib-*
+          path: libs/
+
+      - name: Assemble archive
+        run: |
+          # Move libraries into platform subdirectories
+          for dir in libs/clib-*; do
+            platform=$(basename "$dir" | sed 's/^clib-//')
+            mkdir -p "staging/$platform"
+            cp "$dir"/* "staging/$platform/"
+          done
+
+          ARCHIVE="syntaqlite-clib.tar.gz"
+          tar -czf "${ARCHIVE}" -C staging .
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "${ARCHIVE}"

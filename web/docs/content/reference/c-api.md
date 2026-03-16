@@ -1,10 +1,107 @@
 +++
 title = "C API reference"
-description = "FFI function signatures and memory model."
+description = "FFI function signatures, types, and memory model."
 weight = 4
 +++
 
 # C API reference
+
+## Distribution
+
+syntaqlite's C API is available in two forms:
+
+| Package | Contents | Header |
+|---------|----------|--------|
+| `syntaqlite-syntax-amalgamation` | Parser and tokenizer as compilable C source (`.c` + `.h`) | `syntaqlite_syntax.h` |
+| `syntaqlite-clib` | Prebuilt shared library (parser + formatter + validator) for all platforms | `syntaqlite.h` |
+
+Both are attached to each
+[GitHub release](https://github.com/LalitMaganti/syntaqlite/releases).
+See [Using syntaqlite from C](@/integrating/c-api.md) for compilation
+instructions.
+
+## Parser
+
+### Types
+
+```c
+// Opaque parser handle.
+typedef struct SyntaqliteParser SyntaqliteParser;
+
+// Allocator override. Pass NULL for system malloc/free.
+typedef struct SyntaqliteMemMethods {
+  void* (*xMalloc)(size_t);
+  void* (*xRealloc)(void*, size_t);
+  void (*xFree)(void*);
+} SyntaqliteMemMethods;
+
+// Source span (byte offset + length).
+typedef struct { uint32_t offset; uint32_t length; } SyntaqliteSpan;
+
+// Comment descriptor.
+typedef struct {
+  SyntaqliteSpan span;
+  uint32_t is_block;  // 0 = line comment, 1 = block comment
+} SyntaqliteComment;
+
+// Token from the token side-table.
+typedef struct {
+  uint32_t token_type;
+  SyntaqliteSpan span;
+} SyntaqliteParserToken;
+```
+
+### Functions
+
+| Function | Description |
+|----------|-------------|
+| `syntaqlite_parser_create(mem)` | Create a parser for the built-in SQLite dialect. `mem` may be `NULL` |
+| `syntaqlite_parser_create_with_grammar(mem, grammar)` | Create with a custom grammar |
+| `syntaqlite_parser_reset(p, source, len)` | Set source text for parsing |
+| `syntaqlite_parser_next(p)` | Parse the next statement. Returns `0` on success, `1` on error, `-1` when done |
+| `syntaqlite_parser_destroy(p)` | Free the parser. No-op if `NULL` |
+
+### Result access
+
+| Function | Description |
+|----------|-------------|
+| `syntaqlite_result_root(p)` | Root node ID of the last parsed statement |
+| `syntaqlite_result_recovery_root(p)` | Root node ID of error-recovery parse (valid after error) |
+| `syntaqlite_result_error_msg(p)` | NUL-terminated error message, or `NULL` on success |
+| `syntaqlite_result_error_offset(p)` | Byte offset of the error in source |
+| `syntaqlite_result_error_length(p)` | Length of the error token |
+| `syntaqlite_result_comments(p, &count)` | Array of `SyntaqliteComment`, sets `count` |
+| `syntaqlite_result_tokens(p, &count)` | Array of `SyntaqliteParserToken`, sets `count` |
+
+### Arena access
+
+| Function | Description |
+|----------|-------------|
+| `syntaqlite_parser_node(p, node_id)` | Pointer to node data in the arena |
+| `syntaqlite_parser_source(p)` | Pointer to the source text |
+| `syntaqlite_parser_source_length(p)` | Length of the source text |
+| `syntaqlite_parser_node_count(p)` | Number of nodes in the arena |
+| `syntaqlite_dump_node(p, node_id, indent)` | Pretty-print a node subtree. **Caller must `free()` the result** |
+
+### Configuration
+
+| Function | Description |
+|----------|-------------|
+| `syntaqlite_parser_set_collect_tokens(p, enable)` | Enable token side-table collection (off by default) |
+| `syntaqlite_parser_set_trace(p, enable)` | Enable parser trace output (debug) |
+| `syntaqlite_parser_set_macro_fallback(p, enable)` | Enable macro fallback mode |
+
+## Tokenizer
+
+### Functions
+
+| Function | Description |
+|----------|-------------|
+| `syntaqlite_tokenizer_create(mem)` | Create a tokenizer for the built-in SQLite dialect. `mem` may be `NULL` |
+| `syntaqlite_tokenizer_create_with_grammar(mem, grammar)` | Create with a custom grammar |
+| `syntaqlite_tokenizer_reset(tok, source, len)` | Set source text for tokenizing |
+| `syntaqlite_tokenizer_next(tok, &out)` | Read the next token into `out`. Returns the token type, `0` for EOF |
+| `syntaqlite_tokenizer_destroy(tok)` | Free the tokenizer. No-op if `NULL` |
 
 ## Formatter
 
@@ -115,11 +212,12 @@ typedef enum {
 
 ## Memory model
 
-- Formatter and validator handles are **reusable** -- create once, call
+- Parser, formatter, and validator handles are **reusable** — create once, call
   repeatedly.
 - Output strings from `syntaqlite_formatter_output()` and
-  `syntaqlite_validator_diagnostics()` are **borrowed** -- valid until the next
+  `syntaqlite_validator_diagnostics()` are **borrowed** — valid until the next
   call to format/analyze or destroy.
-- Strings from `syntaqlite_validator_render_diagnostics()` are **borrowed** --
+- Strings from `syntaqlite_validator_render_diagnostics()` are **borrowed** —
   valid until the next `analyze()`, `render_diagnostics()`, or `destroy()` call.
+- Strings from `syntaqlite_dump_node()` are **owned** — caller must `free()`.
 - Passing `NULL` to any destroy function is a safe no-op.

@@ -23,6 +23,26 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+// ---------------------------------------------------------------------------
+// Shared library export
+// ---------------------------------------------------------------------------
+
+#ifndef SYNTAQLITE_API
+  #if defined(SYNTAQLITE_STATIC)
+    #define SYNTAQLITE_API
+  #elif defined(_WIN32) || defined(__CYGWIN__)
+    #if defined(SYNTAQLITE_BUILDING)
+      #define SYNTAQLITE_API __declspec(dllexport)
+    #else
+      #define SYNTAQLITE_API __declspec(dllimport)
+    #endif
+  #elif defined(__GNUC__) && __GNUC__ >= 4
+    #define SYNTAQLITE_API __attribute__((visibility("default")))
+  #else
+    #define SYNTAQLITE_API
+  #endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

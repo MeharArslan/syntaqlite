@@ -14,10 +14,11 @@ extern "C" {
 
 typedef struct SyntaqliteDialectTemplate SyntaqliteDialectTemplate;
 
-SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
-SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version,
-                                                 SyntaqliteCflags cflags);
-const SyntaqliteDialectTemplate* syntaqlite_sqlite_dialect(void);
+SYNTAQLITE_API SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
+SYNTAQLITE_API SyntaqliteGrammar syntaqlite_sqlite_grammar_with(
+    int32_t sqlite_version,
+    SyntaqliteCflags cflags);
+SYNTAQLITE_API const SyntaqliteDialectTemplate* syntaqlite_sqlite_dialect(void);
 
 #ifdef __cplusplus
 }

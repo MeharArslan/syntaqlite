@@ -25,6 +25,7 @@
 #define SYNTAQLITE_VALIDATION_H
 
 #include <stdint.h>
+#include "syntaqlite/config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,11 +73,11 @@ typedef enum {
 // ---------------------------------------------------------------------------
 
 // Free the validator and all associated resources. No-op if v is NULL.
-void syntaqlite_validator_destroy(SyntaqliteValidator* v);
+SYNTAQLITE_API void syntaqlite_validator_destroy(SyntaqliteValidator* v);
 
 // Set the analysis mode. See SyntaqliteAnalysisMode for details.
-void syntaqlite_validator_set_mode(SyntaqliteValidator* v,
-                                   SyntaqliteAnalysisMode mode);
+SYNTAQLITE_API void syntaqlite_validator_set_mode(SyntaqliteValidator* v,
+                                                   SyntaqliteAnalysisMode mode);
 
 // ---------------------------------------------------------------------------
 // Analysis
@@ -88,30 +89,32 @@ void syntaqlite_validator_set_mode(SyntaqliteValidator* v,
 //
 // Returns the number of diagnostics produced.
 // The source buffer must remain valid only for the duration of this call.
-uint32_t syntaqlite_validator_analyze(SyntaqliteValidator* v,
-                                      const char* source,
-                                      uint32_t len);
+SYNTAQLITE_API uint32_t syntaqlite_validator_analyze(SyntaqliteValidator* v,
+                                                      const char* source,
+                                                      uint32_t len);
 
 // Clear accumulated DDL from the catalog (document + connection layers).
 // The dialect layer (built-in functions, etc.) is preserved.
-void syntaqlite_validator_reset_catalog(SyntaqliteValidator* v);
+SYNTAQLITE_API void syntaqlite_validator_reset_catalog(SyntaqliteValidator* v);
 
 // Add tables to the database layer of the catalog. These tables will be
 // visible to all subsequent analyze() calls until reset_catalog() is called.
-void syntaqlite_validator_add_tables(SyntaqliteValidator* v,
-                                     const SyntaqliteTableDef* tables,
-                                     uint32_t count);
+SYNTAQLITE_API void syntaqlite_validator_add_tables(
+    SyntaqliteValidator* v,
+    const SyntaqliteTableDef* tables,
+    uint32_t count);
 
 // ---------------------------------------------------------------------------
 // Diagnostic access (valid until next analyze() or destroy())
 // ---------------------------------------------------------------------------
 
 // Number of diagnostics from the last analyze() call.
-uint32_t syntaqlite_validator_diagnostic_count(const SyntaqliteValidator* v);
+SYNTAQLITE_API uint32_t syntaqlite_validator_diagnostic_count(
+    const SyntaqliteValidator* v);
 
 // Pointer to the diagnostic array from the last analyze() call.
 // Returns NULL when diagnostic_count is 0.
-const SyntaqliteDiagnostic* syntaqlite_validator_diagnostics(
+SYNTAQLITE_API const SyntaqliteDiagnostic* syntaqlite_validator_diagnostics(
     const SyntaqliteValidator* v);
 
 // ---------------------------------------------------------------------------
@@ -134,12 +137,13 @@ const SyntaqliteDiagnostic* syntaqlite_validator_diagnostics(
 // Returns a NUL-terminated UTF-8 string. The pointer is valid until the
 // next analyze(), render_diagnostics(), or destroy() call.
 // Returns an empty string when there are no diagnostics.
-const char* syntaqlite_validator_render_diagnostics(SyntaqliteValidator* v,
-                                                     const char* file);
+SYNTAQLITE_API const char* syntaqlite_validator_render_diagnostics(
+    SyntaqliteValidator* v,
+    const char* file);
 
 // Free a string returned by a syntaqlite_* function that documents
 // ownership transfer. No-op if s is NULL.
-void syntaqlite_string_destroy(char* s);
+SYNTAQLITE_API void syntaqlite_string_destroy(char* s);
 
 // ---------------------------------------------------------------------------
 // SQLite convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
@@ -149,7 +153,7 @@ void syntaqlite_string_destroy(char* s);
 
 // Create a validator for the built-in SQLite dialect.
 // The default analysis mode is SYNTAQLITE_MODE_DOCUMENT.
-SyntaqliteValidator* syntaqlite_validator_create_sqlite(void);
+SYNTAQLITE_API SyntaqliteValidator* syntaqlite_validator_create_sqlite(void);
 
 #endif  // SYNTAQLITE_OMIT_SQLITE_API
 

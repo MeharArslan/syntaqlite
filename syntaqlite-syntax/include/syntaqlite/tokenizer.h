@@ -56,25 +56,25 @@ typedef struct SyntaqliteToken {
 // the caller's struct does not need to outlive the tokenizer, but the dialect
 // pointer inside must remain valid for the tokenizer's lifetime.
 // The mem methods are copied — pass NULL for all defaults (malloc/free).
-SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
+SYNTAQLITE_API SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
     const SyntaqliteMemMethods* mem,
     SyntaqliteGrammar env);
 
 // Bind a source buffer and start tokenizing from the beginning. The source
 // must remain valid until the next reset() or destroy(). Can be called
 // again to tokenize a new input without reallocating.
-void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
-                                const char* source,
-                                uint32_t len);
+SYNTAQLITE_API void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
+                                                const char* source,
+                                                uint32_t len);
 
 // Advance to the next token. Returns 1 if a token was written to *out,
 // 0 at end-of-input. Every token is returned, including whitespace and
 // comments.
-uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
-                                   SyntaqliteToken* out);
+SYNTAQLITE_API uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
+                                                   SyntaqliteToken* out);
 
 // Free the tokenizer and all its memory. No-op if tok is NULL.
-void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
+SYNTAQLITE_API void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
 
 // ---------------------------------------------------------------------------
 // SQLite dialect convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
@@ -83,10 +83,10 @@ void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
 // Allocate a tokenizer for the built-in SQLite grammar.
 // The mem methods are copied — pass NULL for all defaults (malloc/free).
-SyntaqliteTokenizer* syntaqlite_tokenizer_create(
+SYNTAQLITE_API SyntaqliteTokenizer* syntaqlite_tokenizer_create(
     const SyntaqliteMemMethods* mem);
 
-SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
+SYNTAQLITE_API SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 #endif
 
 #ifdef __cplusplus

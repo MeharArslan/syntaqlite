@@ -22,6 +22,7 @@
 #define SYNTAQLITE_FORMATTER_H
 
 #include <stdint.h>
+#include "syntaqlite/config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +54,7 @@ typedef struct {
 // ---------------------------------------------------------------------------
 
 // Free the formatter and all associated resources. No-op if f is NULL.
-void syntaqlite_formatter_destroy(SyntaqliteFormatter* f);
+SYNTAQLITE_API void syntaqlite_formatter_destroy(SyntaqliteFormatter* f);
 
 // ---------------------------------------------------------------------------
 // Formatting
@@ -64,9 +65,9 @@ void syntaqlite_formatter_destroy(SyntaqliteFormatter* f);
 // Returns SYNTAQLITE_FORMAT_OK (0) on success, SYNTAQLITE_FORMAT_ERROR (-1)
 // on parse error.
 // The source buffer must remain valid only for the duration of this call.
-int32_t syntaqlite_formatter_format(SyntaqliteFormatter* f,
-                                     const char* source,
-                                     uint32_t len);
+SYNTAQLITE_API int32_t syntaqlite_formatter_format(SyntaqliteFormatter* f,
+                                                    const char* source,
+                                                    uint32_t len);
 
 // ---------------------------------------------------------------------------
 // Result access (valid until next format() or destroy())
@@ -74,15 +75,18 @@ int32_t syntaqlite_formatter_format(SyntaqliteFormatter* f,
 
 // Pointer to the NUL-terminated formatted output from the last successful
 // format() call. Returns NULL if format() has not been called or failed.
-const char* syntaqlite_formatter_output(const SyntaqliteFormatter* f);
+SYNTAQLITE_API const char* syntaqlite_formatter_output(
+    const SyntaqliteFormatter* f);
 
 // Length in bytes of the formatted output (excluding NUL terminator).
 // Returns 0 if format() has not been called or failed.
-uint32_t syntaqlite_formatter_output_len(const SyntaqliteFormatter* f);
+SYNTAQLITE_API uint32_t syntaqlite_formatter_output_len(
+    const SyntaqliteFormatter* f);
 
 // NUL-terminated error message from the last failed format() call.
 // Returns NULL if format() has not been called or succeeded.
-const char* syntaqlite_formatter_error_msg(const SyntaqliteFormatter* f);
+SYNTAQLITE_API const char* syntaqlite_formatter_error_msg(
+    const SyntaqliteFormatter* f);
 
 // ---------------------------------------------------------------------------
 // SQLite convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
@@ -91,10 +95,10 @@ const char* syntaqlite_formatter_error_msg(const SyntaqliteFormatter* f);
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
 
 // Create a formatter for the built-in SQLite dialect with default config.
-SyntaqliteFormatter* syntaqlite_formatter_create_sqlite(void);
+SYNTAQLITE_API SyntaqliteFormatter* syntaqlite_formatter_create_sqlite(void);
 
 // Create a formatter for the built-in SQLite dialect with custom config.
-SyntaqliteFormatter* syntaqlite_formatter_create_sqlite_with_config(
+SYNTAQLITE_API SyntaqliteFormatter* syntaqlite_formatter_create_sqlite_with_config(
     const SyntaqliteFormatConfig* config);
 
 #endif  // SYNTAQLITE_OMIT_SQLITE_API

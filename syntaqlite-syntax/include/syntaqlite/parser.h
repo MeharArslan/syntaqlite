@@ -118,16 +118,16 @@ typedef struct SyntaqliteMacroRegion {
 // ---------------------------------------------------------------------------
 
 // Allocate a parser bound to a specific grammar environment.
-SyntaqliteParser* syntaqlite_parser_create_with_grammar(
+SYNTAQLITE_API SyntaqliteParser* syntaqlite_parser_create_with_grammar(
     const SyntaqliteMemMethods* mem,
     SyntaqliteGrammar env);
 
 // Bind a source buffer and reset all internal state. The source must remain
 // valid until the next reset() or destroy(). Can be called again to parse a
 // new input without reallocating — all previous nodes are invalidated.
-void syntaqlite_parser_reset(SyntaqliteParser* p,
-                             const char* source,
-                             uint32_t len);
+SYNTAQLITE_API void syntaqlite_parser_reset(SyntaqliteParser* p,
+                                            const char* source,
+                                            uint32_t len);
 
 // Parse the next SQL statement. Call in a loop until SYNTAQLITE_PARSE_DONE.
 // Bare semicolons between statements are skipped automatically.
@@ -135,10 +135,10 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 // call become invalid.
 //
 // Returns one of the SYNTAQLITE_PARSE_* codes.
-int32_t syntaqlite_parser_next(SyntaqliteParser* p);
+SYNTAQLITE_API int32_t syntaqlite_parser_next(SyntaqliteParser* p);
 
 // Free the parser, its arena, and all its nodes. No-op if p is NULL.
-void syntaqlite_parser_destroy(SyntaqliteParser* p);
+SYNTAQLITE_API void syntaqlite_parser_destroy(SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
 // Result accessors
@@ -147,31 +147,34 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p);
 
 // Statement root node ID for SYNTAQLITE_PARSE_OK results.
 // Returns SYNTAQLITE_NULL_NODE for DONE/ERROR.
-uint32_t syntaqlite_result_root(SyntaqliteParser* p);
+SYNTAQLITE_API uint32_t syntaqlite_result_root(SyntaqliteParser* p);
 
 // Partial recovery root for SYNTAQLITE_PARSE_ERROR results.
 // Returns SYNTAQLITE_NULL_NODE when no recovery tree is available.
 // Recovery trees may include grammar-level error nodes where parsing resumed.
-uint32_t syntaqlite_result_recovery_root(SyntaqliteParser* p);
+SYNTAQLITE_API uint32_t syntaqlite_result_recovery_root(SyntaqliteParser* p);
 
 // Human-readable error message, or NULL.
-const char* syntaqlite_result_error_msg(SyntaqliteParser* p);
+SYNTAQLITE_API const char* syntaqlite_result_error_msg(SyntaqliteParser* p);
 
 // Byte offset of error token (0xFFFFFFFF = unknown).
-uint32_t syntaqlite_result_error_offset(SyntaqliteParser* p);
+SYNTAQLITE_API uint32_t syntaqlite_result_error_offset(SyntaqliteParser* p);
 
 // Byte length of error token (0 = unknown).
-uint32_t syntaqlite_result_error_length(SyntaqliteParser* p);
+SYNTAQLITE_API uint32_t syntaqlite_result_error_length(SyntaqliteParser* p);
 
 // Per-statement token/comment/macro arrays.
 // Token/comment arrays are empty unless collect_tokens is enabled via
 // syntaqlite_parser_set_collect_tokens(p, 1) before first reset().
-const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
-                                                    uint32_t* count);
-const SyntaqliteParserToken* syntaqlite_result_tokens(SyntaqliteParser* p,
-                                                      uint32_t* count);
-const SyntaqliteMacroRegion* syntaqlite_result_macros(SyntaqliteParser* p,
-                                                      uint32_t* count);
+SYNTAQLITE_API const SyntaqliteComment* syntaqlite_result_comments(
+    SyntaqliteParser* p,
+    uint32_t* count);
+SYNTAQLITE_API const SyntaqliteParserToken* syntaqlite_result_tokens(
+    SyntaqliteParser* p,
+    uint32_t* count);
+SYNTAQLITE_API const SyntaqliteMacroRegion* syntaqlite_result_macros(
+    SyntaqliteParser* p,
+    uint32_t* count);
 
 // ---------------------------------------------------------------------------
 // Arena accessors
@@ -181,16 +184,17 @@ const SyntaqliteMacroRegion* syntaqlite_result_macros(SyntaqliteParser* p,
 // next syntaqlite_parser_next(), reset(), or destroy(). Cast to the
 // dialect-specific node union type and use the tag field to determine which
 // member to read.
-const void* syntaqlite_parser_node(SyntaqliteParser* p, uint32_t node_id);
+SYNTAQLITE_API const void* syntaqlite_parser_node(SyntaqliteParser* p,
+                                                   uint32_t node_id);
 
 // Return a pointer to the source text bound by the last reset() call.
-const char* syntaqlite_parser_source(SyntaqliteParser* p);
+SYNTAQLITE_API const char* syntaqlite_parser_source(SyntaqliteParser* p);
 
 // Return the byte length of the source text bound by the last reset() call.
-uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
+SYNTAQLITE_API uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
 
 // Return the number of nodes currently in the arena.
-uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p);
+SYNTAQLITE_API uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
 // Source span helpers
@@ -274,12 +278,14 @@ static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
 // Enable token/comment collection for result_tokens/result_comments.
 // Default: off (0), in which case those arrays are empty.
 // Returns 0 on success, -1 if the parser has already been used.
-int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
-                                             uint32_t enable);
+SYNTAQLITE_API int32_t syntaqlite_parser_set_collect_tokens(
+    SyntaqliteParser* p,
+    uint32_t enable);
 
 // Enable parser trace output (debug builds only). Default: off (0).
 // Returns 0 on success, -1 if the parser has already been used.
-int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable);
+SYNTAQLITE_API int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p,
+                                                    uint32_t enable);
 
 // Enable macro fallback: when the dialect uses SYNQ_MACRO_STYLE_RUST and a
 // name!(args) call is encountered but the name is NOT in the macro registry,
@@ -287,8 +293,9 @@ int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable);
 // a parse error. A MacroRegion is recorded so the formatter can emit the
 // call verbatim. Default: off (0).
 // Returns 0 on success, -1 if the parser has already been used.
-int32_t syntaqlite_parser_set_macro_fallback(SyntaqliteParser* p,
-                                             uint32_t enable);
+SYNTAQLITE_API int32_t syntaqlite_parser_set_macro_fallback(
+    SyntaqliteParser* p,
+    uint32_t enable);
 
 // ============================================================================
 // Debugging
@@ -297,9 +304,9 @@ int32_t syntaqlite_parser_set_macro_fallback(SyntaqliteParser* p,
 // Dump an AST node tree as indented text. Returns a malloc'd NUL-terminated
 // string. The caller must free() the result. Returns NULL on allocation
 // failure.
-char* syntaqlite_dump_node(SyntaqliteParser* p,
-                           uint32_t node_id,
-                           uint32_t indent);
+SYNTAQLITE_API char* syntaqlite_dump_node(SyntaqliteParser* p,
+                                          uint32_t node_id,
+                                          uint32_t indent);
 
 // ============================================================================
 // Advanced: custom dialects
@@ -308,9 +315,10 @@ char* syntaqlite_dump_node(SyntaqliteParser* p,
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
 // Allocate a parser for the built-in SQLite grammar. The parser is inert
 // until reset() is called. Pass NULL for mem to use malloc/free.
-SyntaqliteParser* syntaqlite_parser_create(const SyntaqliteMemMethods* mem);
+SYNTAQLITE_API SyntaqliteParser* syntaqlite_parser_create(
+    const SyntaqliteMemMethods* mem);
 
-SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
+SYNTAQLITE_API SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 #endif
 
 #ifdef __cplusplus

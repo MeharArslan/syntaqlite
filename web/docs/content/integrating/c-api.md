@@ -6,16 +6,82 @@ weight = 2
 
 # Using syntaqlite from C
 
-syntaqlite provides a C FFI for embedding the formatter and validator in
-non-Rust projects. Link against `libsyntaqlite`.
+syntaqlite provides a C API for embedding in non-Rust projects. There are two
+distribution options with different scope:
+
+| | Source amalgamation | Prebuilt shared library |
+|---|---|---|
+| **Package** | `syntaqlite-syntax-amalgamation` | `syntaqlite-clib` |
+| **What you get** | Two C files to compile yourself | Shared library + header per platform |
+| **Parser & tokenizer** | Yes | Yes |
+| **Formatter** | No | Yes |
+| **Validator** | No | Yes |
+| **Dependencies** | None (just a C compiler) | Link against the shared library |
+
+## Option 1: Source amalgamation (parser and tokenizer only)
+
+The source amalgamation contains the **parser and tokenizer** as two compilable C
+files. It does **not** include the formatter or validator — those require the
+Rust runtime and are only available via the prebuilt shared library (option 2).
+
+Download from the
+[latest release](https://github.com/LalitMaganti/syntaqlite/releases):
+
+```bash
+curl -LO https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-syntax-amalgamation.tar.gz
+tar xf syntaqlite-syntax-amalgamation.tar.gz
+```
+
+You get `syntaqlite_syntax.h` and `syntaqlite_syntax.c`. Add them to your
+project and compile:
+
+```bash
+cc -c -O2 syntaqlite_syntax.c -o syntaqlite_syntax.o
+cc -o my_program my_program.c syntaqlite_syntax.o
+```
+
+See the [C parser tutorial](@/getting-started/c-parser.md) for a complete
+walkthrough.
+
+## Option 2: Prebuilt shared library (full API)
+
+The prebuilt shared library includes the **full API**: parser, tokenizer,
+formatter, and validator. Download `syntaqlite-clib` from the
+[latest release](https://github.com/LalitMaganti/syntaqlite/releases). The
+archive contains a single `syntaqlite.h` header and shared libraries for each
+platform:
+
+```bash
+curl -LO https://github.com/LalitMaganti/syntaqlite/releases/latest/download/syntaqlite-clib.tar.gz
+tar xf syntaqlite-clib.tar.gz
+```
+
+```
+syntaqlite.h
+macos-arm64/libsyntaqlite.dylib
+macos-x64/libsyntaqlite.dylib
+linux-x64/libsyntaqlite.so
+linux-arm64/libsyntaqlite.so
+windows-x64/syntaqlite.dll
+windows-arm64/syntaqlite.dll
+```
+
+Compile and link against the library for your platform:
+
+```bash
+# Linux x64
+cc -o my_program my_program.c -I. -Llinux-x64 -lsyntaqlite -Wl,-rpath,'$ORIGIN/linux-x64'
+
+# macOS arm64
+cc -o my_program my_program.c -I. -Lmacos-arm64 -lsyntaqlite -Wl,-rpath,@executable_path/macos-arm64
+```
 
 ## Format a query
 
 ```c
+#include "syntaqlite.h"
 #include <string.h>
 #include <stdio.h>
-
-// Link against libsyntaqlite
 
 int main(void) {
     SyntaqliteFormatter* f = syntaqlite_formatter_create_sqlite();
@@ -60,28 +126,37 @@ syntaqlite_formatter_destroy(f);
 ## Validate a query
 
 ```c
-SyntaqliteValidator* v = syntaqlite_validator_create_sqlite();
+#include "syntaqlite.h"
+#include <string.h>
+#include <stdio.h>
 
-// Register your schema
-SyntaqliteTableDef tables[] = {
-    {"users",  (const char*[]){"id", "name", "email"}, 3},
-    {"posts",  (const char*[]){"id", "user_id", "body"}, 3},
-};
-syntaqlite_validator_add_tables(v, tables, 2);
+int main(void) {
+    SyntaqliteValidator* v = syntaqlite_validator_create_sqlite();
 
-// Analyze
-const char* sql = "SELECT nme FROM users";
-syntaqlite_validator_analyze(v, sql, strlen(sql));
+    // Register your schema
+    SyntaqliteTableDef tables[] = {
+        {"users",  (const char*[]){"id", "name", "email"}, 3},
+        {"posts",  (const char*[]){"id", "user_id", "body"}, 3},
+    };
+    syntaqlite_validator_add_tables(v, tables, 2);
 
-// Print human-readable diagnostics
-const char* rendered = syntaqlite_validator_render_diagnostics(v, "query.sql");
-printf("%s\n", rendered);
-syntaqlite_string_destroy((char*)rendered);
+    // Analyze
+    const char* sql = "SELECT nme FROM users";
+    syntaqlite_validator_analyze(v, sql, strlen(sql));
 
-syntaqlite_validator_destroy(v);
+    // Print human-readable diagnostics
+    const char* rendered =
+        syntaqlite_validator_render_diagnostics(v, "query.sql");
+    if (rendered[0] != '\0') {
+        printf("%s\n", rendered);
+    }
+
+    syntaqlite_validator_destroy(v);
+    return 0;
+}
 ```
 
 ## Next steps
 
-- See the [C API reference](@/reference/c-api.md) for all functions and the
-  memory model
+- See the [C API reference](@/reference/c-api.md) for all functions, types,
+  and the memory model

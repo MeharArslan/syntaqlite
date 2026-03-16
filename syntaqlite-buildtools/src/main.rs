@@ -55,8 +55,14 @@ enum Command {
     #[command(name = "analyze-versions")]
     AnalyzeVersions(AnalyzeVersionsArgs),
 
-    /// Produce a C amalgamation (single .h + .c pair) from the runtime and dialect source trees.
-    Amalgamate(AmalgamateArgs),
+    /// Produce a C amalgamation of the syntaqlite-syntax parser/tokenizer
+    /// (single .h + .c pair) from the runtime and dialect source trees.
+    #[command(name = "amalgamate-syntax")]
+    AmalgamateSyntax(AmalgamateSyntaxArgs),
+
+    /// Produce a combined C header for the full syntaqlite API (parser + formatter + validator).
+    /// Merges syntaqlite-syntax headers with syntaqlite Rust FFI headers into one syntaqlite.h.
+    Amalgamate(AmalgamateHeaderArgs),
 
     /// Hidden subprocess entry point for the Lemon parser generator.
     #[command(hide = true)]
@@ -146,10 +152,10 @@ struct AnalyzeVersionsArgs {
     output_dir: String,
 }
 
-// ── amalgamate ────────────────────────────────────────────────────────────────
+// ── amalgamate-syntax ─────────────────────────────────────────────────────────
 
 #[derive(clap::Args)]
-struct AmalgamateArgs {
+struct AmalgamateSyntaxArgs {
     /// Dialect name (e.g. "sqlite").
     #[arg(long, required = true)]
     dialect: String,
@@ -162,6 +168,21 @@ struct AmalgamateArgs {
     /// Output directory for the amalgamated .h and .c files.
     #[arg(long, required = true)]
     output_dir: String,
+}
+
+// ── amalgamate ────────────────────────────────────────────────────────────────
+
+#[derive(clap::Args)]
+struct AmalgamateHeaderArgs {
+    /// Directory containing syntaqlite-syntax source (with csrc/ and include/ subdirs).
+    #[arg(long, required = true)]
+    syntax_dir: String,
+    /// Directory containing syntaqlite Rust FFI headers (include/ subdir).
+    #[arg(long, required = true)]
+    lib_dir: String,
+    /// Output path for the amalgamated syntaqlite.h header.
+    #[arg(long, required = true)]
+    output: String,
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
@@ -198,7 +219,7 @@ fn main() {
             output_dir: args.output_dir.clone(),
         }
         .run(),
-        Command::Amalgamate(args) => (|| -> Result<(), String> {
+        Command::AmalgamateSyntax(args) => (|| -> Result<(), String> {
             use std::path::Path;
             let runtime = Path::new(&args.runtime_dir);
             let dialect = Path::new(&args.dialect_dir);
@@ -217,6 +238,24 @@ fn main() {
                 .map_err(|e| format!("writing {}: {e}", c_path.display()))?;
             eprintln!("wrote {}", h_path.display());
             eprintln!("wrote {}", c_path.display());
+            Ok(())
+        })(),
+        Command::Amalgamate(args) => (|| -> Result<(), String> {
+            use std::path::Path;
+            let syntax_dir = Path::new(&args.syntax_dir);
+            let lib_dir = Path::new(&args.lib_dir);
+            let output = Path::new(&args.output);
+            let header = syntaqlite_buildtools::amalgamate::amalgamate_header(
+                syntax_dir,
+                lib_dir,
+            )?;
+            if let Some(parent) = output.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("creating output dir: {e}"))?;
+            }
+            std::fs::write(output, &header)
+                .map_err(|e| format!("writing {}: {e}", output.display()))?;
+            eprintln!("wrote {}", output.display());
             Ok(())
         })(),
         Command::Lemon { args } => syntaqlite_buildtools::run_lemon(args),

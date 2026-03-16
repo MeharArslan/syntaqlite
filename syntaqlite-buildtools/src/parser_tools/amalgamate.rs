@@ -589,6 +589,105 @@ fn emit(files: &FileMap, mode: EmitMode) -> AmalgamateOutput {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Full API header amalgamation (syntaqlite.h)
+// ---------------------------------------------------------------------------
+
+/// Produce a single `syntaqlite.h` that combines:
+/// - All public headers from `syntaqlite-syntax` (parser, tokenizer, grammar, etc.)
+/// - All FFI headers from `syntaqlite` (formatter, validator)
+///
+/// This is the header shipped with prebuilt shared libraries (`libsyntaqlite`).
+///
+/// # Errors
+///
+/// Returns an error if reading header files fails.
+pub fn amalgamate_header(syntax_dir: &Path, lib_dir: &Path) -> Result<String, String> {
+    let mut header = String::new();
+    header.push_str("/*\n");
+    header.push_str("** syntaqlite.h — single-file C API header\n");
+    header.push_str("** Machine generated, do not edit.\n");
+    header.push_str("**\n");
+    header.push_str("** Parser, tokenizer, formatter, and validator for SQLite SQL.\n");
+    header.push_str("*/\n");
+    header.push_str("#ifndef SYNTAQLITE_H\n#define SYNTAQLITE_H\n\n");
+
+    // Collect syntax public headers.
+    let syntax_include = syntax_dir.join("include");
+    let syntax_headers = collect_files(&[&syntax_include])?;
+
+    // Emit syntax headers in order.
+    let mut emitter = Emitter::new(&syntax_headers);
+    emitter.emit_kind(FileKind::PublicHeader, &mut header, Section::Header);
+
+    // Now append each lib header (formatter.h, validation.h) directly.
+    // These are standalone headers with only <stdint.h> dependencies — no
+    // recursive include expansion needed.
+    let lib_include = lib_dir.join("include");
+    if lib_include.is_dir() {
+        let lib_headers = collect_files(&[&lib_include])?;
+        for (key, content) in &lib_headers {
+            if classify(key) == FileKind::PublicHeader {
+                let _ = writeln!(header, "/* ======== begin: {key} ======== */");
+
+                // Strip the include guard — we have our own outer SYNTAQLITE_H guard.
+                let guard = detect_include_guard(content);
+                let mut skip_ifndef = false;
+                let mut skip_define = false;
+                let lines: Vec<&str> = content.lines().collect();
+
+                // Find last #endif to skip.
+                let last_endif_idx = if guard.is_some() {
+                    lines.iter().rposition(|l| l.trim().starts_with("#endif"))
+                } else {
+                    None
+                };
+
+                for (i, line) in lines.iter().enumerate() {
+                    let trimmed = line.trim();
+
+                    // Skip include guard directives.
+                    if let Some(ref g) = guard {
+                        if !skip_ifndef {
+                            if let Some(rest) = trimmed.strip_prefix("#ifndef") {
+                                if rest.trim() == g.as_str() {
+                                    skip_ifndef = true;
+                                    continue;
+                                }
+                            }
+                        } else if !skip_define {
+                            if let Some(rest) = trimmed.strip_prefix("#define") {
+                                if rest.trim() == g.as_str() {
+                                    skip_define = true;
+                                    continue;
+                                }
+                            }
+                        }
+                        if Some(i) == last_endif_idx {
+                            continue;
+                        }
+                    }
+
+                    // Skip includes already provided by the syntax headers above.
+                    if trimmed == "#include <stdint.h>"
+                        || trimmed == "#include \"syntaqlite/config.h\""
+                    {
+                        continue;
+                    }
+
+                    header.push_str(line);
+                    header.push('\n');
+                }
+
+                let _ = writeln!(header, "/* ======== end: {key} ======== */\n");
+            }
+        }
+    }
+
+    header.push_str("\n#endif  /* SYNTAQLITE_H */\n");
+    Ok(header)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
