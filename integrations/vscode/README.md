@@ -6,7 +6,13 @@ SQL language support powered by the syntaqlite language server.
 
 - **Diagnostics** — syntax errors and semantic warnings as you type
 - **Formatting** — format SQL documents via `Format Document` or on save
-- **Completions** — SQL keywords and built-in functions
+- **Completions** — SQL keywords, functions, tables, and columns
+- **Go to Definition** — Ctrl+click on tables, columns, and CTEs to jump to their definition
+- **Find References** — find all usages of a symbol across open files
+- **Rename** — rename tables, columns, and CTEs across all references
+- **Hover** — hover over identifiers to see type and schema info
+- **Document Highlights** — highlights all occurrences of a symbol in the current file
+- **Signature Help** — parameter hints for SQL functions
 - **Semantic highlighting** — context-aware token coloring
 
 ## Installation
@@ -18,7 +24,8 @@ syntaqlite binary for your platform — no additional setup required.
 
 Schemas and formatting are configured via `syntaqlite.toml` in your project
 root — the LSP reads it automatically. See the
-[main README](../../README.md#project-configuration) for the full format.
+[config file reference](https://docs.syntaqlite.com/main/reference/config-file/)
+for the full format.
 
 ```toml
 [schemas]
