@@ -32,6 +32,7 @@ OTHER_MANIFESTS = [
 # Files with `"version": "X.Y.Z"` (package.json style).
 JSON_MANIFESTS = [
     "integrations/vscode/package.json",
+    "integrations/claude-code/.claude-plugin/plugin.json",
     "web/syntaqlite-js/package.json",
 ]
 
