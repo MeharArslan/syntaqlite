@@ -46,10 +46,7 @@ cargo run
 ```
 
 ```sql
-SELECT id, name, email
-FROM users
-WHERE active = 1
-ORDER BY name;
+SELECT id, name, email FROM users WHERE active = 1 ORDER BY name;
 ```
 
 The formatter handle is reusable — internal allocations are recycled across
@@ -103,9 +100,7 @@ cargo run
 
 ```text
 Formatted:
-SELECT id, nme
-FROM users
-WHERE active = 1;
+SELECT id, nme FROM users WHERE active = 1;
 
 error: unknown column 'nme'
 ```
