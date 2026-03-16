@@ -11,8 +11,8 @@ weight = 3
 Add the marketplace and install the plugin:
 
 ```bash
-claude plugin marketplace add LalitMaganti/claude-code-plugin
-claude plugin install syntaqlite@LalitMaganti/claude-code-plugin
+claude plugin marketplace add lalitmaganti-plugins
+claude plugin install syntaqlite@lalitmaganti-plugins
 ```
 
 ## What you get

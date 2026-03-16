@@ -36,8 +36,8 @@ curl -fsSL https://syntaqlite.com/install.sh | sh
 From the GitHub marketplace:
 
 ```bash
-claude plugin marketplace add LalitMaganti/claude-code-plugin
-claude plugin install syntaqlite@LalitMaganti/claude-code-plugin
+claude plugin marketplace add lalitmaganti-plugins
+claude plugin install syntaqlite@lalitmaganti-plugins
 ```
 
 ## Configuration
