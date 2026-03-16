@@ -203,15 +203,19 @@ jobs:
           path: artifacts/
           merge-multiple: true
 
+      - name: List artifacts
+        shell: bash
+        run: ls -la artifacts/
+
       - name: Extract binary
         shell: bash
         run: |
-          mkdir -p bin/
-          ARCHIVE=$(ls artifacts/syntaqlite-cli-${{ matrix.target }}.tar.gz artifacts/syntaqlite-cli-${{ matrix.target }}.zip 2>/dev/null | head -1)
+          mkdir -p bin/ extracted/
+          ARCHIVE=$(find artifacts/ -name "syntaqlite-cli-${{ matrix.target }}.*" | head -1)
+          echo "Found archive: $ARCHIVE"
           if [[ "$ARCHIVE" == *.zip ]]; then
             unzip "$ARCHIVE" -d extracted/
           else
-            mkdir -p extracted/
             tar -xf "$ARCHIVE" -C extracted/
           fi
           find extracted/ -name "${{ matrix.binary }}" -exec cp {} bin/ \;

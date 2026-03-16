@@ -40,10 +40,10 @@ jobs:
       - name: Package amalgamation
         run: |
           VERSION="${GITHUB_REF_NAME}"
-          ARCHIVE="syntaqlite-amalgamation-${VERSION}.tar.gz"
-          cp amalgamation-out/syntaqlite_sqlite.h amalgamation-out/syntaqlite.h
-          cp amalgamation-out/syntaqlite_sqlite.c amalgamation-out/syntaqlite.c
-          tar -czf "${ARCHIVE}" -C amalgamation-out syntaqlite.h syntaqlite.c
+          ARCHIVE="syntaqlite-syntax-csrc-${VERSION}.tar.gz"
+          cp amalgamation-out/syntaqlite_sqlite.h amalgamation-out/syntaqlite_syntax.h
+          cp amalgamation-out/syntaqlite_sqlite.c amalgamation-out/syntaqlite_syntax.c
+          tar -czf "${ARCHIVE}" -C amalgamation-out syntaqlite_syntax.h syntaqlite_syntax.c
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
 
       - name: Upload to GitHub Release
