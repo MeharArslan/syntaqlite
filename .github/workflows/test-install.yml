@@ -70,6 +70,8 @@ jobs:
     steps:
       - name: Install (Unix)
         if: runner.os != 'Windows'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - install "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
@@ -77,6 +79,8 @@ jobs:
       - name: Install (Windows)
         if: runner.os == 'Windows'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           curl -sSf https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/tools/syntaqlite | python3 - install "$USERPROFILE/.local/bin"
           echo "$USERPROFILE/.local/bin" >> "$GITHUB_PATH"
