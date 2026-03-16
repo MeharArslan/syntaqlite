@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.34
+
+*No changes yet.*
+
 ## 0.0.33
 
 *No changes yet.*

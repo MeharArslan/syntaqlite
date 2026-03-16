@@ -43,7 +43,7 @@ PYTHON_VERSION_FILES = [
 # Files with inline version references (docs, lib.rs, etc.).
 VERSION_REF_FILES = [
     "README.md",
-    "web/docs/content/integrating/rust-api.md",
+    "web/docs/content/guides/rust-api.md",
     "web/docs/content/guides/validation.md",
     "syntaqlite-syntax/src/lib.rs",
 ]
