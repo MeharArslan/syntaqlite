@@ -16,8 +16,11 @@
 <body>
   <header>
     <nav>
+      <button class="hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <a href="{{ config.base_url }}" class="site-title"><img src="{{ get_url(path='favicon.svg') }}" width="22" height="22" alt="" style="vertical-align: -3px; margin-right: 6px;">syntaqlite</a>
-      <ul>
+      <ul id="nav-links">
         <li><a href="{{ get_url(path='getting-started') }}">Getting started</a></li>
         <li><a href="{{ get_url(path='guides') }}">Guides</a></li>
         <li><a href="{{ get_url(path='concepts') }}">Concepts</a></li>
@@ -62,6 +65,18 @@
       theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'default' : 'dark',
     });
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js" data-manual></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-sql.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-toml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-rust.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-typescript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-c.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-lua.min.js"></script>
+  <script>Prism.highlightAll();</script>
   <script>
     function switchTab(group, tab) {
       var g = document.querySelector('[data-tab-group="' + group + '"]');
@@ -73,27 +88,21 @@
         p.classList.toggle('active', p.getAttribute('data-tab') === tab);
       });
     }
+
     // Version switcher
     (function() {
       var btn = document.getElementById('version-btn');
       var menu = document.getElementById('version-menu');
       var label = document.getElementById('version-label');
       if (!btn || !menu || !label) return;
-
-      // Detect current version from URL path
       var match = window.location.pathname.match(/^\/(main|v[^/]+)\//);
       var current = match ? match[1] : 'main';
       label.textContent = current;
-
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         menu.classList.toggle('open');
       });
-
-      document.addEventListener('click', function() {
-        menu.classList.remove('open');
-      });
-
+      document.addEventListener('click', function() { menu.classList.remove('open'); });
       fetch('/versions.json')
         .then(function(r) { return r.json(); })
         .then(function(versions) {
@@ -107,6 +116,32 @@
           });
         })
         .catch(function() {});
+    })();
+
+    function toggleMobileMenu() {
+      document.getElementById('nav-links').classList.toggle('open');
+    }
+
+    // On mobile, merge sidebar section links into the nav dropdown
+    (function() {
+      var aside = document.querySelector('aside');
+      var nav = document.getElementById('nav-links');
+      if (!aside || !nav || !window.matchMedia('(max-width: 768px)').matches) return;
+      var divider = document.createElement('li');
+      divider.className = 'mobile-section-divider';
+      nav.appendChild(divider);
+      var h3 = aside.querySelector('h3');
+      if (h3) {
+        var header = document.createElement('li');
+        header.className = 'mobile-section-header';
+        header.textContent = h3.textContent;
+        nav.appendChild(header);
+      }
+      aside.querySelectorAll('ul a').forEach(function(a) {
+        var li = document.createElement('li');
+        li.appendChild(a.cloneNode(true));
+        nav.appendChild(li);
+      });
     })();
 
     function toggleTheme() {

@@ -3,6 +3,3 @@ title = "syntaqlite"
 compile_sass = false
 generate_feeds = false
 build_search_index = true
-
-[markdown.highlighting]
-theme = "github-dark"
