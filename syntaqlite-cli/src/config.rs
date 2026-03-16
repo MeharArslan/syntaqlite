@@ -10,6 +10,7 @@ use serde::Deserialize;
 
 /// Top-level project configuration from `syntaqlite.toml`.
 #[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) struct ProjectConfig {
     /// Default schema for files not matching any glob in `[schemas]`.
     pub schema: Option<Vec<String>>,
@@ -17,6 +18,13 @@ pub(crate) struct ProjectConfig {
     /// Glob → schema file mapping. Order is preserved (first match wins).
     #[serde(default)]
     pub schemas: IndexMap<String, Vec<String>>,
+
+    /// SQLite version to emulate (e.g. "3.47.0", "latest").
+    pub sqlite_version: Option<String>,
+
+    /// SQLite compile-time flags to enable.
+    #[serde(default)]
+    pub sqlite_cflags: Vec<String>,
 
     /// Formatting options.
     #[serde(default)]
@@ -248,6 +256,8 @@ schema = ["default.sql"]
         let config: ProjectConfig = toml::from_str(
             r#"
 schema = ["schema.sql"]
+sqlite-version = "3.47.0"
+sqlite-cflags = ["SQLITE_ENABLE_MATH_FUNCTIONS", "SQLITE_ENABLE_FTS5"]
 
 [schemas]
 "src/**/*.sql" = ["schema/main.sql", "schema/views.sql"]
@@ -264,6 +274,11 @@ semicolons = false
         .unwrap();
 
         assert_eq!(config.schema.as_ref().unwrap(), &["schema.sql"]);
+        assert_eq!(config.sqlite_version.as_deref(), Some("3.47.0"));
+        assert_eq!(
+            config.sqlite_cflags,
+            &["SQLITE_ENABLE_MATH_FUNCTIONS", "SQLITE_ENABLE_FTS5"]
+        );
         assert_eq!(config.schemas.len(), 3);
         assert_eq!(config.format.line_width, Some(100));
         assert_eq!(config.format.indent_width, Some(4));
@@ -276,7 +291,27 @@ semicolons = false
         let config: ProjectConfig = toml::from_str("").unwrap();
         assert!(config.schema.is_none());
         assert!(config.schemas.is_empty());
+        assert!(config.sqlite_version.is_none());
+        assert!(config.sqlite_cflags.is_empty());
         assert!(config.format.line_width.is_none());
+    }
+
+    #[test]
+    fn parse_sqlite_version_only() {
+        let config: ProjectConfig =
+            toml::from_str("sqlite-version = \"latest\"\n").unwrap();
+        assert_eq!(config.sqlite_version.as_deref(), Some("latest"));
+        assert!(config.sqlite_cflags.is_empty());
+    }
+
+    #[test]
+    fn parse_sqlite_cflags_only() {
+        let config: ProjectConfig = toml::from_str(
+            "sqlite-cflags = [\"SQLITE_ENABLE_FTS5\"]\n",
+        )
+        .unwrap();
+        assert!(config.sqlite_version.is_none());
+        assert_eq!(config.sqlite_cflags, &["SQLITE_ENABLE_FTS5"]);
     }
 
     #[test]

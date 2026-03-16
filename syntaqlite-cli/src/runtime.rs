@@ -76,23 +76,42 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
         dialect
     };
 
-    let configured = match base {
-        Some(d) => Some(apply_version_cflags(
-            d,
-            cli.sqlite_version.as_ref(),
-            &cli.sqlite_cflag,
-        )?),
-        None => None,
-    };
-
-    let config = if cli.no_config {
+    let config_mode = if cli.no_config {
         ConfigMode::Disabled
     } else if let Some(ref path) = cli.config {
         ConfigMode::Explicit(path)
     } else {
         ConfigMode::Discover
     };
-    dispatch_commands(cli.command, configured, &config)
+
+    // Discover config early so we can merge sqlite-version / sqlite-cflags.
+    let project_config = discover_config_for_paths(&[], &config_mode);
+
+    let configured = match base {
+        Some(d) => {
+            // CLI flags take precedence over config file values.
+            let version = cli.sqlite_version.as_ref().or_else(|| {
+                project_config
+                    .as_ref()
+                    .and_then(|(c, _)| c.sqlite_version.as_ref())
+            });
+            let cli_cflags = &cli.sqlite_cflag;
+            let config_cflags;
+            let cflags = if cli_cflags.is_empty() {
+                config_cflags = project_config
+                    .as_ref()
+                    .map(|(c, _)| c.sqlite_cflags.as_slice())
+                    .unwrap_or_default();
+                config_cflags
+            } else {
+                cli_cflags.as_slice()
+            };
+            Some(apply_version_cflags(d, version, cflags)?)
+        }
+        None => None,
+    };
+
+    dispatch_commands(cli.command, configured, &config_mode)
 }
 
 fn apply_version_cflags(
@@ -104,7 +123,7 @@ fn apply_version_cflags(
 
     if let Some(v) = version {
         let ver = SqliteVersion::parse_with_latest(v)
-            .map_err(|e| format!("invalid --sqlite-version: {e}"))?;
+            .map_err(|e| format!("invalid sqlite-version {v:?}: {e}"))?;
         dialect = dialect.with_version(ver);
     }
 
@@ -112,7 +131,7 @@ fn apply_version_cflags(
         let mut flags = SqliteFlags::default();
         for name in cflags {
             let flag = syntaqlite::util::SqliteFlag::from_name(name)
-                .ok_or_else(|| format!("unknown --sqlite-cflag: {name}"))?;
+                .ok_or_else(|| format!("unknown sqlite-cflag: {name}"))?;
             flags = flags.with(flag);
         }
         dialect = dialect.with_cflags(flags);

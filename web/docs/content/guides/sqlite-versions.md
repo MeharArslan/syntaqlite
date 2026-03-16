@@ -66,6 +66,24 @@ syntaqlite validate \
 This matches a real deployment: "we run SQLite 3.41.0 compiled with math
 functions."
 
+## Setting version and flags in the config file
+
+Instead of passing flags on every command, add them to `syntaqlite.toml`:
+
+```toml
+sqlite-version = "3.41.0"
+sqlite-cflags = [
+  "SQLITE_ENABLE_MATH_FUNCTIONS",
+  "SQLITE_ENABLE_JSON1",
+]
+```
+
+This applies to all commands — `validate`, `fmt`, and `lsp` — and keeps your
+CI config in sync with local development. CLI flags override the config file
+when you need a one-off change.
+
+See [project setup](@/guides/project-setup.md) for a full walkthrough.
+
 ## Formatting with version constraints
 
 The `--sqlite-version` and `--sqlite-cflag` flags also work with `syntaqlite

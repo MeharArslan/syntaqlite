@@ -105,6 +105,8 @@ Use `--check` to verify files are formatted without modifying them — see the
 
 ## Next steps
 
+- [Project setup guide](@/guides/project-setup.md) — configure
+  `syntaqlite.toml` for a real project
 - [CLI reference](@/reference/cli.md) — all flags for `fmt`, `validate`,
   `parse`, and `lsp`
 - [Config file reference](@/reference/config-file.md) — `syntaqlite.toml`

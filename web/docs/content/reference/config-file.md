@@ -21,6 +21,12 @@ syntaqlite walks up from the current working directory and uses the first
 # Optional — if omitted, unmatched files get no schema.
 # schema = ["schema.sql"]
 
+# SQLite version to emulate (e.g. "3.47.0", "latest").
+# sqlite-version = "3.47.0"
+
+# SQLite compile-time flags to enable.
+# sqlite-cflags = ["SQLITE_ENABLE_MATH_FUNCTIONS", "SQLITE_ENABLE_FTS5"]
+
 # Schema DDL files for validation and completions.
 # Each entry maps a glob pattern to schema file(s).
 [schemas]
@@ -72,6 +78,24 @@ Schema resolution order:
 Schema files contain SQL DDL (`CREATE TABLE`, `CREATE VIEW`, etc.) — the same
 format as `sqlite3 mydb.db .schema` output.
 
+## `sqlite-version`
+
+SQLite version to emulate. Controls which keywords and functions are recognized
+by the parser and semantic analyzer.
+
+- Type: string (e.g. `"3.47.0"`, `"latest"`)
+- Optional — defaults to latest
+- Equivalent to `--sqlite-version` on the CLI
+
+## `sqlite-cflags`
+
+SQLite compile-time flags to enable. Controls which extensions and optional
+features are available during analysis.
+
+- Type: array of strings (e.g. `["SQLITE_ENABLE_MATH_FUNCTIONS", "SQLITE_ENABLE_FTS5"]`)
+- Optional — defaults to empty (no extra flags)
+- Equivalent to `--sqlite-cflag` on the CLI (repeatable)
+
 ## `[format]`
 
 Default formatting options. All fields are optional — omitted fields use
@@ -110,8 +134,10 @@ this.
 
 ## Precedence
 
-CLI flags always override config file values. When `--schema` is passed to
-`syntaqlite validate`, it takes precedence over `[schemas]` and `schema`.
+CLI flags always override config file values. When `--sqlite-version` or
+`--sqlite-cflag` is passed on the command line, it takes precedence over
+`sqlite-version` and `sqlite-cflags` in the config file. Likewise, `--schema`
+overrides `[schemas]` and `schema`.
 
 ## Consumers
 
