@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.30
+
+- LSP: go-to-definition now returns `LocationLink` with `originSelectionRange`, giving editors precise control over which token gets underlined on Ctrl+hover
+- LSP: add `textDocument/documentHighlight` — highlights all occurrences of a symbol (table, column, CTE) in the current file when the cursor is on it
+- CLI: add `--no-config` flag to disable automatic `syntaqlite.toml` discovery
+- Fix LSP integration tests that were broken by the repo's own `syntaqlite.toml` interfering with test schema loading
+
 ## 0.0.29
 
 - LSP: per-file schema resolution — `[schemas]` glob entries in `syntaqlite.toml` are now respected by the language server. Each open file is matched against glob patterns to select its schema catalog, with `strict_schema` applied automatically for matched files. Previously only the top-level `schema` key was read, so projects using `[schemas]` got no schema validation in the editor.
