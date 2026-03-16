@@ -8,9 +8,10 @@ weight = 1
 
 ## Install
 
-Search for **syntaqlite** in the Extensions panel (`Cmd+Shift+X` /
-`Ctrl+Shift+X`) and click Install. No other setup needed — the extension
-bundles the binary.
+Install **[syntaqlite](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)**
+from the VS Code Marketplace, or search for `syntaqlite` in the Extensions
+panel (`Cmd+Shift+X`). The extension bundles the binary — no other setup
+needed.
 
 ## Diagnostics
 
