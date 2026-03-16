@@ -6,26 +6,28 @@ weight = 1
 
 # VS Code
 
-## Install
+## 1. Install
 
 Install **[syntaqlite](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)**
 from the VS Code Marketplace, or search for `syntaqlite` in the Extensions
 panel (`Cmd+Shift+X`). The extension bundles the binary — no other setup
 needed.
 
-## Diagnostics
+## 2. See diagnostics
 
-Create `demo.sql` and paste:
+Create a file called `demo.sql` and paste this in:
 
 ```sql
 select id,name,email from users wehre active=1 order by name
 ```
 
-`wehre` is immediately underlined — fix it to `where` and the error clears.
+`wehre` is immediately underlined in red. Fix it to `where` and the error
+clears.
 
-## Format
+## 3. Format
 
-Run **Format Document** (`Shift+Alt+F`):
+With the cursor in `demo.sql`, run **Format Document** (`Shift+Alt+F`). The
+query becomes:
 
 ```sql
 SELECT id, name, email
@@ -34,34 +36,53 @@ WHERE active = 1
 ORDER BY name;
 ```
 
-Enable `editor.formatOnSave` to format automatically.
+To format automatically on every save, add this to your VS Code settings:
 
-## Completions
+```json
+{
+  "editor.formatOnSave": true
+}
+```
 
-Type `SEL` to see keyword completions. After `FROM `, you'll see table names
-if you've configured a [schema](@/guides/schema-validation.md).
+## 4. Add a schema
 
-## Schema validation
+So far syntaqlite only checks syntax. To catch unknown tables and columns,
+create a file called `schema.sql` next to `demo.sql`:
 
-Add a `syntaqlite.toml` to your project root to catch unknown tables and
-columns with did-you-mean suggestions:
+```sql
+CREATE TABLE users (id INTEGER, name TEXT, email TEXT, active INTEGER);
+```
+
+Then create `syntaqlite.toml` in the same directory:
 
 ```toml
 [schemas]
 "**/*.sql" = ["schema.sql"]
 ```
 
-See the [schema validation guide](@/guides/schema-validation.md) for setup
-and the [config file reference](@/reference/config-file.md) for all options.
+Go back to `demo.sql` and change `name` to `nme`:
 
-## Customize formatting
-
-Override defaults in `syntaqlite.toml`:
-
-```toml
-[format]
-line_width = 120
-keyword_case = "lower"
+```sql
+SELECT id, nme, email
+FROM users
+WHERE active = 1
+ORDER BY name;
 ```
 
-See [formatting options](@/reference/formatting-options.md) for all settings.
+You'll see `nme` underlined with a warning: *unknown column 'nme' — did you
+mean 'name'?* Fix it back to `name` and the warning disappears.
+
+## 5. Completions
+
+Now that you have a schema, type a new query in `demo.sql`. After `FROM `,
+you'll see `users` offered as a completion. After `SELECT `, you'll see `id`,
+`name`, `email`, and `active`.
+
+## Next steps
+
+- [Formatting options](@/reference/formatting-options.md) — line width,
+  keyword casing, semicolons
+- [Config file reference](@/reference/config-file.md) — glob-based schema
+  routing and all `syntaqlite.toml` options
+- [Schema validation guide](@/guides/schema-validation.md) — multi-schema
+  setups, strict mode, CI integration
