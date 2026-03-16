@@ -2,42 +2,26 @@
 
 ## 0.0.34
 
-- C API: prebuilt shared library (`syntaqlite-clib.tar.gz`) with per-platform binaries and amalgamated `syntaqlite.h` header
-- C API: `SYNTAQLITE_API` visibility macro on all public functions for shared library export
-- C API: new `amalgamate` buildtools subcommand merges all headers into single `syntaqlite.h`
-- Renamed C source amalgamation subcommand to `amalgamate-syntax`, archive to `syntaqlite-syntax-amalgamation.tar.gz`
-- Versionless artifact filenames so documentation links don't go stale
-- Docs: restructured to Diataxis (Tutorials, Guides, Concepts, Reference, Contributing)
-- Docs: merged Integrating into Guides, moved MCP/editor config from Tutorials to Guides
+- C API: prebuilt shared library download (`syntaqlite-clib.tar.gz`) with binaries for macOS, Linux, and Windows plus a single `syntaqlite.h` header
+- C API: renamed source amalgamation archive to `syntaqlite-syntax-amalgamation.tar.gz`
+- Docs: restructured to Diataxis — Tutorials, Guides, Concepts, Reference, Contributing
 - Docs: new Rust library and C parser tutorials
-- Docs: expanded C API guide and reference with parser/tokenizer sections
-- Docs: removed JS API docs (API not stable yet)
-- Docs: mobile-friendly layout, unified CSS with design tokens, single Prism.js highlighter
-- Release pipeline: smoke tests gate the release (binary tested on macOS, Linux, Windows)
-- Release pipeline: post-release install tests for pip, Homebrew, download script
-- Fix download script GitHub API rate limiting (supports `GITHUB_TOKEN` auth)
-- Fix `__init__.py` version tracking in bump script
-- Fix clippy warnings in CLI and buildtools
+- Docs: mobile-friendly layout with responsive navigation
+- Docs: expanded C API guide and reference with parser/tokenizer coverage
+- Download script: fix rate limiting on GitHub Actions (now supports `GITHUB_TOKEN`)
 
 ## 0.0.33
 
-- Release pipeline: add smoke-test job to release workflow, gating release on binary verification
-- Release pipeline: add `test-install.yml` workflow for post-release pip/brew/download-script testing
-- C API: add `SYNTAQLITE_API` visibility macro and codegen support for dialect headers
-- Fix `tools/build-amalgamation` to use renamed `amalgamate-syntax` subcommand
+*Intermediate release — changes rolled into 0.0.34.*
 
 ## 0.0.32
 
-- C API: prebuilt shared library release workflow (`release-clib.yml`)
-- C API: header amalgamation buildtools subcommand
-- Docs: mobile-friendly responsive layout with hamburger menu
-- Docs: unified CSS with design tokens, BEM naming, consistent syntax highlighting via Prism.js
-- Fix VS Code README link and update feature list
+*Intermediate release — changes rolled into 0.0.34.*
 
 ## 0.0.31
 
-- Docs: mobile-friendly redesign, unified styling, consistent syntax highlighting
-- Fix VS Code README link and update feature list
+- Docs: mobile-friendly redesign with consistent syntax highlighting
+- Fix VS Code extension README link
 
 ## 0.0.30
 
