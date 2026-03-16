@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.31
+
+*No changes yet.*
+
 ## 0.0.30
 
 - LSP: go-to-definition now returns `LocationLink` with `originSelectionRange`, giving editors precise control over which token gets underlined on Ctrl+hover
