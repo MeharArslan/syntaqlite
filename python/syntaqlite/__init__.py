@@ -5,7 +5,7 @@ import stat
 import subprocess
 import sys
 
-__version__ = "0.0.31"
+__version__ = "0.0.32"
 
 
 def get_binary_path():
