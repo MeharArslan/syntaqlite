@@ -648,20 +648,18 @@ pub fn amalgamate_header(syntax_dir: &Path, lib_dir: &Path) -> Result<String, St
 
                     // Skip include guard directives.
                     if let Some(ref g) = guard {
-                        if !skip_ifndef {
-                            if let Some(rest) = trimmed.strip_prefix("#ifndef") {
-                                if rest.trim() == g.as_str() {
-                                    skip_ifndef = true;
-                                    continue;
-                                }
-                            }
-                        } else if !skip_define {
-                            if let Some(rest) = trimmed.strip_prefix("#define") {
-                                if rest.trim() == g.as_str() {
-                                    skip_define = true;
-                                    continue;
-                                }
-                            }
+                        if !skip_ifndef
+                            && let Some(rest) = trimmed.strip_prefix("#ifndef")
+                            && rest.trim() == g.as_str()
+                        {
+                            skip_ifndef = true;
+                            continue;
+                        } else if !skip_define
+                            && let Some(rest) = trimmed.strip_prefix("#define")
+                            && rest.trim() == g.as_str()
+                        {
+                            skip_define = true;
+                            continue;
                         }
                         if Some(i) == last_endif_idx {
                             continue;

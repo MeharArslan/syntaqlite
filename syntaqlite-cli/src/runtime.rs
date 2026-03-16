@@ -92,7 +92,7 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
     } else {
         ConfigMode::Discover
     };
-    dispatch_commands(cli.command, configured, config)
+    dispatch_commands(cli.command, configured, &config)
 }
 
 fn apply_version_cflags(
@@ -134,7 +134,7 @@ enum ConfigMode<'a> {
 fn dispatch_commands(
     command: Command,
     dialect: Option<AnyDialect>,
-    config: ConfigMode<'_>,
+    config: &ConfigMode<'_>,
 ) -> Result<(), String> {
     match command {
         Command::Parse {
@@ -152,7 +152,7 @@ fn dispatch_commands(
             deny,
             lang,
         } => require_dialect(dialect).and_then(|d| {
-            let file_config = discover_config_for_paths(&files, &config);
+            let file_config = discover_config_for_paths(&files, config);
             // If --schema is given, use it directly. Otherwise, resolve from config file.
             let resolved_schemas = if schema.is_empty() {
                 resolve_schemas_from_config_with(&files, file_config.as_ref())
@@ -176,7 +176,7 @@ fn dispatch_commands(
                 checks,
             )
         }),
-        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, &config)),
+        Command::Lsp => require_dialect(dialect).and_then(|d| cmd_lsp(d, config)),
         #[cfg(feature = "mcp")]
         Command::Mcp => require_dialect(dialect).and_then(crate::mcp::cmd_mcp),
         Command::Fmt {
@@ -190,7 +190,7 @@ fn dispatch_commands(
             semicolons,
             output,
         } => {
-            let file_config = discover_config_for_paths(&files, &config);
+            let file_config = discover_config_for_paths(&files, config);
             let config = build_format_config(
                 file_config.as_ref().map(|(c, _)| &c.format),
                 line_width,
