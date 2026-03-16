@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.36
+
+- LSP: "did you mean?" suggestions now visible in Claude Code (fix single-line truncation)
+- Claude Code: updated plugin install command for new Marketplace path
+
 ## 0.0.35
 
 - LSP: "did you mean?" suggestions now appear in VS Code diagnostics (previously only shown in the CLI)
