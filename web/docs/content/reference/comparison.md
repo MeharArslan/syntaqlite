@@ -1,5 +1,5 @@
 +++
-title = "Competitive Comparison"
+title = "Comparison to other tools"
 weight = 9
 +++
 # How does syntaqlite compare?
