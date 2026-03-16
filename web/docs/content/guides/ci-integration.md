@@ -1,7 +1,7 @@
 +++
 title = "Formatting in CI"
 description = "Enforce consistent SQL formatting in your CI pipeline."
-weight = 1
+weight = 3
 +++
 
 # Formatting in CI

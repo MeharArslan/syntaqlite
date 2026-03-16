@@ -1,7 +1,7 @@
 +++
 title = "Validating SQL"
 description = "Run semantic analysis to catch unknown tables, columns, and functions."
-weight = 3
+weight = 1
 +++
 
 # Validating SQL

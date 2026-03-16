@@ -1,7 +1,7 @@
 +++
 title = "Custom dialects"
 description = "Define and load a grammar extension for non-standard SQLite syntax."
-weight = 3
+weight = 10
 +++
 
 # Custom dialects

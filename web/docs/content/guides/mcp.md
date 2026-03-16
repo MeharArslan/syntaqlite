@@ -1,7 +1,7 @@
 +++
 title = "MCP server setup"
 description = "Set up the syntaqlite MCP server for Claude Desktop, Cursor, and Windsurf."
-weight = 8
+weight = 7
 +++
 
 # MCP server
