@@ -1,7 +1,7 @@
 +++
 title = "Claude Code"
 description = "Install the syntaqlite plugin for Claude Code."
-weight = 2
+weight = 3
 +++
 
 # Claude Code

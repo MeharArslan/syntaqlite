@@ -1,7 +1,7 @@
 +++
 title = "Command line"
 description = "Install the CLI for formatting, validation, CI, and scripting."
-weight = 3
+weight = 2
 +++
 
 # Command line
