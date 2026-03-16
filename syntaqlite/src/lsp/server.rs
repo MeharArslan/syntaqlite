@@ -873,7 +873,10 @@ impl DiagnosticPublisher {
                     Severity::Info => DiagnosticSeverity::INFORMATION,
                     Severity::Hint => DiagnosticSeverity::HINT,
                 }),
-                message: d.message().to_string(),
+                message: match d.help() {
+                    Some(help) => format!("{}\n\n{help}", d.message()),
+                    None => d.message().to_string(),
+                },
                 source: Some("syntaqlite".to_string()),
                 ..Default::default()
             })
