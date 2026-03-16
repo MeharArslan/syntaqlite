@@ -133,6 +133,54 @@ Use Grep/Glob only for text/pattern searches (comments, strings, config values) 
 
 After writing or editing code, check LSP diagnostics before moving on. Fix any type errors or missing imports immediately.
 
+## User-Facing Documentation (`web/docs/content/`)
+
+The docs follow the [Diataxis](https://diataxis.fr/) framework. Every page has **one purpose** and falls cleanly into one bucket. If a page would span buckets, split it into multiple pages.
+
+### Buckets
+
+| Directory | Diataxis type | Purpose | Litmus test |
+|-----------|---------------|---------|-------------|
+| `getting-started/` | Tutorial | Walk the reader through a concrete exercise end-to-end | "Follow these steps and you'll have X working" |
+| `guides/` | How-to guide | Solve a specific, real-world problem | "I need to do X — how?" |
+| `concepts/` | Explanation | Explain *why* something works the way it does | "I want to understand X" |
+| `reference/` | Reference | Lookup documentation — flags, API surfaces, schemas | "What are the options for X?" |
+| `contributing/` | (internal) | Developer-facing docs for contributors | Architecture, testing |
+
+### Page anatomy
+
+Every page uses TOML frontmatter:
+
+```toml
++++
+title = "Page Title"
+description = "One-line summary (optional but preferred)"
+weight = 5           # controls nav ordering within its section
++++
+```
+
+The body starts with an `# H1` matching the title, then uses `##` for sections.
+
+Section index pages (`_index.md`) are short — a sentence or two describing the bucket, plus `sort_by = "weight"`.
+
+### Cross-linking
+
+Docs are a web — **cross-link ruthlessly** using Zola's `@/` path syntax:
+
+```markdown
+[validation guide](@/guides/validation.md)
+[config file reference](@/reference/config-file.md)
+```
+
+Repeat content freely when it makes sense in a different context. A guide and a concept page can both explain the same mechanism from different angles — each page should stand on its own without requiring the reader to jump elsewhere for the core message.
+
+### Conventions
+
+- **Tabs** for install methods or alternative approaches: `<div class="tabs" data-tab-group="name">`
+- **Blockquotes** for callouts: `> **Note:** ...`
+- **Code blocks** are language-tagged (`bash`, `sql`, `toml`, `rust`) and copy-pasteable
+- Tutorials show input → output progression (command block, then output block)
+
 ## Parser Debugging
 
 - `SyntaqliteParserConfig config = {.trace = 1}` enables Lemon parser trace (C-level only)
