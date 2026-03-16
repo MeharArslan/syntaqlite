@@ -6,27 +6,25 @@ weight = 1
 
 # VS Code
 
-## Install the extension
+## Install
 
 Search for **syntaqlite** in the Extensions panel (`Cmd+Shift+X` /
-`Ctrl+Shift+X`) and click Install. The extension bundles the syntaqlite binary
-for your platform — no separate install needed.
+`Ctrl+Shift+X`) and click Install. No other setup needed — the extension
+bundles the binary.
 
-## Try it out
+## Diagnostics
 
-Create a file called `demo.sql` and paste this in:
+Create `demo.sql` and paste:
 
 ```sql
 select id,name,email from users wehre active=1 order by name
 ```
 
-You should immediately see `wehre` underlined in red — syntaqlite caught the
-typo. Fix it to `where` and the error disappears.
+`wehre` is immediately underlined — fix it to `where` and the error clears.
 
-## Format your SQL
+## Format
 
-Open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and run **Format
-Document**. The query becomes:
+Run **Format Document** (`Shift+Alt+F`):
 
 ```sql
 SELECT id, name, email
@@ -35,34 +33,34 @@ WHERE active = 1
 ORDER BY name;
 ```
 
-Keywords are uppercased, clauses are broken onto separate lines, and a
-semicolon is appended. To format automatically on every save, enable
-`editor.formatOnSave` in your VS Code settings.
+Enable `editor.formatOnSave` to format automatically.
 
-## Get completions
+## Completions
 
-In your SQL file, type `SEL` and you'll see a completion popup offering
-`SELECT`. After `FROM `, completions include SQL keywords like `WHERE` and
-`ORDER`. If you've set up a schema (next step), you'll also see table and
-column names.
+Type `SEL` to see keyword completions. After `FROM `, you'll see table names
+if you've configured a [schema](@/guides/schema-validation.md).
 
-## Add schema validation
+## Schema validation
 
-Without a schema, syntaqlite validates against an empty catalog — syntax errors
-and built-in function checks work, but unknown tables and columns won't be
-caught. To enable full validation, set up a schema file — see the
-[schema validation guide](@/guides/schema-validation.md) for instructions.
+Add a `syntaqlite.toml` to your project root to catch unknown tables and
+columns with did-you-mean suggestions:
 
-Once configured, go back to `demo.sql` and change `name` to `nme`:
-
-```sql
-SELECT id, nme, email
-FROM users
-WHERE active = 1
-ORDER BY name;
+```toml
+[schemas]
+"**/*.sql" = ["schema.sql"]
 ```
 
-You'll see a warning on `nme` with a suggestion: *did you mean 'name'?*
+See the [schema validation guide](@/guides/schema-validation.md) for setup
+and the [config file reference](@/reference/config-file.md) for all options.
 
-See the [config file reference](@/reference/config-file.md) for glob-based
-schema routing, formatting options, and the full `syntaqlite.toml` format.
+## Customize formatting
+
+Override defaults in `syntaqlite.toml`:
+
+```toml
+[format]
+line_width = 120
+keyword_case = "lower"
+```
+
+See [formatting options](@/reference/formatting-options.md) for all settings.
