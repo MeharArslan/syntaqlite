@@ -1,7 +1,7 @@
 +++
 title = "C API reference"
 description = "FFI function signatures, types, and memory model."
-weight = 4
+weight = 5
 +++
 
 # C API reference

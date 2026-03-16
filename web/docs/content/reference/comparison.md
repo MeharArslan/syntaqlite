@@ -1,6 +1,6 @@
 +++
 title = "Competitive Comparison"
-weight = 10
+weight = 9
 +++
 # How does syntaqlite compare?
 

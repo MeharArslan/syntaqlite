@@ -1,7 +1,7 @@
 +++
 title = "Config file"
 description = "syntaqlite.toml format — schemas, formatting, and discovery."
-weight = 3
+weight = 2
 +++
 
 # Config file

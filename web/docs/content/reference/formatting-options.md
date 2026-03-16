@@ -1,7 +1,7 @@
 +++
 title = "Formatting options"
 description = "All formatting configuration options with examples."
-weight = 2
+weight = 3
 +++
 
 # Formatting options
@@ -113,4 +113,3 @@ These options are available in all embedding APIs:
 
 - [Rust API reference](@/reference/rust-api.md) — `FormatConfig` builder pattern
 - [C API reference](@/reference/c-api.md) — `SyntaqliteFormatConfig` struct
-- [JavaScript API reference](@/reference/js-api.md) — `FormatOptions` object

@@ -1,6 +1,6 @@
 +++
 title = "Comparison Details"
-weight = 11
+weight = 10
 +++
 # Comparison — detailed results
 

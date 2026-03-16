@@ -162,36 +162,3 @@ fn walk(stmt: &AnyParsedStatement, node_id: u32, depth: usize) {
 This is the same traversal pattern used internally by the
 [formatter's bytecode interpreter](https://github.com/LalitMaganti/syntaqlite/blob/main/syntaqlite/src/fmt/interpret.rs).
 
-## WASM: JSON AST
-
-The
-[JavaScript API](@/getting-started/wasm-js.md)
-can return the AST as structured JSON:
-
-```typescript
-const result = engine.runAstJson("SELECT 1 + 2");
-if (result.ok) {
-    console.log(JSON.stringify(result.statements[0], null, 2));
-}
-```
-
-```json
-{
-  "type": "SelectStmt",
-  "columns": {
-    "type": "ResultColumnList",
-    "count": 1,
-    "children": [
-      {
-        "type": "ResultColumn",
-        "expr": {
-          "type": "BinaryExpr",
-          "op": "Plus",
-          "left": {"type": "Literal", "value": "1"},
-          "right": {"type": "Literal", "value": "2"}
-        }
-      }
-    ]
-  }
-}
-```

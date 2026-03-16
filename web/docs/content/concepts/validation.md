@@ -100,9 +100,7 @@ This applies uniformly to table names, column names, and function names.
 
 Each diagnostic carries a severity, byte-accurate source span, a human-readable
 message, and a machine-readable detail enum (`UnknownTable`, `UnknownColumn`,
-`UnknownFunction`, `FunctionArity`) for programmatic consumers. The structured
-detail is the same type exposed by the
-[JavaScript API](@/reference/js-api.md#diagnostic-types).
+`UnknownFunction`, `FunctionArity`) for programmatic consumers.
 
 By default, unresolved names produce **warnings** — the schema might be
 incomplete. Strict mode (`ValidationConfig::with_strict_schema(true)`) promotes

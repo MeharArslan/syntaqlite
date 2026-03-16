@@ -1,7 +1,7 @@
 +++
 title = "AST and token reference"
 description = "Node types, token types, and parse tree structure."
-weight = 6
+weight = 7
 +++
 
 # AST and token reference

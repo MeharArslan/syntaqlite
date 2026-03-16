@@ -1,7 +1,7 @@
 +++
 title = "MCP tools"
 description = "Tools exposed by the syntaqlite MCP server."
-weight = 3
+weight = 8
 +++
 
 # MCP tools reference

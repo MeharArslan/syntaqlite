@@ -1,7 +1,7 @@
 +++
 title = "Rust API reference"
 description = "Feature flags, types, and methods."
-weight = 3
+weight = 4
 +++
 
 # Rust API reference
