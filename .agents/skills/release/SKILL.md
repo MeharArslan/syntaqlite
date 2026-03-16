@@ -9,10 +9,20 @@ asks to "release", "bump version", "tag a release", or "publish".
    `python/pyproject.toml` and increment the patch number automatically.
    If the user specifies a version explicitly, use that instead.
 
-2. **Write the CHANGELOG.** Read `CHANGELOG.md` and replace the
-   `*No changes yet.*` placeholder for the **current** version (the one
-   about to be released) with real entries. Use `git log` to find commits
-   since the previous release tag.
+2. **Run the bump script:**
+   ```sh
+   python3 tools/bump-version <new_version> --check
+   ```
+   This updates all Cargo.toml files, pyproject.toml, CHANGELOG, README,
+   docs, and lib.rs references. `--check` verifies `cargo check` passes.
+
+   The bump script adds a `## <new_version>` section to `CHANGELOG.md`
+   with a `*No changes yet.*` placeholder. Do NOT edit the CHANGELOG
+   before running bump-version — it will create a duplicate section.
+
+3. **Write the CHANGELOG.** After bump-version runs, replace the
+   `*No changes yet.*` placeholder in `CHANGELOG.md` with real entries.
+   Use `git log` to find commits since the previous release tag.
 
    Focus on **user-visible changes only**:
    - New features, new CLI flags, new API surface
@@ -27,13 +37,6 @@ asks to "release", "bump version", "tag a release", or "publish".
 
    Keep entries concise — one line per change, no sub-bullets.
 
-3. **Run the bump script:**
-   ```sh
-   python3 tools/bump-version <new_version> --check
-   ```
-   This updates all Cargo.toml files, pyproject.toml, CHANGELOG, README,
-   docs, and lib.rs references. `--check` verifies `cargo check` passes.
-
 4. **Commit and push:**
    ```sh
    git add -A
@@ -44,29 +47,29 @@ asks to "release", "bump version", "tag a release", or "publish".
    git push origin HEAD:main
    ```
 
-5. **Create the tag (don't push yet):**
+5. **Create and push the tag:**
    ```sh
    git tag v<new_version>
+   git push origin v<new_version>
    ```
 
-6. **Create a draft GitHub Release.** Use the CHANGELOG entries as the
-   release notes body. Focus on user-visible changes — same rules as the
-   CHANGELOG. Ask the user if they want to edit the notes.
+6. **Create a draft GitHub Release.** Read CHANGELOG.md to get the release
+   notes for this version. Ask the user if they want to edit the notes or
+   if the CHANGELOG content is sufficient.
    ```sh
    gh release create v<new_version> --draft --title "v<new_version>" \
      --notes "$(release notes here)"
    ```
+   The tag must already exist on the remote before `gh release create`
+   will work — that's why we push it first.
 
-7. **Push the tag** to trigger build workflows:
-   ```sh
-   git push origin v<new_version>
-   ```
-   Build workflows upload artifacts to the draft release:
+   Pushing the tag triggers build workflows that upload artifacts to the
+   draft release:
    - `release.yml` — cargo-dist builds CLI binaries, Homebrew tap, installers
    - `publish-crates.yml` — publishes to crates.io
    - `vscode-extension.yml` — builds VS Code .vsix artifacts
    - `release-amalgamation.yml` — C source amalgamation archive
    - `release-clib.yml` — prebuilt C shared library archive
 
-8. **Report** the draft release URL to the user and remind them to publish
+7. **Report** the draft release URL to the user and remind them to publish
    the release manually once the builds complete and look good.
