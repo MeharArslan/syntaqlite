@@ -35,6 +35,11 @@ JSON_MANIFESTS = [
     "web/syntaqlite-js/package.json",
 ]
 
+# Files with `__version__ = "X.Y.Z"` (Python __init__.py style).
+PYTHON_VERSION_FILES = [
+    "python/syntaqlite/__init__.py",
+]
+
 # Files with inline version references (docs, lib.rs, etc.).
 VERSION_REF_FILES = [
     "README.md",
@@ -90,12 +95,17 @@ def bump(old_ver, new_ver):
         if replace_in_file(f, f'version = "{old_ver}", path', f'version = "{new_ver}", path'):
             changed.append(f)
 
-    # 4. Inline version references in docs/code
+    # 4. Python __version__ strings
+    for f in PYTHON_VERSION_FILES:
+        if replace_in_file(f, f'__version__ = "{old_ver}"', f'__version__ = "{new_ver}"'):
+            changed.append(f)
+
+    # 5. Inline version references in docs/code
     for f in VERSION_REF_FILES:
         if replace_in_file(f, f'version = "{old_ver}"', f'version = "{new_ver}"'):
             changed.append(f)
 
-    # 5. CHANGELOG: insert new version section, keep old entries
+    # 6. CHANGELOG: insert new version section, keep old entries
     changelog = ROOT / "CHANGELOG.md"
     text = changelog.read_text()
     old_header = f"## {old_ver}"

@@ -168,6 +168,68 @@ jobs:
             ${{ steps.cargo-dist.outputs.paths }}
             ${{ env.BUILD_MANIFEST_NAME }}
 
+  # Smoke-test built binaries on each platform
+  smoke-test:
+    name: smoke-test (${{ matrix.name }})
+    needs:
+      - plan
+      - build-local-artifacts
+    if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+            archive: "*.tar.gz"
+            binary: syntaqlite
+          - name: Linux x64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: "*.tar.gz"
+            binary: syntaqlite
+          - name: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: "*.zip"
+            binary: syntaqlite.exe
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: artifacts-build-local-${{ matrix.target }}
+          path: artifacts/
+          merge-multiple: true
+
+      - name: Extract binary
+        shell: bash
+        run: |
+          mkdir -p bin/
+          ARCHIVE=$(ls artifacts/syntaqlite-cli-${{ matrix.target }}.tar.gz artifacts/syntaqlite-cli-${{ matrix.target }}.zip 2>/dev/null | head -1)
+          if [[ "$ARCHIVE" == *.zip ]]; then
+            unzip "$ARCHIVE" -d extracted/
+          else
+            mkdir -p extracted/
+            tar -xf "$ARCHIVE" -C extracted/
+          fi
+          find extracted/ -name "${{ matrix.binary }}" -exec cp {} bin/ \;
+          chmod +x bin/${{ matrix.binary }}
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+
+      - name: Verify version
+        shell: bash
+        run: syntaqlite --version
+
+      - name: Verify format
+        shell: bash
+        run: echo "select 1" | syntaqlite fmt
+
+      - name: Verify validate
+        shell: bash
+        run: echo "select 1" | syntaqlite validate
+
   # Build and package all the platform-agnostic(ish) things
   build-global-artifacts:
     needs:
@@ -220,8 +282,9 @@ jobs:
       - plan
       - build-local-artifacts
       - build-global-artifacts
-    # Only run if we're "publishing", and only if plan, local and global didn't fail (skipped is fine)
-    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') }}
+      - smoke-test
+    # Only run if we're "publishing", and only if plan, local, global, and smoke-test didn't fail (skipped is fine)
+    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.smoke-test.result == 'skipped' || needs.smoke-test.result == 'success') }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: "ubuntu-22.04"
