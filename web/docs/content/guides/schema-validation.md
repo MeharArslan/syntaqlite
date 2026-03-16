@@ -26,7 +26,10 @@ files are parsed for `CREATE TABLE` and `CREATE VIEW` statements.
 Create `schema.sql` next to `syntaqlite.toml` with your table definitions:
 
 ```sql
-CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, active INTEGER);
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY, name TEXT, email TEXT,
+  active INTEGER, role TEXT, created_at TEXT
+);
 CREATE TABLE posts (id INTEGER, user_id INTEGER, title TEXT, body TEXT);
 ```
 

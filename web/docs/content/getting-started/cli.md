@@ -54,9 +54,11 @@ Output:
 ```sql
 SELECT id, name, email
 FROM users
-WHERE active = 1
+WHERE
+  active = 1
   AND role = 'admin'
-ORDER BY name;
+ORDER BY
+  name;
 ```
 
 Keywords are uppercased, clauses break onto separate lines, and a semicolon is
@@ -79,9 +81,10 @@ cat query.sql
 
 ```sql
 SELECT u.id, u.name, p.title
-FROM users u
-  JOIN posts p ON u.id = p.user_id
-WHERE u.active = 1;
+FROM users AS u
+JOIN posts AS p ON u.id = p.user_id
+WHERE
+  u.active = 1;
 ```
 
 To format every SQL file in a project at once:

@@ -46,9 +46,9 @@ WHERE u.emal = 'alice@example.com';
 
 ```text
 warning: unknown column 'emal' in table 'u'
- --> <stdin>:7:9
+ --> <stdin>:8:9
   |
-7 | WHERE u.emal = 'alice@example.com';
+8 | WHERE u.emal = 'alice@example.com';
   |         ^~~~
   = help: did you mean 'email'?
 ```
