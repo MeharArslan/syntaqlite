@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.35
+
+- LSP: "did you mean?" suggestions now appear in VS Code diagnostics (previously only shown in the CLI)
+- Config: support `sqlite-version` and `sqlite-cflags` keys in `syntaqlite.toml`
+- Docs: rewritten VS Code tutorial with clearer walkthrough and Marketplace links
+
 ## 0.0.34
 
 - C API: prebuilt shared library download (`syntaqlite-clib.tar.gz`) with binaries for macOS, Linux, and Windows plus a single `syntaqlite.h` header
