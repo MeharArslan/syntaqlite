@@ -94,6 +94,160 @@ class PerfettoMacroCallFormat(TestSuite):
             out="SELECT my_macro!()",
         )
 
+    def test_macro_call_multi_node(self):
+        return DiffTestBlueprint(
+            sql="SELECT my_fn!(a, b)",
+            out="SELECT my_fn!(a, b)",
+        )
+
+    def test_macro_call_multi_node_no_extra_separator(self):
+        return DiffTestBlueprint(
+            sql="SELECT foo!(a, b), c",
+            out="SELECT foo!(a, b), c",
+        )
+
+    def test_macro_multiline_reindented(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT *
+                FROM graph_next_sibling!(
+                        (
+                          SELECT id, parent_id, ts
+                          FROM slice
+                          WHERE dur = 0
+                        )
+                    )
+            """,
+            out="""\
+                SELECT *
+                FROM graph_next_sibling!(
+                  (
+                    SELECT id, parent_id, ts
+                    FROM slice
+                    WHERE dur = 0
+                  )
+                )
+            """,
+        )
+
+    def test_macro_parens_in_strings_ignored(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT *
+                FROM my_macro!(
+                  (
+                    SELECT '(((' AS x
+                    FROM t
+                  )
+                )
+            """,
+            out="""\
+                SELECT *
+                FROM my_macro!(
+                  (
+                    SELECT '(((' AS x
+                    FROM t
+                  )
+                )
+            """,
+        )
+
+    def test_macro_with_function_calls(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT *
+                FROM scan!(
+                  (
+                    SELECT
+                      IIF(
+                        x > 0,
+                        1,
+                        0
+                      ) AS flag
+                    FROM t
+                  )
+                )
+            """,
+            out="""\
+                SELECT *
+                FROM scan!(
+                  (
+                    SELECT
+                    IIF(
+                      x > 0,
+                      1,
+                      0
+                    ) AS flag
+                    FROM t
+                  )
+                )
+            """,
+        )
+
+    def test_macro_comma_separated_args(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT *
+                FROM scan!(
+                    edges,
+                    inits,
+                    (a, b, c),
+                    (
+                      SELECT id
+                      FROM t
+                    )
+                  )
+            """,
+            out="""\
+                SELECT *
+                FROM scan!(
+                  edges,
+                  inits,
+                  (a, b, c),
+                  (
+                    SELECT id
+                    FROM t
+                  )
+                )
+            """,
+        )
+
+    def test_macro_in_frame_bound_preserves_following(self):
+        return DiffTestBlueprint(
+            sql="SELECT count() OVER (ORDER BY ts RANGE BETWEEN CURRENT ROW AND my_macro!(x) FOLLOWING) FROM t",
+            out="""\
+                SELECT
+                  count() OVER (
+                    ORDER BY ts
+                    RANGE BETWEEN CURRENT ROW AND my_macro!(x) FOLLOWING
+                  )
+                FROM t
+            """,
+        )
+
+
+    def test_macro_partition_by_multi_arg_nests(self):
+        return DiffTestBlueprint(
+            sql="""\
+                SELECT last_value(thread.start_ts) OVER (
+                  PARTITION BY upid, android_standardize_thread_name(thread.name)
+                  ORDER BY thread.start_ts
+                  RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur) FOLLOWING
+                ) FROM thread
+            """,
+            out="""\
+                SELECT
+                  last_value(thread.start_ts) OVER (
+                    PARTITION BY
+                      upid,
+                      android_standardize_thread_name(thread.name)
+                    ORDER BY thread.start_ts
+                    RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur) FOLLOWING
+                  )
+                FROM thread
+            """,
+        )
+
 
 class PerfettoFunctionFormat(TestSuite):
     def test_create_perfetto_function_returns_on_newline(self):

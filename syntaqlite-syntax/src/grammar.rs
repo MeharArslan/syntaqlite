@@ -307,6 +307,11 @@ impl AnyGrammar {
         SqliteSyntaxFlags(self.inner.cflags)
     }
 
+    /// Whether this grammar supports Rust-style macro invocations (`name!(args)`).
+    pub fn has_macro_style(&self) -> bool {
+        self.template().macro_style != 0
+    }
+
     /// Return a reference to the abstract grammar template.
     #[inline]
     fn template(&self) -> &'static ffi::CGrammarTemplate {
@@ -575,6 +580,9 @@ pub(crate) mod ffi {
         // Token metadata (indexed by token type ordinal)
         pub(crate) token_categories: *const u8,
         pub(crate) token_type_count: u32,
+
+        // Macro invocation style
+        pub(crate) macro_style: u32,
     }
 
     /// Mirrors C `SyntaqliteGrammar` from `include/syntaqlite/grammar.h`.

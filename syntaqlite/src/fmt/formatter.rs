@@ -96,11 +96,12 @@ impl Formatter {
         // Use the grammar embedded in the dialect — do NOT hardcode the SQLite
         // grammar here, as this method is called with external dialects too.
         let grammar = (*dialect).clone();
+        let has_macros = grammar.has_macro_style();
         let parser = AnyParser::with_config(
             grammar,
             &ParserConfig::default()
                 .with_collect_tokens(true)
-                .with_macro_fallback(true),
+                .with_macro_fallback(has_macros),
         );
         let macro_tokenizer = AnyTokenizer::new((*dialect).clone());
         Formatter {

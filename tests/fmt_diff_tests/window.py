@@ -93,28 +93,6 @@ class WindowFunctionFormat(TestSuite):
         )
 
 
-    def test_partition_by_multi_arg_nests(self):
-        return DiffTestBlueprint(
-            sql="""\
-                SELECT last_value(thread.start_ts) OVER (
-                  PARTITION BY upid, android_standardize_thread_name(thread.name)
-                  ORDER BY thread.start_ts
-                  RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur) FOLLOWING
-                ) FROM thread
-            """,
-            out="""\
-                SELECT
-                  last_value(thread.start_ts) OVER (
-                    PARTITION BY
-                      upid,
-                      android_standardize_thread_name(thread.name)
-                    ORDER BY thread.start_ts
-                    RANGE BETWEEN CURRENT ROW AND cast_int!($sliding_window_dur) FOLLOWING
-                  )
-                FROM thread;
-            """,
-        )
-
     def test_short_partition_by_stays_inline(self):
         return DiffTestBlueprint(
             sql="SELECT sum(x) OVER (PARTITION BY id ORDER BY ts) FROM t",
