@@ -3,7 +3,7 @@
 
 //! Recursive AST-walking lineage resolver.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue};
 
@@ -45,6 +45,8 @@ pub(super) struct LineageResolver<'a, 'b> {
     roles: &'a [SemanticRole],
     /// CTE name -> body node ID (from WITH clause, before FROM is walked).
     cte_bodies: HashMap<String, AnyNodeId>,
+    /// Body nodes currently being traced (cycle detection for recursive CTEs).
+    tracing: HashSet<AnyNodeId>,
     /// Whether all sources were fully resolved.
     complete: bool,
 }
@@ -60,6 +62,7 @@ impl<'a, 'b> LineageResolver<'a, 'b> {
             catalog,
             roles,
             cte_bodies: HashMap::new(),
+            tracing: HashSet::new(),
             complete: true,
         }
     }
@@ -186,7 +189,10 @@ impl<'a, 'b> LineageResolver<'a, 'b> {
                     self.complete = false;
                 }
                 SourceKind::Cte(body) | SourceKind::Subquery(body) => {
-                    self.collect_physical_tables(body, &mut relations, &mut tables);
+                    if self.tracing.insert(body) {
+                        self.collect_physical_tables(body, &mut relations, &mut tables);
+                        self.tracing.remove(&body);
+                    }
                 }
             }
         }
@@ -319,7 +325,10 @@ impl<'a, 'b> LineageResolver<'a, 'b> {
                     self.complete = false;
                 }
                 SourceKind::Cte(body) | SourceKind::Subquery(body) => {
-                    self.collect_physical_tables(body, relations, tables);
+                    if self.tracing.insert(body) {
+                        self.collect_physical_tables(body, relations, tables);
+                        self.tracing.remove(&body);
+                    }
                 }
             }
         }
@@ -328,7 +337,7 @@ impl<'a, 'b> LineageResolver<'a, 'b> {
     // ── Result column resolution ─────────────────────────────────────────
 
     fn resolve_result_columns(
-        &self,
+        &mut self,
         select_id: AnyNodeId,
         cols_idx: u8,
         sources: &HashMap<String, SourceInfo>,
@@ -401,7 +410,7 @@ impl<'a, 'b> LineageResolver<'a, 'b> {
 
     /// Trace a column reference to its physical table origin.
     fn trace_column(
-        &self,
+        &mut self,
         source_name: &str,
         col_name: &str,
         sources: &HashMap<String, SourceInfo>,
@@ -427,7 +436,20 @@ impl<'a, 'b> LineageResolver<'a, 'b> {
     }
 
     /// Trace a column through a CTE/subquery body to its physical origin.
-    fn trace_through_select(&self, body_id: AnyNodeId, col_name: &str) -> Option<ColumnOrigin> {
+    fn trace_through_select(&mut self, body_id: AnyNodeId, col_name: &str) -> Option<ColumnOrigin> {
+        if !self.tracing.insert(body_id) {
+            return None; // Cycle (recursive CTE) — stop.
+        }
+        let result = self.trace_through_select_inner(body_id, col_name);
+        self.tracing.remove(&body_id);
+        result
+    }
+
+    fn trace_through_select_inner(
+        &mut self,
+        body_id: AnyNodeId,
+        col_name: &str,
+    ) -> Option<ColumnOrigin> {
         let select_id = self.find_select_node(body_id)?;
         let (tag, fields) = self.stmt.extract_fields(select_id)?;
         let SemanticRole::Query {
@@ -481,7 +503,7 @@ impl<'a, 'b> LineageResolver<'a, 'b> {
     }
 
     fn trace_expr_origin(
-        &self,
+        &mut self,
         child_fields: &syntaqlite_syntax::any::NodeFields<'_>,
         expr_idx: u8,
         sources: &HashMap<String, SourceInfo>,

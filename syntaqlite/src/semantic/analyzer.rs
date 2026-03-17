@@ -3834,6 +3834,36 @@ mod lineage_tests {
         );
     }
 
+    // ── Recursive CTE — must not stack-overflow ───────────────────────────
+
+    #[test]
+    fn lineage_recursive_cte_no_stackoverflow() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        // Recursive CTE: the body references `cte` itself.
+        let model = analyzer.analyze(
+            "WITH RECURSIVE cte(id) AS (
+                SELECT id FROM users
+                UNION ALL
+                SELECT id FROM cte
+            ) SELECT id FROM cte",
+            &catalog,
+            &lenient(),
+        );
+
+        // We just care that it doesn't stack-overflow / crash.
+        // Lineage should still be Some (it's a SELECT).
+        let lineage = model.lineage().expect("should be a query");
+        let cols = lineage.into_inner();
+        assert_eq!(cols.len(), 1);
+        assert_eq!(cols[0].name, "id");
+    }
+
     // ── Catalog: is_view ─────────────────────────────────────────────────────
 
     #[test]
