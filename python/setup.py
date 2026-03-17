@@ -17,12 +17,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Build the static library if needed.
 # Rust produces libsyntaqlite.a on Unix, syntaqlite.lib on Windows (MSVC).
-# When cross-compiling (cargo build --target <triple>), the output goes to
-# target/<triple>/release/ instead of target/release/. Set SYNTAQLITE_LIB_DIR
-# to override the search directory.
-_lib_name = "syntaqlite.lib" if sys.platform == "win32" else "libsyntaqlite.a"
-_lib_dir = os.environ.get("SYNTAQLITE_LIB_DIR", str(ROOT / "target" / "release"))
-STATIC_LIB = Path(_lib_dir) / _lib_name
+if sys.platform == "win32":
+    STATIC_LIB = ROOT / "target" / "release" / "syntaqlite.lib"
+else:
+    STATIC_LIB = ROOT / "target" / "release" / "libsyntaqlite.a"
 
 
 def _ensure_static_lib():
