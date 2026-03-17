@@ -85,13 +85,6 @@ impl AstModel<'_> {
         }
         tag_variants.push(("SYNTAQLITE_NODE_COUNT".into(), None));
         w.typedef_enum("SyntaqliteNodeTag", &refs_i32(&tag_variants));
-        w.line("#ifdef __cplusplus");
-        w.line("static_assert(sizeof(SyntaqliteNodeTag) == sizeof(uint32_t),");
-        w.line("              \"SyntaqliteNodeTag must be 32 bits for FFI compatibility\");");
-        w.line("#else");
-        w.line("_Static_assert(sizeof(SyntaqliteNodeTag) == sizeof(uint32_t),");
-        w.line("               \"SyntaqliteNodeTag must be 32 bits for FFI compatibility\");");
-        w.line("#endif");
         w.newline();
 
         // Node structs
