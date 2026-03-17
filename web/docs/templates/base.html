@@ -75,7 +75,13 @@
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-c.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-lua.min.js"></script>
-  <script>Prism.highlightAll();</script>
+  <script>
+    // Zola outputs data-lang="x" but Prism expects class="language-x"
+    document.querySelectorAll('code[data-lang]').forEach(function(el) {
+      el.classList.add('language-' + el.getAttribute('data-lang'));
+    });
+    Prism.highlightAll();
+  </script>
   <script>
     function switchTab(group, tab) {
       var g = document.querySelector('[data-tab-group="' + group + '"]');
