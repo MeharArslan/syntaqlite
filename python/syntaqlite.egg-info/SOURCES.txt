@@ -1,0 +1,11 @@
+pyproject.toml
+setup.py
+csrc/_syntaqlite.c
+syntaqlite/__init__.py
+syntaqlite/__main__.py
+syntaqlite/_enums.py
+syntaqlite.egg-info/PKG-INFO
+syntaqlite.egg-info/SOURCES.txt
+syntaqlite.egg-info/dependency_links.txt
+syntaqlite.egg-info/entry_points.txt
+syntaqlite.egg-info/top_level.txt

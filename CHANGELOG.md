@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0
+
+### Column lineage
+
+- New lineage analysis for SELECT statements — traces each result column back to its source table and column, resolving through CTEs, subqueries, and aliases.
+- Three new methods on `SemanticModel`: `lineage()`, `relations_accessed()`, and `tables_accessed()`, returning `Complete` or `Partial` results depending on view resolution.
+- C API: 7 new lineage accessor functions (`syntaqlite_validator_column_lineage`, `syntaqlite_validator_relations`, `syntaqlite_validator_tables`, etc.).
+- Python API: `validate()` now returns a `ValidationResult` with `.diagnostics` and `.lineage` attributes instead of a raw list of dicts.
+- Python API: new `Table`, `View`, and `schema_ddl` parameter for schema registration with proper attribute access.
+
+### Schema registration
+
+- C API: new `syntaqlite_validator_add_views()` for registering views separately from tables.
+- C API: new `syntaqlite_validator_load_schema_ddl()` to register schema from DDL strings (CREATE TABLE/VIEW).
+- C API: `SyntaqliteTableDef` renamed to `SyntaqliteRelationDef` (used for both tables and views).
+
+### Bug fixes
+
+- Fix stack overflow in lineage resolver for recursive CTEs on Linux (caused 40 upstream test file crashes).
+- Fix formatter macro handling to respect per-dialect macro style settings.
+
+### Other
+
+- Python C extension now ships in PyPI wheels (no build step needed).
+
 ## 0.1.0
 
 Initial release of syntaqlite — a fast, accurate SQL toolkit for SQLite, built from SQLite's own grammar.
