@@ -45,7 +45,6 @@ PYTHON_VERSION_FILES = [
 VERSION_REF_FILES = [
     "README.md",
     "web/docs/content/guides/rust-api.md",
-    "web/docs/content/guides/validation.md",
     "syntaqlite-syntax/src/lib.rs",
 ]
 
