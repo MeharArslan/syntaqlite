@@ -2,13 +2,20 @@
 
 ## 0.2.0
 
+### Python library API
+
+The `pip install syntaqlite` package now includes a native C extension with a full library API — previously it only bundled the CLI binary. Four functions are available: `parse()`, `format_sql()`, `validate()`, and `tokenize()`.
+
+- `validate()` returns a `ValidationResult` with `.diagnostics` and `.lineage` attributes.
+- Schema can be provided via `Table`, `View` objects or raw DDL with `schema_ddl=`.
+- `format_sql()` supports `line_width`, `indent_width`, `keyword_case`, and `semicolons` kwargs.
+- `parse()` returns typed AST node dicts; `tokenize()` returns token dicts.
+
 ### Column lineage
 
 - New lineage analysis for SELECT statements — traces each result column back to its source table and column, resolving through CTEs, subqueries, and aliases.
-- Three new methods on `SemanticModel`: `lineage()`, `relations_accessed()`, and `tables_accessed()`, returning `Complete` or `Partial` results depending on view resolution.
+- `SemanticModel` gains `lineage()`, `relations_accessed()`, and `tables_accessed()` methods, returning `Complete` or `Partial` results depending on view resolution.
 - C API: 7 new lineage accessor functions (`syntaqlite_validator_column_lineage`, `syntaqlite_validator_relations`, `syntaqlite_validator_tables`, etc.).
-- Python API: `validate()` now returns a `ValidationResult` with `.diagnostics` and `.lineage` attributes instead of a raw list of dicts.
-- Python API: new `Table`, `View`, and `schema_ddl` parameter for schema registration with proper attribute access.
 
 ### Schema registration
 
@@ -18,12 +25,8 @@
 
 ### Bug fixes
 
-- Fix stack overflow in lineage resolver for recursive CTEs on Linux (caused 40 upstream test file crashes).
+- Fix stack overflow in lineage resolver for recursive CTEs on Linux.
 - Fix formatter macro handling to respect per-dialect macro style settings.
-
-### Other
-
-- Python C extension now ships in PyPI wheels (no build step needed).
 
 ## 0.1.0
 
