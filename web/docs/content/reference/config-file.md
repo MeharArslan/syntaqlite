@@ -96,6 +96,17 @@ features are available during analysis.
 - Optional — defaults to empty (no extra flags)
 - Equivalent to `--sqlite-cflag` on the CLI (repeatable)
 
+Common flags:
+
+| Flag | What it enables |
+|------|----------------|
+| `SQLITE_ENABLE_MATH_FUNCTIONS` | `sin()`, `cos()`, `log()`, `pow()`, etc. |
+| `SQLITE_ENABLE_ORDERED_SET_AGGREGATES` | `percentile_cont()`, `percentile_disc()`, `mode()`, `median()` |
+| `SQLITE_ENABLE_JSON1` | `json()`, `json_extract()`, etc. |
+| `SQLITE_ENABLE_FTS5` | `fts5()` full-text search |
+
+Functions gated behind a flag you didn't specify will be flagged as unknown.
+
 ## `[format]`
 
 Default formatting options. All fields are optional — omitted fields use

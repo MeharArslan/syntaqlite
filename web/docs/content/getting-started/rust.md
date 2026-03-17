@@ -145,4 +145,4 @@ fn main() {
 - [Using from Rust](@/guides/rust-api.md) — quick reference for formatting,
   parsing, and config options
 - [Rust API reference](@/reference/rust-api.md) — all types and methods
-- [Validating SQL](@/guides/validation.md) — CLI-based validation workflows
+- [Using from Rust](@/guides/rust-api.md) — validation via the Rust API

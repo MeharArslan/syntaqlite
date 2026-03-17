@@ -45,7 +45,8 @@ let output = fmt.format("SELECT 1")?;
 
 ## Parse SQL
 
-If you need the AST directly:
+The parser yields one statement at a time, so memory usage stays proportional
+to the largest single statement:
 
 ```rust
 use syntaqlite_syntax::{Parser, ParseOutcome};
@@ -56,19 +57,117 @@ let mut session = parser.parse("SELECT 1; SELECT 2;");
 loop {
     match session.next() {
         ParseOutcome::Ok(stmt) => {
-            // Process the parsed statement
+            let mut buf = String::new();
+            stmt.dump(&mut buf, 0);
+            println!("{buf}");
         }
         ParseOutcome::Err(err) => {
-            eprintln!("Parse error: {}", err.message());
-            break;
+            eprintln!("error: {}", err.message());
         }
         ParseOutcome::Done => break,
     }
 }
 ```
 
+### Accessing tokens
+
+Enable token collection for token-level information:
+
+```rust
+use syntaqlite::parse::ParserConfig;
+
+let config = ParserConfig::default().with_collect_tokens(true);
+let parser = Parser::with_config(&config);
+let mut session = parser.parse("SELECT max(x) FROM t");
+
+if let ParseOutcome::Ok(stmt) = session.next() {
+    for token in stmt.tokens() {
+        println!(
+            "{:4}..{:4}  {:?}  {:?}",
+            token.offset(),
+            token.offset() + token.length(),
+            token.token_type(),
+            token.text(),
+        );
+    }
+    // Comments are separate from tokens:
+    for comment in stmt.comments() {
+        println!("comment at {}: {}", comment.offset(), comment.text());
+    }
+}
+```
+
+Token flags indicate how the parser used each token — for example,
+`token.flags().used_as_function()` is `true` for `max` in `max(x)`.
+
+### Generic traversal
+
+For grammar-agnostic tree walking (works with any dialect), use the type-erased
+API:
+
+```rust
+use syntaqlite::any::{AnyParsedStatement, FieldValue};
+
+fn walk(stmt: &AnyParsedStatement, node_id: u32, depth: usize) {
+    if let Some((tag, fields)) = stmt.extract_fields(node_id) {
+        for (i, field) in fields.iter().enumerate() {
+            match field {
+                FieldValue::NodeId(child) => walk(stmt, *child, depth + 1),
+                FieldValue::Span(text) => println!("{:indent$}{text}", "", indent = depth * 2),
+                _ => {}
+            }
+        }
+    }
+}
+```
+
+## Validate SQL
+
+Add the `validation` and `sqlite` features:
+
+```toml
+[dependencies]
+syntaqlite = { version = "0.0.36", features = ["validation", "sqlite"] }
+```
+
+```rust
+use syntaqlite::semantic::{
+    SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig,
+};
+use syntaqlite::sqlite_dialect;
+
+let mut analyzer = SemanticAnalyzer::new();
+
+let mut catalog = Catalog::new(sqlite_dialect());
+catalog.layer_mut(CatalogLayer::Database)
+    .insert_table("users", Some(vec!["id".into(), "name".into(), "email".into()]), false);
+catalog.layer_mut(CatalogLayer::Database)
+    .insert_table("posts", Some(vec!["id".into(), "user_id".into(), "title".into()]), false);
+
+let config = ValidationConfig::default();
+let model = analyzer.analyze("SELECT nme FROM users", &catalog, &config);
+
+for diag in model.diagnostics() {
+    println!("[{}] {}", diag.severity(), diag.message());
+    if let Some(help) = diag.help() {
+        println!("  help: {help}");
+    }
+}
+```
+
+The catalog uses a layered resolution order — see
+[validation concepts](@/concepts/validation.md) for details. For most use cases,
+populate the `Database` layer with your schema and let the analyzer handle the
+rest.
+
+If you know a table exists but don't know its columns, pass `None` to
+`insert_table` — this suppresses unknown-column warnings for that table.
+
+When a schema is provided (via `--schema` or `syntaqlite.toml`), the CLI and
+LSP automatically enable strict mode. When using the Rust API directly, set
+this explicitly with `ValidationConfig::default().with_strict_schema(true)`.
+
 ## Next steps
 
 - See the [Rust API reference](@/reference/rust-api.md) for all types and
   methods
-- Enable the `validation` feature for semantic analysis

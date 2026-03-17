@@ -7,8 +7,8 @@ weight = 7
 # AST and token reference
 
 syntaqlite's parser produces a flat arena of typed nodes. This page lists all
-node types and token types. For a guide on inspecting the AST, see
-[Parsing and inspecting ASTs](@/guides/parsing.md).
+node types and token types. For a guide on using the parser from Rust, see
+[Using from Rust](@/guides/rust-api.md#parse-sql).
 
 ## Parse tree structure
 

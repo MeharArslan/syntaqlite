@@ -81,5 +81,5 @@ syntaqlite parse -e "SELECT 1 + 2"
 ```
 
 Useful for code generation, migration tooling, or static analysis. See
-[parsing guide](@/guides/parsing.md) for details.
+[Rust API guide](@/guides/rust-api.md#parse-sql) for details.
 

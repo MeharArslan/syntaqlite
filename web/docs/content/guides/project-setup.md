@@ -76,12 +76,20 @@ sqlite-cflags = [
 ]
 ```
 
-Without `sqlite-version`, syntaqlite defaults to `latest`. Without
-`sqlite-cflags`, no optional features are enabled — functions like `sin()` or
-`fts5()` will be flagged as unknown.
+Without `sqlite-version`, syntaqlite defaults to `latest` — all known syntax
+is accepted. For example, the `RETURNING` clause was added in SQLite 3.35.0.
+If you pin to 3.34.0, syntaqlite will reject it.
 
-See [SQLite version and compile flags](@/guides/sqlite-versions.md) for the
-full list of supported flags.
+Without `sqlite-cflags`, no optional features are enabled — functions like
+`sin()` or `fts5()` will be flagged as unknown.
+
+These settings apply to all commands — `validate`, `fmt`, and `lsp` — so
+the formatter and language server also respect your target environment. CLI
+flags (`--sqlite-version`, `--sqlite-cflag`) override the config file when you
+need a one-off change.
+
+See the [config file reference](@/reference/config-file.md#sqlite-cflags) for
+the full list of supported flags.
 
 ## Formatting
 
@@ -131,16 +139,6 @@ copy-pasteable configs.
 Restart your editor after adding `syntaqlite.toml`. Diagnostics appear inline
 with "did you mean?" suggestions for unknown columns and tables.
 
-## CI
-
-```bash
-syntaqlite fmt --check "**/*.sql"
-syntaqlite validate "**/*.sql"
-```
-
-See [formatting in CI](@/guides/ci-integration.md) for GitHub Actions examples
-and pre-push hooks.
-
 ## Putting it together
 
 A typical production config:
@@ -181,7 +179,9 @@ syntaqlite validate --sqlite-version 3.46.0 "**/*.sql"
 
 - [Config file reference](@/reference/config-file.md) — full format
   specification
-- [Validating SQL](@/guides/validation.md) — validation workflows, embedded
-  SQL, and Rust API
-- [Formatting in CI](@/guides/ci-integration.md) — GitHub Actions and pre-push
-  hooks
+- [CI integration](@/guides/ci-integration.md) — GitHub Actions, pre-push
+  hooks, and validation in CI
+- [Embedded SQL](@/guides/embedded-sql.md) — validate SQL inside Python and
+  TypeScript files
+- [Using from Rust](@/guides/rust-api.md) — Rust API for formatting,
+  parsing, and validation

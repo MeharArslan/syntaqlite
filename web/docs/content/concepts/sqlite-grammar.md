@@ -61,7 +61,7 @@ syntaqlite validate --sqlite-version 3.41.0 query.sql
 
 This means syntaqlite will parse the SQL correctly even if it uses syntax from
 a newer SQLite version, then report diagnostics if the target version wouldn't
-support it. See [SQLite version and compile flags](@/guides/sqlite-versions.md)
+support it. See [project setup](@/guides/project-setup.md#sqlite-version-and-compile-flags)
 for details.
 
 ## Intentional divergences
