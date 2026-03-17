@@ -130,7 +130,7 @@ It discovers `syntaqlite.toml` on startup. See the
 [VS Code tutorial](@/getting-started/vscode.md).
 
 **Neovim, Helix, and other LSP clients** — point your LSP config at
-`syntaqlite lsp`. See [other editors](@/guides/other-editors.md) for
+`syntaqlite lsp`. See [other editors](@/getting-started/other-editors.md) for
 copy-pasteable configs.
 
 **Claude Code, Cursor, Windsurf** — set up the MCP server. See
