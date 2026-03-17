@@ -71,9 +71,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Determine Python version
+        id: pyver
+        run: |
+          TAG="${{ matrix.python-tag }}"
+          if [ -n "$TAG" ]; then
+            # cp310 -> 3.10, cp313 -> 3.13
+            echo "version=${TAG:2:1}.${TAG:3}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=3.12" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '${{ steps.pyver.outputs.version }}'
 
       - name: Get release tag
         id: tag
