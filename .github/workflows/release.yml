@@ -408,6 +408,9 @@ jobs:
         shell: bash
         run: cargo build -p syntaqlite --release
 
+      - name: Install setuptools
+        run: pip install "setuptools>=68"
+
       - name: Build C extension
         shell: bash
         working-directory: python
