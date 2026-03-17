@@ -9,7 +9,7 @@ weight = 3
 syntaqlite's validator is a single-pass semantic analyzer. It walks the AST
 once, resolving names against a layered catalog and emitting diagnostics
 inline. This page explains the design — for practical usage, see
-[project setup](@/guides/project-setup.md#validation).
+[project setup](@/guides/project-setup.md).
 
 ## Why single-pass
 
