@@ -274,6 +274,7 @@ impl SemanticAnalyzer {
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
         let mut definition_offsets: HashMap<String, (usize, usize)> = HashMap::new();
         let mut resolutions: Vec<Resolution> = Vec::new();
+        let mut query_lineage: Option<super::lineage::QueryLineage> = None;
 
         loop {
             let stmt = match session.next() {
@@ -291,70 +292,23 @@ impl SemanticAnalyzer {
                             help: None,
                         });
                     }
-                    // Collect tokens from the partial parse so completion_info
-                    // can replay them through the incremental parser.
-                    for tok in e.tokens() {
-                        tokens.push(StoredToken {
-                            offset: tok.offset() as usize,
-                            length: tok.length() as usize,
-                            token_type: tok.token_type(),
-                            flags: tok.flags(),
-                        });
-                    }
-                    for c in e.comments() {
-                        comments.push(StoredComment {
-                            offset: c.offset() as usize,
-                            length: c.length() as usize,
-                        });
-                    }
+                    collect_tokens(e.tokens(), &mut tokens);
+                    collect_comments(e.comments(), &mut comments);
                     continue;
                 }
             };
 
-            // Collect token and comment positions for semantic highlighting.
-            for tok in stmt.tokens() {
-                tokens.push(StoredToken {
-                    offset: tok.offset() as usize,
-                    length: tok.length() as usize,
-                    token_type: tok.token_type(),
-                    flags: tok.flags(),
-                });
-            }
-            for c in stmt.comments() {
-                comments.push(StoredComment {
-                    offset: c.offset() as usize,
-                    length: c.length() as usize,
-                });
-            }
+            collect_tokens(stmt.tokens(), &mut tokens);
+            collect_comments(stmt.comments(), &mut comments);
 
-            // Semantic walk — use root_id from the erased statement to avoid
-            // depending on grammar-typed node accessors.
             let erased = stmt.erase();
-            let root_id = erased.root_id();
-
-            self.catalog
-                .accumulate_ddl(CatalogLayer::Document, &erased, root_id, &self.dialect);
-
-            // Record DDL definition offsets for go-to-definition (same-file).
-            if let Some((table_name, off)) = ddl_name_offset(&erased, root_id, &self.dialect) {
-                for (col_name, col_start, col_end) in
-                    super::catalog::ddl_column_spans(&erased, root_id, self.dialect.roles())
-                {
-                    let key = format!("{table_name}.{col_name}");
-                    definition_offsets.insert(key, (col_start, col_end));
-                }
-                definition_offsets.insert(table_name, off);
-            }
-
-            ValidationPass::run(
+            self.analyze_statement(
                 &erased,
-                root_id,
-                &self.dialect,
-                &mut self.catalog,
                 config,
                 &mut diagnostics,
                 &mut resolutions,
                 &mut definition_offsets,
+                &mut query_lineage,
             );
         }
 
@@ -365,7 +319,49 @@ impl SemanticAnalyzer {
             diagnostics,
             resolutions,
             definition_offsets,
+            query_lineage,
         }
+    }
+
+    fn analyze_statement(
+        &mut self,
+        erased: &AnyParsedStatement<'_>,
+        config: &ValidationConfig,
+        diagnostics: &mut Vec<Diagnostic>,
+        resolutions: &mut Vec<Resolution>,
+        definition_offsets: &mut HashMap<String, (usize, usize)>,
+        query_lineage: &mut Option<super::lineage::QueryLineage>,
+    ) {
+        let root_id = erased.root_id();
+
+        self.catalog
+            .accumulate_ddl(CatalogLayer::Document, erased, root_id, &self.dialect);
+
+        // Record DDL definition offsets for go-to-definition (same-file).
+        if let Some((table_name, off)) = ddl_name_offset(erased, root_id, &self.dialect) {
+            for (col_name, col_start, col_end) in
+                super::catalog::ddl_column_spans(erased, root_id, self.dialect.roles())
+            {
+                let key = format!("{table_name}.{col_name}");
+                definition_offsets.insert(key, (col_start, col_end));
+            }
+            definition_offsets.insert(table_name, off);
+        }
+
+        ValidationPass::run(
+            erased,
+            root_id,
+            &self.dialect,
+            &mut self.catalog,
+            config,
+            diagnostics,
+            resolutions,
+            definition_offsets,
+        );
+
+        *query_lineage =
+            super::lineage::compute_lineage(erased, root_id, &self.catalog, self.dialect.roles())
+                .or(query_lineage.take());
     }
 }
 
@@ -416,6 +412,32 @@ fn format_arity(name: &str, arity: AritySpec) -> String {
             format!("{}({})", name, params.join(", "))
         }
         AritySpec::Any => format!("{name}(...)"),
+    }
+}
+
+fn collect_tokens<'a>(
+    iter: impl Iterator<Item = syntaqlite_syntax::any::AnyParserToken<'a>>,
+    tokens: &mut Vec<StoredToken>,
+) {
+    for tok in iter {
+        tokens.push(StoredToken {
+            offset: tok.offset() as usize,
+            length: tok.length() as usize,
+            token_type: tok.token_type(),
+            flags: tok.flags(),
+        });
+    }
+}
+
+fn collect_comments<'a>(
+    iter: impl Iterator<Item = syntaqlite_syntax::Comment<'a>>,
+    comments: &mut Vec<StoredComment>,
+) {
+    for c in iter {
+        comments.push(StoredComment {
+            offset: c.offset() as usize,
+            length: c.length() as usize,
+        });
     }
 }
 
@@ -3494,5 +3516,328 @@ mod detect_qualifier_test {
         ];
         let result = detect_qualifier(source, &tokens, &dialect);
         assert_eq!(result.as_deref(), Some("t1"));
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "sqlite")]
+mod lineage_tests {
+    use super::super::catalog::{Catalog, CatalogLayer};
+    use super::super::lineage::ColumnOrigin;
+    use super::*;
+
+    fn sqlite_analyzer() -> SemanticAnalyzer {
+        SemanticAnalyzer::new()
+    }
+
+    fn sqlite_catalog() -> Catalog {
+        Catalog::new(crate::sqlite::dialect::dialect())
+    }
+
+    fn lenient() -> ValidationConfig {
+        ValidationConfig::default()
+    }
+
+    // ── Test 1: Simple direct columns ────────────────────────────────────────
+
+    #[test]
+    fn lineage_simple_direct_columns() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        let model = analyzer.analyze("SELECT id, name FROM users", &catalog, &lenient());
+
+        // lineage should be Some(Complete(...))
+        let lineage = model.lineage().expect("should be a query");
+        assert!(lineage.is_complete());
+        let cols = lineage.into_inner();
+        assert_eq!(cols.len(), 2);
+        assert_eq!(cols[0].name, "id");
+        assert_eq!(cols[0].index, 0);
+        assert_eq!(
+            cols[0].origin,
+            Some(ColumnOrigin {
+                table: "users".into(),
+                column: "id".into(),
+            })
+        );
+        assert_eq!(cols[1].name, "name");
+        assert_eq!(cols[1].index, 1);
+        assert_eq!(
+            cols[1].origin,
+            Some(ColumnOrigin {
+                table: "users".into(),
+                column: "name".into(),
+            })
+        );
+
+        // relations_accessed
+        let rels = model.relations_accessed().unwrap().into_inner();
+        assert_eq!(rels.len(), 1);
+        assert_eq!(rels[0].name, "users");
+
+        // tables_accessed
+        let tbls = model.tables_accessed().unwrap().into_inner();
+        assert_eq!(tbls.len(), 1);
+        assert_eq!(tbls[0].name, "users");
+    }
+
+    // ── Test 2: Expression — origin is None ──────────────────────────────────
+
+    #[test]
+    fn lineage_expression_no_origin() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        let model = analyzer.analyze("SELECT id + 1 AS x FROM users", &catalog, &lenient());
+
+        let lineage = model.lineage().unwrap();
+        assert!(lineage.is_complete());
+        let cols = lineage.into_inner();
+        assert_eq!(cols.len(), 1);
+        assert_eq!(cols[0].name, "x");
+        assert!(cols[0].origin.is_none(), "expression should have no origin");
+    }
+
+    // ── Test 3: Alias traces to physical column ──────────────────────────────
+
+    #[test]
+    fn lineage_alias() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        let model = analyzer.analyze("SELECT id AS user_id FROM users", &catalog, &lenient());
+
+        let cols = model.lineage().unwrap().into_inner();
+        assert_eq!(cols[0].name, "user_id");
+        assert_eq!(
+            cols[0].origin,
+            Some(ColumnOrigin {
+                table: "users".into(),
+                column: "id".into(),
+            })
+        );
+    }
+
+    // ── Test 4: Multi-table join ─────────────────────────────────────────────
+
+    #[test]
+    fn lineage_multi_table_join() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "orders",
+            Some(vec!["id".into(), "user_id".into(), "amount".into()]),
+            false,
+        );
+        let model = analyzer.analyze(
+            "SELECT u.id, o.amount FROM users u JOIN orders o ON u.id = o.user_id",
+            &catalog,
+            &lenient(),
+        );
+
+        let cols = model.lineage().unwrap().into_inner();
+        assert_eq!(cols.len(), 2);
+        assert_eq!(
+            cols[0].origin,
+            Some(ColumnOrigin {
+                table: "users".into(),
+                column: "id".into(),
+            })
+        );
+        assert_eq!(
+            cols[1].origin,
+            Some(ColumnOrigin {
+                table: "orders".into(),
+                column: "amount".into(),
+            })
+        );
+
+        let tbls = model.tables_accessed().unwrap().into_inner();
+        assert!(tbls.iter().any(|t| t.name == "users"));
+        assert!(tbls.iter().any(|t| t.name == "orders"));
+    }
+
+    // ── Test 5: CTE transitive tracing ───────────────────────────────────────
+
+    #[test]
+    fn lineage_cte_transitive() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        let model = analyzer.analyze(
+            "WITH cte AS (SELECT id FROM users) SELECT id FROM cte",
+            &catalog,
+            &lenient(),
+        );
+
+        let lineage = model.lineage().unwrap();
+        assert!(lineage.is_complete());
+        let cols = lineage.into_inner();
+        assert_eq!(cols.len(), 1);
+        assert_eq!(
+            cols[0].origin,
+            Some(ColumnOrigin {
+                table: "users".into(),
+                column: "id".into(),
+            })
+        );
+
+        // relations includes cte
+        let rels = model.relations_accessed().unwrap().into_inner();
+        assert!(rels.iter().any(|r| r.name == "cte"));
+
+        // tables includes users (physical)
+        let tbls = model.tables_accessed().unwrap().into_inner();
+        assert_eq!(tbls.len(), 1);
+        assert_eq!(tbls[0].name, "users");
+    }
+
+    // ── Test 6: Subquery transitive ──────────────────────────────────────────
+
+    #[test]
+    fn lineage_subquery_transitive() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        let model = analyzer.analyze(
+            "SELECT id FROM (SELECT id FROM users) sub",
+            &catalog,
+            &lenient(),
+        );
+
+        let cols = model.lineage().unwrap().into_inner();
+        assert_eq!(cols.len(), 1);
+        assert_eq!(
+            cols[0].origin,
+            Some(ColumnOrigin {
+                table: "users".into(),
+                column: "id".into(),
+            })
+        );
+
+        let tbls = model.tables_accessed().unwrap().into_inner();
+        assert_eq!(tbls.len(), 1);
+        assert_eq!(tbls[0].name, "users");
+    }
+
+    // ── Test 7: SELECT * expands from catalog ────────────────────────────────
+
+    #[test]
+    fn lineage_select_star() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        let model = analyzer.analyze("SELECT * FROM users", &catalog, &lenient());
+
+        let cols = model.lineage().unwrap().into_inner();
+        assert_eq!(cols.len(), 2);
+        // Both should trace to users
+        for col in cols {
+            assert!(col.origin.is_some());
+            assert_eq!(col.origin.as_ref().unwrap().table, "users");
+        }
+    }
+
+    // ── Test 8: View produces Partial result ─────────────────────────────────
+
+    #[test]
+    fn lineage_view_partial() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog
+            .layer_mut(CatalogLayer::Database)
+            .insert_view("active_users", Some(vec!["id".into(), "name".into()]));
+
+        let model = analyzer.analyze("SELECT id FROM active_users", &catalog, &lenient());
+
+        let lineage = model.lineage().unwrap();
+        assert!(
+            !lineage.is_complete(),
+            "view with unavailable body should be Partial"
+        );
+    }
+
+    // ── Test 9: Non-SELECT returns None ──────────────────────────────────────
+
+    #[test]
+    fn lineage_non_select_returns_none() {
+        let mut analyzer = sqlite_analyzer();
+        let catalog = sqlite_catalog();
+        let model = analyzer.analyze("CREATE TABLE t(x)", &catalog, &lenient());
+
+        assert!(model.lineage().is_none());
+        assert!(model.relations_accessed().is_none());
+        assert!(model.tables_accessed().is_none());
+    }
+
+    // ── Test 10: CTE with expression — origin None ───────────────────────────
+
+    #[test]
+    fn lineage_cte_with_expression() {
+        let mut analyzer = sqlite_analyzer();
+        let mut catalog = sqlite_catalog();
+        catalog.layer_mut(CatalogLayer::Database).insert_table(
+            "users",
+            Some(vec!["id".into(), "name".into()]),
+            false,
+        );
+        let model = analyzer.analyze(
+            "WITH cte AS (SELECT id+1 AS x FROM users) SELECT x FROM cte",
+            &catalog,
+            &lenient(),
+        );
+
+        let cols = model.lineage().unwrap().into_inner();
+        assert_eq!(cols.len(), 1);
+        assert_eq!(cols[0].name, "x");
+        assert!(
+            cols[0].origin.is_none(),
+            "expression in CTE should have no origin"
+        );
+    }
+
+    // ── Catalog: is_view ─────────────────────────────────────────────────────
+
+    #[test]
+    fn catalog_is_view() {
+        let mut cat = sqlite_catalog();
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_table("users", Some(vec!["id".into()]), false);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_view("active_users", Some(vec!["id".into()]));
+
+        assert!(!cat.is_view("users"));
+        assert!(cat.is_view("active_users"));
+        assert!(!cat.is_view("nonexistent"));
     }
 }

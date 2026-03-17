@@ -9,6 +9,7 @@ use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
 use std::collections::HashMap;
 
 use super::diagnostics::Diagnostic;
+use super::lineage::{ColumnLineage, LineageResult, QueryLineage, RelationAccess, TableAccess};
 
 // ── Stored per-statement positions ───────────────────────────────────────────
 
@@ -177,6 +178,8 @@ pub struct SemanticModel {
     /// `table.column` (column). Used by find-references and rename to
     /// locate definition sites within the document.
     pub(crate) definition_offsets: HashMap<String, (usize, usize)>,
+    /// Column lineage for the last query statement, if any.
+    pub(crate) query_lineage: Option<QueryLineage>,
 }
 
 impl SemanticModel {
@@ -188,6 +191,47 @@ impl SemanticModel {
     /// All diagnostics produced by the analysis pass (parse errors + semantic issues).
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
+    }
+
+    /// Per-column lineage: for each result column, which table.column it traces to.
+    ///
+    /// Returns `None` if the analyzed statement is not a query.
+    /// Returns `Some(Complete(...))` when all columns are fully resolved.
+    /// Returns `Some(Partial(...))` when some view bodies are unavailable.
+    pub fn lineage(&self) -> Option<LineageResult<&[ColumnLineage]>> {
+        self.query_lineage.as_ref().map(|ql| {
+            if ql.complete {
+                LineageResult::Complete(ql.columns.as_slice())
+            } else {
+                LineageResult::Partial(ql.columns.as_slice())
+            }
+        })
+    }
+
+    /// Relations (tables, views, CTEs, subquery aliases) directly referenced in FROM.
+    ///
+    /// Returns `None` if the analyzed statement is not a query.
+    pub fn relations_accessed(&self) -> Option<LineageResult<&[RelationAccess]>> {
+        self.query_lineage.as_ref().map(|ql| {
+            if ql.complete {
+                LineageResult::Complete(ql.relations.as_slice())
+            } else {
+                LineageResult::Partial(ql.relations.as_slice())
+            }
+        })
+    }
+
+    /// Physical tables accessed (after resolving CTEs, subqueries, views).
+    ///
+    /// Returns `None` if the analyzed statement is not a query.
+    pub fn tables_accessed(&self) -> Option<LineageResult<&[TableAccess]>> {
+        self.query_lineage.as_ref().map(|ql| {
+            if ql.complete {
+                LineageResult::Complete(ql.tables.as_slice())
+            } else {
+                LineageResult::Partial(ql.tables.as_slice())
+            }
+        })
     }
 
     /// Find the resolved symbol at a byte offset, if any.

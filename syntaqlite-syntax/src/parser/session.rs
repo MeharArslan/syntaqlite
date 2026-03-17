@@ -571,8 +571,7 @@ mod tests {
 
     #[test]
     fn macro_expansion_simple_template() {
-        let mut parser =
-            Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
+        let mut parser = Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
         parser.register_macro("double", &["x"], "($x + $x)");
 
         let mut session = parser.parse("SELECT double!(1);");
@@ -593,8 +592,7 @@ mod tests {
 
     #[test]
     fn macro_expansion_records_macro_region() {
-        let mut parser =
-            Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
+        let mut parser = Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
         parser.register_macro("id", &["x"], "$x");
 
         let source = "SELECT id!(42);";
@@ -614,8 +612,7 @@ mod tests {
 
     #[test]
     fn macro_expansion_multi_param() {
-        let mut parser =
-            Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
+        let mut parser = Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
         parser.register_macro("sum2", &["a", "b"], "($a + $b)");
 
         let mut session = parser.parse("SELECT sum2!(1, 2);");
@@ -635,8 +632,7 @@ mod tests {
 
     #[test]
     fn macro_deregister_falls_back_to_legacy() {
-        let mut parser =
-            Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
+        let mut parser = Parser::with_config(&ParserConfig::default().with_macro_fallback(true));
         parser.register_macro("foo", &["x"], "$x");
         assert!(parser.deregister_macro("foo"));
 

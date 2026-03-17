@@ -804,6 +804,7 @@ pub fn syntaqlite_syntax::any::AnyGrammar::cflags(&self) -> syntaqlite_syntax::u
 pub fn syntaqlite_syntax::any::AnyGrammar::classify_token(&self, token_type: syntaqlite_syntax::any::AnyTokenType, flags: syntaqlite_syntax::ParserTokenFlags) -> syntaqlite_syntax::any::TokenCategory
 pub fn syntaqlite_syntax::any::AnyGrammar::field_meta(&self, tag: syntaqlite_syntax::any::AnyNodeTag) -> impl core::iter::traits::exact_size::ExactSizeIterator<Item = syntaqlite_syntax::any::FieldMeta<'static>>
 pub fn syntaqlite_syntax::any::AnyGrammar::from(g: syntaqlite_syntax::typed::Grammar) -> syntaqlite_syntax::any::AnyGrammar
+pub fn syntaqlite_syntax::any::AnyGrammar::has_macro_style(&self) -> bool
 pub fn syntaqlite_syntax::any::AnyGrammar::is_list(&self, tag: syntaqlite_syntax::any::AnyNodeTag) -> bool
 pub fn syntaqlite_syntax::any::AnyGrammar::keywords(&self) -> impl core::iter::traits::exact_size::ExactSizeIterator<Item = syntaqlite_syntax::any::KeywordEntry> + '_
 pub fn syntaqlite_syntax::any::AnyGrammar::node_name(&self, tag: syntaqlite_syntax::any::AnyNodeTag) -> &'static str

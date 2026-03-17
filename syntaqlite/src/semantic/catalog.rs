@@ -75,6 +75,8 @@ struct RelationEntry {
     columns: Option<Vec<String>>,
     /// `true` for WITHOUT ROWID tables — no implicit rowid/oid/_rowid_ columns.
     without_rowid: bool,
+    /// `true` if this relation is a view (not a physical table).
+    is_view: bool,
     /// Where this relation was defined, if known.
     definition_site: Option<DefinitionSite>,
     /// Where each column was defined, keyed by lowercase column name.
@@ -186,6 +188,7 @@ impl CatalogLayerContents {
                 name,
                 columns,
                 without_rowid,
+                is_view: false,
                 definition_site: None,
                 column_definition_sites: HashMap::new(),
             },
@@ -216,6 +219,7 @@ impl CatalogLayerContents {
                 name,
                 columns,
                 without_rowid: true, // views have no rowid
+                is_view: true,
                 definition_site: None,
                 column_definition_sites: HashMap::new(),
             },
@@ -747,6 +751,12 @@ impl Catalog {
     pub(crate) fn resolve_relation(&self, name: &str) -> bool {
         self.all_layers_ordered()
             .any(|layer| layer.relation(name).is_some())
+    }
+
+    /// Returns `true` if `name` is a view in any layer.
+    pub(crate) fn is_view(&self, name: &str) -> bool {
+        self.all_layers_ordered()
+            .any(|layer| layer.relation(name).is_some_and(|r| r.is_view))
     }
 
     /// Returns `true` if `name` is a known table-valued function in any layer.
@@ -1302,7 +1312,10 @@ fn infer_result_col_name<'a>(
 
 /// Extract the source text of an expression node by recursively collecting
 /// all `Span` field values in its subtree and taking the enclosing byte range.
-fn expr_source_text<'a>(stmt: &AnyParsedStatement<'a>, id: AnyNodeId) -> Option<&'a str> {
+pub(super) fn expr_source_text<'a>(
+    stmt: &AnyParsedStatement<'a>,
+    id: AnyNodeId,
+) -> Option<&'a str> {
     let source = stmt.source();
     let base = source.as_ptr() as usize;
     let mut min = usize::MAX;

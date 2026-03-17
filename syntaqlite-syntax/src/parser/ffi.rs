@@ -545,8 +545,8 @@ mod tests {
 
     // ── Macro registry / hashmap tests ──────────────────────────────────
 
-    /// Helper: create a parser with macro_fallback enabled (needed for macro
-    /// registration tests since SQLite's grammar has macro_style = NONE).
+    /// Helper: create a parser with `macro_fallback` enabled (needed for macro
+    /// registration tests since `SQLite`'s grammar has `macro_style` = NONE).
     fn new_macro_parser() -> ParserHandle {
         let mut handle = ParserHandle::new();
         // SAFETY: CParser wraps a valid C parser handle.

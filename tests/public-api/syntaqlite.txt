@@ -52,6 +52,7 @@ impl syntaqlite::typed::TypedDialect for syntaqlite::Dialect
 impl syntaqlite::util::SqliteFlag
 impl syntaqlite::util::SqliteFlags
 impl<'a> syntaqlite::util::DiagnosticRenderer<'a>
+impl<T> syntaqlite::semantic::LineageResult<T>
 pub const syntaqlite::embedded::HOLE_PLACEHOLDER: &str
 pub const syntaqlite::semantic::CheckConfig::CATEGORY_NAMES: &[&str]
 pub const syntaqlite::semantic::CheckConfig::GROUP_NAMES: &[&str]
@@ -65,6 +66,7 @@ pub enum syntaqlite::semantic::CheckLevel
 pub enum syntaqlite::semantic::DiagnosticMessage
 pub enum syntaqlite::semantic::FunctionCategory
 pub enum syntaqlite::semantic::Help
+pub enum syntaqlite::semantic::LineageResult<T>
 pub enum syntaqlite::semantic::Severity
 pub fn syntaqlite::Catalog::from_ddl(dialect: impl core::convert::Into<syntaqlite::any::AnyDialect>, sources: &[(&str, core::option::Option<&str>)]) -> (Self, alloc::vec::Vec<alloc::string::String>)
 pub fn syntaqlite::Catalog::layer(&self, which: syntaqlite::semantic::CatalogLayer) -> &syntaqlite::semantic::CatalogLayerContents
@@ -184,8 +186,15 @@ pub fn syntaqlite::semantic::DiagnosticMessage::is_parse_error(&self) -> bool
 pub fn syntaqlite::semantic::DiagnosticMessage::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::semantic::Help::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite::semantic::Help::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::LineageResult<T>::as_ref(&self) -> syntaqlite::semantic::LineageResult<&T>
+pub fn syntaqlite::semantic::LineageResult<T>::into_inner(self) -> T
+pub fn syntaqlite::semantic::LineageResult<T>::is_complete(&self) -> bool
+pub fn syntaqlite::semantic::LineageResult<T>::map<U, F: core::ops::function::FnOnce(T) -> U>(self, f: F) -> syntaqlite::semantic::LineageResult<U>
 pub fn syntaqlite::semantic::SemanticModel::diagnostics(&self) -> &[syntaqlite::Diagnostic]
+pub fn syntaqlite::semantic::SemanticModel::lineage(&self) -> core::option::Option<syntaqlite::semantic::LineageResult<&[syntaqlite::semantic::ColumnLineage]>>
+pub fn syntaqlite::semantic::SemanticModel::relations_accessed(&self) -> core::option::Option<syntaqlite::semantic::LineageResult<&[syntaqlite::semantic::RelationAccess]>>
 pub fn syntaqlite::semantic::SemanticModel::source(&self) -> &str
+pub fn syntaqlite::semantic::SemanticModel::tables_accessed(&self) -> core::option::Option<syntaqlite::semantic::LineageResult<&[syntaqlite::semantic::TableAccess]>>
 pub fn syntaqlite::semantic::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::semantic::ValidationConfig::checks(&self) -> syntaqlite::semantic::CheckConfig
 pub fn syntaqlite::semantic::ValidationConfig::default() -> Self
@@ -241,9 +250,13 @@ pub struct syntaqlite::lsp::SchemaMap
 pub struct syntaqlite::semantic::Catalog
 pub struct syntaqlite::semantic::CatalogLayerContents
 pub struct syntaqlite::semantic::CheckConfig
+pub struct syntaqlite::semantic::ColumnLineage
+pub struct syntaqlite::semantic::ColumnOrigin
 pub struct syntaqlite::semantic::Diagnostic
+pub struct syntaqlite::semantic::RelationAccess
 pub struct syntaqlite::semantic::SemanticAnalyzer
 pub struct syntaqlite::semantic::SemanticModel
+pub struct syntaqlite::semantic::TableAccess
 pub struct syntaqlite::semantic::ValidationConfig
 pub struct syntaqlite::util::DiagnosticRenderer<'a>
 pub struct syntaqlite::util::SqliteFlags(_)
@@ -272,6 +285,11 @@ pub syntaqlite::semantic::CatalogLayer::Document
 pub syntaqlite::semantic::CheckLevel::Allow
 pub syntaqlite::semantic::CheckLevel::Deny
 pub syntaqlite::semantic::CheckLevel::Warn
+pub syntaqlite::semantic::ColumnLineage::index: u32
+pub syntaqlite::semantic::ColumnLineage::name: alloc::string::String
+pub syntaqlite::semantic::ColumnLineage::origin: core::option::Option<syntaqlite::semantic::ColumnOrigin>
+pub syntaqlite::semantic::ColumnOrigin::column: alloc::string::String
+pub syntaqlite::semantic::ColumnOrigin::table: alloc::string::String
 pub syntaqlite::semantic::DiagnosticMessage::CteColumnCountMismatch
 pub syntaqlite::semantic::DiagnosticMessage::CteColumnCountMismatch::actual: usize
 pub syntaqlite::semantic::DiagnosticMessage::CteColumnCountMismatch::declared: usize
@@ -292,10 +310,14 @@ pub syntaqlite::semantic::FunctionCategory::Aggregate
 pub syntaqlite::semantic::FunctionCategory::Scalar
 pub syntaqlite::semantic::FunctionCategory::Window
 pub syntaqlite::semantic::Help::Suggestion(alloc::string::String)
+pub syntaqlite::semantic::LineageResult::Complete(T)
+pub syntaqlite::semantic::LineageResult::Partial(T)
+pub syntaqlite::semantic::RelationAccess::name: alloc::string::String
 pub syntaqlite::semantic::Severity::Error
 pub syntaqlite::semantic::Severity::Hint
 pub syntaqlite::semantic::Severity::Info
 pub syntaqlite::semantic::Severity::Warning
+pub syntaqlite::semantic::TableAccess::name: alloc::string::String
 pub syntaqlite::util::SqliteFlag::EnableBytecodeVtab = 27
 pub syntaqlite::util::SqliteFlag::EnableCarray = 28
 pub syntaqlite::util::SqliteFlag::EnableDbpageVtab = 29

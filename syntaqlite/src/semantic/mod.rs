@@ -53,6 +53,8 @@ pub(crate) mod ffi;
 #[cfg(feature = "validation")]
 pub(crate) mod fuzzy;
 #[cfg(feature = "validation")]
+mod lineage;
+#[cfg(feature = "validation")]
 pub(crate) mod model;
 #[cfg(feature = "validation")]
 pub(crate) mod render;
@@ -67,6 +69,9 @@ pub use analyzer::SemanticAnalyzer;
 pub use catalog::{AritySpec, Catalog, CatalogLayer, CatalogLayerContents, FunctionCategory};
 #[doc(inline)]
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
+#[doc(inline)]
+#[cfg(feature = "validation")]
+pub use lineage::{ColumnLineage, ColumnOrigin, LineageResult, RelationAccess, TableAccess};
 #[doc(inline)]
 #[cfg(feature = "validation")]
 pub use model::SemanticModel;
