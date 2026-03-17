@@ -3523,7 +3523,7 @@ mod detect_qualifier_test {
 #[cfg(feature = "sqlite")]
 mod lineage_tests {
     use super::super::catalog::{Catalog, CatalogLayer};
-    use super::super::lineage::ColumnOrigin;
+    use super::super::lineage::{ColumnOrigin, RelationKind};
     use super::*;
 
     fn sqlite_analyzer() -> SemanticAnalyzer {
@@ -3575,10 +3575,11 @@ mod lineage_tests {
             })
         );
 
-        // relations_accessed
+        // relations_accessed — only catalog relations (not CTEs/subqueries)
         let rels = model.relations_accessed().unwrap().into_inner();
         assert_eq!(rels.len(), 1);
         assert_eq!(rels[0].name, "users");
+        assert_eq!(rels[0].kind, RelationKind::Table);
 
         // tables_accessed
         let tbls = model.tables_accessed().unwrap().into_inner();
@@ -3704,9 +3705,11 @@ mod lineage_tests {
             })
         );
 
-        // relations includes cte
+        // relations — only catalog relations, CTE excluded
         let rels = model.relations_accessed().unwrap().into_inner();
-        assert!(rels.iter().any(|r| r.name == "cte"));
+        assert_eq!(rels.len(), 1);
+        assert_eq!(rels[0].name, "users");
+        assert_eq!(rels[0].kind, RelationKind::Table);
 
         // tables includes users (physical)
         let tbls = model.tables_accessed().unwrap().into_inner();
@@ -3785,6 +3788,11 @@ mod lineage_tests {
             !lineage.is_complete(),
             "view with unavailable body should be Partial"
         );
+
+        let rels = model.relations_accessed().unwrap().into_inner();
+        assert_eq!(rels.len(), 1);
+        assert_eq!(rels[0].name, "active_users");
+        assert_eq!(rels[0].kind, RelationKind::View);
     }
 
     // ── Test 9: Non-SELECT returns None ──────────────────────────────────────

@@ -66,11 +66,25 @@ pub struct ColumnLineage {
     pub origin: Option<ColumnOrigin>,
 }
 
-/// A relation (table, view, CTE, subquery alias) referenced in the query.
+/// What kind of catalog relation was accessed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RelationKind {
+    /// A physical table.
+    Table,
+    /// A view (body may or may not be available for resolution).
+    View,
+}
+
+/// A catalog relation (table or view) referenced in the query's FROM clause.
+///
+/// CTEs and subquery aliases are **not** included — only relations that exist
+/// in the catalog.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelationAccess {
-    /// The name used in the query (could be a CTE name, subquery alias, etc.).
+    /// The relation name as it appears in the catalog.
     pub name: String,
+    /// Whether this is a table or a view.
+    pub kind: RelationKind,
 }
 
 /// A physical table accessed by the query (after resolving CTEs and subqueries).

@@ -71,7 +71,9 @@ pub use catalog::{AritySpec, Catalog, CatalogLayer, CatalogLayerContents, Functi
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 #[doc(inline)]
 #[cfg(feature = "validation")]
-pub use lineage::{ColumnLineage, ColumnOrigin, LineageResult, RelationAccess, TableAccess};
+pub use lineage::{
+    ColumnLineage, ColumnOrigin, LineageResult, RelationAccess, RelationKind, TableAccess,
+};
 #[doc(inline)]
 #[cfg(feature = "validation")]
 pub use model::SemanticModel;
