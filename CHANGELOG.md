@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+
+- Fixed Python extension CI for x86_64 macOS by replacing deprecated `macos-13` runner with `macos-26-intel`.
+
 ## 0.2.4
 
 - Fixed Windows Python extension linker errors (`__imp_` unresolved symbols) by making static linking the default for `SYNTAQLITE_API`.
