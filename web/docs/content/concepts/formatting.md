@@ -6,7 +6,7 @@ weight = 2
 
 # Formatting philosophy
 
-syntaqlite's formatter is deterministic and opinionated — the same SQL always
+syntaqlite's formatter is deterministic and opinionated: the same SQL always
 produces the same output regardless of how it was originally written. This page
 explains the algorithm and the reasoning behind key formatting decisions.
 
@@ -17,7 +17,7 @@ The formatter uses a
 the same approach used by rustfmt and Prettier. The core idea is simple:
 
 1. Parse the SQL into an AST
-2. Convert the AST into a *document* — a tree of layout instructions
+2. Convert the AST into a *document*, a tree of layout instructions
 3. Render the document, fitting as much as possible on each line
 
 The document tree is built from a small set of primitives
@@ -77,8 +77,8 @@ then rendered.
 ## Keyword casing
 
 Keywords are always identified by the parser (they come from SQLite's own
-keyword table). The formatter applies the configured casing at render time —
-`Text` nodes (identifiers, literals, table names) are never modified.
+keyword table). The formatter applies the configured casing at render time. `Text` nodes
+(identifiers, literals, table names) are never modified.
 
 With default settings (`upper`), `select 1` becomes `SELECT 1;`. With
 `keyword-case = "lower"`, `SELECT 1` becomes `select 1;`.
@@ -94,7 +94,7 @@ reattaches them at the appropriate positions:
 - **Leading comments** (own line) are placed before the next statement or
   clause, preserving blank line separation
 
-The formatter preserves all comments — it never drops or relocates them to a
+The formatter preserves all comments. It never drops or relocates them to a
 different statement.
 
 ## Semicolons

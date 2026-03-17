@@ -21,7 +21,7 @@ distribution options with different scope:
 ## Option 1: Source amalgamation (parser and tokenizer only)
 
 The source amalgamation contains the **parser and tokenizer** as two compilable C
-files. It does **not** include the formatter or validator — those require the
+files. It does **not** include the formatter or validator; those require the
 Rust runtime and are only available via the prebuilt shared library (option 2).
 
 Download from the
@@ -98,7 +98,7 @@ int main(void) {
 }
 ```
 
-The formatter handle is reusable — create once, call `format()` repeatedly.
+The formatter handle is reusable: create once, call `format()` repeatedly.
 Output is borrowed and valid until the next call to format or destroy.
 
 ## Format with custom config

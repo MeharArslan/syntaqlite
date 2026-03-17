@@ -26,7 +26,7 @@ println!("{output}");
 // WHERE x = 1;
 ```
 
-That's it — `Formatter::new()` uses sensible defaults (80-char lines, 2-space
+That's it. `Formatter::new()` uses sensible defaults (80-char lines, 2-space
 indent, uppercase keywords). The formatter is reusable: call `format()`
 repeatedly and internal allocations are recycled.
 
@@ -97,7 +97,7 @@ if let ParseOutcome::Ok(stmt) = session.next() {
 }
 ```
 
-Token flags indicate how the parser used each token — for example,
+Token flags indicate how the parser used each token. For example,
 `token.flags().used_as_function()` is `true` for `max` in `max(x)`.
 
 ### Generic traversal
@@ -155,13 +155,13 @@ for diag in model.diagnostics() {
 }
 ```
 
-The catalog uses a layered resolution order — see
+The catalog uses a layered resolution order; see
 [validation concepts](@/concepts/validation.md) for details. For most use cases,
 populate the `Database` layer with your schema and let the analyzer handle the
 rest.
 
 If you know a table exists but don't know its columns, pass `None` to
-`insert_table` — this suppresses unknown-column warnings for that table.
+`insert_table`; this suppresses unknown-column warnings for that table.
 
 When a schema is provided (via `--schema` or `syntaqlite.toml`), the CLI and
 LSP automatically enable strict mode. When using the Rust API directly, set
@@ -170,7 +170,7 @@ this explicitly with `ValidationConfig::default().with_strict_schema(true)`.
 ## Column lineage
 
 After validation, the `SemanticModel` also provides column-level lineage for
-SELECT statements — tracing each result column back to its source table and
+SELECT statements, tracing each result column back to its source table and
 column:
 
 ```rust

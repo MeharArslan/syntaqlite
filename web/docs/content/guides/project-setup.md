@@ -1,14 +1,14 @@
 +++
 title = "Project setup"
-description = "Configure syntaqlite for a real project — schema, formatting, version pinning, editor, and CI."
+description = "Configure syntaqlite for a real project: schema, formatting, version pinning, editor, and CI."
 weight = 0
 +++
 
 # Project setup
 
 A `syntaqlite.toml` in your project root is the single source of configuration
-for the entire toolchain. Every tool — the CLI, the VS Code extension,
-Neovim/Helix via the LSP, Claude Code via MCP, and CI — discovers and reads
+for the entire toolchain. Every tool (the CLI, VS Code extension,
+Neovim/Helix via LSP, Claude Code via MCP, and CI) discovers and reads
 this file automatically. Configure once, and the whole team gets consistent
 formatting, validation, and diagnostics everywhere.
 
@@ -21,7 +21,7 @@ references. The simplest setup uses the top-level `schema` key:
 schema = ["schema.sql"]
 ```
 
-Schema files use the same format as SQLite's `.schema` output — plain `CREATE
+Schema files use the same format as SQLite's `.schema` output: plain `CREATE
 TABLE` and `CREATE VIEW` statements. You can export directly from an existing
 database:
 
@@ -76,14 +76,14 @@ sqlite-cflags = [
 ]
 ```
 
-Without `sqlite-version`, syntaqlite defaults to `latest` — all known syntax
+Without `sqlite-version`, syntaqlite defaults to `latest`, so all known syntax
 is accepted. For example, the `RETURNING` clause was added in SQLite 3.35.0.
 If you pin to 3.34.0, syntaqlite will reject it.
 
-Without `sqlite-cflags`, no optional features are enabled — functions like
+Without `sqlite-cflags`, no optional features are enabled, so functions like
 `sin()` or `fts5()` will be flagged as unknown.
 
-These settings apply to all commands — `validate`, `fmt`, and `lsp` — so
+These settings apply to all commands (`validate`, `fmt`, and `lsp`), so
 the formatter and language server also respect your target environment. CLI
 flags (`--sqlite-version`, `--sqlite-cflag`) override the config file when you
 need a one-off change.
@@ -101,7 +101,7 @@ keyword-case = "upper"
 semicolons = true
 ```
 
-These are defaults — CLI flags like `--line-width` override them for one-off
+These are defaults. CLI flags like `--line-width` override them for one-off
 use. All values are optional; omitted fields use built-in defaults.
 
 ## Check levels
@@ -121,7 +121,7 @@ shorthands set multiple categories at once; per-category keys override them.
 
 ## Editor and tool integration
 
-The config file works automatically with all integrations — no per-tool
+The config file works automatically with all integrations. No per-tool
 configuration of formatting or validation settings is needed.
 
 **VS Code** — install the
@@ -159,7 +159,7 @@ indent-width = 4
 schema = "deny"
 ```
 
-Once committed, this applies everywhere — CLI, editors, and CI. No per-tool
+Once committed, this applies everywhere: CLI, editors, and CI. No per-tool
 configuration needed.
 
 ## Precedence

@@ -2,7 +2,7 @@
 title = "Comparison Details"
 weight = 10
 +++
-# Comparison — detailed results
+# Comparison: detailed results
 
 Per-statement breakdowns, reproduction instructions, and methodology for the
 [competitive comparison](@/reference/comparison.md).
@@ -324,7 +324,7 @@ syntactic validity. "CORRUPT" means the bytecode differs or `EXPLAIN` fails.
 
 ## Diagnostic quality showcase
 
-A realistic query with 2 subtle errors — how does each tool report them?
+A realistic query with 2 subtle errors. How does each tool report them?
 
 **Query** (CTE declares 3 columns but SELECT produces 2; typo `ROUDN`):
 

@@ -251,14 +251,14 @@ typedef struct {
 
 ## Memory model
 
-- Parser, formatter, and validator handles are **reusable** — create once, call
+- Parser, formatter, and validator handles are **reusable**: create once, call
   repeatedly.
 - Output strings from `syntaqlite_formatter_output()`,
   `syntaqlite_validator_diagnostics()`, and lineage accessors
   (`syntaqlite_validator_column_lineage()`, `syntaqlite_validator_relations()`,
-  `syntaqlite_validator_tables()`) are **borrowed** — valid until the next
+  `syntaqlite_validator_tables()`) are **borrowed**, valid until the next
   call to analyze or destroy.
-- Strings from `syntaqlite_validator_render_diagnostics()` are **borrowed** —
+- Strings from `syntaqlite_validator_render_diagnostics()` are **borrowed**,
   valid until the next `analyze()`, `render_diagnostics()`, or `destroy()` call.
-- Strings from `syntaqlite_dump_node()` are **owned** — caller must `free()`.
+- Strings from `syntaqlite_dump_node()` are **owned**; caller must `free()`.
 - Passing `NULL` to any destroy function is a safe no-op.

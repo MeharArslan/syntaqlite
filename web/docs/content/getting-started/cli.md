@@ -25,7 +25,7 @@ weight = 2
   </div>
   <div class="tab-panel" data-tab="pip">
     <pre><code class="language-bash">pip install syntaqlite</code></pre>
-    <p>Installs the CLI binary and <a href="@/getting-started/python.md">Python library API</a> — no Rust toolchain needed.</p>
+    <p>Installs the CLI binary and <a href="@/getting-started/python.md">Python library API</a>. No Rust toolchain needed.</p>
   </div>
   <div class="tab-panel" data-tab="brew">
     <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
@@ -100,7 +100,7 @@ syntaqlite can check table and column names against your schema. See the
 
 ## Check formatting in CI
 
-Use `--check` to verify files are formatted without modifying them — see the
+Use `--check` to verify files are formatted without modifying them. See the
 [CI integration guide](@/guides/ci-integration.md) for full setup.
 
 ## Next steps

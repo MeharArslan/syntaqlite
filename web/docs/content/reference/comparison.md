@@ -5,7 +5,7 @@ weight = 9
 # How does syntaqlite compare?
 
 There are many SQL tools out there. This page tests them head-to-head on
-**SQLite-specific SQL** — the kind of syntax that trips up generic SQL parsers —
+**SQLite-specific SQL**, the kind of syntax that trips up generic SQL parsers,
 and shows raw, reproducible results.
 
 > Generated on `arm64-darwin` with syntaqlite `0.1.0` on 2026-03-14.
@@ -71,7 +71,7 @@ file repeated 30× (throughput-dominated).
 **What we test:** Round-trip semantic preservation. Each of the same 40
 statements is formatted, then we run `EXPLAIN` on both the original and
 formatted SQL and compare the bytecode sqlite3 produces. Identical bytecode
-means sqlite3 will execute the exact same operations — the formatter preserved
+means sqlite3 will execute the exact same operations, so the formatter preserved
 semantics, not just validity. Tools that crash or refuse to format score
 "refused". Tools whose output produces different bytecode score "corrupt".
 
@@ -191,7 +191,7 @@ Error: in prepare, table monthly_stats has 2 values for 3 columns
 
 **What we test:** We start each language server, open a test document, and probe
 for completions, hover, diagnostics, and formatting. Results are from actual LSP
-protocol responses — no self-reported feature lists.
+protocol responses, not self-reported feature lists.
 
 **Key difference:** `sqls` requires a live database connection for its features.
 syntaqlite and sql-language-server work offline.

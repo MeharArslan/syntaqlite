@@ -16,7 +16,7 @@ syntaqlite fmt [OPTIONS] [FILES...]
 
 Reads from stdin if no files are given. When stdin is a terminal, a hint is
 printed to stderr. Formatting defaults can be set in
-[`syntaqlite.toml`](@/reference/config-file.md) — CLI flags override config
+[`syntaqlite.toml`](@/reference/config-file.md). CLI flags override config
 file values.
 
 | Option | Default | Description |

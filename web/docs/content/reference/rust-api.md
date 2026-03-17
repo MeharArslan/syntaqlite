@@ -27,7 +27,7 @@ weight = 4
 | `FormatConfig` | Builder: `with_line_width()`, `with_indent_width()`, `with_keyword_case()`, `with_semicolons()` |
 | `KeywordCase` | `Upper` or `Lower` |
 
-The formatter is reusable — call `format()` repeatedly. Internal allocations
+The formatter is reusable; call `format()` repeatedly. Internal allocations
 are reused across calls. Defaults: 80-char lines, 2-space indent, uppercase
 keywords, semicolons on.
 
@@ -53,7 +53,7 @@ It recovers from errors and continues parsing subsequent statements.
 | `tokenizer.tokenize(sql) -> Result<Vec<Token>>` | Tokenize SQL string |
 | `Token` | `token_type`, `text`, byte offsets into source |
 
-Zero-copy — tokens reference byte offsets into the source string.
+Zero-copy: tokens reference byte offsets into the source string.
 
 ## Validator
 
@@ -67,7 +67,7 @@ Zero-copy — tokens reference byte offsets into the source string.
 | `ValidationConfig::default().with_strict_schema()` | Strict mode (errors for unknowns) |
 | `model.diagnostics()` | Parse and semantic diagnostics |
 
-The analyzer is reusable — call `analyze()` repeatedly. The catalog uses a
+The analyzer is reusable; call `analyze()` repeatedly. The catalog uses a
 layered resolution order; populate the `Database` layer with your schema.
 
 ## Lineage

@@ -8,7 +8,7 @@ weight = 6
 
 This tutorial walks you through using syntaqlite as a Python library. By the end
 you'll have a script that formats SQL, validates it against a schema, traces
-column lineage, and inspects the AST — all from Python.
+column lineage, and inspects the AST, all from Python.
 
 ## 1. Install
 
@@ -20,7 +20,7 @@ The pip package includes both the `syntaqlite` CLI binary and a native C
 extension that exposes the library API directly to Python. Requires Python 3.10+.
 
 > **Note:** On platforms where the C extension isn't available (e.g. Windows
-> arm64), pip still installs the CLI binary — only the library functions below
+> arm64), pip still installs the CLI binary. Only the library functions below
 > won't be importable.
 
 ## 2. Format a query
@@ -108,7 +108,7 @@ warning: unknown column 'nme'
 
 ## 3b. Column lineage
 
-When validating a SELECT, the result includes column lineage — which source
+When validating a SELECT, the result includes column lineage: which source
 table and column each output column traces back to:
 
 ```python

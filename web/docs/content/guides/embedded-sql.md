@@ -7,7 +7,7 @@ weight = 6
 # Embedded SQL
 
 syntaqlite can extract and validate SQL string literals from Python and
-TypeScript source files — no need to maintain separate `.sql` files for
+TypeScript source files without needing to maintain separate `.sql` files for
 validation.
 
 ```bash
@@ -58,7 +58,7 @@ This feature is experimental. Some patterns are not recognized:
 
 ## Schema validation
 
-Embedded SQL validation respects `syntaqlite.toml` — if you have a schema
+Embedded SQL validation respects `syntaqlite.toml`. If you have a schema
 configured, references are checked against it. You can also pass schema
 explicitly:
 

@@ -8,7 +8,7 @@ weight = 5
 
 This tutorial walks you through parsing a SQL query from C using the
 syntaqlite source amalgamation. By the end you'll have a small program that
-parses a query and prints its AST — no dependencies beyond a C compiler.
+parses a query and prints its AST with no dependencies beyond a C compiler.
 
 ## 1. Download the amalgamation
 

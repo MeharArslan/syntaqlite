@@ -1,6 +1,6 @@
 +++
 title = "VS Code"
-description = "Install the extension — diagnostics, formatting, and completions out of the box."
+description = "Install the extension: diagnostics, formatting, and completions out of the box."
 weight = 1
 +++
 
@@ -10,7 +10,7 @@ weight = 1
 
 Install **[syntaqlite](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)**
 from the VS Code Marketplace, or search for `syntaqlite` in the Extensions
-panel (`Cmd+Shift+X`). The extension bundles the binary — no other setup
+panel (`Cmd+Shift+X`). The extension bundles the binary. No other setup
 needed.
 
 ## 2. Create a project folder
@@ -83,7 +83,7 @@ ORDER BY
   created_at DESC;
 ```
 
-You'll see `nme` underlined with a warning: *unknown column 'nme' — did you
+You'll see `nme` underlined with a warning: *unknown column 'nme', did you
 mean 'name'?* Fix it back to `name` and the warning disappears.
 
 ## 6. Completions

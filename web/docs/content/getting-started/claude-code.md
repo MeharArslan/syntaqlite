@@ -31,7 +31,7 @@ inspect a parse tree.
 ## Try it out
 
 Open a project with `.sql` files and ask Claude to edit one. If the SQL has an
-error — say a misspelled column name — Claude will notice the diagnostic from
+error (say a misspelled column name), Claude will notice the diagnostic from
 the language server and fix it in the same edit.
 
 You can also ask Claude to format or validate explicitly:
@@ -42,9 +42,9 @@ You can also ask Claude to format or validate explicitly:
 
 ## Add schema validation
 
-Without a schema, the language server validates against an empty catalog — it
+Without a schema, the language server validates against an empty catalog: it
 catches syntax errors and bad function calls, but not unknown tables or columns.
-To enable full validation, set up a schema file — see the
+To enable full validation, set up a schema file. See the
 [project setup guide](@/guides/project-setup.md) for instructions.
 
 Once configured, when Claude writes `SELECT nme FROM users`, the language server

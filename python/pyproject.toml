@@ -4,7 +4,7 @@ version = "0.2.5"
 description = "SQLite SQL tools — parser, formatter, validator, and MCP server"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
-# readme = "../README.md"  # omitted: setuptools can't reach outside project root
+readme = "README.md"
 dependencies = []
 
 [project.scripts]

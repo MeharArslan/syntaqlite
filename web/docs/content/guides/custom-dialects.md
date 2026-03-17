@@ -6,12 +6,12 @@ weight = 10
 
 # Custom dialects
 
-> **Experimental — work in progress.** The dialect API is under active
+> **Experimental: work in progress.** The dialect API is under active
 > development and may change significantly between releases. The `.synq` format,
 > codegen output, and shared library ABI are not yet stable.
 
 syntaqlite's grammar is extensible. If you have a SQL dialect that adds syntax
-on top of SQLite — custom statements, additional functions, new clauses — you
+on top of SQLite (custom statements, additional functions, new clauses), you
 can define a dialect that syntaqlite will use for parsing, formatting, and
 validation.
 
@@ -20,7 +20,7 @@ validation.
 A dialect is a shared library loaded at runtime with `--dialect /path/to/lib.so`.
 It extends SQLite's parser, formatter, and validator with custom rules.
 
-Dialects are defined using `.synq` files — the same grammar definition language
+Dialects are defined using `.synq` files, the same grammar definition language
 syntaqlite uses internally. A `.synq` file declares nodes, enums, formatting
 rules, and semantic annotations.
 

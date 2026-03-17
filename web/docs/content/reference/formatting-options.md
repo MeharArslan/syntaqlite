@@ -7,7 +7,7 @@ weight = 3
 # Formatting options
 
 syntaqlite's formatter has four configuration options. All have sensible
-defaults — you can use `syntaqlite fmt` with no flags and get well-formatted
+defaults; you can use `syntaqlite fmt` with no flags and get well-formatted
 SQL. Every option is available across the CLI, Rust, C, and JavaScript APIs.
 
 Options can also be set in
@@ -53,7 +53,7 @@ echo "SELECT id, name, email, created_at FROM users WHERE active = 1" \
 SELECT id, name, email, created_at FROM users WHERE active = 1;
 ```
 
-The line width is a target, not a hard limit — the formatter won't break a
+The line width is a target, not a hard limit. The formatter won't break a
 single long identifier or string literal to stay within the width.
 
 ## Indent width

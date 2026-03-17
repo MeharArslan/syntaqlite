@@ -33,9 +33,9 @@ syntaqlite.format_sql(sql, *, line_width=80, indent_width=2, keyword_case="upper
 | `keyword_case` | `str` | `"upper"` | `"upper"` or `"lower"` |
 | `semicolons` | `bool` | `True` | Append semicolons to statements |
 
-**Returns:** `str` — the formatted SQL.
+**Returns:** `str`. The formatted SQL.
 
-**Raises:** `syntaqlite.FormatError` — on parse error (the original SQL is syntactically invalid).
+**Raises:** `syntaqlite.FormatError` on parse error (the original SQL is syntactically invalid).
 
 ```python
 >>> syntaqlite.format_sql("select 1")
@@ -56,7 +56,7 @@ syntaqlite.parse(sql)
 |-----------|------|-------------|
 | `sql` | `str` | SQL to parse (may contain multiple statements) |
 
-**Returns:** `list[dict]` — one entry per statement. Each dict has:
+**Returns:** `list[dict]`. One entry per statement. Each dict has:
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -112,7 +112,7 @@ syntaqlite.validate(sql,
 )
 ```
 
-`Table` and `View` accept `name` (required) and `columns` (optional — omit to
+`Table` and `View` accept `name` (required) and `columns` (optional; omit to
 accept any column reference).
 
 **Returns (render=False):** `ValidationResult` with attributes:
@@ -122,7 +122,7 @@ accept any column reference).
 | `diagnostics` | `list[Diagnostic]` | Parse and semantic diagnostics |
 | `lineage` | `Lineage \| None` | Column lineage for SELECT statements, `None` for non-queries |
 
-**Returns (render=True):** `str` — human-readable diagnostics with source
+**Returns (render=True):** `str`. Human-readable diagnostics with source
 context, similar to CLI output.
 
 ```python
@@ -194,7 +194,7 @@ syntaqlite.tokenize(sql)
 |-----------|------|-------------|
 | `sql` | `str` | SQL to tokenize |
 
-**Returns:** `list[dict]` — one entry per token:
+**Returns:** `list[dict]`. One entry per token:
 
 | Key | Type | Description |
 |-----|------|-------------|

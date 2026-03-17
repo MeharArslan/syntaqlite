@@ -59,7 +59,7 @@ Add to `.cursor/mcp.json` in your project:
 }
 ```
 
-Restart Cursor. Try asking it to format a SQL query — it will use syntaqlite's
+Restart Cursor. Try asking it to format a SQL query. It will use syntaqlite's
 `format_sql` tool.
 
 ## Windsurf

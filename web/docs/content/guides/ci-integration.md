@@ -11,7 +11,7 @@ errors before they reach production.
 
 If your project has a [`syntaqlite.toml`](@/reference/config-file.md),
 formatting options, schema routing, and check levels are all read
-automatically — no flags needed in CI. This keeps CI in sync with local
+automatically. No flags needed in CI. This keeps CI in sync with local
 development.
 
 ## Format checking
@@ -33,7 +33,7 @@ syntaqlite validate "**/*.sql"
 
 When a schema is configured in `syntaqlite.toml`, unresolved references are
 **errors** and cause a non-zero exit code. Without a schema, the same issues
-are **warnings** and the exit code remains zero — so `syntaqlite validate`
+are **warnings** and the exit code remains zero, so `syntaqlite validate`
 won't fail the build until you've explicitly declared your schema.
 
 If you're not using `syntaqlite.toml` and passing files directly, file order
@@ -94,7 +94,7 @@ chmod +x .git/hooks/pre-push
 
 ## Formatting at scale
 
-syntaqlite is fast — it reuses internal allocations across files, so formatting
+syntaqlite is fast: it reuses internal allocations across files, so formatting
 thousands of files is practical:
 
 ```bash

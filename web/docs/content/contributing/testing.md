@@ -68,7 +68,7 @@ class SelectFormat(TestSuite):
 
 ```
 
-Test discovery is automatic — the runner finds all `TestSuite` subclasses and
+Test discovery is automatic: the runner finds all `TestSuite` subclasses and
 calls their `test_*` methods.
 
 ### Rebaselining
@@ -112,7 +112,7 @@ don't leak into validation.
 ### Dialect validation diff tests (Python)
 
 `tests/perfetto_validation_diff_tests/` contains diff tests for the Perfetto
-dialect's validation — `CREATE PERFETTO TABLE`, `CREATE PERFETTO VIEW`, and
+dialect's validation: `CREATE PERFETTO TABLE`, `CREATE PERFETTO VIEW`, and
 function definitions with unknown/known table references.
 
 ### Upstream SQLite tests

@@ -105,13 +105,13 @@ Check whether a SQL string is syntactically valid.
 | `valid` | boolean | `true` if the SQL parsed without errors |
 | `errors` | string | Error messages (empty string if valid) |
 
-**Example — valid SQL:**
+**Example (valid SQL):**
 
 ```json
 {"valid": true, "errors": ""}
 ```
 
-**Example — invalid SQL:**
+**Example (invalid SQL):**
 
 ```json
 {"valid": false, "errors": "error: syntax error near 'SELEC'\n --> <stdin>:1:1\n  |\n1 | SELEC 1\n  | ^~~~~\n0 statements parsed, 1 errors\nerror: 1 syntax error(s)"}

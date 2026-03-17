@@ -26,7 +26,7 @@ installing anything, or install the CLI:
   </div>
   <div class="tab-panel" data-tab="pip">
     <pre><code class="language-bash">pip install syntaqlite</code></pre>
-    <p>Installs the CLI binary and <a href="@/getting-started/python.md">Python library API</a> — no Rust toolchain needed.</p>
+    <p>Installs the CLI binary and <a href="@/getting-started/python.md">Python library API</a>. No Rust toolchain needed.</p>
   </div>
   <div class="tab-panel" data-tab="brew">
     <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
@@ -51,7 +51,7 @@ in CI with `syntaqlite fmt --check "**/*.sql"`.
 ## Validate
 
 syntaqlite reads your `CREATE TABLE` statements to build a schema, then
-validates queries against it — no database required. It finds **all** errors in
+validates queries against it without needing a database. It finds **all** errors in
 one pass, with source locations and did-you-mean suggestions:
 
 ```bash

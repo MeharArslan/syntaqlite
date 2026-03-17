@@ -7,7 +7,7 @@ weight = 1
 # Why SQLite's own grammar
 
 Most SQL formatters and linters use hand-written or approximate grammars.
-syntaqlite doesn't — it uses SQLite's own tokenizer and Lemon-generated parser
+syntaqlite doesn't. It uses SQLite's own tokenizer and Lemon-generated parser
 rules directly. This page explains what that means in practice.
 
 ## The problem with approximate grammars
@@ -21,7 +21,7 @@ of other features added across
 A hand-written parser trying to match this surface area will inevitably
 diverge. It might accept SQL that SQLite rejects, reject SQL that SQLite
 accepts, or misparse edge cases around keyword-as-identifier rules (SQLite
-allows most keywords as identifiers in specific contexts — the full list is
+allows most keywords as identifiers in specific contexts. The full list is
 encoded in the Lemon grammar's fallback table).
 
 ## What "uses SQLite's grammar" means concretely
@@ -45,13 +45,13 @@ The parser action files in
 [`syntaqlite-syntax/parser-actions/`](https://github.com/LalitMaganti/syntaqlite/tree/main/syntaqlite-syntax/parser-actions)
 must match upstream grammar rule signatures exactly. A
 [grammar verification step](https://github.com/LalitMaganti/syntaqlite/blob/main/syntaqlite-buildtools/src/grammar_verify.rs)
-enforces this — any unintentional divergence from SQLite's grammar is a build
+enforces this: any unintentional divergence from SQLite's grammar is a build
 error.
 
 ## Version-aware parsing
 
 SQLite's grammar has been semantically additive across all analyzed versions
-(3.12.2–3.51.2) — it never narrows the set of accepted SQL. syntaqlite uses
+(3.12.2–3.51.2): it never narrows the set of accepted SQL. syntaqlite uses
 the latest grammar for parsing and validates against your target version
 *after* parsing:
 
@@ -75,7 +75,7 @@ in `ALLOWED_EXTRA_RULES`:
 - `expr ::= error` — recover from malformed expressions (used for embedded SQL
   hole interpolation)
 
-These rules only affect error recovery behavior — they don't change what valid
+These rules only affect error recovery behavior. They don't change what valid
 SQL is accepted.
 
 ## When SQLite changes its grammar
@@ -86,8 +86,8 @@ is designed to minimize the human effort needed:
 
 1. Grammar rules and the state machine are regenerated automatically
 2. AST node structure is defined in
-   [`.synq` files](https://github.com/LalitMaganti/syntaqlite/tree/main/syntaqlite-syntax/parser-nodes)
-   — new nodes need a `.synq` entry for formatting and validation
+   [`.synq` files](https://github.com/LalitMaganti/syntaqlite/tree/main/syntaqlite-syntax/parser-nodes).
+   New nodes need a `.synq` entry for formatting and validation
 3. Build tooling detects any divergence and guides the update
 
 The only manual decision is which AST nodes to fold together (e.g., whether a

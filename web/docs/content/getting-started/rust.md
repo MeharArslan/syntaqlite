@@ -49,7 +49,7 @@ cargo run
 SELECT id, name, email FROM users WHERE active = 1 ORDER BY name;
 ```
 
-The formatter handle is reusable — internal allocations are recycled across
+The formatter handle is reusable; internal allocations are recycled across
 calls.
 
 ## 3. Validate against a schema
@@ -72,7 +72,7 @@ fn main() {
     let analyzer = SemanticAnalyzer::new();
     let mut catalog = Catalog::new(syntaqlite::sqlite_dialect().into());
 
-    // Register schema — CREATE TABLE statements
+    // Register schema (CREATE TABLE statements) statements
     let schema = "CREATE TABLE users (id INTEGER, name TEXT, email TEXT, active INTEGER);";
     let model = analyzer.analyze(schema, &catalog, &ValidationConfig::default());
     catalog.apply_ddl(&model);
@@ -105,7 +105,7 @@ SELECT id, nme FROM users WHERE active = 1;
 error: unknown column 'nme'
 ```
 
-The validator caught the typo — `nme` should be `name`.
+The validator caught the typo: `nme` should be `name`.
 
 ## 4. Parse and inspect the AST
 
