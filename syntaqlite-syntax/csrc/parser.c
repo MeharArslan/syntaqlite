@@ -489,7 +489,8 @@ static int try_macro_call(SyntaqliteParser* p,
   // Unregistered macro — fallback to TK_ID.  Always allowed when the
   // grammar declares RUST-style macros; otherwise only when macro_fallback
   // is explicitly set (e.g. embedded-SQL hole placeholders).
-  if (p->grammar.tmpl->macro_style != SYNQ_MACRO_STYLE_RUST && !p->macro_fallback)
+  if (p->grammar.tmpl->macro_style != SYNQ_MACRO_STYLE_RUST &&
+      !p->macro_fallback)
     return -1;
 
   // Scan balanced parens to find the end of name!(args).

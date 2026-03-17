@@ -654,9 +654,7 @@ pub unsafe extern "C" fn syntaqlite_validator_column_lineage(
 /// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
 #[unsafe(no_mangle)]
 #[expect(clippy::cast_possible_truncation)]
-pub unsafe extern "C" fn syntaqlite_validator_relation_count(
-    v: *const SyntaqliteValidator,
-) -> u32 {
+pub unsafe extern "C" fn syntaqlite_validator_relation_count(v: *const SyntaqliteValidator) -> u32 {
     // SAFETY: caller guarantees `v` is valid.
     let v = unsafe { &*v };
     v.state().c_relations.len() as u32
@@ -690,9 +688,7 @@ pub unsafe extern "C" fn syntaqlite_validator_relations(
 /// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
 #[unsafe(no_mangle)]
 #[expect(clippy::cast_possible_truncation)]
-pub unsafe extern "C" fn syntaqlite_validator_table_count(
-    v: *const SyntaqliteValidator,
-) -> u32 {
+pub unsafe extern "C" fn syntaqlite_validator_table_count(v: *const SyntaqliteValidator) -> u32 {
     // SAFETY: caller guarantees `v` is valid.
     let v = unsafe { &*v };
     v.state().c_tables.len() as u32
@@ -1328,17 +1324,26 @@ mod tests {
         unsafe {
             add_table(v, "users", &["id", "name"]);
             add_table(v, "posts", &["id", "user_id"]);
-            analyze(v, "SELECT u.id FROM users u JOIN posts p ON u.id = p.user_id");
+            analyze(
+                v,
+                "SELECT u.id FROM users u JOIN posts p ON u.id = p.user_id",
+            );
 
             // Relations
             let rel_count = syntaqlite_validator_relation_count(v);
-            assert!(rel_count >= 2, "expected at least 2 relations, got {rel_count}");
+            assert!(
+                rel_count >= 2,
+                "expected at least 2 relations, got {rel_count}"
+            );
             let rels = syntaqlite_validator_relations(v);
             assert!(!rels.is_null());
 
             // Tables
             let tbl_count = syntaqlite_validator_table_count(v);
-            assert!(tbl_count >= 2, "expected at least 2 tables, got {tbl_count}");
+            assert!(
+                tbl_count >= 2,
+                "expected at least 2 tables, got {tbl_count}"
+            );
             let tbls = syntaqlite_validator_tables(v);
             assert!(!tbls.is_null());
 
@@ -1424,11 +1429,8 @@ mod tests {
         // SAFETY: FFI test.
         unsafe {
             let ddl = "CREATE TABLE users(id, name); CREATE VIEW active AS SELECT id FROM users;";
-            let errors = syntaqlite_validator_load_schema_ddl(
-                v,
-                ddl.as_ptr().cast(),
-                ddl.len() as u32,
-            );
+            let errors =
+                syntaqlite_validator_load_schema_ddl(v, ddl.as_ptr().cast(), ddl.len() as u32);
             assert_eq!(errors, 0, "DDL should parse without errors");
 
             // Table should be resolved.
@@ -1449,11 +1451,8 @@ mod tests {
         // SAFETY: FFI test.
         unsafe {
             let ddl = "CREATE TABLE users(id); NOT VALID SQL;";
-            let errors = syntaqlite_validator_load_schema_ddl(
-                v,
-                ddl.as_ptr().cast(),
-                ddl.len() as u32,
-            );
+            let errors =
+                syntaqlite_validator_load_schema_ddl(v, ddl.as_ptr().cast(), ddl.len() as u32);
             assert!(errors > 0, "should report parse errors");
 
             // The valid DDL before the error should still be registered.
