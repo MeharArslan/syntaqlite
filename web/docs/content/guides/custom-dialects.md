@@ -6,6 +6,10 @@ weight = 10
 
 # Custom dialects
 
+> **Experimental — work in progress.** The dialect API is under active
+> development and may change significantly between releases. The `.synq` format,
+> codegen output, and shared library ABI are not yet stable.
+
 syntaqlite's grammar is extensible. If you have a SQL dialect that adds syntax
 on top of SQLite — custom statements, additional functions, new clauses — you
 can define a dialect that syntaqlite will use for parsing, formatting, and
