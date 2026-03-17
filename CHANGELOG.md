@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Fixed PyPI wheel builds failing across all Python versions (3.10–3.13).
+
 ## 0.2.0
 
 ### Python library API
