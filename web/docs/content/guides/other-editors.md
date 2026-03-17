@@ -53,7 +53,7 @@ stdin/stdout using JSON-RPC.
 Without a schema, syntaqlite validates against an empty catalog — syntax errors
 and built-in function checks work, but unknown tables and columns won't be
 caught. To enable full validation, set up a schema file — see the
-[schema validation guide](@/guides/schema-validation.md) for instructions.
+[project setup guide](@/guides/project-setup.md) for instructions.
 
 Restart the language server (or reopen the editor) after adding the config.
 Queries referencing unknown columns or tables will show warnings with "did you

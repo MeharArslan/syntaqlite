@@ -98,5 +98,5 @@ you'll see `users` offered as a completion. After `SELECT `, you'll see `id`,
   keyword casing, semicolons
 - [Config file reference](@/reference/config-file.md) — glob-based schema
   routing and all `syntaqlite.toml` options
-- [Schema validation guide](@/guides/schema-validation.md) — multi-schema
+- [Project setup guide](@/guides/project-setup.md) — multi-schema
   setups, strict mode, CI integration

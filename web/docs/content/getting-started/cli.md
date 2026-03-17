@@ -96,7 +96,7 @@ syntaqlite fmt -i "**/*.sql"
 ## Validate against a schema
 
 syntaqlite can check table and column names against your schema. See the
-[schema validation guide](@/guides/schema-validation.md) for setup instructions.
+[project setup guide](@/guides/project-setup.md) for setup instructions.
 
 ## Check formatting in CI
 

@@ -78,21 +78,6 @@ syntaqlite extracts SQL string literals from the host language, then runs
 validation on each fragment. This is experimental — complex string
 interpolation patterns may not be recognized.
 
-## SQLite version pinning
-
-Match your production SQLite version and compile-time flags:
-
-```bash
-syntaqlite validate \
-  --sqlite-version 3.41.0 \
-  --sqlite-cflag SQLITE_ENABLE_MATH_FUNCTIONS \
-  query.sql
-```
-
-This affects which built-in functions are recognized. See
-[SQLite version and compile flags](@/guides/sqlite-versions.md) for the full
-list of flags.
-
 ## Using validation from Rust
 
 Add syntaqlite with the `validation` feature:

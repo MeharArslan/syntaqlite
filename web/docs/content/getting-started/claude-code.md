@@ -45,7 +45,7 @@ You can also ask Claude to format or validate explicitly:
 Without a schema, the language server validates against an empty catalog — it
 catches syntax errors and bad function calls, but not unknown tables or columns.
 To enable full validation, set up a schema file — see the
-[schema validation guide](@/guides/schema-validation.md) for instructions.
+[project setup guide](@/guides/project-setup.md) for instructions.
 
 Once configured, when Claude writes `SELECT nme FROM users`, the language server
 flags `nme` as unknown and suggests `name`. Claude sees this and corrects it
