@@ -11,6 +11,7 @@ use crate::dialect_codegen::c_dialect::{
     generate_parse_h, generate_token_categories_header, generate_tokenize_h,
 };
 use crate::dialect_codegen::c_meta_codegen::{CFmtCodegenError, CMetaCodegenError};
+use crate::dialect_codegen::python_codegen::{PythonCodegenArtifacts, generate_python_artifacts};
 use crate::dialect_codegen::rust_ast::{RustAstPaths, generate_rust_tokens};
 use crate::dialect_codegen::rust_dialect::{
     generate_cargo_toml, generate_dialect_module, generate_grammar_module, generate_rust_build_rs,
@@ -200,6 +201,8 @@ pub(crate) struct CodegenArtifacts {
     pub dialect_roles_h: String,
     /// Generated Rust sources, when `include_rust` was set.
     pub rust: Option<RustCodegenArtifacts>,
+    /// Generated Python sources, when `python_headers` was provided.
+    pub python: Option<PythonCodegenArtifacts>,
 }
 
 /// Parse `#define SYNTAQLITE_TK_NAME VALUE` lines from lemon's parse.h output.
@@ -296,6 +299,8 @@ pub(crate) struct CodegenRequest<'a> {
     pub dialect_c_includes: DialectCIncludes<'a>,
     /// Macro invocation style for the batch parsing loop.
     pub macro_style: MacroStyle,
+    /// Whether to generate Python binding artifacts.
+    pub include_python: bool,
 }
 
 /// A prepared codegen job for an external or amalgamated dialect.
@@ -316,6 +321,7 @@ pub struct DialectCodegenJob<'a> {
     open_for_extension: bool,
     crate_name: Option<String>,
     macro_style: MacroStyle,
+    include_python: bool,
 }
 
 impl<'a> DialectCodegenJob<'a> {
@@ -350,6 +356,7 @@ impl<'a> DialectCodegenJob<'a> {
             open_for_extension: false,
             crate_name: None,
             macro_style: MacroStyle::None,
+            include_python: false,
         }
     }
 
@@ -372,6 +379,13 @@ impl<'a> DialectCodegenJob<'a> {
     pub fn with_rust(mut self, crate_name: &str) -> Self {
         self.include_rust = true;
         self.crate_name = Some(crate_name.to_string());
+        self
+    }
+
+    /// Enable Python binding generation.
+    #[must_use]
+    pub const fn with_python(mut self) -> Self {
+        self.include_python = true;
         self
     }
 
@@ -406,6 +420,7 @@ impl<'a> DialectCodegenJob<'a> {
             open_for_extension: self.open_for_extension,
             dialect_c_includes: layout.c_includes(),
             macro_style: self.macro_style,
+            include_python: self.include_python,
         };
         let artifacts = generate_codegen_artifacts(&request)?;
         layout.write_codegen_artifacts(self.dialect, artifacts, ensure_dir, write_file)
@@ -655,6 +670,12 @@ pub(crate) fn generate_codegen_artifacts(
         None
     };
 
+    let python = if request.include_python {
+        Some(generate_python_artifacts(&ast_model))
+    } else {
+        None
+    };
+
     let runtime_tokens_h = generate_runtime_tokens_header(&token_defines);
     let cflags_h = crate::extract::generate_cflags_h("parser");
     let dialect_roles_h = generate_c_roles_h(&ast_model, request.dialect.name());
@@ -679,6 +700,7 @@ pub(crate) fn generate_codegen_artifacts(
         cflags_h,
         dialect_roles_h,
         rust,
+        python,
     })
 }
 

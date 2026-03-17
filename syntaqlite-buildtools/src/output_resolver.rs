@@ -87,6 +87,12 @@ pub struct OutputLayout {
     pub build_rs: Option<String>,
     /// Cargo manifest (`Cargo.toml`).
     pub cargo_toml: Option<String>,
+
+    // ── Python ────────────────────────────────────────────────────────────
+    /// Python enum types (`_enums.py`).
+    pub enums_py: Option<String>,
+    /// C header for Python extension (`_py_ast_wrap.h`).
+    pub ast_wrap_h: Option<String>,
 }
 
 impl OutputLayout {
@@ -205,6 +211,9 @@ impl OutputLayout {
             // Crate root: hand-maintained for the internal crate
             build_rs: None,
             cargo_toml: None,
+            // Python
+            enums_py: Some("python/syntaqlite/_enums.py".to_string()),
+            ast_wrap_h: Some("python/csrc/_py_ast_wrap.h".to_string()),
         }
     }
 
@@ -290,6 +299,8 @@ impl OutputLayout {
             functions_catalog_rs: None,
             build_rs: Some("build.rs".to_string()),
             cargo_toml: Some("Cargo.toml".to_string()),
+            enums_py: None,
+            ast_wrap_h: None,
         }
     }
 
@@ -377,6 +388,8 @@ impl OutputLayout {
             functions_catalog_rs: None,
             build_rs: None,
             cargo_toml: None,
+            enums_py: None,
+            ast_wrap_h: None,
         }
     }
 
@@ -454,6 +467,12 @@ impl OutputLayout {
             }
             write(&self.build_rs, &rust.build_rs)?;
             write(&self.cargo_toml, &rust.cargo_toml)?;
+        }
+
+        // Python
+        if let Some(python) = artifacts.python {
+            write(&self.enums_py, &python.enums)?;
+            write(&self.ast_wrap_h, &python.ast_wrap_h)?;
         }
 
         Ok(())

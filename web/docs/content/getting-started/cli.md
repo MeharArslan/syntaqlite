@@ -25,7 +25,7 @@ weight = 2
   </div>
   <div class="tab-panel" data-tab="pip">
     <pre><code class="language-bash">pip install syntaqlite</code></pre>
-    <p>Installs a bundled platform-specific binary — no Rust toolchain needed.</p>
+    <p>Installs the CLI binary and <a href="@/getting-started/python.md">Python library API</a> — no Rust toolchain needed.</p>
   </div>
   <div class="tab-panel" data-tab="brew">
     <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
@@ -107,6 +107,8 @@ Use `--check` to verify files are formatted without modifying them — see the
 
 - [Project setup guide](@/guides/project-setup.md) — configure
   `syntaqlite.toml` for a real project
+- [Python library tutorial](@/getting-started/python.md) — use `parse`,
+  `format_sql`, `validate` from Python
 - [CLI reference](@/reference/cli.md) — all flags for `fmt`, `validate`,
   `parse`, and `lsp`
 - [Config file reference](@/reference/config-file.md) — `syntaqlite.toml`

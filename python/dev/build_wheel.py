@@ -8,11 +8,20 @@ Usage:
         --binary target/release/syntaqlite \\
         --platform aarch64-apple-darwin \\
         --out dist/
+
+    # With C extension (per-Python-version wheel):
+    python -m python.dev.build_wheel \\
+        --binary target/release/syntaqlite \\
+        --ext _syntaqlite.cpython-312-darwin.so \\
+        --python-tag cp312 \\
+        --platform aarch64-apple-darwin \\
+        --out dist/
 """
 
 import argparse
 import base64
 import csv
+import glob as globmod
 import hashlib
 import io
 import os
@@ -47,17 +56,42 @@ def _read_version() -> str:
     sys.exit("Could not find version in pyproject.toml")
 
 
-def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path) -> Path:
+def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path,
+                lib_path: Path | None = None,
+                ext_path: Path | None = None,
+                python_tag: str | None = None) -> Path:
     version = _read_version()
     name = "syntaqlite"
     is_windows = "win" in platform_tag
     binary_name = "syntaqlite.exe" if is_windows else "syntaqlite"
+
+    # Determine wheel tags.
+    if ext_path is not None:
+        if python_tag is None:
+            sys.exit("--python-tag is required when --ext is provided")
+        # CPython extension wheel: cp312-cp312-{platform}
+        # (CPython uses identical python and ABI tags since 3.2+)
+        tag = f"{python_tag}-{python_tag}-{platform_tag}"
+    else:
+        # CLI-only wheel: py3-none-{platform}
+        tag = f"py3-none-{platform_tag}"
 
     # Collect all files as (archive_path, content) pairs.
     files: dict[str, bytes] = {}
 
     # 1. Binary in {package}/bin/
     files[f"{name}/bin/{binary_name}"] = binary_path.read_bytes()
+
+    # 1b. Shared library in {package}/lib/ (optional)
+    if lib_path is not None:
+        lib_name = lib_path.name
+        files[f"{name}/lib/{lib_name}"] = lib_path.read_bytes()
+
+    # 1c. C extension module (optional)
+    if ext_path is not None:
+        # Preserve the original filename (e.g. _syntaqlite.cpython-312-darwin.so)
+        ext_name = ext_path.name
+        files[f"{name}/{ext_name}"] = ext_path.read_bytes()
 
     # 2. Python package files.
     pkg_dir = PYTHON_ROOT / name
@@ -90,7 +124,7 @@ def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path) -> Path:
         "Wheel-Version: 1.0\n"
         "Generator: syntaqlite-build-wheel\n"
         "Root-Is-Purelib: false\n"
-        f"Tag: py3-none-{platform_tag}\n"
+        f"Tag: {tag}\n"
     )
     files[f"{dist_info}/WHEEL"] = wheel_meta.encode()
 
@@ -115,12 +149,16 @@ def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path) -> Path:
 
     # Build the wheel zip.
     out_dir.mkdir(parents=True, exist_ok=True)
-    wheel_name = f"{name}-{version}-py3-none-{platform_tag}.whl"
+    wheel_name = f"{name}-{version}-{tag}.whl"
     wheel_path = out_dir / wheel_name
 
     with zipfile.ZipFile(wheel_path, "w", zipfile.ZIP_DEFLATED) as whl:
         for arc_path, content in files.items():
-            if "/bin/" in arc_path:
+            # Set executable permissions on binaries, libs, and extension modules
+            needs_exec = "/bin/" in arc_path or "/lib/" in arc_path
+            if not needs_exec and ext_path is not None:
+                needs_exec = arc_path.endswith((".so", ".pyd", ".dylib"))
+            if needs_exec:
                 info = zipfile.ZipInfo(arc_path)
                 info.external_attr = (
                     stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP |
@@ -150,14 +188,40 @@ def main():
         "--out", required=True, type=Path,
         help="Output directory for the wheel"
     )
+    parser.add_argument(
+        "--lib", type=Path, default=None,
+        help="Path to shared library (libsyntaqlite.so/dylib/dll)"
+    )
+    parser.add_argument(
+        "--ext", default=None,
+        help="Glob pattern for compiled C extension (.so/.pyd)"
+    )
+    parser.add_argument(
+        "--python-tag", default=None,
+        help="CPython version tag (e.g. cp312). Required with --ext"
+    )
     args = parser.parse_args()
 
     platform = PLATFORM_TAGS.get(args.platform, args.platform)
 
     if not args.binary.exists():
         sys.exit(f"Binary not found: {args.binary}")
+    if args.lib and not args.lib.exists():
+        sys.exit(f"Library not found: {args.lib}")
 
-    build_wheel(args.binary, platform, args.out)
+    # Resolve ext glob pattern to a single file.
+    ext_path = None
+    if args.ext:
+        matches = globmod.glob(args.ext)
+        if not matches:
+            sys.exit(f"No files matching ext pattern: {args.ext}")
+        if len(matches) > 1:
+            sys.exit(f"Multiple files matching ext pattern: {matches}")
+        ext_path = Path(matches[0])
+
+    build_wheel(args.binary, platform, args.out,
+                lib_path=args.lib, ext_path=ext_path,
+                python_tag=args.python_tag)
 
 
 if __name__ == "__main__":

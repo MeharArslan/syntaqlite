@@ -7,6 +7,12 @@ import sys
 
 __version__ = "0.1.0"
 
+# Library API (requires _syntaqlite C extension).
+try:
+    from ._syntaqlite import FormatError, format_sql, parse, tokenize, validate
+except ImportError:
+    pass
+
 
 def get_binary_path():
     """Return the path to the bundled syntaqlite binary."""
@@ -34,5 +40,3 @@ def main():
         sys.exit(subprocess.call([binary] + sys.argv[1:]))
     else:
         os.execvp(binary, [binary] + sys.argv[1:])
-
-

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "SQLite SQL tools — parser, formatter, validator, and MCP server"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-readme = "../README.md"
+# readme = "../README.md"  # omitted: setuptools can't reach outside project root
 dependencies = []
 
 [project.scripts]
@@ -15,8 +15,8 @@ Homepage = "https://github.com/LalitMaganti/syntaqlite"
 Documentation = "https://docs.syntaqlite.com"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-packages = ["syntaqlite"]
+[tool.setuptools.packages.find]
+include = ["syntaqlite*"]

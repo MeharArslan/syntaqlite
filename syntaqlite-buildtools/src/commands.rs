@@ -102,6 +102,7 @@ impl SqliteCodegen {
         DialectCodegenJob::new(&dialect, &y_files, &synq_files)
             .open_for_extension()
             .with_rust("crate")
+            .with_python()
             .write_to(
                 &layout,
                 &|dir| ensure_dir(dir, "output directory"),

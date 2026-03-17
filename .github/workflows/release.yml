@@ -287,8 +287,9 @@ jobs:
       - build-local-artifacts
       - build-global-artifacts
       - smoke-test
-    # Only run if we're "publishing", and only if plan, local, global, and smoke-test didn't fail (skipped is fine)
-    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.smoke-test.result == 'skipped' || needs.smoke-test.result == 'success') }}
+      - build-python-ext
+    # Only run if we're "publishing", and only if plan, local, global, smoke-test, and python-ext didn't fail (skipped is fine)
+    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.smoke-test.result == 'skipped' || needs.smoke-test.result == 'success') && (needs.build-python-ext.result == 'skipped' || needs.build-python-ext.result == 'success') }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: "ubuntu-22.04"
@@ -370,6 +371,80 @@ jobs:
             gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" \
               --draft --title "$RELEASE_TAG" --generate-notes artifacts/*
           fi
+
+  # Build the Python C extension (_syntaqlite) for each platform × Python version.
+  # The compiled .so/.pyd files are uploaded as artifacts and consumed by publish-pypi.yml.
+  build-python-ext:
+    name: python-ext (${{ matrix.platform.target }}, ${{ matrix.python }})
+    needs:
+      - plan
+      - build-local-artifacts
+    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+        platform:
+          - {target: aarch64-apple-darwin, runner: macos-latest}
+          - {target: x86_64-apple-darwin, runner: macos-13}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest}
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build static library
+        shell: bash
+        run: cargo build -p syntaqlite --release
+
+      - name: Build C extension
+        shell: bash
+        working-directory: python
+        run: python setup.py build_ext --inplace
+
+      - name: Find extension module
+        id: find-ext
+        shell: bash
+        run: |
+          # Find the built .so/.pyd file
+          EXT=$(find python/syntaqlite -name '_syntaqlite*' \( -name '*.so' -o -name '*.pyd' \) | head -1)
+          if [ -z "$EXT" ]; then
+            echo "ERROR: Extension module not found"
+            exit 1
+          fi
+          echo "path=$EXT" >> "$GITHUB_OUTPUT"
+          echo "Found extension: $EXT"
+
+      - name: Smoke test extension
+        shell: bash
+        run: |
+          cd python
+          python -c "from syntaqlite._syntaqlite import parse; print(parse('SELECT 1'))"
+
+      - name: Derive python tag
+        id: pytag
+        shell: bash
+        run: |
+          PYVER="${{ matrix.python }}"
+          TAG="cp${PYVER/./}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: python-ext-${{ matrix.platform.target }}-${{ steps.pytag.outputs.tag }}
+          path: ${{ steps.find-ext.outputs.path }}
 
   announce:
     needs:

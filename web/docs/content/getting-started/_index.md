@@ -26,7 +26,7 @@ installing anything, or install the CLI:
   </div>
   <div class="tab-panel" data-tab="pip">
     <pre><code class="language-bash">pip install syntaqlite</code></pre>
-    <p>Installs a bundled platform-specific binary — no Rust toolchain needed.</p>
+    <p>Installs the CLI binary and <a href="@/getting-started/python.md">Python library API</a> — no Rust toolchain needed.</p>
   </div>
   <div class="tab-panel" data-tab="brew">
     <pre><code class="language-bash">brew install LalitMaganti/tap/syntaqlite</code></pre>
@@ -81,5 +81,6 @@ syntaqlite parse -e "SELECT 1 + 2"
 ```
 
 Useful for code generation, migration tooling, or static analysis. See
-[Rust API guide](@/guides/rust-api.md#parse-sql) for details.
+[Rust API guide](@/guides/rust-api.md#parse-sql) or
+[Python library tutorial](@/getting-started/python.md) for details.
 
