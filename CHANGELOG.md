@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Fixed Windows Python extension linker errors (`__imp_` unresolved symbols) by making static linking the default for `SYNTAQLITE_API`.
+- Added `SYNTAQLITE_API` annotations to all C function definitions, fixing MSVC dllimport/dllexport mismatch warnings.
+
 ## 0.2.3
 
 - Fixed Windows Python extension build using the correct static library name for MSVC.
