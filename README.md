@@ -1,12 +1,8 @@
 # <img src="https://raw.githubusercontent.com/LalitMaganti/syntaqlite/main/web/docs/static/favicon.svg" width="32" height="32" alt="">&nbsp;&nbsp;syntaqlite
 
-[![CI](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml/badge.svg)](https://github.com/LalitMaganti/syntaqlite/actions/workflows/ci.yml)
-[![Crates.io](https://img.shields.io/crates/v/syntaqlite)](https://crates.io/crates/syntaqlite)
-[![VS Code](https://img.shields.io/visual-studio-marketplace/v/syntaqlite.syntaqlite)](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)
-
 A parser, formatter, validator, and language server for SQLite SQL, built on SQLite's own grammar and tokenizer. If SQLite accepts it, syntaqlite parses it. If SQLite rejects it, so does syntaqlite.
 
-**[Docs](https://docs.syntaqlite.com)** · **[Playground](https://playground.syntaqlite.com)** · **[VS Code Extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)** · **[MCP Server](integrations/mcp/README.md)**
+**[Docs](https://docs.syntaqlite.com)** · **[Playground](https://playground.syntaqlite.com)** · **[VS Code Extension](https://marketplace.visualstudio.com/items?itemName=syntaqlite.syntaqlite)**
 
 > **Note:** syntaqlite is at 0.x — APIs and CLI flags may change before 1.0.
 
