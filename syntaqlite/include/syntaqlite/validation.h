@@ -51,12 +51,44 @@ typedef struct {
   uint32_t end_offset;
 } SyntaqliteDiagnostic;
 
-// Table definition for batch catalog registration.
+// Relation definition for batch catalog registration (tables and views).
 typedef struct {
   const char* name;
   const char* const* columns;  // NULL = columns unknown
   uint32_t column_count;       // ignored when columns is NULL
-} SyntaqliteTableDef;
+} SyntaqliteRelationDef;
+
+// Relation kind (table vs. view).
+typedef enum {
+  SYNTAQLITE_RELATION_TABLE = 0,
+  SYNTAQLITE_RELATION_VIEW  = 1,
+} SyntaqliteRelationKind;
+
+// Origin of a result column — which table.column it traces back to.
+// Both fields are NULL when the column is an expression, literal, or
+// aggregate with no single-column origin.
+typedef struct {
+  const char* table;   // NULL when origin unknown
+  const char* column;  // NULL when origin unknown
+} SyntaqliteColumnOrigin;
+
+// Lineage information for a single result column.
+typedef struct {
+  const char* name;             // output column name (alias or inferred)
+  uint32_t index;               // zero-based position in result column list
+  SyntaqliteColumnOrigin origin;
+} SyntaqliteColumnLineage;
+
+// A catalog relation (table or view) referenced in a FROM clause.
+typedef struct {
+  const char* name;
+  SyntaqliteRelationKind kind;
+} SyntaqliteRelationAccess;
+
+// A physical table accessed by the query.
+typedef struct {
+  const char* name;
+} SyntaqliteTableAccess;
 
 // Analysis mode — controls whether DDL persists across analyze() calls.
 typedef enum {
@@ -101,8 +133,23 @@ SYNTAQLITE_API void syntaqlite_validator_reset_catalog(SyntaqliteValidator* v);
 // visible to all subsequent analyze() calls until reset_catalog() is called.
 SYNTAQLITE_API void syntaqlite_validator_add_tables(
     SyntaqliteValidator* v,
-    const SyntaqliteTableDef* tables,
+    const SyntaqliteRelationDef* tables,
     uint32_t count);
+
+// Add views to the database layer of the catalog. Uses the same struct as
+// add_tables — name is the view name, columns are output columns.
+SYNTAQLITE_API void syntaqlite_validator_add_views(
+    SyntaqliteValidator* v,
+    const SyntaqliteRelationDef* views,
+    uint32_t count);
+
+// Load schema from DDL statements (CREATE TABLE, CREATE VIEW, etc.).
+// Parses `source` as SQL and accumulates all DDL into the catalog.
+// Returns the number of parse errors encountered (0 on success).
+SYNTAQLITE_API uint32_t syntaqlite_validator_load_schema_ddl(
+    SyntaqliteValidator* v,
+    const char* source,
+    uint32_t len);
 
 // ---------------------------------------------------------------------------
 // Diagnostic access (valid until next analyze() or destroy())
@@ -140,6 +187,45 @@ SYNTAQLITE_API const SyntaqliteDiagnostic* syntaqlite_validator_diagnostics(
 SYNTAQLITE_API const char* syntaqlite_validator_render_diagnostics(
     SyntaqliteValidator* v,
     const char* file);
+
+// ---------------------------------------------------------------------------
+// Lineage access (valid until next analyze() or destroy())
+// ---------------------------------------------------------------------------
+
+// Whether lineage was fully resolved (1) or partially resolved (0).
+// Returns 0 if the last analyzed statement was not a query.
+SYNTAQLITE_API uint32_t syntaqlite_validator_lineage_complete(
+    const SyntaqliteValidator* v);
+
+// Number of result columns with lineage information.
+// Returns 0 if the last analyzed statement was not a query.
+SYNTAQLITE_API uint32_t syntaqlite_validator_column_lineage_count(
+    const SyntaqliteValidator* v);
+
+// Pointer to the column lineage array from the last analyze() call.
+// Returns NULL when column_lineage_count is 0.
+SYNTAQLITE_API const SyntaqliteColumnLineage* syntaqlite_validator_column_lineage(
+    const SyntaqliteValidator* v);
+
+// Number of relations (tables/views) directly referenced in FROM clauses.
+// Returns 0 if the last analyzed statement was not a query.
+SYNTAQLITE_API uint32_t syntaqlite_validator_relation_count(
+    const SyntaqliteValidator* v);
+
+// Pointer to the relation access array from the last analyze() call.
+// Returns NULL when relation_count is 0.
+SYNTAQLITE_API const SyntaqliteRelationAccess* syntaqlite_validator_relations(
+    const SyntaqliteValidator* v);
+
+// Number of physical tables accessed (after resolving CTEs/views).
+// Returns 0 if the last analyzed statement was not a query.
+SYNTAQLITE_API uint32_t syntaqlite_validator_table_count(
+    const SyntaqliteValidator* v);
+
+// Pointer to the table access array from the last analyze() call.
+// Returns NULL when table_count is 0.
+SYNTAQLITE_API const SyntaqliteTableAccess* syntaqlite_validator_tables(
+    const SyntaqliteValidator* v);
 
 // Free a string returned by a syntaqlite_* function that documents
 // ownership transfer. No-op if s is NULL.

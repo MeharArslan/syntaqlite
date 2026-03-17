@@ -14,10 +14,11 @@ use crate::dialect::AnyDialect;
 use super::analyzer::SemanticAnalyzer;
 use super::catalog::{Catalog, CatalogLayer};
 use super::diagnostics::Severity;
+use super::lineage::RelationKind;
 use super::render::DiagnosticRenderer;
 use super::{AnalysisMode, ValidationConfig};
 
-// ── C-compatible diagnostic struct ──────────────────────────────────────────
+// ── C-compatible structs ────────────────────────────────────────────────────
 
 /// Mirrors `SyntaqliteDiagnostic` from the C header.
 #[repr(C)]
@@ -28,12 +29,40 @@ pub struct SyntaqliteDiagnostic {
     pub end_offset: u32,
 }
 
-/// Mirrors `SyntaqliteTableDef` from the C header.
+/// Mirrors `SyntaqliteRelationDef` from the C header.
 #[repr(C)]
-pub struct SyntaqliteTableDef {
+pub struct SyntaqliteRelationDef {
     pub name: *const c_char,
     pub columns: *const *const c_char,
     pub column_count: u32,
+}
+
+/// Origin of a result column — which table.column it traces back to.
+#[repr(C)]
+pub struct SyntaqliteColumnOrigin {
+    pub table: *const c_char,
+    pub column: *const c_char,
+}
+
+/// Lineage information for a single result column.
+#[repr(C)]
+pub struct SyntaqliteColumnLineage {
+    pub name: *const c_char,
+    pub index: u32,
+    pub origin: SyntaqliteColumnOrigin,
+}
+
+/// A catalog relation (table or view) referenced in a FROM clause.
+#[repr(C)]
+pub struct SyntaqliteRelationAccess {
+    pub name: *const c_char,
+    pub kind: u32,
+}
+
+/// A physical table accessed by the query.
+#[repr(C)]
+pub struct SyntaqliteTableAccess {
+    pub name: *const c_char,
 }
 
 /// Opaque validator handle exposed to C.
@@ -56,6 +85,16 @@ struct ValidatorState {
     last_diagnostics: Vec<super::diagnostics::Diagnostic>,
     /// Rendered diagnostic output, kept alive for C pointer.
     rendered_output: CString,
+    /// Whether the last lineage result was complete.
+    lineage_complete: bool,
+    /// C-compatible column lineage from the most recent `analyze()` call.
+    c_column_lineage: Vec<SyntaqliteColumnLineage>,
+    /// C-compatible relation access from the most recent `analyze()` call.
+    c_relations: Vec<SyntaqliteRelationAccess>,
+    /// C-compatible table access from the most recent `analyze()` call.
+    c_tables: Vec<SyntaqliteTableAccess>,
+    /// Rendered lineage strings, kept alive for the C pointers.
+    lineage_strings: Vec<CString>,
 }
 
 /// Opaque C handle — the pointer target of `SyntaqliteValidator*`.
@@ -114,6 +153,11 @@ pub extern "C" fn syntaqlite_validator_create_sqlite() -> *mut SyntaqliteValidat
         last_source: String::new(),
         last_diagnostics: Vec::new(),
         rendered_output: CString::default(),
+        lineage_complete: false,
+        c_column_lineage: Vec::new(),
+        c_relations: Vec::new(),
+        c_tables: Vec::new(),
+        lineage_strings: Vec::new(),
     });
     Box::into_raw(state).cast::<SyntaqliteValidator>()
 }
@@ -211,6 +255,103 @@ pub unsafe extern "C" fn syntaqlite_validator_analyze(
         });
     }
 
+    // ── Lineage ──────────────────────────────────────────────────────────
+    state.lineage_strings.clear();
+    state.c_column_lineage.clear();
+    state.c_relations.clear();
+    state.c_tables.clear();
+    state.lineage_complete = false;
+
+    if let Some(lineage_result) = model.lineage() {
+        state.lineage_complete = lineage_result.is_complete();
+        let columns = lineage_result.into_inner();
+
+        // First pass: render all strings so CString pointers are stable.
+        for col in columns {
+            state
+                .lineage_strings
+                .push(CString::new(col.name.as_str()).unwrap_or_default());
+            if let Some(ref origin) = col.origin {
+                state
+                    .lineage_strings
+                    .push(CString::new(origin.table.as_str()).unwrap_or_default());
+                state
+                    .lineage_strings
+                    .push(CString::new(origin.column.as_str()).unwrap_or_default());
+            }
+        }
+    }
+
+    // Second pass: build C structs with stable pointers (after all pushes).
+    if let Some(lineage_result) = model.lineage() {
+        let columns = lineage_result.into_inner();
+        let mut str_idx = 0;
+        for col in columns {
+            let name_ptr = state.lineage_strings[str_idx].as_ptr();
+            str_idx += 1;
+            let origin = if col.origin.is_some() {
+                let table_ptr = state.lineage_strings[str_idx].as_ptr();
+                str_idx += 1;
+                let column_ptr = state.lineage_strings[str_idx].as_ptr();
+                str_idx += 1;
+                SyntaqliteColumnOrigin {
+                    table: table_ptr,
+                    column: column_ptr,
+                }
+            } else {
+                SyntaqliteColumnOrigin {
+                    table: std::ptr::null(),
+                    column: std::ptr::null(),
+                }
+            };
+            state.c_column_lineage.push(SyntaqliteColumnLineage {
+                name: name_ptr,
+                index: col.index,
+                origin,
+            });
+        }
+    }
+
+    if let Some(relations_result) = model.relations_accessed() {
+        let relations = relations_result.into_inner();
+        let base = state.lineage_strings.len();
+        for r in relations {
+            state
+                .lineage_strings
+                .push(CString::new(r.name.as_str()).unwrap_or_default());
+        }
+        for (i, r) in model
+            .relations_accessed()
+            .unwrap()
+            .into_inner()
+            .iter()
+            .enumerate()
+        {
+            state.c_relations.push(SyntaqliteRelationAccess {
+                name: state.lineage_strings[base + i].as_ptr(),
+                kind: match r.kind {
+                    RelationKind::Table => 0,
+                    RelationKind::View => 1,
+                },
+            });
+        }
+    }
+
+    if let Some(tables_result) = model.tables_accessed() {
+        let tables = tables_result.into_inner();
+        let base = state.lineage_strings.len();
+        for t in tables {
+            state
+                .lineage_strings
+                .push(CString::new(t.name.as_str()).unwrap_or_default());
+        }
+        for i in 0..model.tables_accessed().unwrap().into_inner().len() {
+            state.c_tables.push(SyntaqliteTableAccess {
+                name: state.lineage_strings[base + i].as_ptr(),
+            });
+        }
+    }
+
     state.c_diagnostics.len() as u32
 }
 
@@ -233,14 +374,14 @@ pub unsafe extern "C" fn syntaqlite_validator_reset_catalog(v: *mut SyntaqliteVa
 /// # Safety
 ///
 /// - `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
-/// - `tables` must point to `count` valid `SyntaqliteTableDef` entries.
+/// - `tables` must point to `count` valid `SyntaqliteRelationDef` entries.
 /// - Each `name` must be a valid NUL-terminated C string.
 /// - Each `columns` may be NULL. If non-NULL, must point to `column_count`
 ///   valid NUL-terminated C string pointers.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn syntaqlite_validator_add_tables(
     v: *mut SyntaqliteValidator,
-    tables: *const SyntaqliteTableDef,
+    tables: *const SyntaqliteRelationDef,
     count: u32,
 ) {
     // SAFETY: caller guarantees `v` is valid.
@@ -280,6 +421,92 @@ pub unsafe extern "C" fn syntaqlite_validator_add_tables(
 
     // Schema was provided — switch to strict mode so unresolved names are errors.
     state.validation_config = ValidationConfig::default().with_strict_schema();
+}
+
+/// Add views to the database layer of the catalog.
+///
+/// Uses the same `SyntaqliteRelationDef` struct as `add_tables` — `name` is
+/// the view name, `columns` are the view's output columns.
+///
+/// # Safety
+///
+/// Same requirements as `syntaqlite_validator_add_tables`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_validator_add_views(
+    v: *mut SyntaqliteValidator,
+    views: *const SyntaqliteRelationDef,
+    count: u32,
+) {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &mut *v };
+    let state = v.state_mut();
+
+    for i in 0..count as usize {
+        // SAFETY: caller guarantees `views[i]` is valid.
+        let def = unsafe { &*views.add(i) };
+
+        // SAFETY: caller guarantees `name` is a valid NUL-terminated C string.
+        let name = unsafe { CStr::from_ptr(def.name) }
+            .to_str()
+            .unwrap_or("")
+            .to_owned();
+
+        let columns = if def.columns.is_null() {
+            None
+        } else {
+            let cols: Vec<String> = (0..def.column_count as usize)
+                .map(|j| {
+                    // SAFETY: caller guarantees `columns[j]` is valid.
+                    unsafe { CStr::from_ptr(*def.columns.add(j)) }
+                        .to_str()
+                        .unwrap_or("")
+                        .to_owned()
+                })
+                .collect();
+            Some(cols)
+        };
+
+        state
+            .user_catalog
+            .layer_mut(CatalogLayer::Database)
+            .insert_view(name, columns);
+    }
+
+    state.validation_config = ValidationConfig::default().with_strict_schema();
+}
+
+/// Load schema from DDL statements (CREATE TABLE, CREATE VIEW, etc.).
+///
+/// Parses `source` as SQL and accumulates all DDL into the database layer
+/// of the catalog. This is equivalent to calling `add_tables` / `add_views`
+/// but lets you provide the schema as SQL text.
+///
+/// Returns the number of parse errors encountered (0 on success).
+///
+/// # Safety
+///
+/// - `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+/// - `source` must point to `len` bytes of valid UTF-8.
+#[unsafe(no_mangle)]
+#[expect(clippy::cast_possible_truncation)]
+pub unsafe extern "C" fn syntaqlite_validator_load_schema_ddl(
+    v: *mut SyntaqliteValidator,
+    source: *const c_char,
+    len: u32,
+) -> u32 {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &mut *v };
+    let state = v.state_mut();
+
+    // SAFETY: caller guarantees `source` points to `len` bytes of valid UTF-8.
+    let src = unsafe {
+        std::str::from_utf8_unchecked(std::slice::from_raw_parts(source.cast(), len as usize))
+    };
+
+    let (catalog, errors) = Catalog::from_ddl(state.dialect.clone(), &[(src, None)]);
+    state.user_catalog.copy_schema_layers_from(&catalog);
+    state.validation_config = ValidationConfig::default().with_strict_schema();
+    errors.len() as u32
 }
 
 /// Number of diagnostics from the last `analyze()` call.
@@ -364,6 +591,131 @@ pub unsafe extern "C" fn syntaqlite_validator_render_diagnostics(
 
     state.rendered_output = CString::new(buf).unwrap_or_default();
     state.rendered_output.as_ptr()
+}
+
+// ── Lineage access ────────────────────────────────────────────────────────
+
+/// Whether lineage was fully resolved (1) or partially resolved (0).
+/// Returns 0 if the last analyzed statement was not a query.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_validator_lineage_complete(
+    v: *const SyntaqliteValidator,
+) -> u32 {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &*v };
+    v.state().lineage_complete as u32
+}
+
+/// Number of result columns with lineage information.
+/// Returns 0 if the last analyzed statement was not a query.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+#[unsafe(no_mangle)]
+#[expect(clippy::cast_possible_truncation)]
+pub unsafe extern "C" fn syntaqlite_validator_column_lineage_count(
+    v: *const SyntaqliteValidator,
+) -> u32 {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &*v };
+    v.state().c_column_lineage.len() as u32
+}
+
+/// Pointer to the column lineage array. Returns NULL when count is 0.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+/// The returned pointer is valid until the next `analyze()` or `destroy()`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_validator_column_lineage(
+    v: *const SyntaqliteValidator,
+) -> *const SyntaqliteColumnLineage {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &*v };
+    let state = v.state();
+    if state.c_column_lineage.is_empty() {
+        std::ptr::null()
+    } else {
+        state.c_column_lineage.as_ptr()
+    }
+}
+
+/// Number of relations (tables/views) directly referenced in FROM clauses.
+/// Returns 0 if the last analyzed statement was not a query.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+#[unsafe(no_mangle)]
+#[expect(clippy::cast_possible_truncation)]
+pub unsafe extern "C" fn syntaqlite_validator_relation_count(
+    v: *const SyntaqliteValidator,
+) -> u32 {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &*v };
+    v.state().c_relations.len() as u32
+}
+
+/// Pointer to the relation access array. Returns NULL when count is 0.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+/// The returned pointer is valid until the next `analyze()` or `destroy()`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_validator_relations(
+    v: *const SyntaqliteValidator,
+) -> *const SyntaqliteRelationAccess {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &*v };
+    let state = v.state();
+    if state.c_relations.is_empty() {
+        std::ptr::null()
+    } else {
+        state.c_relations.as_ptr()
+    }
+}
+
+/// Number of physical tables accessed (after resolving CTEs/views).
+/// Returns 0 if the last analyzed statement was not a query.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+#[unsafe(no_mangle)]
+#[expect(clippy::cast_possible_truncation)]
+pub unsafe extern "C" fn syntaqlite_validator_table_count(
+    v: *const SyntaqliteValidator,
+) -> u32 {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &*v };
+    v.state().c_tables.len() as u32
+}
+
+/// Pointer to the table access array. Returns NULL when count is 0.
+///
+/// # Safety
+///
+/// `v` must be a valid pointer from `syntaqlite_validator_create_sqlite`.
+/// The returned pointer is valid until the next `analyze()` or `destroy()`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn syntaqlite_validator_tables(
+    v: *const SyntaqliteValidator,
+) -> *const SyntaqliteTableAccess {
+    // SAFETY: caller guarantees `v` is valid.
+    let v = unsafe { &*v };
+    let state = v.state();
+    if state.c_tables.is_empty() {
+        std::ptr::null()
+    } else {
+        state.c_tables.as_ptr()
+    }
 }
 
 /// Free a string returned by `syntaqlite_string_*` functions.
@@ -493,7 +845,7 @@ mod tests {
         let col_id = CString::new("id").unwrap();
         let col_name = CString::new("name").unwrap();
         let cols: [*const c_char; 2] = [col_id.as_ptr(), col_name.as_ptr()];
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: cols.as_ptr(),
             column_count: 2,
@@ -515,7 +867,7 @@ mod tests {
         let v = syntaqlite_validator_create_sqlite();
 
         let name = CString::new("events").unwrap();
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: std::ptr::null(),
             column_count: 0,
@@ -539,7 +891,7 @@ mod tests {
         let name = CString::new("users").unwrap();
         let col_id = CString::new("id").unwrap();
         let cols: [*const c_char; 1] = [col_id.as_ptr()];
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: cols.as_ptr(),
             column_count: 1,
@@ -572,7 +924,7 @@ mod tests {
         let v = syntaqlite_validator_create_sqlite();
 
         let name = CString::new("users").unwrap();
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: std::ptr::null(),
             column_count: 0,
@@ -721,7 +1073,7 @@ mod tests {
         let name = CString::new("t").unwrap();
         let col = CString::new("x").unwrap();
         let cols: [*const c_char; 1] = [col.as_ptr()];
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: cols.as_ptr(),
             column_count: 1,
@@ -791,7 +1143,7 @@ mod tests {
         let name = CString::new("users").unwrap();
         let col = CString::new("id").unwrap();
         let cols: [*const c_char; 1] = [col.as_ptr()];
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: cols.as_ptr(),
             column_count: 1,
@@ -815,7 +1167,7 @@ mod tests {
 
         // Add a table so strict_schema activates.
         let name = CString::new("users").unwrap();
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: std::ptr::null(),
             column_count: 0,
@@ -843,7 +1195,7 @@ mod tests {
 
         // Add a table — activates strict mode.
         let name = CString::new("t").unwrap();
-        let table = SyntaqliteTableDef {
+        let table = SyntaqliteRelationDef {
             name: name.as_ptr(),
             columns: std::ptr::null(),
             column_count: 0,
@@ -881,5 +1233,234 @@ mod tests {
     fn string_destroy_null_is_noop() {
         // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
         unsafe { syntaqlite_string_destroy(std::ptr::null_mut()) };
+    }
+
+    // ── Lineage ─────────────────────────────────────────────────────────
+
+    /// Helper: register a table with known columns via FFI.
+    unsafe fn add_table(v: *mut SyntaqliteValidator, name: &str, cols: &[&str]) {
+        let c_name = CString::new(name).unwrap();
+        let c_cols: Vec<CString> = cols.iter().map(|c| CString::new(*c).unwrap()).collect();
+        let c_col_ptrs: Vec<*const c_char> = c_cols.iter().map(|c| c.as_ptr()).collect();
+        let table = SyntaqliteRelationDef {
+            name: c_name.as_ptr(),
+            columns: c_col_ptrs.as_ptr(),
+            column_count: c_col_ptrs.len() as u32,
+        };
+        // SAFETY: FFI test — pointer obtained from `syntaqlite_validator_create_sqlite`.
+        unsafe { syntaqlite_validator_add_tables(v, &raw const table, 1) };
+    }
+
+    #[test]
+    fn lineage_simple_select() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            add_table(v, "users", &["id", "name"]);
+            analyze(v, "SELECT id, name FROM users");
+
+            assert_eq!(syntaqlite_validator_lineage_complete(v), 1);
+            assert_eq!(syntaqlite_validator_column_lineage_count(v), 2);
+
+            let cols = syntaqlite_validator_column_lineage(v);
+            assert!(!cols.is_null());
+
+            // First column: id -> users.id
+            let c0 = &*cols.add(0);
+            assert_eq!(CStr::from_ptr(c0.name).to_str().unwrap(), "id");
+            assert_eq!(c0.index, 0);
+            assert!(!c0.origin.table.is_null());
+            assert_eq!(CStr::from_ptr(c0.origin.table).to_str().unwrap(), "users");
+            assert_eq!(CStr::from_ptr(c0.origin.column).to_str().unwrap(), "id");
+
+            // Second column: name -> users.name
+            let c1 = &*cols.add(1);
+            assert_eq!(CStr::from_ptr(c1.name).to_str().unwrap(), "name");
+            assert_eq!(c1.index, 1);
+            assert_eq!(CStr::from_ptr(c1.origin.table).to_str().unwrap(), "users");
+            assert_eq!(CStr::from_ptr(c1.origin.column).to_str().unwrap(), "name");
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    #[test]
+    fn lineage_non_query_returns_empty() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            analyze(v, "CREATE TABLE t(x)");
+
+            assert_eq!(syntaqlite_validator_column_lineage_count(v), 0);
+            assert!(syntaqlite_validator_column_lineage(v).is_null());
+            assert_eq!(syntaqlite_validator_relation_count(v), 0);
+            assert!(syntaqlite_validator_relations(v).is_null());
+            assert_eq!(syntaqlite_validator_table_count(v), 0);
+            assert!(syntaqlite_validator_tables(v).is_null());
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    #[test]
+    fn lineage_expression_has_null_origin() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            add_table(v, "users", &["id"]);
+            analyze(v, "SELECT id + 1 AS x FROM users");
+
+            assert_eq!(syntaqlite_validator_column_lineage_count(v), 1);
+            let cols = syntaqlite_validator_column_lineage(v);
+            let c0 = &*cols;
+            assert_eq!(CStr::from_ptr(c0.name).to_str().unwrap(), "x");
+            assert!(c0.origin.table.is_null());
+            assert!(c0.origin.column.is_null());
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    #[test]
+    fn lineage_relations_and_tables() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            add_table(v, "users", &["id", "name"]);
+            add_table(v, "posts", &["id", "user_id"]);
+            analyze(v, "SELECT u.id FROM users u JOIN posts p ON u.id = p.user_id");
+
+            // Relations
+            let rel_count = syntaqlite_validator_relation_count(v);
+            assert!(rel_count >= 2, "expected at least 2 relations, got {rel_count}");
+            let rels = syntaqlite_validator_relations(v);
+            assert!(!rels.is_null());
+
+            // Tables
+            let tbl_count = syntaqlite_validator_table_count(v);
+            assert!(tbl_count >= 2, "expected at least 2 tables, got {tbl_count}");
+            let tbls = syntaqlite_validator_tables(v);
+            assert!(!tbls.is_null());
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    #[test]
+    fn lineage_reset_on_next_analyze() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            add_table(v, "users", &["id"]);
+
+            // First: SELECT → lineage present.
+            analyze(v, "SELECT id FROM users");
+            assert!(syntaqlite_validator_column_lineage_count(v) > 0);
+
+            // Second: non-query → lineage cleared.
+            analyze(v, "CREATE TABLE t(x)");
+            assert_eq!(syntaqlite_validator_column_lineage_count(v), 0);
+            assert!(syntaqlite_validator_column_lineage(v).is_null());
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    // ── add_views ───────────────────────────────────────────────────────
+
+    #[test]
+    fn add_views_registers_view() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            let name = CString::new("active_users").unwrap();
+            let col_id = CString::new("id").unwrap();
+            let cols: [*const c_char; 1] = [col_id.as_ptr()];
+            let view = SyntaqliteRelationDef {
+                name: name.as_ptr(),
+                columns: cols.as_ptr(),
+                column_count: 1,
+            };
+            syntaqlite_validator_add_views(v, &raw const view, 1);
+
+            let n = analyze(v, "SELECT id FROM active_users");
+            assert_eq!(n, 0, "view should be resolved");
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    #[test]
+    fn add_views_lineage_is_partial() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            let name = CString::new("active_users").unwrap();
+            let col_id = CString::new("id").unwrap();
+            let cols: [*const c_char; 1] = [col_id.as_ptr()];
+            let view = SyntaqliteRelationDef {
+                name: name.as_ptr(),
+                columns: cols.as_ptr(),
+                column_count: 1,
+            };
+            syntaqlite_validator_add_views(v, &raw const view, 1);
+
+            analyze(v, "SELECT id FROM active_users");
+            assert_eq!(
+                syntaqlite_validator_lineage_complete(v),
+                0,
+                "view lineage should be partial"
+            );
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    // ── load_schema_ddl ─────────────────────────────────────────────────
+
+    #[test]
+    fn load_schema_ddl_registers_tables_and_views() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            let ddl = "CREATE TABLE users(id, name); CREATE VIEW active AS SELECT id FROM users;";
+            let errors = syntaqlite_validator_load_schema_ddl(
+                v,
+                ddl.as_ptr().cast(),
+                ddl.len() as u32,
+            );
+            assert_eq!(errors, 0, "DDL should parse without errors");
+
+            // Table should be resolved.
+            let n = analyze(v, "SELECT id, name FROM users");
+            assert_eq!(n, 0, "table from DDL should be resolved");
+
+            // View should be resolved.
+            let n = analyze(v, "SELECT id FROM active");
+            assert_eq!(n, 0, "view from DDL should be resolved");
+
+            syntaqlite_validator_destroy(v);
+        }
+    }
+
+    #[test]
+    fn load_schema_ddl_reports_parse_errors() {
+        let v = syntaqlite_validator_create_sqlite();
+        // SAFETY: FFI test.
+        unsafe {
+            let ddl = "CREATE TABLE users(id); NOT VALID SQL;";
+            let errors = syntaqlite_validator_load_schema_ddl(
+                v,
+                ddl.as_ptr().cast(),
+                ddl.len() as u32,
+            );
+            assert!(errors > 0, "should report parse errors");
+
+            // The valid DDL before the error should still be registered.
+            let n = analyze(v, "SELECT id FROM users");
+            assert_eq!(n, 0, "valid DDL before error should still be registered");
+
+            syntaqlite_validator_destroy(v);
+        }
     }
 }

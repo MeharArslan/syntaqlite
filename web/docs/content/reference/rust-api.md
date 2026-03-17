@@ -54,3 +54,39 @@ It recovers from errors and continues parsing subsequent statements.
 | `Token` | `token_type`, `text`, byte offsets into source |
 
 Zero-copy — tokens reference byte offsets into the source string.
+
+## Validator
+
+| Type / Method | Description |
+|---------------|-------------|
+| `SemanticAnalyzer::new()` | Create an analyzer for the SQLite dialect |
+| `analyzer.analyze(sql, &catalog, &config) -> SemanticModel` | Analyze SQL, returning diagnostics and lineage |
+| `Catalog::new(dialect)` | Create an empty catalog |
+| `catalog.layer_mut(CatalogLayer::Database).insert_table(name, cols, false)` | Register a table |
+| `ValidationConfig::default()` | Default config (warnings for unknowns) |
+| `ValidationConfig::default().with_strict_schema()` | Strict mode (errors for unknowns) |
+| `model.diagnostics()` | Parse and semantic diagnostics |
+
+The analyzer is reusable — call `analyze()` repeatedly. The catalog uses a
+layered resolution order; populate the `Database` layer with your schema.
+
+## Lineage
+
+After `analyze()`, the returned `SemanticModel` provides column-level lineage
+for SELECT statements. Lineage traces each result column back to its source
+table and column.
+
+| Type / Method | Description |
+|---------------|-------------|
+| `model.lineage()` | Per-column lineage: `Option<LineageResult<&[ColumnLineage]>>` |
+| `model.relations_accessed()` | Relations in FROM: `Option<LineageResult<&[RelationAccess]>>` |
+| `model.tables_accessed()` | Physical tables after resolving CTEs/views: `Option<LineageResult<&[TableAccess]>>` |
+| `LineageResult<T>` | `Complete(T)` — fully resolved, or `Partial(T)` — some view bodies unavailable |
+| `ColumnLineage` | `name: String`, `index: u32`, `origin: Option<ColumnOrigin>` |
+| `ColumnOrigin` | `table: String`, `column: String` |
+| `RelationAccess` | `name: String`, `kind: RelationKind` |
+| `RelationKind` | `Table` or `View` |
+| `TableAccess` | `name: String` |
+
+Returns `None` for non-query statements (CREATE, INSERT, etc.). Returns
+`Partial` when a view is referenced but its body is unavailable for resolution.

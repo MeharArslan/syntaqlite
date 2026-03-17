@@ -86,40 +86,101 @@ The parser recovers from errors and continues parsing subsequent statements.
 Validate SQL against an optional schema.
 
 ```python
-syntaqlite.validate(sql, *, tables=None, render=False)
+syntaqlite.validate(sql, *, tables=None, views=None, schema_ddl=None, render=False)
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `sql` | `str` | — | SQL to validate |
-| `tables` | `list[dict] \| None` | `None` | Schema tables (see below) |
-| `render` | `bool` | `False` | Return rendered diagnostics string instead of list |
+| `tables` | `list[Table] \| None` | `None` | Schema tables |
+| `views` | `list[View] \| None` | `None` | Schema views |
+| `schema_ddl` | `str \| None` | `None` | DDL to parse as schema (CREATE TABLE/VIEW) |
+| `render` | `bool` | `False` | Return rendered diagnostics string instead |
 
-Each table dict in `tables`:
+Schema can be provided three ways (or combined):
 
-| Key | Type | Required | Description |
-|-----|------|----------|-------------|
-| `name` | `str` | Yes | Table name |
-| `columns` | `list[str] \| None` | No | Column names. `None` or omitted = accept any column. |
+```python
+# Explicit tables and views
+syntaqlite.validate(sql,
+    tables=[syntaqlite.Table(name="users", columns=["id", "name"])],
+    views=[syntaqlite.View(name="active", columns=["id"])],
+)
 
-**Returns (render=False):** `list[dict]` — diagnostics, each with:
+# From DDL
+syntaqlite.validate(sql,
+    schema_ddl="CREATE TABLE users(id, name); CREATE VIEW active AS SELECT id FROM users;",
+)
+```
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `severity` | `str` | `"error"`, `"warning"`, `"info"`, or `"hint"` |
-| `message` | `str` | Diagnostic message |
-| `start_offset` | `int` | Byte offset of the start of the span |
-| `end_offset` | `int` | Byte offset of the end of the span |
+`Table` and `View` accept `name` (required) and `columns` (optional — omit to
+accept any column reference).
+
+**Returns (render=False):** `ValidationResult` with attributes:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `diagnostics` | `list[Diagnostic]` | Parse and semantic diagnostics |
+| `lineage` | `Lineage \| None` | Column lineage for SELECT statements, `None` for non-queries |
 
 **Returns (render=True):** `str` — human-readable diagnostics with source
 context, similar to CLI output.
 
 ```python
->>> syntaqlite.validate("SELECT 1")
+>>> r = syntaqlite.validate("SELECT id, name FROM users",
+...     tables=[syntaqlite.Table(name="users", columns=["id", "name"])])
+>>> r.diagnostics
 []
->>> syntaqlite.validate("SELECT nme FROM t", tables=[{"name": "t", "columns": ["name"]}])
-[{'severity': 'warning', 'message': "unknown column 'nme'", ...}]
+>>> r.lineage.complete
+True
+>>> for col in r.lineage.columns:
+...     print(f"{col.name} <- {col.origin}")
+id <- users.id
+name <- users.name
+>>> r.lineage.tables
+['users']
 ```
+
+### Result types
+
+**`Diagnostic`** — a single diagnostic:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `severity` | `str` | `"error"`, `"warning"`, `"info"`, or `"hint"` |
+| `message` | `str` | Diagnostic message |
+| `start_offset` | `int` | Byte offset of the start of the span |
+| `end_offset` | `int` | Byte offset of the end of the span |
+
+**`Lineage`** — column lineage for a SELECT statement:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `complete` | `bool` | `True` if all sources fully resolved |
+| `columns` | `list[ColumnLineage]` | Per-column lineage |
+| `relations` | `list[RelationAccess]` | Catalog relations referenced in FROM |
+| `tables` | `list[str]` | Physical table names accessed |
+
+**`ColumnLineage`** — lineage for a single result column:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `name` | `str` | Output column name (alias or inferred) |
+| `index` | `int` | Zero-based position in the result column list |
+| `origin` | `ColumnOrigin \| None` | Origin, or `None` for expressions |
+
+**`ColumnOrigin`** — physical table and column:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `table` | `str` | Table name |
+| `column` | `str` | Column name |
+
+**`RelationAccess`** — a catalog relation in FROM:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `name` | `str` | Relation name |
+| `kind` | `str` | `"table"` or `"view"` |
 
 ## `syntaqlite.tokenize`
 

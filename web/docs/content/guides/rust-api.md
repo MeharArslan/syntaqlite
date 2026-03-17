@@ -167,6 +167,55 @@ When a schema is provided (via `--schema` or `syntaqlite.toml`), the CLI and
 LSP automatically enable strict mode. When using the Rust API directly, set
 this explicitly with `ValidationConfig::default().with_strict_schema(true)`.
 
+## Column lineage
+
+After validation, the `SemanticModel` also provides column-level lineage for
+SELECT statements — tracing each result column back to its source table and
+column:
+
+```rust
+use syntaqlite::semantic::{
+    SemanticAnalyzer, Catalog, CatalogLayer, ValidationConfig,
+};
+use syntaqlite::sqlite_dialect;
+
+let mut analyzer = SemanticAnalyzer::new();
+
+let mut catalog = Catalog::new(sqlite_dialect());
+catalog.layer_mut(CatalogLayer::Database)
+    .insert_table("users", Some(vec!["id".into(), "name".into()]), false);
+catalog.layer_mut(CatalogLayer::Database)
+    .insert_table("posts", Some(vec!["id".into(), "user_id".into(), "body".into()]), false);
+
+let config = ValidationConfig::default();
+let model = analyzer.analyze(
+    "SELECT u.name, p.body FROM users u JOIN posts p ON u.id = p.user_id",
+    &catalog,
+    &config,
+);
+
+if let Some(lineage) = model.lineage() {
+    println!("Complete: {}", lineage.is_complete());
+    for col in lineage.into_inner() {
+        print!("  column {}: {}", col.index, col.name);
+        if let Some(ref origin) = col.origin {
+            print!(" <- {}.{}", origin.table, origin.column);
+        }
+        println!();
+    }
+}
+
+if let Some(tables) = model.tables_accessed() {
+    for t in tables.into_inner() {
+        println!("  table: {}", t.name);
+    }
+}
+```
+
+`lineage()` returns `None` for non-query statements. It returns
+`LineageResult::Partial` when a view is referenced but its body is unavailable
+for resolution.
+
 ## Next steps
 
 - See the [Rust API reference](@/reference/rust-api.md) for all types and

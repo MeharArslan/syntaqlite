@@ -158,6 +158,92 @@ syntaqlite_py_format_sql(PyObject *self, PyObject *args, PyObject *kwargs)
     return result;
 }
 
+/* ─── validate helpers ──────────────────────────────────────────────── */
+
+/*
+ * Parse a Python list of relation dicts into a C array of SyntaqliteRelationDef
+ * and call the given registration function. Returns 0 on success, -1 on error
+ * (with Python exception set).
+ */
+static int
+register_relations(SyntaqliteValidator *v, PyObject *list, const char *kind,
+                   void (*add_fn)(SyntaqliteValidator*,
+                                  const SyntaqliteRelationDef*, uint32_t))
+{
+    if (!list || list == Py_None)
+        return 0;
+
+    if (!PyList_Check(list)) {
+        PyErr_Format(PyExc_TypeError, "%s must be a list", kind);
+        return -1;
+    }
+
+    Py_ssize_t n = PyList_Size(list);
+    if (n == 0)
+        return 0;
+
+    SyntaqliteRelationDef *defs = (SyntaqliteRelationDef *)calloc(n, sizeof(SyntaqliteRelationDef));
+    const char ***all_columns = (const char ***)calloc(n, sizeof(const char **));
+    if (!defs || !all_columns) {
+        free(defs);
+        free(all_columns);
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    int ok = 1;
+    for (Py_ssize_t i = 0; i < n && ok; i++) {
+        PyObject *entry = PyList_GetItem(list, i);
+        if (!PyDict_Check(entry)) {
+            PyErr_Format(PyExc_TypeError,
+                "each %s must be a dict with 'name' and optional 'columns'", kind);
+            ok = 0;
+            break;
+        }
+
+        PyObject *name_obj = PyDict_GetItemString(entry, "name");
+        if (!name_obj || !PyUnicode_Check(name_obj)) {
+            PyErr_Format(PyExc_TypeError, "%s 'name' must be a string", kind);
+            ok = 0;
+            break;
+        }
+        defs[i].name = PyUnicode_AsUTF8(name_obj);
+
+        PyObject *cols_obj = PyDict_GetItemString(entry, "columns");
+        if (cols_obj && cols_obj != Py_None && PyList_Check(cols_obj)) {
+            Py_ssize_t n_cols = PyList_Size(cols_obj);
+            const char **cols = (const char **)calloc(n_cols, sizeof(const char *));
+            if (!cols) { ok = 0; PyErr_NoMemory(); break; }
+            for (Py_ssize_t j = 0; j < n_cols; j++) {
+                PyObject *col = PyList_GetItem(cols_obj, j);
+                if (!PyUnicode_Check(col)) {
+                    PyErr_SetString(PyExc_TypeError, "column names must be strings");
+                    ok = 0;
+                    break;
+                }
+                cols[j] = PyUnicode_AsUTF8(col);
+            }
+            defs[i].columns = cols;
+            defs[i].column_count = (uint32_t)n_cols;
+            all_columns[i] = cols;
+        } else {
+            defs[i].columns = NULL;
+            defs[i].column_count = 0;
+            all_columns[i] = NULL;
+        }
+    }
+
+    if (ok)
+        add_fn(v, defs, (uint32_t)n);
+
+    for (Py_ssize_t i = 0; i < n; i++)
+        free((void *)all_columns[i]);
+    free(all_columns);
+    free(defs);
+
+    return ok ? 0 : -1;
+}
+
 /* ─── validate ──────────────────────────────────────────────────────── */
 
 static PyObject *
@@ -166,102 +252,42 @@ syntaqlite_py_validate(PyObject *self, PyObject *args, PyObject *kwargs)
     const char *sql;
     Py_ssize_t sql_len;
     PyObject *tables_list = NULL;
+    PyObject *views_list = NULL;
+    const char *schema_ddl = NULL;
+    Py_ssize_t schema_ddl_len = 0;
     int render = 0;
 
-    static char *kwlist[] = {"sql", "tables", "render", NULL};
+    static char *kwlist[] = {"sql", "tables", "views", "schema_ddl",
+                             "render", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#|Op", kwlist,
-                                     &sql, &sql_len, &tables_list, &render))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#|OOz#p", kwlist,
+                                     &sql, &sql_len,
+                                     &tables_list, &views_list,
+                                     &schema_ddl, &schema_ddl_len,
+                                     &render))
         return NULL;
 
     SyntaqliteValidator *v = syntaqlite_validator_create_sqlite();
     if (!v)
         return PyErr_NoMemory();
 
-    /* Add tables if provided */
-    if (tables_list && tables_list != Py_None) {
-        if (!PyList_Check(tables_list)) {
-            syntaqlite_validator_destroy(v);
-            PyErr_SetString(PyExc_TypeError, "tables must be a list");
-            return NULL;
-        }
+    /* Register tables */
+    if (register_relations(v, tables_list, "table",
+                           syntaqlite_validator_add_tables) < 0) {
+        syntaqlite_validator_destroy(v);
+        return NULL;
+    }
 
-        Py_ssize_t n_tables = PyList_Size(tables_list);
-        SyntaqliteTableDef *table_defs = NULL;
-        const char ***all_columns = NULL;
+    /* Register views */
+    if (register_relations(v, views_list, "view",
+                           syntaqlite_validator_add_views) < 0) {
+        syntaqlite_validator_destroy(v);
+        return NULL;
+    }
 
-        if (n_tables > 0) {
-            table_defs = (SyntaqliteTableDef *)calloc(n_tables, sizeof(SyntaqliteTableDef));
-            all_columns = (const char ***)calloc(n_tables, sizeof(const char **));
-            if (!table_defs || !all_columns) {
-                free(table_defs);
-                free(all_columns);
-                syntaqlite_validator_destroy(v);
-                return PyErr_NoMemory();
-            }
-        }
-
-        int parse_ok = 1;
-        for (Py_ssize_t i = 0; i < n_tables && parse_ok; i++) {
-            PyObject *tbl = PyList_GetItem(tables_list, i);
-            if (!PyDict_Check(tbl)) {
-                PyErr_SetString(PyExc_TypeError,
-                    "each table must be a dict with 'name' and optional 'columns'");
-                parse_ok = 0;
-                break;
-            }
-
-            PyObject *name_obj = PyDict_GetItemString(tbl, "name");
-            if (!name_obj || !PyUnicode_Check(name_obj)) {
-                PyErr_SetString(PyExc_TypeError, "table 'name' must be a string");
-                parse_ok = 0;
-                break;
-            }
-            table_defs[i].name = PyUnicode_AsUTF8(name_obj);
-
-            PyObject *cols_obj = PyDict_GetItemString(tbl, "columns");
-            if (cols_obj && cols_obj != Py_None && PyList_Check(cols_obj)) {
-                Py_ssize_t n_cols = PyList_Size(cols_obj);
-                const char **cols = (const char **)calloc(n_cols, sizeof(const char *));
-                if (!cols) {
-                    parse_ok = 0;
-                    PyErr_NoMemory();
-                    break;
-                }
-                for (Py_ssize_t j = 0; j < n_cols; j++) {
-                    PyObject *col = PyList_GetItem(cols_obj, j);
-                    if (!PyUnicode_Check(col)) {
-                        PyErr_SetString(PyExc_TypeError, "column names must be strings");
-                        parse_ok = 0;
-                        break;
-                    }
-                    cols[j] = PyUnicode_AsUTF8(col);
-                }
-                table_defs[i].columns = cols;
-                table_defs[i].column_count = (uint32_t)n_cols;
-                all_columns[i] = cols;
-            } else {
-                table_defs[i].columns = NULL;
-                table_defs[i].column_count = 0;
-                all_columns[i] = NULL;
-            }
-        }
-
-        if (parse_ok && n_tables > 0) {
-            syntaqlite_validator_add_tables(v, table_defs, (uint32_t)n_tables);
-        }
-
-        if (all_columns) {
-            for (Py_ssize_t i = 0; i < n_tables; i++)
-                free((void *)all_columns[i]);
-            free(all_columns);
-        }
-        free(table_defs);
-
-        if (!parse_ok) {
-            syntaqlite_validator_destroy(v);
-            return NULL;
-        }
+    /* Load schema from DDL */
+    if (schema_ddl) {
+        syntaqlite_validator_load_schema_ddl(v, schema_ddl, (uint32_t)schema_ddl_len);
     }
 
     uint32_t n_diags = syntaqlite_validator_analyze(v, sql, (uint32_t)sql_len);
@@ -273,9 +299,17 @@ syntaqlite_py_validate(PyObject *self, PyObject *args, PyObject *kwargs)
         return result;
     }
 
-    /* Build list of diagnostic dicts */
-    PyObject *result_list = PyList_New(0);
-    if (!result_list) {
+    /* Build result dict with diagnostics + lineage */
+    PyObject *result = PyDict_New();
+    if (!result) {
+        syntaqlite_validator_destroy(v);
+        return NULL;
+    }
+
+    /* Diagnostics */
+    PyObject *diag_list = PyList_New(0);
+    if (!diag_list) {
+        Py_DECREF(result);
         syntaqlite_validator_destroy(v);
         return NULL;
     }
@@ -285,7 +319,8 @@ syntaqlite_py_validate(PyObject *self, PyObject *args, PyObject *kwargs)
         for (uint32_t i = 0; i < n_diags; i++) {
             PyObject *d = PyDict_New();
             if (!d) {
-                Py_DECREF(result_list);
+                Py_DECREF(diag_list);
+                Py_DECREF(result);
                 syntaqlite_validator_destroy(v);
                 return NULL;
             }
@@ -309,13 +344,122 @@ syntaqlite_py_validate(PyObject *self, PyObject *args, PyObject *kwargs)
             if (start) { PyDict_SetItemString(d, "start_offset", start); Py_DECREF(start); }
             if (end) { PyDict_SetItemString(d, "end_offset", end); Py_DECREF(end); }
 
-            PyList_Append(result_list, d);
+            PyList_Append(diag_list, d);
             Py_DECREF(d);
         }
     }
+    PyDict_SetItemString(result, "diagnostics", diag_list);
+    Py_DECREF(diag_list);
+
+    /* Column lineage */
+    uint32_t col_count = syntaqlite_validator_column_lineage_count(v);
+    if (col_count > 0) {
+        const SyntaqliteColumnLineage *cols = syntaqlite_validator_column_lineage(v);
+        PyObject *lineage_dict = PyDict_New();
+        if (!lineage_dict) {
+            Py_DECREF(result);
+            syntaqlite_validator_destroy(v);
+            return NULL;
+        }
+
+        PyObject *complete = syntaqlite_validator_lineage_complete(v)
+            ? Py_True : Py_False;
+        Py_INCREF(complete);
+        PyDict_SetItemString(lineage_dict, "complete", complete);
+        Py_DECREF(complete);
+
+        PyObject *col_list = PyList_New(0);
+        if (!col_list) {
+            Py_DECREF(lineage_dict);
+            Py_DECREF(result);
+            syntaqlite_validator_destroy(v);
+            return NULL;
+        }
+
+        for (uint32_t i = 0; i < col_count; i++) {
+            PyObject *c = PyDict_New();
+            if (!c) {
+                Py_DECREF(col_list);
+                Py_DECREF(lineage_dict);
+                Py_DECREF(result);
+                syntaqlite_validator_destroy(v);
+                return NULL;
+            }
+
+            PyObject *name = PyUnicode_FromString(cols[i].name ? cols[i].name : "");
+            PyObject *idx = PyLong_FromUnsignedLong(cols[i].index);
+            if (name) { PyDict_SetItemString(c, "name", name); Py_DECREF(name); }
+            if (idx) { PyDict_SetItemString(c, "index", idx); Py_DECREF(idx); }
+
+            if (cols[i].origin.table) {
+                PyObject *origin = PyDict_New();
+                if (origin) {
+                    PyObject *tbl = PyUnicode_FromString(cols[i].origin.table);
+                    PyObject *col_name = PyUnicode_FromString(cols[i].origin.column);
+                    if (tbl) { PyDict_SetItemString(origin, "table", tbl); Py_DECREF(tbl); }
+                    if (col_name) { PyDict_SetItemString(origin, "column", col_name); Py_DECREF(col_name); }
+                    PyDict_SetItemString(c, "origin", origin);
+                    Py_DECREF(origin);
+                }
+            } else {
+                Py_INCREF(Py_None);
+                PyDict_SetItemString(c, "origin", Py_None);
+                Py_DECREF(Py_None);
+            }
+
+            PyList_Append(col_list, c);
+            Py_DECREF(c);
+        }
+        PyDict_SetItemString(lineage_dict, "columns", col_list);
+        Py_DECREF(col_list);
+
+        /* Relations */
+        uint32_t rel_count = syntaqlite_validator_relation_count(v);
+        PyObject *rel_list = PyList_New(0);
+        if (rel_list) {
+            const SyntaqliteRelationAccess *rels = syntaqlite_validator_relations(v);
+            for (uint32_t i = 0; i < rel_count; i++) {
+                PyObject *r = PyDict_New();
+                if (r) {
+                    PyObject *rname = PyUnicode_FromString(rels[i].name ? rels[i].name : "");
+                    PyObject *rkind = PyUnicode_FromString(
+                        rels[i].kind == SYNTAQLITE_RELATION_VIEW ? "view" : "table");
+                    if (rname) { PyDict_SetItemString(r, "name", rname); Py_DECREF(rname); }
+                    if (rkind) { PyDict_SetItemString(r, "kind", rkind); Py_DECREF(rkind); }
+                    PyList_Append(rel_list, r);
+                    Py_DECREF(r);
+                }
+            }
+            PyDict_SetItemString(lineage_dict, "relations", rel_list);
+            Py_DECREF(rel_list);
+        }
+
+        /* Tables */
+        uint32_t tbl_count = syntaqlite_validator_table_count(v);
+        PyObject *tbl_list = PyList_New(0);
+        if (tbl_list) {
+            const SyntaqliteTableAccess *tbls = syntaqlite_validator_tables(v);
+            for (uint32_t i = 0; i < tbl_count; i++) {
+                PyObject *tname = PyUnicode_FromString(tbls[i].name ? tbls[i].name : "");
+                if (tname) {
+                    PyList_Append(tbl_list, tname);
+                    Py_DECREF(tname);
+                }
+            }
+            PyDict_SetItemString(lineage_dict, "tables", tbl_list);
+            Py_DECREF(tbl_list);
+        }
+
+        PyDict_SetItemString(result, "lineage", lineage_dict);
+        Py_DECREF(lineage_dict);
+    } else {
+        Py_INCREF(Py_None);
+        PyDict_SetItemString(result, "lineage", Py_None);
+        Py_DECREF(Py_None);
+    }
 
     syntaqlite_validator_destroy(v);
-    return result_list;
+    return result;
 }
 
 /* ─── tokenize ──────────────────────────────────────────────────────── */
@@ -392,10 +536,12 @@ static PyMethodDef SyntaqliteMethods[] = {
      "Validate SQL against optional schema.\n\n"
      "Args:\n"
      "    sql (str): SQL to validate\n"
-     "    tables (list[dict]): Optional schema. Each dict: name (str), columns (list[str])\n"
+     "    tables (list[dict]): Schema tables. Each dict: name (str), columns (list[str])\n"
+     "    views (list[dict]): Schema views. Same format as tables\n"
+     "    schema_ddl (str): DDL to parse as schema (CREATE TABLE/VIEW statements)\n"
      "    render (bool): If True, return rendered diagnostics string\n\n"
      "Returns:\n"
-     "    list[dict] or str: Diagnostics (severity, message, start_offset, end_offset)"},
+     "    dict with diagnostics and lineage, or str when render=True"},
 
     {"tokenize", syntaqlite_py_tokenize, METH_VARARGS,
      "Tokenize SQL into a list of token dicts.\n\n"
