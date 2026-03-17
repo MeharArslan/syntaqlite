@@ -61,13 +61,14 @@ static const SyntaqliteGrammarTemplate SQLITE_GRAMMAR = {
 
 // ============ Public API ============
 
-SyntaqliteGrammar syntaqlite_sqlite_grammar(void) {
+SYNTAQLITE_API SyntaqliteGrammar syntaqlite_sqlite_grammar(void) {
   SyntaqliteGrammar g = SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR);
   return g;
 }
 
-SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version,
-                                                 SyntaqliteCflags cflags) {
+SYNTAQLITE_API SyntaqliteGrammar
+syntaqlite_sqlite_grammar_with(int32_t sqlite_version,
+                               SyntaqliteCflags cflags) {
   SyntaqliteGrammar g = {&SQLITE_GRAMMAR, sqlite_version, cflags};
   return g;
 }
@@ -114,6 +115,7 @@ static const struct SyntaqliteDialectTemplate SQLITE_DIALECT = {
     .fmt_expr_meta_count = sqlite_fmt_expr_meta_count,
 };
 
-const struct SyntaqliteDialectTemplate* syntaqlite_sqlite_dialect(void) {
+SYNTAQLITE_API const struct SyntaqliteDialectTemplate*
+syntaqlite_sqlite_dialect(void) {
   return &SQLITE_DIALECT;
 }

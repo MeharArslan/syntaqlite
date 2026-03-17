@@ -28,9 +28,8 @@
 // ---------------------------------------------------------------------------
 
 #ifndef SYNTAQLITE_API
-#if defined(SYNTAQLITE_STATIC)
-#define SYNTAQLITE_API
-#elif defined(_WIN32) || defined(__CYGWIN__)
+#if defined(SYNTAQLITE_SHARED)
+#if defined(_WIN32) || defined(__CYGWIN__)
 #if defined(SYNTAQLITE_BUILDING)
 #define SYNTAQLITE_API __declspec(dllexport)
 #else
@@ -38,6 +37,9 @@
 #endif
 #elif defined(__GNUC__) && __GNUC__ >= 4
 #define SYNTAQLITE_API __attribute__((visibility("default")))
+#else
+#define SYNTAQLITE_API
+#endif
 #else
 #define SYNTAQLITE_API
 #endif

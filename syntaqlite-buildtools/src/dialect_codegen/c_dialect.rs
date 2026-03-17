@@ -210,7 +210,7 @@ pub(crate) fn generate_dialect_c(
     w.section("Public API");
     w.newline();
     w.line(&format!(
-        "SyntaqliteGrammar syntaqlite_{dialect}_grammar(void) {{"
+        "SYNTAQLITE_API SyntaqliteGrammar syntaqlite_{dialect}_grammar(void) {{"
     ));
     w.line(&format!(
         "  SyntaqliteGrammar g = SYNQ_GRAMMAR_DEFAULT(&{upper}_GRAMMAR);"
@@ -219,7 +219,7 @@ pub(crate) fn generate_dialect_c(
     w.line("}");
     w.newline();
     w.line(&format!(
-        "SyntaqliteGrammar syntaqlite_{dialect}_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags) {{"
+        "SYNTAQLITE_API SyntaqliteGrammar syntaqlite_{dialect}_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags) {{"
     ));
     w.line(&format!(
         "  SyntaqliteGrammar g = {{&{upper}_GRAMMAR, sqlite_version, cflags}};"
@@ -320,7 +320,7 @@ pub(crate) fn generate_dialect_c(
         w.line("};");
         w.newline();
         w.line(&format!(
-            "const struct SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void) {{"
+            "SYNTAQLITE_API const struct SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void) {{"
         ));
         w.line(&format!("  return &{upper}_DIALECT;"));
         w.line("}");
@@ -513,7 +513,7 @@ mod tests {
             &default_includes(),
             crate::codegen_api::MacroStyle::None,
         );
-        assert!(c.contains("SyntaqliteGrammar syntaqlite_sqlite_grammar(void)"));
+        assert!(c.contains("SYNTAQLITE_API SyntaqliteGrammar syntaqlite_sqlite_grammar(void)"));
         assert!(c.contains("SyntaqliteGrammarTemplate SQLITE_GRAMMAR ="));
         assert!(c.contains("SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR)"));
         // Bundled dialect struct and accessor

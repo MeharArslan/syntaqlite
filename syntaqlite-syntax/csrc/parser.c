@@ -204,7 +204,7 @@ static int32_t stmt_boundary(SyntaqliteParser* p) {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-SyntaqliteParser* syntaqlite_parser_create_with_grammar(
+SYNTAQLITE_API SyntaqliteParser* syntaqlite_parser_create_with_grammar(
     const SyntaqliteMemMethods* mem,
     const SyntaqliteGrammar grammar) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
@@ -223,15 +223,16 @@ SyntaqliteParser* syntaqlite_parser_create_with_grammar(
 }
 
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
-SyntaqliteParser* syntaqlite_parser_create(const SyntaqliteMemMethods* mem) {
+SYNTAQLITE_API SyntaqliteParser* syntaqlite_parser_create(
+    const SyntaqliteMemMethods* mem) {
   SyntaqliteGrammar grammar = syntaqlite_sqlite_grammar();
   return syntaqlite_parser_create_with_grammar(mem, grammar);
 }
 #endif
 
-void syntaqlite_parser_reset(SyntaqliteParser* p,
-                             const char* source,
-                             uint32_t len) {
+SYNTAQLITE_API void syntaqlite_parser_reset(SyntaqliteParser* p,
+                                            const char* source,
+                                            uint32_t len) {
   // Seal the parser on first use — configuration is frozen after this.
   p->sealed = 1;
 
@@ -859,7 +860,7 @@ static int64_t next_token(SyntaqliteParser* p,
   return 0;
 }
 
-int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
+SYNTAQLITE_API int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   reset_stmt(p);
 
   if (p->finished)
@@ -922,46 +923,49 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 // Result accessors
 // ---------------------------------------------------------------------------
 
-uint32_t syntaqlite_result_root(SyntaqliteParser* p) {
+SYNTAQLITE_API uint32_t syntaqlite_result_root(SyntaqliteParser* p) {
   if (p->last_status != SYNTAQLITE_PARSE_OK) {
     return SYNTAQLITE_NULL_NODE;
   }
   return p->ctx.root;
 }
 
-uint32_t syntaqlite_result_recovery_root(SyntaqliteParser* p) {
+SYNTAQLITE_API uint32_t syntaqlite_result_recovery_root(SyntaqliteParser* p) {
   if (p->last_status != SYNTAQLITE_PARSE_ERROR) {
     return SYNTAQLITE_NULL_NODE;
   }
   return p->ctx.root;
 }
 
-const char* syntaqlite_result_error_msg(SyntaqliteParser* p) {
+SYNTAQLITE_API const char* syntaqlite_result_error_msg(SyntaqliteParser* p) {
   return p->error_msg[0] ? p->error_msg : NULL;
 }
 
-uint32_t syntaqlite_result_error_offset(SyntaqliteParser* p) {
+SYNTAQLITE_API uint32_t syntaqlite_result_error_offset(SyntaqliteParser* p) {
   return p->ctx.error_offset;
 }
 
-uint32_t syntaqlite_result_error_length(SyntaqliteParser* p) {
+SYNTAQLITE_API uint32_t syntaqlite_result_error_length(SyntaqliteParser* p) {
   return p->ctx.error_length;
 }
 
-const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
-                                                    uint32_t* count) {
+SYNTAQLITE_API const SyntaqliteComment* syntaqlite_result_comments(
+    SyntaqliteParser* p,
+    uint32_t* count) {
   *count = syntaqlite_vec_len(&p->comments);
   return p->comments.data;
 }
 
-const SyntaqliteParserToken* syntaqlite_result_tokens(SyntaqliteParser* p,
-                                                      uint32_t* count) {
+SYNTAQLITE_API const SyntaqliteParserToken* syntaqlite_result_tokens(
+    SyntaqliteParser* p,
+    uint32_t* count) {
   *count = syntaqlite_vec_len(&p->tokens);
   return p->tokens.data;
 }
 
-const SyntaqliteMacroRegion* syntaqlite_result_macros(SyntaqliteParser* p,
-                                                      uint32_t* count) {
+SYNTAQLITE_API const SyntaqliteMacroRegion* syntaqlite_result_macros(
+    SyntaqliteParser* p,
+    uint32_t* count) {
   *count = syntaqlite_vec_len(&p->macros);
   return p->macros.data;
 }
@@ -970,10 +974,10 @@ const SyntaqliteMacroRegion* syntaqlite_result_macros(SyntaqliteParser* p,
 // Low-level token-feeding API
 // ---------------------------------------------------------------------------
 
-int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
-                                     uint32_t token_type,
-                                     const char* text,
-                                     uint32_t len) {
+SYNTAQLITE_API int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
+                                                    uint32_t token_type,
+                                                    const char* text,
+                                                    uint32_t len) {
   // Deferred reset: clear previous statement's data before processing the
   // first token of the next one.  Lemon was already reinitialized eagerly
   // by stmt_boundary() when the previous statement completed.
@@ -1036,9 +1040,9 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
   return set_result_status(p, SYNTAQLITE_PARSE_DONE);
 }
 
-uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
-                                           uint32_t* out_tokens,
-                                           uint32_t out_cap) {
+SYNTAQLITE_API uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
+                                                          uint32_t* out_tokens,
+                                                          uint32_t out_cap) {
   if (p == NULL || p->grammar.tmpl == NULL ||
       p->grammar.tmpl->parser_expected_tokens == NULL) {
     return 0;
@@ -1046,8 +1050,8 @@ uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
   return p->grammar.tmpl->parser_expected_tokens(p->lemon, out_tokens, out_cap);
 }
 
-SyntaqliteCompletionContext syntaqlite_parser_completion_context(
-    SyntaqliteParser* p) {
+SYNTAQLITE_API SyntaqliteCompletionContext
+syntaqlite_parser_completion_context(SyntaqliteParser* p) {
   if (p == NULL || p->grammar.tmpl == NULL ||
       p->grammar.tmpl->parser_completion_context == NULL) {
     return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;
@@ -1056,7 +1060,7 @@ SyntaqliteCompletionContext syntaqlite_parser_completion_context(
       p->grammar.tmpl->parser_completion_context(p->lemon);
 }
 
-int32_t syntaqlite_parser_finish(SyntaqliteParser* p) {
+SYNTAQLITE_API int32_t syntaqlite_parser_finish(SyntaqliteParser* p) {
   if (p->pending_reset) {
     // Nothing pending after a completed statement — done.
     p->pending_reset = 0;
@@ -1069,15 +1073,15 @@ int32_t syntaqlite_parser_finish(SyntaqliteParser* p) {
 // Macro region tracking
 // ---------------------------------------------------------------------------
 
-void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
-                                   uint32_t call_offset,
-                                   uint32_t call_length) {
+SYNTAQLITE_API void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
+                                                  uint32_t call_offset,
+                                                  uint32_t call_length) {
   SyntaqliteMacroRegion region = {call_offset, call_length};
   syntaqlite_vec_push(&p->macros, region, p->mem);
   p->macro_depth++;
 }
 
-void syntaqlite_parser_end_macro(SyntaqliteParser* p) {
+SYNTAQLITE_API void syntaqlite_parser_end_macro(SyntaqliteParser* p) {
   if (p->macro_depth > 0) {
     p->macro_depth--;
   }
@@ -1237,9 +1241,9 @@ static void dump_node_recursive(DumpBuf* b,
   }
 }
 
-char* syntaqlite_dump_node(SyntaqliteParser* p,
-                           uint32_t node_id,
-                           uint32_t indent) {
+SYNTAQLITE_API char* syntaqlite_dump_node(SyntaqliteParser* p,
+                                          uint32_t node_id,
+                                          uint32_t indent) {
   DumpBuf buf;
   syntaqlite_vec_init(&buf);
   dump_node_recursive(&buf, p, node_id, indent);
@@ -1268,7 +1272,7 @@ static void free_macro_entry(SyntaqliteParser* p, SyntaqliteMacroEntry* e) {
   e->state = SYNQ_MAP_EMPTY;
 }
 
-void syntaqlite_parser_destroy(SyntaqliteParser* p) {
+SYNTAQLITE_API void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
     SYNQ_PARSER_FREE(p->grammar.tmpl, p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
@@ -1295,19 +1299,20 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p) {
 // Reading results
 // ---------------------------------------------------------------------------
 
-const void* syntaqlite_parser_node(SyntaqliteParser* p, uint32_t node_id) {
+SYNTAQLITE_API const void* syntaqlite_parser_node(SyntaqliteParser* p,
+                                                  uint32_t node_id) {
   return (const void*)synq_arena_ptr(&p->ctx.ast, node_id);
 }
 
-uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p) {
+SYNTAQLITE_API uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p) {
   return syntaqlite_vec_len(&p->ctx.ast.offsets);
 }
 
-const char* syntaqlite_parser_source(SyntaqliteParser* p) {
+SYNTAQLITE_API const char* syntaqlite_parser_source(SyntaqliteParser* p) {
   return p->source;
 }
 
-uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p) {
+SYNTAQLITE_API uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p) {
   return p->source_len;
 }
 
@@ -1315,7 +1320,8 @@ uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p) {
 // Configuration
 // ---------------------------------------------------------------------------
 
-int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable) {
+SYNTAQLITE_API int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p,
+                                                   uint32_t enable) {
   if (p->sealed)
     return -1;
   p->trace = enable;
@@ -1327,16 +1333,16 @@ int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable) {
   return 0;
 }
 
-int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
-                                             uint32_t enable) {
+SYNTAQLITE_API int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
+                                                            uint32_t enable) {
   if (p->sealed)
     return -1;
   p->collect_tokens = enable;
   return 0;
 }
 
-int32_t syntaqlite_parser_set_macro_fallback(SyntaqliteParser* p,
-                                             uint32_t enable) {
+SYNTAQLITE_API int32_t syntaqlite_parser_set_macro_fallback(SyntaqliteParser* p,
+                                                            uint32_t enable) {
   if (p->sealed)
     return -1;
   p->macro_fallback = enable;
@@ -1357,13 +1363,14 @@ static char* synq_strdup(SyntaqliteMemMethods mem,
   return d;
 }
 
-int syntaqlite_parser_register_macro(SyntaqliteParser* p,
-                                     const char* name,
-                                     uint32_t name_len,
-                                     const char* const* param_names,
-                                     uint32_t param_count,
-                                     const char* body,
-                                     uint32_t body_len) {
+SYNTAQLITE_API int syntaqlite_parser_register_macro(
+    SyntaqliteParser* p,
+    const char* name,
+    uint32_t name_len,
+    const char* const* param_names,
+    uint32_t param_count,
+    const char* body,
+    uint32_t body_len) {
   SyntaqliteMacroEntry* slot;
   SYNQ_MAP_INSERT(p->macro_table, p->macro_table_size, p->macro_table_count,
                   name, name_len, p->mem, SYNQ_MACRO_TABLE_INITIAL_SIZE, slot);
@@ -1396,9 +1403,9 @@ int syntaqlite_parser_register_macro(SyntaqliteParser* p,
   return 0;
 }
 
-int syntaqlite_parser_deregister_macro(SyntaqliteParser* p,
-                                       const char* name,
-                                       uint32_t name_len) {
+SYNTAQLITE_API int syntaqlite_parser_deregister_macro(SyntaqliteParser* p,
+                                                      const char* name,
+                                                      uint32_t name_len) {
   SyntaqliteMacroEntry* entry;
   SYNQ_MAP_FIND(p->macro_table, p->macro_table_size, name, name_len, entry);
   if (!entry)

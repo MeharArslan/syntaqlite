@@ -16,7 +16,7 @@ struct SyntaqliteTokenizer {
   uint32_t offset;
 };
 
-SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
+SYNTAQLITE_API SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
     const SyntaqliteMemMethods* mem,
     const SyntaqliteGrammar env) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
@@ -28,23 +28,23 @@ SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
 }
 
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
-SyntaqliteTokenizer* syntaqlite_tokenizer_create(
+SYNTAQLITE_API SyntaqliteTokenizer* syntaqlite_tokenizer_create(
     const SyntaqliteMemMethods* mem) {
   SyntaqliteGrammar env = syntaqlite_sqlite_grammar();
   return syntaqlite_tokenizer_create_with_grammar(mem, env);
 }
 #endif
 
-void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
-                                const char* source,
-                                uint32_t len) {
+SYNTAQLITE_API void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
+                                               const char* source,
+                                               uint32_t len) {
   tok->source = source;
   tok->len = len;
   tok->offset = 0;
 }
 
-uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
-                                   SyntaqliteToken* out) {
+SYNTAQLITE_API uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
+                                                  SyntaqliteToken* out) {
   if (tok->offset >= tok->len) {
     return 0;
   }
@@ -61,7 +61,7 @@ uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok,
   return 1;
 }
 
-void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok) {
+SYNTAQLITE_API void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok) {
   if (tok) {
     tok->mem.xFree(tok);
   }

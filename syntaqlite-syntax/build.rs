@@ -17,7 +17,7 @@ fn main() {
     let sqlite_enabled = env::var("CARGO_FEATURE_SQLITE").is_ok();
 
     // Use clang-cl on MSVC targets — MSVC's C compiler lacks C11 features
-    // we rely on (designated initializers in static const, _Static_assert).
+    // we rely on (designated initializers in static const).
     if target_env == "msvc" && env::var("CC").is_err() {
         // SAFETY: build scripts are single-threaded; no other threads
         // are reading environment variables at this point.
