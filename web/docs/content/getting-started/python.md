@@ -7,8 +7,8 @@ weight = 6
 # Using syntaqlite from Python
 
 This tutorial walks you through using syntaqlite as a Python library. By the end
-you'll have a script that formats SQL, validates it against a schema, and
-inspects the AST — all from Python.
+you'll have a script that formats SQL, validates it against a schema, traces
+column lineage, and inspects the AST — all from Python.
 
 ## 1. Install
 
@@ -63,20 +63,28 @@ Pass table definitions to validate column and table references:
 
 ```python
 import syntaqlite
+from syntaqlite import Table
 
-schema = [
-    {"name": "users", "columns": ["id", "name", "email", "active"]},
-]
-diagnostics = syntaqlite.validate(
+schema = [Table("users", ["id", "name", "email", "active"])]
+result = syntaqlite.validate(
     "SELECT nme FROM users WHERE active = 1",
     tables=schema,
 )
-for d in diagnostics:
-    print(f"{d['severity']}: {d['message']}")
+for d in result.diagnostics:
+    print(f"{d.severity}: {d.message}")
 ```
 
 ```text
 warning: unknown column 'nme'
+```
+
+You can also load schema directly from DDL:
+
+```python
+result = syntaqlite.validate(
+    "SELECT nme FROM users WHERE active = 1",
+    schema_ddl="CREATE TABLE users (id INT, name TEXT, email TEXT, active INT)",
+)
 ```
 
 For human-readable output with source locations, use `render=True`:
@@ -96,6 +104,36 @@ warning: unknown column 'nme'
 1 | SELECT nme FROM users WHERE active = 1
   |        ^~~
   = help: did you mean 'name'?
+```
+
+## 3b. Column lineage
+
+When validating a SELECT, the result includes column lineage — which source
+table and column each output column traces back to:
+
+```python
+result = syntaqlite.validate(
+    "SELECT u.name, u.email FROM users u",
+    tables=[Table("users", ["id", "name", "email"])],
+)
+for col in result.lineage.columns:
+    print(f"  {col.name} <- {col.origin}")
+```
+
+```text
+  name <- users.name
+  email <- users.email
+```
+
+The `lineage` object also lists the relations referenced by the query:
+
+```python
+for rel in result.lineage.relations:
+    print(f"  {rel.name} ({rel.kind})")
+```
+
+```text
+  users (table)
 ```
 
 ## 4. Parse and inspect the AST
