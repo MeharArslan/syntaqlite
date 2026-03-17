@@ -249,6 +249,7 @@ def main() -> int:
             "dialect", "--name", "perfetto",
             "--actions-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "actions"),
             "--nodes-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "nodes"),
+            "--macro-style", "rust",
             "--output-dir", perfetto_csrc_dir,
         ],
         cwd=ROOT_DIR, env=env,

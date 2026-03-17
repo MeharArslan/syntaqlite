@@ -545,6 +545,16 @@ mod tests {
 
     // ── Macro registry / hashmap tests ──────────────────────────────────
 
+    /// Helper: create a parser with macro_fallback enabled (needed for macro
+    /// registration tests since SQLite's grammar has macro_style = NONE).
+    fn new_macro_parser() -> ParserHandle {
+        let mut handle = ParserHandle::new();
+        // SAFETY: CParser wraps a valid C parser handle.
+        let rc = unsafe { handle.parser_mut().set_macro_fallback(1) };
+        assert_eq!(rc, 0);
+        handle
+    }
+
     /// Helper: register a template macro via the C API.
     #[expect(clippy::cast_possible_truncation)]
     fn register_macro(parser: &mut CParser, name: &str, params: &[&str], body: &str) {
@@ -577,7 +587,7 @@ mod tests {
 
     #[test]
     fn macro_register_and_expand() {
-        let mut handle = ParserHandle::new();
+        let mut handle = new_macro_parser();
         let parser = handle.parser_mut();
         register_macro(parser, "double", &["x"], "($x + $x)");
 
@@ -592,7 +602,7 @@ mod tests {
 
     #[test]
     fn macro_deregister_removes_entry() {
-        let mut handle = ParserHandle::new();
+        let mut handle = new_macro_parser();
         let parser = handle.parser_mut();
         register_macro(parser, "foo", &["x"], "$x");
 
@@ -600,10 +610,11 @@ mod tests {
         let rc = unsafe { parser.deregister_macro(b"foo".as_ptr().cast(), 3) };
         assert_eq!(rc, 0);
 
-        // After deregistering, the name is no longer a macro.
-        // "foo!(1)" won't expand — "!" is TK_ILLEGAL, which causes a parse error.
-        let (rc, _sql) = parse_one(parser, "SELECT foo!(1);");
-        assert_eq!(rc, PARSE_ERROR);
+        // After deregistering, the name is no longer a macro — a second
+        // deregister should fail (entry not found).
+        // SAFETY: pointer and length match the literal "foo".
+        let rc = unsafe { parser.deregister_macro(b"foo".as_ptr().cast(), 3) };
+        assert_eq!(rc, -1, "deregistering again should fail");
     }
 
     #[test]
@@ -618,7 +629,7 @@ mod tests {
 
     #[test]
     fn macro_case_insensitive_lookup() {
-        let mut handle = ParserHandle::new();
+        let mut handle = new_macro_parser();
         let parser = handle.parser_mut();
         register_macro(parser, "MyMacro", &["x"], "$x");
 
@@ -629,7 +640,7 @@ mod tests {
 
     #[test]
     fn macro_overwrite_existing() {
-        let mut handle = ParserHandle::new();
+        let mut handle = new_macro_parser();
         let parser = handle.parser_mut();
         register_macro(parser, "m", &["x"], "$x");
         // Re-register with different body — should overwrite.
@@ -641,7 +652,7 @@ mod tests {
 
     #[test]
     fn macro_register_after_deregister_reuses_tombstone() {
-        let mut handle = ParserHandle::new();
+        let mut handle = new_macro_parser();
         let parser = handle.parser_mut();
         register_macro(parser, "tmp", &["x"], "$x");
 
@@ -658,7 +669,7 @@ mod tests {
 
     #[test]
     fn macro_many_entries_forces_grow() {
-        let mut handle = ParserHandle::new();
+        let mut handle = new_macro_parser();
         let parser = handle.parser_mut();
 
         // Register enough macros to trigger at least one table resize.
@@ -681,7 +692,7 @@ mod tests {
 
     #[test]
     fn macro_deregister_then_grow_drops_tombstones() {
-        let mut handle = ParserHandle::new();
+        let mut handle = new_macro_parser();
         let parser = handle.parser_mut();
 
         // Fill table, then delete half, then add more to force a grow.

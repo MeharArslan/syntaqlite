@@ -19,10 +19,10 @@ pub(crate) struct ProjectConfig {
     #[serde(default)]
     pub schemas: IndexMap<String, Vec<String>>,
 
-    /// SQLite version to emulate (e.g. "3.47.0", "latest").
+    /// `SQLite` version to emulate (e.g. "3.47.0", "latest").
     pub sqlite_version: Option<String>,
 
-    /// SQLite compile-time flags to enable.
+    /// `SQLite` compile-time flags to enable.
     #[serde(default)]
     pub sqlite_cflags: Vec<String>,
 
@@ -298,18 +298,15 @@ semicolons = false
 
     #[test]
     fn parse_sqlite_version_only() {
-        let config: ProjectConfig =
-            toml::from_str("sqlite-version = \"latest\"\n").unwrap();
+        let config: ProjectConfig = toml::from_str("sqlite-version = \"latest\"\n").unwrap();
         assert_eq!(config.sqlite_version.as_deref(), Some("latest"));
         assert!(config.sqlite_cflags.is_empty());
     }
 
     #[test]
     fn parse_sqlite_cflags_only() {
-        let config: ProjectConfig = toml::from_str(
-            "sqlite-cflags = [\"SQLITE_ENABLE_FTS5\"]\n",
-        )
-        .unwrap();
+        let config: ProjectConfig =
+            toml::from_str("sqlite-cflags = [\"SQLITE_ENABLE_FTS5\"]\n").unwrap();
         assert!(config.sqlite_version.is_none());
         assert_eq!(config.sqlite_cflags, &["SQLITE_ENABLE_FTS5"]);
     }

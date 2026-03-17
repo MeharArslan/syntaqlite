@@ -56,7 +56,7 @@ static const SyntaqliteGrammarTemplate SQLITE_GRAMMAR = {
     // Token metadata
     .token_categories = token_categories,
     .token_type_count = TOKEN_TYPE_COUNT,
-    .macro_style = SYNQ_MACRO_STYLE_RUST,
+    .macro_style = SYNQ_MACRO_STYLE_NONE,
 };
 
 // ============ Public API ============

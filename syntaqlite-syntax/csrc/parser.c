@@ -462,7 +462,8 @@ static int try_macro_call(SyntaqliteParser* p,
   const unsigned char* z = (const unsigned char*)p->source;
   if (z[bang_offset] != '!')
     return -1;
-  if (p->grammar.tmpl->macro_style != SYNQ_MACRO_STYLE_RUST)
+  if (p->grammar.tmpl->macro_style != SYNQ_MACRO_STYLE_RUST &&
+      !p->macro_fallback)
     return -1;
 
   // Look up macro in registry.
