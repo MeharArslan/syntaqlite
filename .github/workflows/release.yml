@@ -287,9 +287,8 @@ jobs:
       - build-local-artifacts
       - build-global-artifacts
       - smoke-test
-      - build-python-ext
-    # Only run if we're "publishing", and only if plan, local, global, smoke-test, and python-ext didn't fail (skipped is fine)
-    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.smoke-test.result == 'skipped' || needs.smoke-test.result == 'success') && (needs.build-python-ext.result == 'skipped' || needs.build-python-ext.result == 'success') }}
+    # Only run if we're "publishing", and only if plan, local, global, and smoke-test didn't fail (skipped is fine)
+    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.smoke-test.result == 'skipped' || needs.smoke-test.result == 'success') }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: "ubuntu-22.04"
@@ -372,10 +371,10 @@ jobs:
               --draft --title "$RELEASE_TAG" --generate-notes artifacts/*
           fi
 
-  # Build the Python C extension (_syntaqlite) for each platform × Python version.
-  # The compiled .so/.pyd files are uploaded as artifacts and consumed by publish-pypi.yml.
-  build-python-ext:
-    name: python-ext (${{ matrix.platform.target }}, ${{ matrix.python }})
+  # Build the Python C extension, package into a wheel with the pre-built CLI
+  # binary, smoke test, and upload. One job per platform × Python version.
+  build-python-wheel:
+    name: python-wheel (${{ matrix.platform.target }}, ${{ matrix.python }})
     needs:
       - plan
       - build-local-artifacts
@@ -385,11 +384,11 @@ jobs:
       matrix:
         python: ["3.10", "3.11", "3.12", "3.13"]
         platform:
-          - {target: aarch64-apple-darwin, runner: macos-latest}
-          - {target: x86_64-apple-darwin, runner: macos-26-intel}
-          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest}
-          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm}
-          - {target: x86_64-pc-windows-msvc, runner: windows-latest}
+          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe}
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v6
@@ -401,6 +400,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      # -- Build C extension --
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -420,7 +420,6 @@ jobs:
         id: find-ext
         shell: bash
         run: |
-          # Find the built .so/.pyd file
           EXT=$(find python/syntaqlite -name '_syntaqlite*' \( -name '*.so' -o -name '*.pyd' \) | head -1)
           if [ -z "$EXT" ]; then
             echo "ERROR: Extension module not found"
@@ -435,6 +434,27 @@ jobs:
           cd python
           python -c "from syntaqlite._syntaqlite import parse; print(parse('SELECT 1'))"
 
+      # -- Download CLI binary and build wheel --
+      - name: Download CLI build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: artifacts-build-local-${{ matrix.platform.target }}
+          path: artifacts/
+
+      - name: Extract CLI binary
+        shell: bash
+        run: |
+          mkdir -p bin/ extracted/
+          ARCHIVE=$(find artifacts/ -name "syntaqlite-cli-${{ matrix.platform.target }}.*" | head -1)
+          echo "Found archive: $ARCHIVE"
+          if [[ "$ARCHIVE" == *.zip ]]; then
+            unzip "$ARCHIVE" -d extracted/
+          else
+            tar -xf "$ARCHIVE" -C extracted/
+          fi
+          find extracted/ -name "${{ matrix.platform.binary }}" -exec cp {} bin/ \;
+          chmod +x bin/${{ matrix.platform.binary }}
+
       - name: Derive python tag
         id: pytag
         shell: bash
@@ -443,122 +463,17 @@ jobs:
           TAG="cp${PYVER/./}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Upload extension artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: python-ext-${{ matrix.platform.target }}-${{ steps.pytag.outputs.tag }}
-          path: ${{ steps.find-ext.outputs.path }}
-
-  # Build Python wheels from pre-built CLI binaries + C extensions.
-  build-python-wheel:
-    name: python-wheel (${{ matrix.target }}, ${{ matrix.python-tag || 'cli-only' }})
-    needs:
-      - plan
-      - build-local-artifacts
-      - build-python-ext
-    if: ${{ needs.plan.outputs.publishing == 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # --- Wheels with C extension (5 platforms × 4 Python versions = 20) ---
-          # aarch64-apple-darwin
-          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp310}
-          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp311}
-          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp312}
-          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp313}
-          # x86_64-apple-darwin
-          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp310}
-          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp311}
-          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp312}
-          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp313}
-          # x86_64-unknown-linux-gnu
-          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp310}
-          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp311}
-          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp312}
-          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp313}
-          # aarch64-unknown-linux-gnu
-          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp310}
-          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp311}
-          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp312}
-          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp313}
-          # x86_64-pc-windows-msvc
-          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp310}
-          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp311}
-          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp312}
-          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp313}
-          # --- CLI-only wheel (no C extension available) ---
-          - {target: aarch64-pc-windows-msvc, runner: ubuntu-latest, binary: syntaqlite.exe}
-
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Determine Python version
-        id: pyver
-        shell: bash
-        run: |
-          TAG="${{ matrix.python-tag }}"
-          if [ -n "$TAG" ]; then
-            # cp310 -> 3.10, cp313 -> 3.13
-            echo "version=${TAG:2:1}.${TAG:3}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=3.12" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '${{ steps.pyver.outputs.version }}'
-
-      - name: Download CLI build artifacts
-        uses: actions/download-artifact@v7
-        with:
-          name: artifacts-build-local-${{ matrix.target }}
-          path: artifacts/
-
-      - name: Extract binary
-        shell: bash
-        run: |
-          mkdir -p bin/ extracted/
-          ARCHIVE=$(find artifacts/ -name "syntaqlite-cli-${{ matrix.target }}.*" | head -1)
-          echo "Found archive: $ARCHIVE"
-          if [[ "$ARCHIVE" == *.zip ]]; then
-            unzip "$ARCHIVE" -d extracted/
-          else
-            tar -xf "$ARCHIVE" -C extracted/
-          fi
-          find extracted/ -name "${{ matrix.binary }}" -exec cp {} bin/ \;
-          chmod +x bin/${{ matrix.binary }}
-
-      - name: Download C extension
-        if: matrix.python-tag
-        uses: actions/download-artifact@v7
-        with:
-          name: python-ext-${{ matrix.target }}-${{ matrix.python-tag }}
-          path: ext/
-
-      - name: Build wheel (with extension)
-        if: matrix.python-tag
+      - name: Build wheel
         shell: bash
         run: |
           python python/dev/build_wheel.py \
-            --binary bin/${{ matrix.binary }} \
-            --ext "ext/_syntaqlite*" \
-            --python-tag ${{ matrix.python-tag }} \
-            --platform ${{ matrix.target }} \
-            --out dist/
-
-      - name: Build wheel (CLI-only)
-        if: ${{ !matrix.python-tag }}
-        shell: bash
-        run: |
-          python python/dev/build_wheel.py \
-            --binary bin/${{ matrix.binary }} \
-            --platform ${{ matrix.target }} \
+            --binary bin/${{ matrix.platform.binary }} \
+            --ext "${{ steps.find-ext.outputs.path }}" \
+            --python-tag ${{ steps.pytag.outputs.tag }} \
+            --platform ${{ matrix.platform.target }} \
             --out dist/
 
       - name: Smoke test wheel
-        if: matrix.python-tag
         shell: bash
         run: |
           pip install dist/*.whl
@@ -567,7 +482,48 @@ jobs:
       - name: Upload wheel
         uses: actions/upload-artifact@v6
         with:
-          name: wheel-${{ matrix.target }}-${{ matrix.python-tag || 'cli' }}
+          name: wheel-${{ matrix.platform.target }}-${{ steps.pytag.outputs.tag }}
+          path: dist/*.whl
+
+  # CLI-only wheel for platforms without a C extension.
+  build-python-wheel-cli-only:
+    name: python-wheel (aarch64-pc-windows-msvc, cli-only)
+    needs:
+      - plan
+      - build-local-artifacts
+    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download CLI build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: artifacts-build-local-aarch64-pc-windows-msvc
+          path: artifacts/
+
+      - name: Extract CLI binary
+        run: |
+          mkdir -p bin/ extracted/
+          ARCHIVE=$(find artifacts/ -name "syntaqlite-cli-aarch64-pc-windows-msvc.*" | head -1)
+          unzip "$ARCHIVE" -d extracted/
+          find extracted/ -name "syntaqlite.exe" -exec cp {} bin/ \;
+
+      - name: Build wheel
+        run: |
+          python python/dev/build_wheel.py \
+            --binary bin/syntaqlite.exe \
+            --platform aarch64-pc-windows-msvc \
+            --out dist/
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheel-aarch64-pc-windows-msvc-cli
           path: dist/*.whl
 
   # Publish all wheels to PyPI in a single job.
@@ -576,6 +532,7 @@ jobs:
     needs:
       - plan
       - build-python-wheel
+      - build-python-wheel-cli-only
     if: ${{ needs.plan.outputs.publishing == 'true' }}
     runs-on: ubuntu-latest
     environment: pypi
