@@ -449,6 +449,151 @@ jobs:
           name: python-ext-${{ matrix.platform.target }}-${{ steps.pytag.outputs.tag }}
           path: ${{ steps.find-ext.outputs.path }}
 
+  # Build Python wheels from pre-built CLI binaries + C extensions.
+  build-python-wheel:
+    name: python-wheel (${{ matrix.target }}, ${{ matrix.python-tag || 'cli-only' }})
+    needs:
+      - plan
+      - build-local-artifacts
+      - build-python-ext
+    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Wheels with C extension (5 platforms × 4 Python versions = 20) ---
+          # aarch64-apple-darwin
+          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp310}
+          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp311}
+          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp312}
+          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, python-tag: cp313}
+          # x86_64-apple-darwin
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp310}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp311}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp312}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, python-tag: cp313}
+          # x86_64-unknown-linux-gnu
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp310}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp311}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp312}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, python-tag: cp313}
+          # aarch64-unknown-linux-gnu
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp310}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp311}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp312}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, python-tag: cp313}
+          # x86_64-pc-windows-msvc
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp310}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp311}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp312}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, python-tag: cp313}
+          # --- CLI-only wheel (no C extension available) ---
+          - {target: aarch64-pc-windows-msvc, runner: ubuntu-latest, binary: syntaqlite.exe}
+
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Determine Python version
+        id: pyver
+        shell: bash
+        run: |
+          TAG="${{ matrix.python-tag }}"
+          if [ -n "$TAG" ]; then
+            # cp310 -> 3.10, cp313 -> 3.13
+            echo "version=${TAG:2:1}.${TAG:3}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=3.12" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ steps.pyver.outputs.version }}'
+
+      - name: Download CLI build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: artifacts-build-local-${{ matrix.target }}
+          path: artifacts/
+
+      - name: Extract binary
+        shell: bash
+        run: |
+          mkdir -p bin/ extracted/
+          ARCHIVE=$(find artifacts/ -name "syntaqlite-cli-${{ matrix.target }}.*" | head -1)
+          echo "Found archive: $ARCHIVE"
+          if [[ "$ARCHIVE" == *.zip ]]; then
+            unzip "$ARCHIVE" -d extracted/
+          else
+            tar -xf "$ARCHIVE" -C extracted/
+          fi
+          find extracted/ -name "${{ matrix.binary }}" -exec cp {} bin/ \;
+          chmod +x bin/${{ matrix.binary }}
+
+      - name: Download C extension
+        if: matrix.python-tag
+        uses: actions/download-artifact@v7
+        with:
+          name: python-ext-${{ matrix.target }}-${{ matrix.python-tag }}
+          path: ext/
+
+      - name: Build wheel (with extension)
+        if: matrix.python-tag
+        shell: bash
+        run: |
+          python python/dev/build_wheel.py \
+            --binary bin/${{ matrix.binary }} \
+            --ext "ext/_syntaqlite*" \
+            --python-tag ${{ matrix.python-tag }} \
+            --platform ${{ matrix.target }} \
+            --out dist/
+
+      - name: Build wheel (CLI-only)
+        if: ${{ !matrix.python-tag }}
+        shell: bash
+        run: |
+          python python/dev/build_wheel.py \
+            --binary bin/${{ matrix.binary }} \
+            --platform ${{ matrix.target }} \
+            --out dist/
+
+      - name: Smoke test wheel
+        if: matrix.python-tag
+        shell: bash
+        run: |
+          pip install dist/*.whl
+          python -c "from syntaqlite import format_sql; assert 'SELECT' in format_sql('select 1')"
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheel-${{ matrix.target }}-${{ matrix.python-tag || 'cli' }}
+          path: dist/*.whl
+
+  # Publish all wheels to PyPI in a single job.
+  publish-pypi:
+    name: Publish to PyPI
+    needs:
+      - plan
+      - build-python-wheel
+    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download all wheels
+        uses: actions/download-artifact@v7
+        with:
+          pattern: wheel-*
+          path: dist/
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
   announce:
     needs:
       - plan
