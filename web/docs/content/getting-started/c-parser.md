@@ -50,10 +50,12 @@ int main(int argc, char** argv) {
 
     // Parse each statement (a source string can contain multiple).
     int stmt = 0;
-    int rc;
-    while ((rc = syntaqlite_parser_next(p)) != -1) {
+    for (;;) {
+        int32_t rc = syntaqlite_parser_next(p);
+        if (rc == SYNTAQLITE_PARSE_DONE)
+            break;
         stmt++;
-        if (rc != 0) {
+        if (rc == SYNTAQLITE_PARSE_ERROR) {
             fprintf(stderr, "error in statement %d: %s\n",
                 stmt, syntaqlite_result_error_msg(p));
             continue;
@@ -144,8 +146,8 @@ const SyntaqliteParserToken* tokens =
     syntaqlite_result_tokens(p, &count);
 for (uint32_t i = 0; i < count; i++) {
     printf("token %u: type=%u offset=%u len=%u\n",
-        i, tokens[i].token_type,
-        tokens[i].span.offset, tokens[i].span.length);
+        i, tokens[i].type,
+        tokens[i].offset, tokens[i].length);
 }
 ```
 

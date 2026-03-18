@@ -45,16 +45,12 @@ print(syntaqlite.format_sql(sql, line_width=40, indent_width=4, keyword_case="lo
 ```
 
 ```sql
-select
-    id,
-    name,
-    email
-from
-    users
+select id, name, email
+from users
 where
-    active = 1
+  active = 1
 order by
-    name;
+  name;
 ```
 
 ## 3. Validate against a schema
@@ -75,7 +71,7 @@ for d in result.diagnostics:
 ```
 
 ```text
-warning: unknown column 'nme'
+error: unknown column 'nme'
 ```
 
 You can also load schema directly from DDL:
@@ -98,8 +94,8 @@ print(syntaqlite.validate(
 ```
 
 ```text
-warning: unknown column 'nme'
- --> <expression>:1:8
+error: unknown column 'nme'
+ --> <input>:1:8
   |
 1 | SELECT nme FROM users WHERE active = 1
   |        ^~~
@@ -205,19 +201,21 @@ additions: 4, subtractions: 3
 ### Error recovery
 
 The parser recovers from errors and continues parsing. Error nodes are returned
-as plain dicts:
+alongside valid statements:
 
 ```python
+from syntaqlite.nodes import Error
+
 stmts = syntaqlite.parse("SELECT FROM; SELECT 1")
 for s in stmts:
-    if isinstance(s, dict):
-        print(f"error at offset {s['offset']}: {s['message']}")
+    if isinstance(s, Error):
+        print(f"error: {type(s).__name__}")
     else:
         print(f"ok: {type(s).__name__}")
 ```
 
 ```text
-error at offset 7: syntax error near 'FROM'
+error: Error
 ok: SelectStmt
 ```
 
@@ -232,6 +230,7 @@ for tok in syntaqlite.tokenize("SELECT 1"):
 
 ```text
   'SELECT'    offset=0  len=6
+  ' '         offset=6  len=1
   '1'         offset=7  len=1
 ```
 

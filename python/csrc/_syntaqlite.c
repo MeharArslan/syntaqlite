@@ -91,11 +91,6 @@ syntaqlite_py_parse(PyObject *self, PyObject *args)
 
             PyList_Append(result_list, err_dict);
             Py_DECREF(err_dict);
-
-            /* No recovery tree → stop */
-            uint32_t recovery = syntaqlite_result_recovery_root(p);
-            if (recovery == SYNTAQLITE_NULL_NODE)
-                break;
         }
     }
 

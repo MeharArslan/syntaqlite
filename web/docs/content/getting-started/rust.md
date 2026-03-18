@@ -57,8 +57,7 @@ calls.
 Now let's add schema validation. Update `src/main.rs`:
 
 ```rust
-use syntaqlite::{Formatter, SemanticAnalyzer, ValidationConfig};
-use syntaqlite::catalog::Catalog;
+use syntaqlite::{Catalog, Formatter, SemanticAnalyzer, ValidationConfig};
 
 fn main() {
     // Format
@@ -69,13 +68,15 @@ fn main() {
     println!("Formatted:\n{output}");
 
     // Validate
-    let analyzer = SemanticAnalyzer::new();
-    let mut catalog = Catalog::new(syntaqlite::sqlite_dialect().into());
+    let mut analyzer = SemanticAnalyzer::new();
 
-    // Register schema (CREATE TABLE statements) statements
+    // Register schema from CREATE TABLE statements
     let schema = "CREATE TABLE users (id INTEGER, name TEXT, email TEXT, active INTEGER);";
-    let model = analyzer.analyze(schema, &catalog, &ValidationConfig::default());
-    catalog.apply_ddl(&model);
+    let (catalog, errors) = Catalog::from_ddl(
+        syntaqlite::sqlite_dialect(),
+        &[(schema, None)],
+    );
+    assert!(errors.is_empty(), "Schema errors: {errors:?}");
 
     // Validate a query against the schema
     let config = ValidationConfig::default().with_strict_schema();
@@ -86,7 +87,7 @@ fn main() {
         println!("No errors found.");
     } else {
         for d in model.diagnostics() {
-            println!("{}: {}", d.severity(), d.message());
+            println!("{:?}: {}", d.severity(), d.message());
         }
     }
 }
@@ -102,7 +103,7 @@ cargo run
 Formatted:
 SELECT id, nme FROM users WHERE active = 1;
 
-error: unknown column 'nme'
+Error: unknown column 'nme'
 ```
 
 The validator caught the typo: `nme` should be `name`.

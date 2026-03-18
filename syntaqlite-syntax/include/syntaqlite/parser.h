@@ -28,14 +28,13 @@
 //       }
 //       case SYNTAQLITE_PARSE_ERROR: {
 //         fprintf(stderr, "%s\n", syntaqlite_result_error_msg(p));
-//         uint32_t recovery_root = syntaqlite_result_recovery_root(p);
-//         if (recovery_root == SYNTAQLITE_NULL_NODE)
-//           goto done;
+//         // syntaqlite_result_recovery_root(p) may return a partial AST,
+//         // or SYNTAQLITE_NULL_NODE if no recovery was possible. Either way,
+//         // keep looping — the parser will continue to the next statement.
 //         break;
 //       }
 //     }
 //   }
-// done:
 //   syntaqlite_parser_destroy(p);
 //
 // Token/comment capture is OFF by default. If you need
