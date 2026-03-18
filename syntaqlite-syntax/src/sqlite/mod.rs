@@ -4,9 +4,9 @@
 // `tokens` and `cflags` require the `sqlite-minimal` feature. The `sqlite`
 // feature implies `sqlite-minimal`, so these are available in both cases.
 #[cfg(feature = "sqlite-minimal")]
-pub(crate) mod tokens;
-#[cfg(feature = "sqlite-minimal")]
 pub(crate) mod cflags;
+#[cfg(feature = "sqlite-minimal")]
+pub(crate) mod tokens;
 
 #[cfg(feature = "sqlite")]
 pub(crate) mod ast;

@@ -32,6 +32,11 @@ fn main() {
         return;
     }
 
+    if env::var("CARGO_FEATURE_SQLITE_MINIMAL").is_err() {
+        // No parser features active (e.g. only embedded-sources) — nothing to compile.
+        return;
+    }
+
     // ── Grammar-agnostic engine sources ─────────────────────────────────
     //
     // Always compiled: tokenizer.c, parser.c (the runtime engine).

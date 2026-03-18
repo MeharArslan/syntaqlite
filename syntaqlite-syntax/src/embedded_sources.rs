@@ -15,36 +15,61 @@
 ///
 /// Keyed by filename (e.g. `"types.h"`).
 pub const RUNTIME_HEADERS: &[(&str, &str)] = &[
-    ("grammar.h",    include_str!("../include/syntaqlite/grammar.h")),
-    ("cflags.h",     include_str!("../include/syntaqlite/cflags.h")),
-    ("config.h",     include_str!("../include/syntaqlite/config.h")),
-    ("parser.h",     include_str!("../include/syntaqlite/parser.h")),
-    ("incremental.h",include_str!("../include/syntaqlite/incremental.h")),
-    ("tokenizer.h",  include_str!("../include/syntaqlite/tokenizer.h")),
-    ("types.h",      include_str!("../include/syntaqlite/types.h")),
+    ("grammar.h", include_str!("../include/syntaqlite/grammar.h")),
+    ("cflags.h", include_str!("../include/syntaqlite/cflags.h")),
+    ("config.h", include_str!("../include/syntaqlite/config.h")),
+    ("parser.h", include_str!("../include/syntaqlite/parser.h")),
+    (
+        "incremental.h",
+        include_str!("../include/syntaqlite/incremental.h"),
+    ),
+    (
+        "tokenizer.h",
+        include_str!("../include/syntaqlite/tokenizer.h"),
+    ),
+    ("types.h", include_str!("../include/syntaqlite/types.h")),
 ];
 
 /// Embedded `csrc/` runtime C sources and internal headers (top-level only).
 ///
 /// Keyed by filename (e.g. `"parser.c"`).
 pub const RUNTIME_CSRC: &[(&str, &str)] = &[
-    ("dialect_dispatch.h", include_str!("../csrc/dialect_dispatch.h")),
-    ("hashmap.h",          include_str!("../csrc/hashmap.h")),
-    ("parser.c",           include_str!("../csrc/parser.c")),
-    ("token_wrapped.c",    include_str!("../csrc/token_wrapped.c")),
-    ("token_wrapped.h",    include_str!("../csrc/token_wrapped.h")),
-    ("tokens.h",           include_str!("../csrc/tokens.h")),
-    ("tokenizer.c",        include_str!("../csrc/tokenizer.c")),
+    (
+        "dialect_dispatch.h",
+        include_str!("../csrc/dialect_dispatch.h"),
+    ),
+    ("hashmap.h", include_str!("../csrc/hashmap.h")),
+    ("parser.c", include_str!("../csrc/parser.c")),
+    ("token_wrapped.c", include_str!("../csrc/token_wrapped.c")),
+    ("token_wrapped.h", include_str!("../csrc/token_wrapped.h")),
+    ("tokenizer.c", include_str!("../csrc/tokenizer.c")),
+    // NOTE: csrc/tokens.h is generated — it is written into the amalgamation
+    // temp directory by the dialect codegen pipeline, not embedded here.
 ];
 
 /// Embedded `include/syntaqlite_dialect/` extension SPI headers.
 ///
 /// Keyed by filename (e.g. `"arena.h"`).
 pub const DIALECT_EXT_HEADERS: &[(&str, &str)] = &[
-    ("arena.h",          include_str!("../include/syntaqlite_dialect/arena.h")),
-    ("ast_builder.h",    include_str!("../include/syntaqlite_dialect/ast_builder.h")),
-    ("dialect_macros.h", include_str!("../include/syntaqlite_dialect/dialect_macros.h")),
-    ("dialect_types.h",  include_str!("../include/syntaqlite_dialect/dialect_types.h")),
-    ("sqlite_compat.h",  include_str!("../include/syntaqlite_dialect/sqlite_compat.h")),
-    ("vec.h",            include_str!("../include/syntaqlite_dialect/vec.h")),
+    (
+        "arena.h",
+        include_str!("../include/syntaqlite_dialect/arena.h"),
+    ),
+    (
+        "ast_builder.h",
+        include_str!("../include/syntaqlite_dialect/ast_builder.h"),
+    ),
+    (
+        "dialect_macros.h",
+        include_str!("../include/syntaqlite_dialect/dialect_macros.h"),
+    ),
+    (
+        "dialect_types.h",
+        include_str!("../include/syntaqlite_dialect/dialect_types.h"),
+    ),
+    (
+        "sqlite_compat.h",
+        include_str!("../include/syntaqlite_dialect/sqlite_compat.h"),
+    ),
+    ("vec.h", include_str!("../include/syntaqlite_dialect/vec.h")),
 ];

@@ -19,6 +19,7 @@
 // ==== Public API ====
 
 // Top level parser types.
+#[cfg(feature = "sqlite-minimal")]
 #[doc(inline)]
 pub use parser::ParserConfig;
 #[cfg(feature = "sqlite")]
@@ -28,6 +29,7 @@ pub use parser::{
 };
 
 // Token/comment data types shared across grammars.
+#[cfg(feature = "sqlite-minimal")]
 #[doc(inline)]
 pub use parser::{Comment, CommentKind, CommentSpan, CompletionContext, ParserTokenFlags};
 
@@ -43,6 +45,7 @@ pub use tokenizer::{Token, Tokenizer};
 ///
 /// Reach for this module when you need to pin parser behavior to a target
 /// `SQLite` release or inspect feature-flag state.
+#[cfg(feature = "sqlite-minimal")]
 pub mod util;
 
 /// Type-erased variants of every parser and tokenizer type.
@@ -72,6 +75,7 @@ pub mod util;
 /// with raw `u32` ordinals. You lose exhaustive `match` on token kinds and
 /// the typed accessor methods on AST nodes. Prefer the typed API whenever the
 /// grammar is known statically.
+#[cfg(feature = "sqlite-minimal")]
 pub mod any {
     #[doc(inline)]
     pub use crate::ast::{AnyNode, AnyNodeId, AnyNodeTag, AnyTokenType, FieldValue, NodeFields};
@@ -106,6 +110,7 @@ pub mod any {
 /// If you need to write code that works across grammars without grammar-specific
 /// types, use [`any`] instead, which provides type-erased equivalents that are
 /// far easier to work with.
+#[cfg(feature = "sqlite-minimal")]
 pub mod typed {
     #[doc(inline)]
     pub use crate::ast::{GrammarNodeType, GrammarTokenType, TypedNodeId, TypedNodeList};
@@ -157,9 +162,13 @@ pub use parser::IncrementalParseSession;
 
 // ==== Internal modules ====
 
+#[cfg(feature = "sqlite-minimal")]
 pub(crate) mod ast;
+#[cfg(feature = "sqlite-minimal")]
 mod grammar;
+#[cfg(feature = "sqlite-minimal")]
 pub(crate) mod parser;
+#[cfg(feature = "sqlite-minimal")]
 pub(crate) mod tokenizer;
 
 #[cfg(feature = "sqlite-minimal")]
