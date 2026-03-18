@@ -34,40 +34,40 @@ jobs:
   build-wheels:
     name: Build wheel (${{ matrix.target }}, ${{ matrix.python-tag || 'cli-only' }})
     if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           # --- Wheels with C extension (5 platforms × 4 Python versions = 20) ---
-          # aarch64-apple-darwin
-          - {target: aarch64-apple-darwin, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp310}
-          - {target: aarch64-apple-darwin, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp311}
-          - {target: aarch64-apple-darwin, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp312}
-          - {target: aarch64-apple-darwin, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp313}
+          # aarch64-apple-darwin (macos-latest is ARM64)
+          - {target: aarch64-apple-darwin, runner: macos-latest, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp310}
+          - {target: aarch64-apple-darwin, runner: macos-latest, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp311}
+          - {target: aarch64-apple-darwin, runner: macos-latest, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp312}
+          - {target: aarch64-apple-darwin, runner: macos-latest, archive: syntaqlite-macos-arm64.tar.gz, binary: syntaqlite, python-tag: cp313}
           # x86_64-apple-darwin
-          - {target: x86_64-apple-darwin, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp310}
-          - {target: x86_64-apple-darwin, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp311}
-          - {target: x86_64-apple-darwin, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp312}
-          - {target: x86_64-apple-darwin, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp313}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp310}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp311}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp312}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, archive: syntaqlite-macos-x64.tar.gz, binary: syntaqlite, python-tag: cp313}
           # x86_64-unknown-linux-gnu
-          - {target: x86_64-unknown-linux-gnu, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp310}
-          - {target: x86_64-unknown-linux-gnu, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp311}
-          - {target: x86_64-unknown-linux-gnu, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp312}
-          - {target: x86_64-unknown-linux-gnu, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp313}
-          # aarch64-unknown-linux-gnu
-          - {target: aarch64-unknown-linux-gnu, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp310}
-          - {target: aarch64-unknown-linux-gnu, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp311}
-          - {target: aarch64-unknown-linux-gnu, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp312}
-          - {target: aarch64-unknown-linux-gnu, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp313}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp310}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp311}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp312}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-x64.tar.gz, binary: syntaqlite, python-tag: cp313}
+          # aarch64-unknown-linux-gnu (cross-compiled, no native runner)
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp310}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp311}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp312}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-latest, archive: syntaqlite-linux-arm64.tar.gz, binary: syntaqlite, python-tag: cp313}
           # x86_64-pc-windows-msvc
-          - {target: x86_64-pc-windows-msvc, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp310}
-          - {target: x86_64-pc-windows-msvc, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp311}
-          - {target: x86_64-pc-windows-msvc, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp312}
-          - {target: x86_64-pc-windows-msvc, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp313}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp310}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp311}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp312}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, archive: syntaqlite-windows-x64.zip, binary: syntaqlite.exe, python-tag: cp313}
           # --- CLI-only wheel (no C extension available) ---
-          - {target: aarch64-pc-windows-msvc, archive: syntaqlite-windows-arm64.zip, binary: syntaqlite.exe}
+          - {target: aarch64-pc-windows-msvc, runner: ubuntu-latest, archive: syntaqlite-windows-arm64.zip, binary: syntaqlite.exe}
 
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
 
@@ -160,7 +160,7 @@ jobs:
             --out dist/
 
       - name: Smoke test wheel
-        if: matrix.python-tag && !contains(matrix.target, 'windows') && !contains(matrix.target, 'aarch64')
+        if: matrix.python-tag && !contains(matrix.target, 'aarch64-unknown-linux') && !contains(matrix.target, 'aarch64-pc-windows')
         run: |
           pip install dist/*.whl
           python -c "from syntaqlite import format_sql; assert 'SELECT' in format_sql('select 1')"
