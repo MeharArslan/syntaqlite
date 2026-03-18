@@ -208,7 +208,6 @@ jobs:
   # Includes native platforms + Pyodide (WASM).
   build-python-wheels:
     name: python-wheels (${{ matrix.os }}, ${{ matrix.cibw_archs }})
-    if: ${{ !github.event.pull_request }}
     strategy:
       fail-fast: false
       matrix:
