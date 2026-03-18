@@ -27,22 +27,27 @@ jobs:
         include:
           - vscode-target: darwin-arm64
             rust-target: aarch64-apple-darwin
+            build-name: macos-arm64
             runner: macos-14
             binary: syntaqlite
           - vscode-target: darwin-x64
             rust-target: x86_64-apple-darwin
+            build-name: macos-x64
             runner: macos-14
             binary: syntaqlite
           - vscode-target: linux-x64
             rust-target: x86_64-unknown-linux-gnu
+            build-name: linux-x64
             runner: ubuntu-latest
             binary: syntaqlite
           - vscode-target: linux-arm64
             rust-target: aarch64-unknown-linux-gnu
+            build-name: linux-arm64
             runner: ubuntu-latest
             binary: syntaqlite
           - vscode-target: win32-x64
             rust-target: x86_64-pc-windows-msvc
+            build-name: windows-x64
             runner: windows-latest
             binary: syntaqlite.exe
 
@@ -56,8 +61,8 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         uses: actions/download-artifact@v7
         with:
-          name: artifacts-build-local-${{ matrix.rust-target }}
-          path: artifacts/
+          name: cli-${{ matrix.build-name }}
+          path: archives/
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -65,16 +70,14 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         shell: bash
         run: |
-          mkdir -p extracted/
-          ARCHIVE=$(find artifacts/ -name "syntaqlite-cli-${{ matrix.rust-target }}.*" | head -1)
+          mkdir -p target/${{ matrix.rust-target }}/release/
+          ARCHIVE=$(find archives/ -name "syntaqlite-${{ matrix.build-name }}.*" | head -1)
           echo "Found archive: $ARCHIVE"
           if [[ "$ARCHIVE" == *.zip ]]; then
-            unzip "$ARCHIVE" -d extracted/
+            unzip "$ARCHIVE" -d target/${{ matrix.rust-target }}/release/
           else
-            tar -xf "$ARCHIVE" -C extracted/
+            tar -xf "$ARCHIVE" -C target/${{ matrix.rust-target }}/release/
           fi
-          mkdir -p target/${{ matrix.rust-target }}/release/
-          find extracted/ -name "${{ matrix.binary }}" -exec cp {} target/${{ matrix.rust-target }}/release/ \;
           chmod +x target/${{ matrix.rust-target }}/release/${{ matrix.binary }}
 
       - name: Build CLI from source (manual dispatch)
