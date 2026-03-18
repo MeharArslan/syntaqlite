@@ -351,58 +351,12 @@ jobs:
           name: wheel-aarch64-pc-windows-msvc-cli
           path: dist/*.whl
 
-  # Pyodide (WASM) wheel — extension-only, no CLI binary.
-  # Cross-compiles Rust to wasm32-unknown-emscripten, then builds the C
-  # extension with emcc and packages a wheel for Pyodide.
-  build-python-wheel-pyodide:
-    name: python-wheel (wasm32, pyodide)
-    runs-on: ubuntu-latest
-    env:
-      EMSCRIPTEN_VERSION: "3.1.58"
-      PYTHON_VERSION: "3.12"
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-          submodules: recursive
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Emscripten SDK
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: ${{ env.EMSCRIPTEN_VERSION }}
-
-      - name: Install Rust wasm32-unknown-emscripten target
-        run: rustup target add wasm32-unknown-emscripten
-
-      - name: Build Rust static library for wasm32
-        run: cargo build -p syntaqlite --release --target wasm32-unknown-emscripten
-
-      - name: Install pyodide-build
-        run: pip install pyodide-build
-
-      - name: Build Pyodide wheel
-        working-directory: python
-        env:
-          SYNTAQLITE_STATIC_LIB: ${{ github.workspace }}/target/wasm32-unknown-emscripten/release/libsyntaqlite.a
-        run: pyodide build
-
-      - name: Upload wheel
-        uses: actions/upload-artifact@v6
-        with:
-          name: wheel-pyodide
-          path: python/dist/*.whl
-
   # Publish all wheels to PyPI in a single job.
   publish-pypi:
     name: Publish to PyPI
     needs:
       - build-python-wheel
       - build-python-wheel-cli-only
-      - build-python-wheel-pyodide
     if: ${{ !github.event.pull_request }}
     runs-on: ubuntu-latest
     environment: pypi

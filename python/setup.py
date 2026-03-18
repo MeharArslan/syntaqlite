@@ -15,8 +15,8 @@ from setuptools import Extension, setup
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Allow overriding the static library path via env var (for cross-compilation,
-# e.g. Pyodide/Emscripten builds where the lib is pre-built for wasm32).
+# Allow overriding the static library path via env var (for cross-compilation
+# where the lib is pre-built for a different target).
 _lib_override = os.environ.get("SYNTAQLITE_STATIC_LIB")
 if _lib_override:
     STATIC_LIB = Path(_lib_override)
