@@ -212,7 +212,7 @@ cargo install syntaqlite-cli
 syntaqlite = { version = "0.2.5", features = ["fmt"] }
 ```
 
-**Python** ([API docs](python/README.md))
+**Python** ([API docs](https://docs.syntaqlite.com/main/reference/python-api/))
 
 ```bash
 pip install syntaqlite

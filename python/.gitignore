@@ -1,0 +1,16 @@
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.so
+*.egg-info/
+build/
+dist/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+
+# pytest
+.pytest_cache/

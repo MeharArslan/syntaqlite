@@ -7,7 +7,7 @@
 use std::fmt::Write as _;
 
 use crate::util::text_writer::TextWriterCore;
-use crate::util::upper_snake;
+use crate::util::{pascal_to_snake, upper_snake};
 
 use super::AstModel;
 
@@ -18,6 +18,8 @@ pub(crate) struct PythonCodegenArtifacts {
     pub enums: String,
     /// C header with `syntaqlite_py_wrap_node()` (`_py_ast_wrap.h`).
     pub ast_wrap_h: String,
+    /// Typed AST node classes (`_nodes.py`).
+    pub nodes: String,
 }
 
 /// Generate Python binding artifacts from an `AstModel`.
@@ -25,6 +27,7 @@ pub(crate) fn generate_python_artifacts(model: &AstModel<'_>) -> PythonCodegenAr
     PythonCodegenArtifacts {
         enums: model.generate_python_enums(),
         ast_wrap_h: model.generate_python_c_wrap(),
+        nodes: model.generate_python_nodes(),
     }
 }
 
@@ -138,6 +141,198 @@ impl AstModel<'_> {
     }
 }
 
+// ── Nodes codegen ─────────────────────────────────────────────────────
+
+impl AstModel<'_> {
+    /// Generate `_nodes.py` with typed `__slots__` classes for every AST node.
+    pub(crate) fn generate_python_nodes(&self) -> String {
+        use std::collections::HashMap;
+
+        let enum_names = self.enum_names();
+        let flags_names = self.flags_names();
+        let list_names = self.list_names();
+
+        // Map list name → child type for annotation purposes.
+        let list_child: HashMap<&str, &str> = self
+            .lists()
+            .iter()
+            .map(|l| (l.name, l.child_type))
+            .collect();
+
+        let mut w = PyWriter::new();
+        w.file_header();
+
+        w.line("from __future__ import annotations");
+        w.newline();
+
+        // Collect enum/flag imports.
+        let mut imports: Vec<&str> = Vec::new();
+        for e in self.enums() {
+            imports.push(e.name);
+        }
+        for f in self.flags() {
+            imports.push(f.name);
+        }
+        if !imports.is_empty() {
+            imports.sort_unstable();
+            let joined = imports.join(", ");
+            let _ = writeln!(w, "from ._enums import {joined}");
+        }
+        w.newline();
+        w.newline();
+
+        // Generate a class for each concrete node.
+        for node in self.nodes() {
+            emit_node_class(
+                &mut w,
+                node,
+                enum_names,
+                flags_names,
+                list_names,
+                &list_child,
+            );
+            w.newline();
+            w.newline();
+        }
+
+        // _NODE_MAP dispatch table.
+        w.line("_NODE_MAP: dict[str, type] = {");
+        w.indent();
+        for node in self.nodes() {
+            let _ = writeln!(w, "\"{}\": {},", node.name, node.name);
+        }
+        w.dedent();
+        w.line("}");
+        w.newline();
+        w.newline();
+
+        // _wrap dispatch function.
+        w.line("def _wrap(d):");
+        w.indent();
+        w.line("\"\"\"Wrap a raw dict (or list/None) into a typed AST node.\"\"\"");
+        w.line("if d is None:");
+        w.indent();
+        w.line("return None");
+        w.dedent();
+        w.line("if isinstance(d, list):");
+        w.indent();
+        w.line("return [_wrap(x) for x in d]");
+        w.dedent();
+        w.line("cls = _NODE_MAP.get(d[\"type\"])");
+        w.line("if cls is not None:");
+        w.indent();
+        w.line("return cls(d)");
+        w.dedent();
+        w.line("return d");
+        w.dedent();
+
+        w.finish()
+    }
+}
+
+/// Emit a single node class.
+fn emit_node_class(
+    w: &mut PyWriter,
+    node: &super::NodeRef<'_>,
+    enum_names: &std::collections::HashSet<&str>,
+    flags_names: &std::collections::HashSet<&str>,
+    list_names: &std::collections::HashSet<&str>,
+    list_child: &std::collections::HashMap<&str, &str>,
+) {
+    let name = node.name;
+
+    // class header
+    let _ = writeln!(w, "class {name}:");
+    w.indent();
+    let _ = writeln!(w, "\"\"\"AST node: {name}\"\"\"");
+    w.newline();
+
+    // __slots__
+    if node.fields.is_empty() {
+        w.line("__slots__ = ()");
+    } else {
+        let slot_names: Vec<String> = node
+            .fields
+            .iter()
+            .map(|f| format!("\"{}\"", pascal_to_snake(&f.name)))
+            .collect();
+        let _ = writeln!(w, "__slots__ = ({})", slot_names.join(", "));
+    }
+    w.newline();
+
+    // __init__
+    w.line("def __init__(self, d: dict):");
+    w.indent();
+    if node.fields.is_empty() {
+        w.line("pass");
+    } else {
+        for field in node.fields {
+            let py_name = pascal_to_snake(&field.name);
+            let (annotation, expr) = field_type_and_expr(
+                &py_name,
+                field,
+                enum_names,
+                flags_names,
+                list_names,
+                list_child,
+            );
+            let _ = writeln!(w, "self.{py_name}: {annotation} = {expr}");
+        }
+    }
+    w.dedent();
+    w.newline();
+
+    // __repr__
+    w.line("def __repr__(self):");
+    w.indent();
+    let _ = writeln!(w, "return \"{name}(...)\"");
+    w.dedent();
+
+    w.dedent();
+}
+
+/// Return `(type_annotation, init_expression)` for a field.
+fn field_type_and_expr(
+    py_name: &str,
+    field: &crate::util::synq_parser::Field,
+    enum_names: &std::collections::HashSet<&str>,
+    flags_names: &std::collections::HashSet<&str>,
+    list_names: &std::collections::HashSet<&str>,
+    list_child: &std::collections::HashMap<&str, &str>,
+) -> (String, String) {
+    use crate::util::synq_parser::Storage;
+
+    match field.storage {
+        Storage::Index => {
+            let t = &field.type_name;
+            if list_names.contains(t.as_str()) {
+                let child = list_child.get(t.as_str()).copied().unwrap_or("object");
+                (
+                    format!("list[{child}] | None"),
+                    format!("_wrap(d.get(\"{py_name}\"))"),
+                )
+            } else {
+                (
+                    format!("{t} | None"),
+                    format!("_wrap(d.get(\"{py_name}\"))"),
+                )
+            }
+        }
+        Storage::Inline => {
+            let t = &field.type_name;
+            if t == "Bool" {
+                ("bool".to_string(), format!("d[\"{py_name}\"]"))
+            } else if t == "SyntaqliteSourceSpan" {
+                ("str | None".to_string(), format!("d.get(\"{py_name}\")"))
+            } else if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
+                (t.clone(), format!("{t}(d[\"{py_name}\"])"))
+            } else {
+                ("object".to_string(), format!("d.get(\"{py_name}\")"))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::dialect_codegen::AstModel;
@@ -161,6 +356,105 @@ mod tests {
         assert!(
             enums.contains("class SelectStmtFlags(IntFlag):"),
             "flags\n{enums}"
+        );
+    }
+
+    #[test]
+    fn nodes_py_basic() {
+        let items = parse_synq_file(
+            r"
+            enum SortOrder { ASC DESC }
+            flags SelectStmtFlags { DISTINCT = 1 }
+            node Foo { x: inline Bool  y: inline SyntaqliteSourceSpan }
+            node Bar { child: index Foo  order: inline SortOrder }
+            list FooList { Foo }
+            node Baz { items: index FooList  flags: inline SelectStmtFlags }
+            ",
+        )
+        .unwrap();
+        let model = AstModel::new(&items);
+        let nodes = model.generate_python_nodes();
+
+        // File structure.
+        assert!(
+            nodes.contains("from __future__ import annotations"),
+            "{nodes}"
+        );
+        assert!(nodes.contains("from ._enums import"), "{nodes}");
+
+        // Node classes.
+        assert!(nodes.contains("class Foo:"), "{nodes}");
+        assert!(nodes.contains("class Bar:"), "{nodes}");
+        assert!(nodes.contains("class Baz:"), "{nodes}");
+
+        // Bool field.
+        assert!(nodes.contains("self.x: bool = d[\"x\"]"), "{nodes}");
+
+        // Span field.
+        assert!(
+            nodes.contains("self.y: str | None = d.get(\"y\")"),
+            "{nodes}"
+        );
+
+        // Index to concrete node.
+        assert!(
+            nodes.contains("self.child: Foo | None = _wrap(d.get(\"child\"))"),
+            "{nodes}"
+        );
+
+        // Enum field.
+        assert!(
+            nodes.contains("self.order: SortOrder = SortOrder(d[\"order\"])"),
+            "{nodes}"
+        );
+
+        // List-typed field.
+        assert!(
+            nodes.contains("self.items: list[Foo] | None = _wrap(d.get(\"items\"))"),
+            "{nodes}"
+        );
+
+        // Flags field.
+        assert!(
+            nodes.contains("self.flags: SelectStmtFlags = SelectStmtFlags(d[\"flags\"])"),
+            "{nodes}"
+        );
+
+        // _NODE_MAP.
+        assert!(nodes.contains("\"Foo\": Foo,"), "{nodes}");
+        assert!(nodes.contains("\"Bar\": Bar,"), "{nodes}");
+
+        // _wrap function.
+        assert!(nodes.contains("def _wrap(d):"), "{nodes}");
+    }
+
+    #[test]
+    fn nodes_py_from_real_synq() {
+        let base_synq = crate::base_files::base_synq_files();
+        let mut all_items = Vec::new();
+        for (name, content) in base_synq {
+            let items =
+                parse_synq_file(content).unwrap_or_else(|e| panic!("parse {name} failed: {e}"));
+            all_items.extend(items);
+        }
+        let model = AstModel::new(&all_items);
+        let nodes = model.generate_python_nodes();
+
+        assert!(
+            nodes.contains("class SelectStmt:"),
+            "missing SelectStmt\n{nodes}"
+        );
+        assert!(
+            nodes.contains("self.from_clause: TableSource | None"),
+            "missing from_clause\n{nodes}"
+        );
+        assert!(
+            nodes.contains("self.columns: list[ResultColumn] | None"),
+            "missing columns\n{nodes}"
+        );
+        assert!(
+            nodes.contains("\"SelectStmt\": SelectStmt,"),
+            "missing _NODE_MAP entry\n{nodes}"
         );
     }
 

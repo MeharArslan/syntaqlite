@@ -46,7 +46,7 @@ syntaqlite.format_sql(sql, *, line_width=80, indent_width=2, keyword_case="upper
 
 ## `syntaqlite.parse`
 
-Parse SQL into a list of AST node dicts.
+Parse SQL into a list of typed AST nodes.
 
 ```python
 syntaqlite.parse(sql)
@@ -56,14 +56,38 @@ syntaqlite.parse(sql)
 |-----------|------|-------------|
 | `sql` | `str` | SQL to parse (may contain multiple statements) |
 
-**Returns:** `list[dict]`. One entry per statement. Each dict has:
+**Returns:** `list`. One typed AST node per statement. Each node is a
+`__slots__` class (e.g. `SelectStmt`, `CreateTableStmt`) with typed attributes:
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `type` | `str` | Node type name (e.g. `"SelectStmt"`, `"CreateTableStmt"`) |
-| *(fields)* | `dict \| list \| str \| int \| bool` | Fields vary by node type, keyed by snake_case name |
+```python
+>>> stmt = syntaqlite.parse("SELECT 1 + 2 FROM foo")[0]
+>>> type(stmt).__name__
+'SelectStmt'
+>>> stmt.columns[0].expr
+BinaryExpr(...)
+>>> stmt.from_clause
+TableRef(...)
+>>> stmt.where_clause is None
+True
+```
 
-On parse error, the entry is an error dict:
+Enum and flag fields are wrapped as `IntEnum`/`IntFlag` from `syntaqlite._enums`:
+
+```python
+>>> from syntaqlite._enums import BinaryOp
+>>> BinaryOp(stmt.columns[0].expr.op).name
+'PLUS'
+```
+
+Node classes support `isinstance` checks:
+
+```python
+>>> from syntaqlite._nodes import SelectStmt, BinaryExpr
+>>> isinstance(stmt, SelectStmt)
+True
+```
+
+On parse error, the entry is a plain dict (not wrapped):
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -74,11 +98,15 @@ On parse error, the entry is an error dict:
 
 The parser recovers from errors and continues parsing subsequent statements.
 
+### Raw dict access
+
+For performance-sensitive code, use `syntaqlite._parse_raw()` to skip the
+wrapping and get plain dicts:
+
 ```python
->>> syntaqlite.parse("SELECT 1")[0]["type"]
+>>> from syntaqlite._syntaqlite import parse as parse_raw
+>>> parse_raw("SELECT 1")[0]["type"]
 'SelectStmt'
->>> syntaqlite.parse("SELECT FROM")[0]["type"]
-'Error'
 ```
 
 ## `syntaqlite.validate`

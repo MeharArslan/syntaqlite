@@ -38,12 +38,47 @@ Raises `syntaqlite.FormatError` on invalid input.
 
 ### Parsing
 
-`syntaqlite.parse()` returns a full AST as nested dicts, one per statement:
+`syntaqlite.parse()` returns a full AST as typed Python objects, one per statement:
 
 ```python
-import syntaqlite, json
+import syntaqlite
 
-stmts = syntaqlite.parse("SELECT 1 + 2; SELECT 3")
+stmts = syntaqlite.parse("SELECT 1 + 2 FROM foo")
+stmt = stmts[0]  # SelectStmt
+
+print(type(stmt).__name__)       # SelectStmt
+print(stmt.columns[0].expr)      # BinaryExpr(...)
+print(stmt.from_clause)          # TableRef(...)
+print(stmt.where_clause)         # None
+```
+
+Every node type is a `__slots__` class with typed attributes, so you get IDE
+autocomplete and `isinstance` checks:
+
+```python
+from syntaqlite._nodes import SelectStmt, BinaryExpr
+
+assert isinstance(stmt, SelectStmt)
+assert isinstance(stmt.columns[0].expr, BinaryExpr)
+```
+
+Enum and flag fields are wrapped as `IntEnum`/`IntFlag` from `syntaqlite._enums`:
+
+```python
+from syntaqlite._enums import BinaryOp
+
+expr = stmt.columns[0].expr
+print(BinaryOp(expr.op).name)  # PLUS
+```
+
+For performance-sensitive code, use `syntaqlite._parse_raw()` to get plain dicts
+instead of typed objects:
+
+```python
+from syntaqlite._syntaqlite import parse as parse_raw
+import json
+
+stmts = parse_raw("SELECT 1 + 2; SELECT 3")
 print(json.dumps(stmts[0], indent=2))
 ```
 ```json

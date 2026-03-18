@@ -138,43 +138,82 @@ for rel in result.lineage.relations:
 
 ## 4. Parse and inspect the AST
 
+`syntaqlite.parse()` returns typed Python objects. Each statement is a class
+with named attributes — you get IDE autocomplete and `isinstance` checks instead
+of string-keyed dict access:
+
 ```python
 import syntaqlite
 
-stmts = syntaqlite.parse("SELECT 1 + 2; SELECT 'hello'")
-for i, stmt in enumerate(stmts):
-    print(f"--- statement {i + 1}: {stmt['type']} ---")
+stmt = syntaqlite.parse("SELECT id, name FROM users WHERE active = 1")[0]
+
+print(type(stmt).__name__)       # SelectStmt
+print(stmt.from_clause)          # TableRef(...)
+print(stmt.where_clause)         # BinaryExpr(...)
+
+for col in stmt.columns:
+    print(f"  {type(col.expr).__name__}: {col.expr.column}")
 ```
 
 ```text
---- statement 1: SelectStmt ---
---- statement 2: SelectStmt ---
-```
-
-Each statement is a nested dict. Fields use snake_case names, child nodes are
-nested dicts, and lists are Python lists:
-
-```python
-stmt = syntaqlite.parse("SELECT id, name FROM users")[0]
-for col in stmt["columns"]:
-    expr = col["expr"]
-    print(f"  {expr['type']}: {expr.get('column', expr.get('value'))}")
-```
-
-```text
+SelectStmt
+TableRef(...)
+BinaryExpr(...)
   ColumnRef: id
   ColumnRef: name
 ```
 
-Parse errors appear as dicts with `type: "Error"`:
+### Walking the AST
+
+Because nodes are typed, you can write recursive visitors with `isinstance`.
+Here's a function that counts arithmetic operators in a query:
+
+```python
+import syntaqlite
+from syntaqlite._nodes import BinaryExpr
+from syntaqlite._enums import BinaryOp
+
+def count_ops(node, target_ops):
+    """Walk an AST node tree and count specific binary operators."""
+    count = 0
+    if isinstance(node, BinaryExpr):
+        if BinaryOp(node.op) in target_ops:
+            count += 1
+        count += count_ops(node.left, target_ops)
+        count += count_ops(node.right, target_ops)
+    return count
+
+sql = "SELECT a + b - c, d - e + f + g FROM t WHERE x - 1 > y + 2"
+stmt = syntaqlite.parse(sql)[0]
+
+adds = 0
+subs = 0
+for col in stmt.columns:
+    adds += count_ops(col.expr, {BinaryOp.PLUS})
+    subs += count_ops(col.expr, {BinaryOp.MINUS})
+if stmt.where_clause:
+    adds += count_ops(stmt.where_clause, {BinaryOp.PLUS})
+    subs += count_ops(stmt.where_clause, {BinaryOp.MINUS})
+
+print(f"additions: {adds}, subtractions: {subs}")
+```
+
+```text
+additions: 4, subtractions: 3
+```
+
+### Error recovery
+
+The parser recovers from errors and continues parsing. Error nodes are returned
+as plain dicts:
 
 ```python
 stmts = syntaqlite.parse("SELECT FROM; SELECT 1")
 for s in stmts:
-    if s["type"] == "Error":
+    if isinstance(s, dict):
         print(f"error at offset {s['offset']}: {s['message']}")
     else:
-        print(f"ok: {s['type']}")
+        print(f"ok: {type(s).__name__}")
 ```
 
 ```text
