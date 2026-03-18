@@ -445,7 +445,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12", "3.13"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         platform:
           - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, lib-name: macos-arm64}
           - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, lib-name: macos-x64}

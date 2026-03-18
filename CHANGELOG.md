@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.10
+
+- Added Python 3.14 wheel support.
+- Fixed PyPI publishing (wheels were not uploaded for 0.2.1–0.2.9).
+
 ## 0.2.9
 
 - No user-visible changes (release pipeline consolidation).
