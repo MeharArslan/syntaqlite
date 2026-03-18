@@ -356,11 +356,9 @@ jobs:
   # extension with emcc and packages a wheel for Pyodide.
   build-python-wheel-pyodide:
     name: python-wheel (wasm32, pyodide)
-    if: ${{ !github.event.pull_request }}
     runs-on: ubuntu-latest
     env:
-      PYODIDE_VERSION: "0.27.5"
-      EMSCRIPTEN_VERSION: "3.1.73"
+      EMSCRIPTEN_VERSION: "3.1.58"
       PYTHON_VERSION: "3.12"
     steps:
       - uses: actions/checkout@v6
@@ -384,7 +382,7 @@ jobs:
         run: cargo build -p syntaqlite --release --target wasm32-unknown-emscripten
 
       - name: Install pyodide-build
-        run: pip install pyodide-build==${{ env.PYODIDE_VERSION }}
+        run: pip install pyodide-build
 
       - name: Build Pyodide wheel
         working-directory: python

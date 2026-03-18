@@ -41,7 +41,7 @@ PLATFORM_TAGS: dict[str, str] = {
     "aarch64-unknown-linux-gnu": "manylinux_2_17_aarch64.manylinux2014_aarch64",
     "x86_64-pc-windows-msvc": "win_amd64",
     "aarch64-pc-windows-msvc": "win_arm64",
-    "wasm32-unknown-emscripten": "emscripten_3_1_73_wasm32",
+    "wasm32-unknown-emscripten": "emscripten_3_1_58_wasm32",
 }
 
 
