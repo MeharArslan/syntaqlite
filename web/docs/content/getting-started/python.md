@@ -170,8 +170,8 @@ Here's a function that counts arithmetic operators in a query:
 
 ```python
 import syntaqlite
-from syntaqlite._nodes import BinaryExpr
-from syntaqlite._enums import BinaryOp
+from syntaqlite.nodes import BinaryExpr
+from syntaqlite.enums import BinaryOp
 
 def count_ops(node, target_ops):
     """Walk an AST node tree and count specific binary operators."""

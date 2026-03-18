@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ._enums import AggregateFunctionCallFlags, AlterOp, AnalyzeOrReindexOp, BinaryOp, Bool, ColumnConstraintType, CompoundOp, ConflictAction, CreateTableStmtFlags, DropObjectType, ExplainMode, ForeignKeyAction, FrameBoundType, FrameExclude, FrameType, FunctionCallFlags, GeneratedColumnStorage, IndexHint, IsOp, JoinType, LikeKeyword, LiteralType, Materialized, NullsOrder, PragmaForm, RaiseType, ResultColumnFlags, SavepointOp, SelectStmtFlags, SortOrder, TableConstraintType, TransactionOp, TransactionType, TriggerEventType, TriggerTiming, UnaryOp, UpsertAction
+from .enums import AggregateFunctionCallFlags, AlterOp, AnalyzeOrReindexOp, BinaryOp, Bool, ColumnConstraintType, CompoundOp, ConflictAction, CreateTableStmtFlags, DropObjectType, ExplainMode, ForeignKeyAction, FrameBoundType, FrameExclude, FrameType, FunctionCallFlags, GeneratedColumnStorage, IndexHint, IsOp, JoinType, LikeKeyword, LiteralType, Materialized, NullsOrder, PragmaForm, RaiseType, ResultColumnFlags, SavepointOp, SelectStmtFlags, SortOrder, TableConstraintType, TransactionOp, TransactionType, TriggerEventType, TriggerTiming, UnaryOp, UpsertAction
 
 
 class AggregateFunctionCall:

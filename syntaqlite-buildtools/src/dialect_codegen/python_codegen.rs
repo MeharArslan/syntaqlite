@@ -1,7 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Python codegen: generates `_enums.py` (IntEnum/IntFlag types) and
+//! Python codegen: generates `enums.py` (IntEnum/IntFlag types),
+//! `nodes.py` (typed AST node classes), and
 //! `_py_ast_wrap.h` (C function for building Python dicts from AST nodes).
 
 use std::fmt::Write as _;
@@ -14,11 +15,11 @@ use super::AstModel;
 // ── Public API ───────────────────────────────────────────────────────────
 
 pub(crate) struct PythonCodegenArtifacts {
-    /// IntEnum/IntFlag types (`_enums.py`).
+    /// IntEnum/IntFlag types (`enums.py`).
     pub enums: String,
     /// C header with `syntaqlite_py_wrap_node()` (`_py_ast_wrap.h`).
     pub ast_wrap_h: String,
-    /// Typed AST node classes (`_nodes.py`).
+    /// Typed AST node classes (`nodes.py`).
     pub nodes: String,
 }
 
@@ -87,7 +88,7 @@ impl std::fmt::Write for PyWriter {
 // ── Enums codegen ────────────────────────────────────────────────────────
 
 impl AstModel<'_> {
-    /// Generate `_enums.py` with IntEnum/IntFlag types.
+    /// Generate `enums.py` with IntEnum/IntFlag types.
     pub(crate) fn generate_python_enums(&self) -> String {
         let mut w = PyWriter::new();
         w.file_header();
@@ -144,7 +145,7 @@ impl AstModel<'_> {
 // ── Nodes codegen ─────────────────────────────────────────────────────
 
 impl AstModel<'_> {
-    /// Generate `_nodes.py` with typed `__slots__` classes for every AST node.
+    /// Generate `nodes.py` with typed `__slots__` classes for every AST node.
     pub(crate) fn generate_python_nodes(&self) -> String {
         use std::collections::HashMap;
 
@@ -176,7 +177,7 @@ impl AstModel<'_> {
         if !imports.is_empty() {
             imports.sort_unstable();
             let joined = imports.join(", ");
-            let _ = writeln!(w, "from ._enums import {joined}");
+            let _ = writeln!(w, "from .enums import {joined}");
         }
         w.newline();
         w.newline();
@@ -380,7 +381,7 @@ mod tests {
             nodes.contains("from __future__ import annotations"),
             "{nodes}"
         );
-        assert!(nodes.contains("from ._enums import"), "{nodes}");
+        assert!(nodes.contains("from .enums import"), "{nodes}");
 
         // Node classes.
         assert!(nodes.contains("class Foo:"), "{nodes}");

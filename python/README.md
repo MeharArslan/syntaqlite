@@ -56,29 +56,28 @@ Every node type is a `__slots__` class with typed attributes, so you get IDE
 autocomplete and `isinstance` checks:
 
 ```python
-from syntaqlite._nodes import SelectStmt, BinaryExpr
+from syntaqlite.nodes import SelectStmt, BinaryExpr
 
 assert isinstance(stmt, SelectStmt)
 assert isinstance(stmt.columns[0].expr, BinaryExpr)
 ```
 
-Enum and flag fields are wrapped as `IntEnum`/`IntFlag` from `syntaqlite._enums`:
+Enum and flag fields are wrapped as `IntEnum`/`IntFlag` from `syntaqlite.enums`:
 
 ```python
-from syntaqlite._enums import BinaryOp
+from syntaqlite.enums import BinaryOp
 
 expr = stmt.columns[0].expr
 print(BinaryOp(expr.op).name)  # PLUS
 ```
 
-For performance-sensitive code, use `syntaqlite._parse_raw()` to get plain dicts
+For performance-sensitive code, use `syntaqlite.parse_raw()` to get plain dicts
 instead of typed objects:
 
 ```python
-from syntaqlite._syntaqlite import parse as parse_raw
-import json
+import syntaqlite, json
 
-stmts = parse_raw("SELECT 1 + 2; SELECT 3")
+stmts = syntaqlite.parse_raw("SELECT 1 + 2; SELECT 3")
 print(json.dumps(stmts[0], indent=2))
 ```
 ```json

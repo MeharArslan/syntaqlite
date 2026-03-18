@@ -89,11 +89,11 @@ pub struct OutputLayout {
     pub cargo_toml: Option<String>,
 
     // ── Python ────────────────────────────────────────────────────────────
-    /// Python enum types (`_enums.py`).
+    /// Python enum types (`enums.py`).
     pub enums_py: Option<String>,
     /// C header for Python extension (`_py_ast_wrap.h`).
     pub ast_wrap_h: Option<String>,
-    /// Python typed AST node classes (`_nodes.py`).
+    /// Python typed AST node classes (`nodes.py`).
     pub nodes_py: Option<String>,
 }
 
@@ -214,9 +214,9 @@ impl OutputLayout {
             build_rs: None,
             cargo_toml: None,
             // Python
-            enums_py: Some("python/syntaqlite/_enums.py".to_string()),
+            enums_py: Some("python/syntaqlite/enums.py".to_string()),
             ast_wrap_h: Some("python/csrc/_py_ast_wrap.h".to_string()),
-            nodes_py: Some("python/syntaqlite/_nodes.py".to_string()),
+            nodes_py: Some("python/syntaqlite/nodes.py".to_string()),
         }
     }
 

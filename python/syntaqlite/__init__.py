@@ -10,14 +10,18 @@ __version__ = "0.2.6"
 # Library API (requires _syntaqlite C extension).
 try:
     from ._syntaqlite import FormatError, format_sql, tokenize
-    from ._syntaqlite import parse as _parse_raw
+    from ._syntaqlite import parse as _parse_raw_c
     from ._syntaqlite import validate as _validate_raw
 
-    from ._nodes import _wrap
+    from .nodes import _wrap
 
     def parse(sql: str) -> list:
         """Parse SQL into typed AST nodes."""
-        return [_wrap(d) for d in _parse_raw(sql)]
+        return [_wrap(d) for d in _parse_raw_c(sql)]
+
+    def parse_raw(sql: str) -> list[dict]:
+        """Parse SQL into plain dicts (no typed wrapping)."""
+        return _parse_raw_c(sql)
 
 except ImportError:
     _validate_raw = None

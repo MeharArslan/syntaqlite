@@ -71,10 +71,10 @@ TableRef(...)
 True
 ```
 
-Enum and flag fields are wrapped as `IntEnum`/`IntFlag` from `syntaqlite._enums`:
+Enum and flag fields are wrapped as `IntEnum`/`IntFlag` from `syntaqlite.enums`:
 
 ```python
->>> from syntaqlite._enums import BinaryOp
+>>> from syntaqlite.enums import BinaryOp
 >>> BinaryOp(stmt.columns[0].expr.op).name
 'PLUS'
 ```
@@ -82,7 +82,7 @@ Enum and flag fields are wrapped as `IntEnum`/`IntFlag` from `syntaqlite._enums`
 Node classes support `isinstance` checks:
 
 ```python
->>> from syntaqlite._nodes import SelectStmt, BinaryExpr
+>>> from syntaqlite.nodes import SelectStmt, BinaryExpr
 >>> isinstance(stmt, SelectStmt)
 True
 ```
@@ -100,12 +100,11 @@ The parser recovers from errors and continues parsing subsequent statements.
 
 ### Raw dict access
 
-For performance-sensitive code, use `syntaqlite._parse_raw()` to skip the
+For performance-sensitive code, use `syntaqlite.parse_raw()` to skip the
 wrapping and get plain dicts:
 
 ```python
->>> from syntaqlite._syntaqlite import parse as parse_raw
->>> parse_raw("SELECT 1")[0]["type"]
+>>> syntaqlite.parse_raw("SELECT 1")[0]["type"]
 'SelectStmt'
 ```
 
