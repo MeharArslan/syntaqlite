@@ -247,46 +247,10 @@ jobs:
           name: wheels-${{ matrix.os }}-${{ matrix.cibw_archs }}
           path: wheelhouse/*.whl
 
-  # Pyodide (WASM) wheel — uses cibuildwheel's Pyodide platform support.
-  # Rust cross-compilation happens in CIBW_BEFORE_BUILD so emcc from
-  # cibuildwheel's own emsdk is available (avoids version mismatches).
-  build-python-wheel-pyodide:
-    name: python-wheels (pyodide)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Build Pyodide wheel
-        uses: pypa/cibuildwheel@v2.23
-        with:
-          package-dir: python/
-          output-dir: wheelhouse/
-        env:
-          CIBW_PLATFORM: pyodide
-          CIBW_BEFORE_BUILD: >-
-            rustup target add wasm32-unknown-emscripten &&
-            RUSTFLAGS="-C target-feature=-bulk-memory"
-            cargo build -p syntaqlite --release --target wasm32-unknown-emscripten
-          CIBW_ENVIRONMENT: >-
-            SYNTAQLITE_STATIC_LIB="${{ github.workspace }}/target/wasm32-unknown-emscripten/release/libsyntaqlite.a"
-            SYNTAQLITE_NO_CLI_BINARY=1
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v6
-        with:
-          name: wheels-pyodide
-          path: wheelhouse/*.whl
-
   # Publish all wheels to PyPI in a single job.
   publish-pypi:
     name: Publish to PyPI
-    needs: [build-python-wheels, build-python-wheel-pyodide]
+    needs: [build-python-wheels]
     if: ${{ !github.event.pull_request }}
     runs-on: ubuntu-latest
     environment: pypi

@@ -42,6 +42,3 @@ archs = ["AMD64", "ARM64"]
 [[tool.cibuildwheel.overrides]]
 select = "*-win_arm64"
 test-skip = "*"
-
-[tool.cibuildwheel.pyodide]
-test-skip = "*"

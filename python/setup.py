@@ -24,17 +24,15 @@ PKG_DIR = Path(__file__).resolve().parent / "syntaqlite"
 # CLI binary bundling
 # ---------------------------------------------------------------------------
 # Copy the CLI binary into syntaqlite/bin/ so setuptools includes it via
-# package_data. Skipped for Pyodide (no native binary) or when the binary
-# hasn't been built (e.g. local `pip install -e .` without building the CLI).
+# package_data. Skipped when the binary hasn't been built (e.g. local
+# `pip install -e .` without building the CLI).
 
-_no_cli = os.environ.get("SYNTAQLITE_NO_CLI_BINARY", "")
-if not _no_cli:
-    _binary_name = "syntaqlite.exe" if sys.platform == "win32" else "syntaqlite"
-    _binary_src = ROOT / "target" / "release" / _binary_name
-    if _binary_src.exists():
-        _bin_dest = PKG_DIR / "bin"
-        _bin_dest.mkdir(exist_ok=True)
-        shutil.copy2(_binary_src, _bin_dest / _binary_name)
+_binary_name = "syntaqlite.exe" if sys.platform == "win32" else "syntaqlite"
+_binary_src = ROOT / "target" / "release" / _binary_name
+if _binary_src.exists():
+    _bin_dest = PKG_DIR / "bin"
+    _bin_dest.mkdir(exist_ok=True)
+    shutil.copy2(_binary_src, _bin_dest / _binary_name)
 
 # ---------------------------------------------------------------------------
 # Static library for C extension
@@ -106,9 +104,10 @@ if not _cli_only:
         language="c",
     )
 
-    # Platform-specific link flags.
+    # On macOS, link system frameworks needed by Rust stdlib.
     if sys.platform == "darwin":
         ext.extra_link_args = ["-framework", "Security", "-framework", "SystemConfiguration"]
+    # On Windows, link system libraries needed by Rust stdlib.
     elif sys.platform == "win32":
         ext.libraries = ["ws2_32", "userenv", "advapi32", "bcrypt", "ntdll"]
 
