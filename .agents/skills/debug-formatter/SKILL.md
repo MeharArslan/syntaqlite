@@ -36,7 +36,7 @@ Work through these layers to find the root cause:
 
 | Layer | File | What to check |
 |-------|------|---------------|
-| Grammar | `syntaqlite-syntax/parser-nodes/*.synq` | `fmt { }` block; `clause("KW", field)` expands to `IF_SET → LINE → KEYWORD → NEST(LINE, CHILD)` |
+| Grammar | `syntaqlite-buildtools/parser-nodes/*.synq` | `fmt { }` block; `clause("KW", field)` expands to `IF_SET → LINE → KEYWORD → NEST(LINE, CHILD)` |
 | Bytecode compiler | `syntaqlite-buildtools/src/dialect_codegen/fmt_compiler.rs` | How `Fmt::Clause`, `Fmt::Keyword` compile to opcodes |
 | Interpreter | `syntaqlite/src/fmt/interpret.rs` | Main loop in `interpret_node`; state = `running` (committed doc) + `pending` (deferred line breaks) |
 | Comment drain | `syntaqlite/src/fmt/comment.rs` | `drain_before(offset)` respects `has_non_comment_text` guard; `drain_keyword_interior()` skips it for multi-word keywords |

@@ -51,8 +51,9 @@ def main() -> int:
     sqlite_src = project_root / "third_party" / "src" / "sqlite"
     dialect_crate_dir = project_root / "syntaqlite-syntax"
     shared_crate_dir = project_root / "syntaqlite-syntax"
-    actions_dir = dialect_crate_dir / "parser-actions"
-    nodes_dir = dialect_crate_dir / "parser-nodes"
+    buildtools_dir = project_root / "syntaqlite-buildtools"
+    actions_dir = buildtools_dir / "parser-actions"
+    nodes_dir = buildtools_dir / "parser-nodes"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
     do_extract = args.extract

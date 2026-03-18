@@ -5,189 +5,183 @@ pub(super) const BASE_Y_FILES: &[(&str, &str)] = &[
         "_common.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/_common.y"
+            "/parser-actions/_common.y"
         )),
     ),
     (
         "aggregate.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/aggregate.y"
+            "/parser-actions/aggregate.y"
         )),
     ),
     (
         "cast.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/cast.y"
+            "/parser-actions/cast.y"
         )),
     ),
     (
         "column_ref_select.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/column_ref_select.y"
+            "/parser-actions/column_ref_select.y"
         )),
     ),
     (
         "column_refs.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/column_refs.y"
+            "/parser-actions/column_refs.y"
         )),
     ),
     (
         "compound.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/compound.y"
+            "/parser-actions/compound.y"
         )),
     ),
     (
         "conditionals.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/conditionals.y"
+            "/parser-actions/conditionals.y"
         )),
     ),
     (
         "create_table.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/create_table.y"
+            "/parser-actions/create_table.y"
         )),
     ),
     (
         "cte.y",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/cte.y"
-        )),
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/parser-actions/cte.y")),
     ),
     (
         "dml.y",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/dml.y"
-        )),
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/parser-actions/dml.y")),
     ),
     (
         "expressions.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/expressions.y"
+            "/parser-actions/expressions.y"
         )),
     ),
     (
         "exprlists.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/exprlists.y"
+            "/parser-actions/exprlists.y"
         )),
     ),
     (
         "functions.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/functions.y"
+            "/parser-actions/functions.y"
         )),
     ),
     (
         "identifiers.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/identifiers.y"
+            "/parser-actions/identifiers.y"
         )),
     ),
     (
         "literals.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/literals.y"
+            "/parser-actions/literals.y"
         )),
     ),
     (
         "misc_expr.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/misc_expr.y"
+            "/parser-actions/misc_expr.y"
         )),
     ),
     (
         "orderby.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/orderby.y"
+            "/parser-actions/orderby.y"
         )),
     ),
     (
         "raise_expr.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/raise_expr.y"
+            "/parser-actions/raise_expr.y"
         )),
     ),
     (
         "schema_ops.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/schema_ops.y"
+            "/parser-actions/schema_ops.y"
         )),
     ),
     (
         "select.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/select.y"
+            "/parser-actions/select.y"
         )),
     ),
     (
         "table_source.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/table_source.y"
+            "/parser-actions/table_source.y"
         )),
     ),
     (
         "trigger.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/trigger.y"
+            "/parser-actions/trigger.y"
         )),
     ),
     (
         "utility_stmts.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/utility_stmts.y"
+            "/parser-actions/utility_stmts.y"
         )),
     ),
     (
         "values.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/values.y"
+            "/parser-actions/values.y"
         )),
     ),
     (
         "virtual_table.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/virtual_table.y"
+            "/parser-actions/virtual_table.y"
         )),
     ),
     (
         "window.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/window.y"
+            "/parser-actions/window.y"
         )),
     ),
     (
         "ztokens.y",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-actions/ztokens.y"
+            "/parser-actions/ztokens.y"
         )),
     ),
 ];
@@ -197,140 +191,140 @@ pub(super) const BASE_SYNQ_FILES: &[(&str, &str)] = &[
         "aggregate.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/aggregate.synq"
+            "/parser-nodes/aggregate.synq"
         )),
     ),
     (
         "cast.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/cast.synq"
+            "/parser-nodes/cast.synq"
         )),
     ),
     (
         "column_ref.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/column_ref.synq"
+            "/parser-nodes/column_ref.synq"
         )),
     ),
     (
         "common.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/common.synq"
+            "/parser-nodes/common.synq"
         )),
     ),
     (
         "compound.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/compound.synq"
+            "/parser-nodes/compound.synq"
         )),
     ),
     (
         "conditionals.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/conditionals.synq"
+            "/parser-nodes/conditionals.synq"
         )),
     ),
     (
         "create_table.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/create_table.synq"
+            "/parser-nodes/create_table.synq"
         )),
     ),
     (
         "cte.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/cte.synq"
+            "/parser-nodes/cte.synq"
         )),
     ),
     (
         "dml.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/dml.synq"
+            "/parser-nodes/dml.synq"
         )),
     ),
     (
         "expressions.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/expressions.synq"
+            "/parser-nodes/expressions.synq"
         )),
     ),
     (
         "functions.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/functions.synq"
+            "/parser-nodes/functions.synq"
         )),
     ),
     (
         "misc_expr.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/misc_expr.synq"
+            "/parser-nodes/misc_expr.synq"
         )),
     ),
     (
         "raise_expr.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/raise_expr.synq"
+            "/parser-nodes/raise_expr.synq"
         )),
     ),
     (
         "schema_ops.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/schema_ops.synq"
+            "/parser-nodes/schema_ops.synq"
         )),
     ),
     (
         "select.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/select.synq"
+            "/parser-nodes/select.synq"
         )),
     ),
     (
         "table_source.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/table_source.synq"
+            "/parser-nodes/table_source.synq"
         )),
     ),
     (
         "trigger.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/trigger.synq"
+            "/parser-nodes/trigger.synq"
         )),
     ),
     (
         "utility_stmts.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/utility_stmts.synq"
+            "/parser-nodes/utility_stmts.synq"
         )),
     ),
     (
         "values.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/values.synq"
+            "/parser-nodes/values.synq"
         )),
     ),
     (
         "window.synq",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/parser-nodes/window.synq"
+            "/parser-nodes/window.synq"
         )),
     ),
 ];

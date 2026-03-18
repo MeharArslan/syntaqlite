@@ -92,7 +92,7 @@ SQLite's grammar rules as part of the syntaqlite build.
 
 ### What's generated from `.synq`
 
-The `.synq` grammar files in `syntaqlite-syntax/parser-nodes/` are the source
+The `.synq` grammar files in `syntaqlite-buildtools/parser-nodes/` are the source
 of truth for AST node structure. `syntaqlite-buildtools` generates from them:
 
 - **C headers** — struct layouts for AST nodes, parser action code, node
@@ -133,7 +133,7 @@ functions (create, use, destroy).
 ## Grammar system
 
 The source of truth for AST structure is a set of `.synq` files in
-`syntaqlite-syntax/parser-nodes/`. These define:
+`syntaqlite-buildtools/parser-nodes/`. These define:
 
 - **Nodes** — AST node types with typed fields
 - **Enums** — fixed value sets (e.g., sort order, join type)
