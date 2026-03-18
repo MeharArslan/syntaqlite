@@ -41,6 +41,7 @@ PLATFORM_TAGS: dict[str, str] = {
     "aarch64-unknown-linux-gnu": "manylinux_2_17_aarch64.manylinux2014_aarch64",
     "x86_64-pc-windows-msvc": "win_amd64",
     "aarch64-pc-windows-msvc": "win_arm64",
+    "wasm32-unknown-emscripten": "emscripten_3_1_73_wasm32",
 }
 
 
@@ -56,7 +57,7 @@ def _read_version() -> str:
     sys.exit("Could not find version in pyproject.toml")
 
 
-def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path,
+def build_wheel(binary_path: Path | None, platform_tag: str, out_dir: Path,
                 lib_path: Path | None = None,
                 ext_path: Path | None = None,
                 python_tag: str | None = None) -> Path:
@@ -79,8 +80,9 @@ def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path,
     # Collect all files as (archive_path, content) pairs.
     files: dict[str, bytes] = {}
 
-    # 1. Binary in {package}/bin/
-    files[f"{name}/bin/{binary_name}"] = binary_path.read_bytes()
+    # 1. Binary in {package}/bin/ (optional — omitted for WASM wheels)
+    if binary_path is not None:
+        files[f"{name}/bin/{binary_name}"] = binary_path.read_bytes()
 
     # 1b. Shared library in {package}/lib/ (optional)
     if lib_path is not None:
@@ -128,12 +130,13 @@ def build_wheel(binary_path: Path, platform_tag: str, out_dir: Path,
     )
     files[f"{dist_info}/WHEEL"] = wheel_meta.encode()
 
-    # 5. dist-info/entry_points.txt
-    entry_points = (
-        "[console_scripts]\n"
-        f"syntaqlite = {name}:main\n"
-    )
-    files[f"{dist_info}/entry_points.txt"] = entry_points.encode()
+    # 5. dist-info/entry_points.txt (only when CLI binary is bundled)
+    if binary_path is not None:
+        entry_points = (
+            "[console_scripts]\n"
+            f"syntaqlite = {name}:main\n"
+        )
+        files[f"{dist_info}/entry_points.txt"] = entry_points.encode()
 
     # 6. dist-info/RECORD (must be last)
     record_path = f"{dist_info}/RECORD"
@@ -177,8 +180,8 @@ def main():
         description="Build a syntaqlite wheel with a pre-built binary"
     )
     parser.add_argument(
-        "--binary", required=True, type=Path,
-        help="Path to pre-built syntaqlite binary"
+        "--binary", required=False, type=Path, default=None,
+        help="Path to pre-built syntaqlite binary (omit for extension-only wheels)"
     )
     parser.add_argument(
         "--platform", required=True,
@@ -204,7 +207,7 @@ def main():
 
     platform = PLATFORM_TAGS.get(args.platform, args.platform)
 
-    if not args.binary.exists():
+    if args.binary is not None and not args.binary.exists():
         sys.exit(f"Binary not found: {args.binary}")
     if args.lib and not args.lib.exists():
         sys.exit(f"Library not found: {args.lib}")

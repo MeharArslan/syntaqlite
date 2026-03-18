@@ -15,9 +15,12 @@ from setuptools import Extension, setup
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Build the static library if needed.
-# Rust produces libsyntaqlite.a on Unix, syntaqlite.lib on Windows (MSVC).
-if sys.platform == "win32":
+# Allow overriding the static library path via env var (for cross-compilation,
+# e.g. Pyodide/Emscripten builds where the lib is pre-built for wasm32).
+_lib_override = os.environ.get("SYNTAQLITE_STATIC_LIB")
+if _lib_override:
+    STATIC_LIB = Path(_lib_override)
+elif sys.platform == "win32":
     STATIC_LIB = ROOT / "target" / "release" / "syntaqlite.lib"
 else:
     STATIC_LIB = ROOT / "target" / "release" / "libsyntaqlite.a"
@@ -26,6 +29,8 @@ else:
 def _ensure_static_lib():
     if STATIC_LIB.exists():
         return
+    if _lib_override:
+        sys.exit(f"SYNTAQLITE_STATIC_LIB set but not found: {STATIC_LIB}")
     print(f"Building {STATIC_LIB.name} ...")
     subprocess.check_call(
         ["cargo", "build", "-p", "syntaqlite", "--release"],
