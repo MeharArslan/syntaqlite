@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.8
+
+- Fixed PyPI wheel smoke tests failing on non-Linux platforms by running each build on its native runner.
+
 ## 0.2.7
 
 - **Breaking:** Renamed Python modules to public names: `syntaqlite._enums` → `syntaqlite.enums`, `syntaqlite._nodes` → `syntaqlite.nodes`.
