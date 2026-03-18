@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.6
+
+- `parse()` now returns typed Python objects (`SelectStmt`, `BinaryExpr`, etc.) with attribute access, IDE autocomplete, and `isinstance` support. Raw dict access is still available via `syntaqlite._parse_raw()`.
+- Added `python/.gitignore` and removed tracked build artifacts (`.so`, `.egg-info`).
+
 ## 0.2.5
 
 - Fixed Python extension CI for x86_64 macOS by replacing deprecated `macos-13` runner with `macos-26-intel`.
