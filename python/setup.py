@@ -38,6 +38,16 @@ if _binary_src.exists():
 # Static library for C extension
 # ---------------------------------------------------------------------------
 
+def _rust_target_triple() -> str | None:
+    """Return the Rust target triple matching the current Python platform, or None for native."""
+    import sysconfig
+    plat = sysconfig.get_platform()  # e.g. 'win-arm64', 'win-amd64'
+    # Only needed for Windows cross-compilation (AMD64 + ARM64 in one job).
+    if plat == "win-arm64":
+        return "aarch64-pc-windows-msvc"
+    return None
+
+
 def _find_static_lib() -> Path:
     """Find the Rust static library, checking cross-compiled target dirs."""
     override = os.environ.get("SYNTAQLITE_STATIC_LIB")
@@ -49,12 +59,20 @@ def _find_static_lib() -> Path:
     else:
         lib_name = "libsyntaqlite.a"
 
-    # Check default location first.
+    # For cross-compiled targets (e.g. ARM64 on x86_64 Windows), prefer the
+    # target-specific directory over the native one.
+    triple = _rust_target_triple()
+    if triple:
+        cross = ROOT / "target" / triple / "release" / lib_name
+        if cross.exists():
+            return cross
+
+    # Check default (native) location.
     default = ROOT / "target" / "release" / lib_name
     if default.exists():
         return default
 
-    # Check cross-compiled target directories (e.g. aarch64-pc-windows-msvc).
+    # Check cross-compiled target directories as a fallback.
     target_dir = ROOT / "target"
     if target_dir.exists():
         for candidate in sorted(target_dir.iterdir()):
