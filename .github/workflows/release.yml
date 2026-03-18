@@ -404,6 +404,11 @@ jobs:
         shell: bash
         run: cargo build -p syntaqlite --release
 
+      - name: Build buildtools
+        if: matrix.name == 'linux-x64'
+        shell: bash
+        run: cargo build -p syntaqlite-buildtools --release
+
       - name: Build cdylib
         shell: bash
         env:
