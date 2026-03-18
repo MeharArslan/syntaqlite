@@ -371,24 +371,87 @@ jobs:
               --draft --title "$RELEASE_TAG" --generate-notes artifacts/*
           fi
 
-  # Build the Python C extension, package into a wheel with the pre-built CLI
-  # binary, smoke test, and upload. One job per platform × Python version.
+  # Single Rust build per platform: produces static lib (for Python C extension),
+  # cdylib (for clib), and buildtools (for amalgamation). Downstream jobs download
+  # these artifacts instead of rebuilding Rust.
+  build-rust-libs:
+    name: rust-libs (${{ matrix.name }})
+    needs:
+      - plan
+    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Native builds (produce staticlib + cdylib + buildtools)
+          - {name: macos-arm64, runner: macos-latest, target: aarch64-apple-darwin, staticlib: libsyntaqlite.a, cdylib: libsyntaqlite.dylib}
+          - {name: macos-x64, runner: macos-26-intel, target: x86_64-apple-darwin, staticlib: libsyntaqlite.a, cdylib: libsyntaqlite.dylib}
+          - {name: linux-x64, runner: ubuntu-latest, target: x86_64-unknown-linux-gnu, staticlib: libsyntaqlite.a, cdylib: libsyntaqlite.so}
+          - {name: linux-arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, staticlib: libsyntaqlite.a, cdylib: libsyntaqlite.so}
+          - {name: windows-x64, runner: windows-latest, target: x86_64-pc-windows-msvc, staticlib: syntaqlite.lib, cdylib: syntaqlite.dll}
+          # Cross-compiled (cdylib only — no Python extension for this platform)
+          - {name: windows-arm64, runner: windows-latest, target: aarch64-pc-windows-msvc, cdylib: syntaqlite.dll}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install cross-compilation target
+        if: matrix.name == 'windows-arm64'
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build static library
+        if: matrix.staticlib
+        shell: bash
+        run: cargo build -p syntaqlite --release
+
+      - name: Build cdylib
+        shell: bash
+        env:
+          SYNTAQLITE_BUILDING: "1"
+        run: |
+          cargo rustc -p syntaqlite --release ${{ matrix.name == 'windows-arm64' && format('--target {0}', matrix.target) || '' }} \
+            --crate-type cdylib \
+            -- -C default-linker-libraries
+
+      - name: Upload static library
+        if: matrix.staticlib
+        uses: actions/upload-artifact@v6
+        with:
+          name: staticlib-${{ matrix.name }}
+          path: target/release/${{ matrix.staticlib }}
+
+      - name: Upload cdylib
+        uses: actions/upload-artifact@v6
+        with:
+          name: clib-${{ matrix.name }}
+          path: target/${{ matrix.name == 'windows-arm64' && format('{0}/release', matrix.target) || 'release' }}/${{ matrix.cdylib }}
+
+      - name: Upload buildtools
+        if: matrix.name == 'linux-x64'
+        uses: actions/upload-artifact@v6
+        with:
+          name: buildtools
+          path: target/release/syntaqlite-buildtools
+
+  # Build Python C extension and package wheel. Downloads pre-built static lib
+  # instead of compiling Rust. One job per platform × Python version.
   build-python-wheel:
     name: python-wheel (${{ matrix.platform.target }}, ${{ matrix.python }})
     needs:
       - plan
       - build-local-artifacts
+      - build-rust-libs
     if: ${{ needs.plan.outputs.publishing == 'true' }}
     strategy:
       fail-fast: false
       matrix:
         python: ["3.10", "3.11", "3.12", "3.13"]
         platform:
-          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite}
-          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite}
-          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite}
-          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite}
-          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe}
+          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, lib-name: macos-arm64}
+          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, lib-name: macos-x64}
+          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, lib-name: linux-x64}
+          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, lib-name: linux-arm64}
+          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, lib-name: windows-x64}
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v6
@@ -400,14 +463,14 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      # -- Build C extension --
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # -- Download pre-built static library --
+      - name: Download static library
+        uses: actions/download-artifact@v7
+        with:
+          name: staticlib-${{ matrix.platform.lib-name }}
+          path: target/release/
 
-      - name: Build static library
-        shell: bash
-        run: cargo build -p syntaqlite --release
-
+      # -- Build C extension (fast — just C compilation, no Rust) --
       - name: Install setuptools
         run: pip install "setuptools>=68"
 
@@ -550,6 +613,75 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+
+  # Package clib archive + syntax amalgamation and upload to GH Release.
+  # Downloads pre-built cdylibs and buildtools — no Rust compilation.
+  package-c-artifacts:
+    name: Package C artifacts
+    needs:
+      - plan
+      - host
+      - build-rust-libs
+    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download buildtools
+        uses: actions/download-artifact@v7
+        with:
+          name: buildtools
+          path: bin/
+
+      - name: Make buildtools executable
+        run: chmod +x bin/syntaqlite-buildtools
+
+      # -- Clib archive --
+      - name: Generate amalgamated header
+        run: |
+          bin/syntaqlite-buildtools amalgamate \
+            --syntax-dir syntaqlite-syntax \
+            --lib-dir syntaqlite \
+            --output staging/syntaqlite.h
+
+      - name: Download all platform libraries
+        uses: actions/download-artifact@v7
+        with:
+          pattern: clib-*
+          path: libs/
+
+      - name: Assemble clib archive
+        run: |
+          for dir in libs/clib-*; do
+            platform=$(basename "$dir" | sed 's/^clib-//')
+            mkdir -p "staging/$platform"
+            cp "$dir"/* "staging/$platform/"
+          done
+          tar -czf "syntaqlite-clib.tar.gz" -C staging .
+
+      # -- Syntax amalgamation --
+      - name: Generate syntax amalgamation
+        run: |
+          mkdir -p amalgamation-out
+          bin/syntaqlite-buildtools amalgamate-syntax \
+            --dialect sqlite \
+            --runtime-dir syntaqlite-syntax \
+            --dialect-dir syntaqlite-syntax \
+            --output-dir amalgamation-out
+          cp amalgamation-out/syntaqlite_sqlite.h amalgamation-out/syntaqlite_syntax.h
+          cp amalgamation-out/syntaqlite_sqlite.c amalgamation-out/syntaqlite_syntax.c
+          tar -czf "syntaqlite-syntax-amalgamation.tar.gz" \
+            -C amalgamation-out syntaqlite_syntax.h syntaqlite_syntax.c
+
+      # -- Upload both to GH Release --
+      - name: Upload to GitHub Release
+        run: |
+          gh release upload "${{ needs.plan.outputs.tag }}" \
+            "syntaqlite-clib.tar.gz" \
+            "syntaqlite-syntax-amalgamation.tar.gz" \
+            --clobber
 
   announce:
     needs:

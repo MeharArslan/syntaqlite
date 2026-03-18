@@ -1,12 +1,17 @@
 # Build platform-specific .vsix packages with bundled syntaqlite binaries.
-# Runs on release tags and can be triggered manually.
+#
+# On release tags: downloads pre-built CLI binaries from the Release workflow.
+# On manual dispatch: builds CLI from source.
 name: VS Code Extension
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - '**[0-9]+.[0-9]+.[0-9]+*'
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  actions: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -14,6 +19,7 @@ env:
 jobs:
   build-vsix:
     name: Package ${{ matrix.vscode-target }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -45,31 +51,47 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Cache third_party
-        if: runner.os == 'Linux'
-        uses: actions/cache@v5
+      # -- Get CLI binary: download from Release workflow or build from source --
+      - name: Download CLI from Release workflow
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/download-artifact@v7
         with:
-          path: third_party
-          key: third-party-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+          name: artifacts-build-local-${{ matrix.rust-target }}
+          path: artifacts/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install build dependencies
-        if: runner.os == 'Linux'
-        run: python3 tools/install-build-deps
-
-      - name: Install macOS x86_64 target
-        if: matrix.rust-target == 'x86_64-apple-darwin'
-        run: rustup target add x86_64-apple-darwin
-
-      - name: Install cross-compilation target
-        if: matrix.rust-target == 'aarch64-unknown-linux-gnu'
+      - name: Extract CLI binary (from Release)
+        if: github.event_name != 'workflow_dispatch'
+        shell: bash
         run: |
-          rustup target add aarch64-unknown-linux-gnu
-          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
-          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
+          mkdir -p extracted/
+          ARCHIVE=$(find artifacts/ -name "syntaqlite-cli-${{ matrix.rust-target }}.*" | head -1)
+          echo "Found archive: $ARCHIVE"
+          if [[ "$ARCHIVE" == *.zip ]]; then
+            unzip "$ARCHIVE" -d extracted/
+          else
+            tar -xf "$ARCHIVE" -C extracted/
+          fi
+          mkdir -p target/${{ matrix.rust-target }}/release/
+          find extracted/ -name "${{ matrix.binary }}" -exec cp {} target/${{ matrix.rust-target }}/release/ \;
+          chmod +x target/${{ matrix.rust-target }}/release/${{ matrix.binary }}
 
-      - name: Build CLI
-        run: cargo build --release -p syntaqlite-cli --target ${{ matrix.rust-target }}
+      - name: Build CLI from source (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          # Install cross-compilation targets if needed
+          case "${{ matrix.rust-target }}" in
+            x86_64-apple-darwin)
+              rustup target add x86_64-apple-darwin ;;
+            aarch64-unknown-linux-gnu)
+              rustup target add aarch64-unknown-linux-gnu
+              sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+              echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
+              echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml ;;
+          esac
+          cargo build --release -p syntaqlite-cli --target ${{ matrix.rust-target }}
 
       - uses: actions/setup-node@v5
         with:
@@ -97,6 +119,7 @@ jobs:
   publish:
     name: Publish extension
     needs: build-vsix
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Download all .vsix artifacts
