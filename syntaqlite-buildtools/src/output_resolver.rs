@@ -282,7 +282,7 @@ impl OutputLayout {
                 include: format!("{id}/{dn}_tokens.h"),
             },
             runtime_tokens_h: CHeader {
-                write: None,
+                write: Some("csrc/tokens.h".to_string()),
                 include: "csrc/tokens.h".to_string(),
             },
             cflags_h: CHeader {
@@ -372,7 +372,7 @@ impl OutputLayout {
                 include: format!("{id}/{dn}_tokens.h"),
             },
             runtime_tokens_h: CHeader {
-                write: None,
+                write: Some("csrc/tokens.h".to_string()),
                 include: "csrc/tokens.h".to_string(),
             },
             cflags_h: CHeader {
