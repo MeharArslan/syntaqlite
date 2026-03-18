@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.9
+
+- No user-visible changes (release pipeline consolidation).
+
 ## 0.2.8
 
 - Fixed PyPI wheel smoke tests failing on non-Linux platforms by running each build on its native runner.
