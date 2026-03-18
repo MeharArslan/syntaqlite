@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.12
+
+- Fixed `cargo install syntaqlite-cli` failing due to `syntaqlite-buildtools` referencing files outside its crate directory ([#29](https://github.com/LalitMaganti/syntaqlite/issues/29))
+
 ## 0.2.11
 
 - Added Python 3.14 wheel support.
