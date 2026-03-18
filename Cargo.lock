@@ -1050,6 +1050,7 @@ dependencies = [
  "sha2",
  "similar",
  "syntaqlite-common",
+ "syntaqlite-syntax",
  "tempfile",
 ]
 

@@ -32,7 +32,7 @@ pub use parser::{
 pub use parser::{Comment, CommentKind, CommentSpan, CompletionContext, ParserTokenFlags};
 
 // Top-level tokenizer types.
-// TokenType is always available — ordinals are stable across all dialects.
+#[cfg(feature = "sqlite-minimal")]
 #[doc(inline)]
 pub use sqlite::tokens::TokenType;
 #[cfg(feature = "sqlite")]
@@ -162,5 +162,8 @@ mod grammar;
 pub(crate) mod parser;
 pub(crate) mod tokenizer;
 
-// `sqlite` module is always present; individual sub-modules are gated inside it.
+#[cfg(feature = "sqlite-minimal")]
 pub(crate) mod sqlite;
+
+#[cfg(feature = "embedded-sources")]
+pub mod embedded_sources;

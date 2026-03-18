@@ -15,170 +15,6 @@ use std::path::Path;
 
 use super::base_files_tables::{BASE_SYNQ_FILES, BASE_Y_FILES};
 
-/// Embedded `syntaqlite-syntax/include/syntaqlite/` headers.
-///
-/// Keyed by filename (e.g. `"types.h"`). These are the public runtime headers
-/// that define types like `SyntaqliteSourceSpan`, `SyntaqliteParser`, etc.
-/// They must be written into the amalgamation temp directory so the amalgamator
-/// can collect and inline them into `syntaqlite_runtime.h` / full amalgams.
-const RUNTIME_HEADERS: &[(&str, &str)] = &[
-    (
-        "grammar.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/grammar.h",
-        )),
-    ),
-    (
-        "cflags.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/cflags.h",
-        )),
-    ),
-    (
-        "config.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/config.h",
-        )),
-    ),
-    (
-        "parser.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/parser.h",
-        )),
-    ),
-    (
-        "incremental.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/incremental.h",
-        )),
-    ),
-    (
-        "tokenizer.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/tokenizer.h",
-        )),
-    ),
-    (
-        "types.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/types.h",
-        )),
-    ),
-];
-
-/// Embedded `syntaqlite-syntax/include/syntaqlite_dialect/` headers.
-///
-/// These define the extension SPI: `synq_parse_build`, `SynqParseCtx`, arena
-/// helpers, etc. They must be present in the amalgamation temp directory so
-/// the amalgamator can inline them (as `ExtHeader` files) into the `.c` output.
-/// Embedded `syntaqlite-syntax/csrc/` runtime C sources and internal headers.
-///
-/// These contain the parser and tokenizer implementations. They must be written
-/// into `temp/csrc/` so the amalgamator can collect and inline them.
-const RUNTIME_CSRC: &[(&str, &str)] = &[
-    (
-        "dialect_dispatch.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/csrc/dialect_dispatch.h",
-        )),
-    ),
-    (
-        "hashmap.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/csrc/hashmap.h",
-        )),
-    ),
-    (
-        "parser.c",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/csrc/parser.c",
-        )),
-    ),
-    (
-        "token_wrapped.c",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/csrc/token_wrapped.c",
-        )),
-    ),
-    (
-        "token_wrapped.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/csrc/token_wrapped.h",
-        )),
-    ),
-    (
-        "tokens.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/csrc/tokens.h",
-        )),
-    ),
-    (
-        "tokenizer.c",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/csrc/tokenizer.c",
-        )),
-    ),
-];
-
-const DIALECT_EXT_HEADERS: &[(&str, &str)] = &[
-    (
-        "arena.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite_dialect/arena.h",
-        )),
-    ),
-    (
-        "ast_builder.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite_dialect/ast_builder.h",
-        )),
-    ),
-    (
-        "dialect_macros.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite_dialect/dialect_macros.h",
-        )),
-    ),
-    (
-        "dialect_types.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite_dialect/dialect_types.h",
-        )),
-    ),
-    (
-        "sqlite_compat.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite_dialect/sqlite_compat.h",
-        )),
-    ),
-    (
-        "vec.h",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite_dialect/vec.h",
-        )),
-    ),
-];
-
 /// Write the embedded runtime headers into `dir/include/syntaqlite/`.
 ///
 /// This populates the temp directory used by the amalgamator so that
@@ -191,7 +27,7 @@ const DIALECT_EXT_HEADERS: &[(&str, &str)] = &[
 pub fn write_runtime_headers_to_dir(dir: &Path) -> Result<(), String> {
     let csrc_dest = dir.join("csrc");
     fs::create_dir_all(&csrc_dest).map_err(|e| format!("creating {}: {e}", csrc_dest.display()))?;
-    for (name, content) in RUNTIME_CSRC {
+    for (name, content) in syntaqlite_syntax::embedded_sources::RUNTIME_CSRC {
         let path = csrc_dest.join(name);
         // Don't overwrite generated files (dialect_dispatch.h is also generated).
         if !path.exists() {
@@ -202,14 +38,14 @@ pub fn write_runtime_headers_to_dir(dir: &Path) -> Result<(), String> {
     let runtime_dest = dir.join("include").join("syntaqlite");
     fs::create_dir_all(&runtime_dest)
         .map_err(|e| format!("creating {}: {e}", runtime_dest.display()))?;
-    for (name, content) in RUNTIME_HEADERS {
+    for (name, content) in syntaqlite_syntax::embedded_sources::RUNTIME_HEADERS {
         let path = runtime_dest.join(name);
         fs::write(&path, content).map_err(|e| format!("writing {}: {e}", path.display()))?;
     }
 
     let ext_dest = dir.join("include").join("syntaqlite_dialect");
     fs::create_dir_all(&ext_dest).map_err(|e| format!("creating {}: {e}", ext_dest.display()))?;
-    for (name, content) in DIALECT_EXT_HEADERS {
+    for (name, content) in syntaqlite_syntax::embedded_sources::DIALECT_EXT_HEADERS {
         let path = ext_dest.join(name);
         fs::write(&path, content).map_err(|e| format!("writing {}: {e}", path.display()))?;
     }
@@ -257,10 +93,8 @@ pub fn merge_file_sets(
 
 #[cfg(test)]
 mod tests {
-    use super::RUNTIME_HEADERS;
-
     fn runtime_header(name: &str) -> &'static str {
-        RUNTIME_HEADERS
+        syntaqlite_syntax::embedded_sources::RUNTIME_HEADERS
             .iter()
             .find_map(|(n, content)| (*n == name).then_some(*content))
             .unwrap_or_else(|| panic!("missing embedded runtime header: {name}"))

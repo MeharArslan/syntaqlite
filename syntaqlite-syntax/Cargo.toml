@@ -11,13 +11,18 @@ readme = "README.md"
 
 [features]
 default = ["sqlite"]
-sqlite = []
+sqlite-minimal = []
+sqlite = ["sqlite-minimal"]
 serde = ["dep:serde"]
 serde-json = ["serde", "dep:serde_json"]
 dynload = ["dep:libloading"]
 pin-version = ["sqlite"]
 pin-cflags = ["sqlite"]
 no-bundled-parser = []
+# Internal: exposes hand-written C sources/headers as Rust constants for
+# syntaqlite-buildtools amalgamation. No generated files; safe to compile
+# from a clean checkout without running codegen first.
+embedded-sources = []
 
 
 [lints]

@@ -1,0 +1,50 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
+//! Embedded hand-written C sources and headers for use by `syntaqlite-buildtools`.
+//!
+//! This module is only available with the `embedded-sources` feature and is
+//! intended solely for `syntaqlite-buildtools` amalgamation support. It embeds
+//! the hand-written runtime C sources and public headers as string constants so
+//! that the buildtools crate is self-contained when published to crates.io.
+//!
+//! None of these files are generated — they are all hand-written and live under
+//! `syntaqlite-syntax/csrc/` and `syntaqlite-syntax/include/`.
+
+/// Embedded `include/syntaqlite/` public runtime headers.
+///
+/// Keyed by filename (e.g. `"types.h"`).
+pub const RUNTIME_HEADERS: &[(&str, &str)] = &[
+    ("grammar.h",    include_str!("../include/syntaqlite/grammar.h")),
+    ("cflags.h",     include_str!("../include/syntaqlite/cflags.h")),
+    ("config.h",     include_str!("../include/syntaqlite/config.h")),
+    ("parser.h",     include_str!("../include/syntaqlite/parser.h")),
+    ("incremental.h",include_str!("../include/syntaqlite/incremental.h")),
+    ("tokenizer.h",  include_str!("../include/syntaqlite/tokenizer.h")),
+    ("types.h",      include_str!("../include/syntaqlite/types.h")),
+];
+
+/// Embedded `csrc/` runtime C sources and internal headers (top-level only).
+///
+/// Keyed by filename (e.g. `"parser.c"`).
+pub const RUNTIME_CSRC: &[(&str, &str)] = &[
+    ("dialect_dispatch.h", include_str!("../csrc/dialect_dispatch.h")),
+    ("hashmap.h",          include_str!("../csrc/hashmap.h")),
+    ("parser.c",           include_str!("../csrc/parser.c")),
+    ("token_wrapped.c",    include_str!("../csrc/token_wrapped.c")),
+    ("token_wrapped.h",    include_str!("../csrc/token_wrapped.h")),
+    ("tokens.h",           include_str!("../csrc/tokens.h")),
+    ("tokenizer.c",        include_str!("../csrc/tokenizer.c")),
+];
+
+/// Embedded `include/syntaqlite_dialect/` extension SPI headers.
+///
+/// Keyed by filename (e.g. `"arena.h"`).
+pub const DIALECT_EXT_HEADERS: &[(&str, &str)] = &[
+    ("arena.h",          include_str!("../include/syntaqlite_dialect/arena.h")),
+    ("ast_builder.h",    include_str!("../include/syntaqlite_dialect/ast_builder.h")),
+    ("dialect_macros.h", include_str!("../include/syntaqlite_dialect/dialect_macros.h")),
+    ("dialect_types.h",  include_str!("../include/syntaqlite_dialect/dialect_types.h")),
+    ("sqlite_compat.h",  include_str!("../include/syntaqlite_dialect/sqlite_compat.h")),
+    ("vec.h",            include_str!("../include/syntaqlite_dialect/vec.h")),
+];
