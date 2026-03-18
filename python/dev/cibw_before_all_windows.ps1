@@ -1,11 +1,9 @@
 # cibuildwheel before-all hook for Windows.
 # Builds the Rust static library + CLI binary, handling ARM64 cross-compilation.
-param(
-    [Parameter(Mandatory)][string]$ProjectDir
-)
 $ErrorActionPreference = "Stop"
 
-$RepoRoot = (Resolve-Path "$ProjectDir\..").Path
+$RepoRoot = (git rev-parse --show-toplevel) | Out-String
+$RepoRoot = $RepoRoot.Trim()
 Set-Location $RepoRoot
 
 $Arch = $env:CIBW_ARCHS

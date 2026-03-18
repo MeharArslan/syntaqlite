@@ -3,8 +3,7 @@
 # Cross-compiles the Rust static library to wasm32-unknown-emscripten.
 set -euo pipefail
 
-PROJECT_DIR="$1"
-REPO_ROOT="$(cd "$PROJECT_DIR/.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
 rustup target add wasm32-unknown-emscripten

@@ -4,8 +4,7 @@
 # {project} is substituted by cibuildwheel and points to the python/ directory.
 set -euo pipefail
 
-PROJECT_DIR="$1"
-REPO_ROOT="$(cd "$PROJECT_DIR/.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
 # Install Rust if not present (needed inside manylinux containers).
