@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.7
+
+- **Breaking:** Renamed Python modules to public names: `syntaqlite._enums` → `syntaqlite.enums`, `syntaqlite._nodes` → `syntaqlite.nodes`.
+- **Breaking:** `syntaqlite._parse_raw()` is now `syntaqlite.parse_raw()`.
+
 ## 0.2.6
 
 - `parse()` now returns typed Python objects (`SelectStmt`, `BinaryExpr`, etc.) with attribute access, IDE autocomplete, and `isinstance` support. Raw dict access is still available via `syntaqlite._parse_raw()`.
