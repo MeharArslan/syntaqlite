@@ -1,12 +1,16 @@
-"""Build the _syntaqlite C extension for local development.
+"""Build the _syntaqlite C extension.
 
-Usage:
+Usage (local development):
     cd python && pip install -e .
     # or
     cd python && python setup.py build_ext --inplace
+
+In CI, cibuildwheel invokes this via the PEP 517 build backend. The Rust
+static library and CLI binary are pre-built by cibuildwheel's before-all hook.
 """
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,9 +18,28 @@ from pathlib import Path
 from setuptools import Extension, setup
 
 ROOT = Path(__file__).resolve().parent.parent
+PKG_DIR = Path(__file__).resolve().parent / "syntaqlite"
 
-# Allow overriding the static library path via env var (for cross-compilation
-# where the lib is pre-built for a different target).
+# ---------------------------------------------------------------------------
+# CLI binary bundling
+# ---------------------------------------------------------------------------
+# Copy the CLI binary into syntaqlite/bin/ so setuptools includes it via
+# package_data. Skipped for Pyodide (no native binary) or when the binary
+# hasn't been built (e.g. local `pip install -e .` without building the CLI).
+
+_no_cli = os.environ.get("SYNTAQLITE_NO_CLI_BINARY", "")
+if not _no_cli:
+    _binary_name = "syntaqlite.exe" if sys.platform == "win32" else "syntaqlite"
+    _binary_src = ROOT / "target" / "release" / _binary_name
+    if _binary_src.exists():
+        _bin_dest = PKG_DIR / "bin"
+        _bin_dest.mkdir(exist_ok=True)
+        shutil.copy2(_binary_src, _bin_dest / _binary_name)
+
+# ---------------------------------------------------------------------------
+# Static library for C extension
+# ---------------------------------------------------------------------------
+
 _lib_override = os.environ.get("SYNTAQLITE_STATIC_LIB")
 if _lib_override:
     STATIC_LIB = Path(_lib_override)
@@ -38,31 +61,50 @@ def _ensure_static_lib():
     )
 
 
-_ensure_static_lib()
+# ---------------------------------------------------------------------------
+# Extension module
+# ---------------------------------------------------------------------------
 
-# Include paths for syntaqlite headers.
-include_dirs = [
-    str(ROOT / "syntaqlite-syntax" / "include"),
-    str(ROOT / "syntaqlite" / "include"),
-    str(ROOT / "python" / "csrc"),
-]
+ext_modules = []
 
-ext = Extension(
-    "syntaqlite._syntaqlite",
-    sources=["csrc/_syntaqlite.c"],
-    include_dirs=include_dirs,
-    extra_objects=[str(STATIC_LIB)],
-    language="c",
-)
+_cli_only = os.environ.get("SYNTAQLITE_CLI_ONLY", "")
+if not _cli_only:
+    _ensure_static_lib()
 
-# On macOS, link system frameworks needed by Rust stdlib.
-if sys.platform == "darwin":
-    ext.extra_link_args = ["-framework", "Security", "-framework", "SystemConfiguration"]
-# On Windows, link system libraries needed by Rust stdlib.
-elif sys.platform == "win32":
-    ext.libraries = ["ws2_32", "userenv", "advapi32", "bcrypt", "ntdll"]
+    include_dirs = [
+        str(ROOT / "syntaqlite-syntax" / "include"),
+        str(ROOT / "syntaqlite" / "include"),
+        str(ROOT / "python" / "csrc"),
+    ]
+
+    ext = Extension(
+        "syntaqlite._syntaqlite",
+        sources=["csrc/_syntaqlite.c"],
+        include_dirs=include_dirs,
+        extra_objects=[str(STATIC_LIB)],
+        language="c",
+    )
+
+    # On macOS, link system frameworks needed by Rust stdlib.
+    if sys.platform == "darwin":
+        ext.extra_link_args = ["-framework", "Security", "-framework", "SystemConfiguration"]
+    # On Windows, link system libraries needed by Rust stdlib.
+    elif sys.platform == "win32":
+        ext.libraries = ["ws2_32", "userenv", "advapi32", "bcrypt", "ntdll"]
+
+    ext_modules.append(ext)
+
+# ---------------------------------------------------------------------------
+# package_data: include CLI binary if present
+# ---------------------------------------------------------------------------
+
+package_data = {}
+_bin_dir = PKG_DIR / "bin"
+if _bin_dir.exists() and any(_bin_dir.iterdir()):
+    package_data["syntaqlite"] = ["bin/*"]
 
 setup(
     name="syntaqlite",
-    ext_modules=[ext],
+    ext_modules=ext_modules,
+    package_data=package_data,
 )

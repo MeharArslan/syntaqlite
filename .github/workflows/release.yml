@@ -20,7 +20,7 @@ env:
 jobs:
   # Single Rust build per platform. Produces:
   #   - CLI binary archive (tar.gz/zip)
-  #   - Static library (for Python C extension)
+  #   - Static library (for clib archive)
   #   - Shared library / cdylib (for clib)
   #   - buildtools binary (for amalgamation, linux-x64 only)
   build:
@@ -203,160 +203,51 @@ jobs:
             --field content="$(base64 -w0 formula.rb)" \
             --field sha="$(gh api repos/LalitMaganti/homebrew-tap/contents/Formula/syntaqlite.rb --jq '.sha')"
 
-  # Build Python C extension and package wheel. Downloads pre-built static lib
-  # instead of compiling Rust. One job per platform × Python version.
-  build-python-wheel:
-    name: python-wheel (${{ matrix.platform.target }}, ${{ matrix.python }})
-    needs: build
+  # Build Python wheels using cibuildwheel. Builds Rust from source inside
+  # each platform's environment, then compiles the C extension per Python version.
+  # Includes native platforms + Pyodide (WASM).
+  build-python-wheels:
+    name: python-wheels (${{ matrix.os }}, ${{ matrix.cibw_archs }})
     if: ${{ !github.event.pull_request }}
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        platform:
-          - {target: aarch64-apple-darwin, runner: macos-latest, binary: syntaqlite, lib-name: macos-arm64}
-          - {target: x86_64-apple-darwin, runner: macos-26-intel, binary: syntaqlite, lib-name: macos-x64}
-          - {target: x86_64-unknown-linux-gnu, runner: ubuntu-latest, binary: syntaqlite, lib-name: linux-x64}
-          - {target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, binary: syntaqlite, lib-name: linux-arm64}
-          - {target: x86_64-pc-windows-msvc, runner: windows-latest, binary: syntaqlite.exe, lib-name: windows-x64}
-    runs-on: ${{ matrix.platform.runner }}
+        include:
+          - {os: ubuntu-latest, cibw_archs: "x86_64"}
+          - {os: ubuntu-24.04-arm, cibw_archs: "aarch64"}
+          - {os: macos-latest, cibw_archs: "arm64"}
+          - {os: macos-26-intel, cibw_archs: "x86_64"}
+          - {os: windows-latest, cibw_archs: "AMD64 ARM64"}
+          - {os: ubuntu-latest, cibw_archs: "pyodide", cibw_platform: "pyodide"}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
         with:
-          persist-credentials: false
           submodules: recursive
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      # -- Download pre-built static library --
-      - name: Download static library
-        uses: actions/download-artifact@v7
-        with:
-          name: staticlib-${{ matrix.platform.lib-name }}
-          path: target/release/
-
-      # -- Build C extension (fast — just C compilation, no Rust) --
-      - name: Install setuptools
-        run: pip install "setuptools>=68"
-
-      - name: Build C extension
-        shell: bash
-        working-directory: python
-        run: python setup.py build_ext --inplace
-
-      - name: Find extension module
-        id: find-ext
-        shell: bash
-        run: |
-          EXT=$(find python/syntaqlite -name '_syntaqlite*' \( -name '*.so' -o -name '*.pyd' \) | head -1)
-          if [ -z "$EXT" ]; then
-            echo "ERROR: Extension module not found"
-            exit 1
-          fi
-          echo "path=$EXT" >> "$GITHUB_OUTPUT"
-          echo "Found extension: $EXT"
-
-      - name: Smoke test extension
-        shell: bash
-        run: |
-          cd python
-          python -c "from syntaqlite._syntaqlite import parse; print(parse('SELECT 1'))"
-
-      # -- Download CLI binary and build wheel --
-      - name: Download CLI archive
-        uses: actions/download-artifact@v7
-        with:
-          name: cli-${{ matrix.platform.lib-name }}
-          path: archives/
-
-      - name: Extract CLI binary
-        shell: bash
-        run: |
-          mkdir -p bin/ extracted/
-          ARCHIVE=$(find archives/ -name "syntaqlite-${{ matrix.platform.lib-name }}.*" | head -1)
-          echo "Found archive: $ARCHIVE"
-          if [[ "$ARCHIVE" == *.zip ]]; then
-            unzip "$ARCHIVE" -d bin/
-          else
-            tar -xf "$ARCHIVE" -C bin/
-          fi
-          chmod +x bin/${{ matrix.platform.binary }}
-
-      - name: Derive python tag
-        id: pytag
-        shell: bash
-        run: |
-          PYVER="${{ matrix.python }}"
-          TAG="cp${PYVER/./}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Build wheel
-        shell: bash
-        run: |
-          python python/dev/build_wheel.py \
-            --binary bin/${{ matrix.platform.binary }} \
-            --ext "${{ steps.find-ext.outputs.path }}" \
-            --python-tag ${{ steps.pytag.outputs.tag }} \
-            --platform ${{ matrix.platform.target }} \
-            --out dist/
-
-      - name: Smoke test wheel
-        shell: bash
-        run: |
-          pip install dist/*.whl
-          python -c "from syntaqlite import format_sql; assert 'SELECT' in format_sql('select 1')"
-
-      - name: Upload wheel
-        uses: actions/upload-artifact@v6
-        with:
-          name: wheel-${{ matrix.platform.target }}-${{ steps.pytag.outputs.tag }}
-          path: dist/*.whl
-
-  # CLI-only wheel for platforms without a C extension.
-  build-python-wheel-cli-only:
-    name: python-wheel (aarch64-pc-windows-msvc, cli-only)
-    needs: build
-    if: ${{ !github.event.pull_request }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Download CLI archive
-        uses: actions/download-artifact@v7
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2
         with:
-          name: cli-windows-arm64
-          path: archives/
+          package-dir: python/
+          output-dir: wheelhouse/
+        env:
+          CIBW_ARCHS: ${{ matrix.cibw_archs }}
+          CIBW_PLATFORM: ${{ matrix.cibw_platform || '' }}
 
-      - name: Extract CLI binary
-        run: |
-          mkdir -p bin/
-          unzip archives/syntaqlite-windows-arm64.zip -d bin/
-
-      - name: Build wheel
-        run: |
-          python python/dev/build_wheel.py \
-            --binary bin/syntaqlite.exe \
-            --platform aarch64-pc-windows-msvc \
-            --out dist/
-
-      - name: Upload wheel
+      - name: Upload wheels
         uses: actions/upload-artifact@v6
         with:
-          name: wheel-aarch64-pc-windows-msvc-cli
-          path: dist/*.whl
+          name: wheels-${{ matrix.os }}-${{ matrix.cibw_archs }}
+          path: wheelhouse/*.whl
 
   # Publish all wheels to PyPI in a single job.
   publish-pypi:
     name: Publish to PyPI
-    needs:
-      - build-python-wheel
-      - build-python-wheel-cli-only
+    needs: [build-python-wheels]
     if: ${{ !github.event.pull_request }}
     runs-on: ubuntu-latest
     environment: pypi
@@ -366,7 +257,7 @@ jobs:
       - name: Download all wheels
         uses: actions/download-artifact@v7
         with:
-          pattern: wheel-*
+          pattern: wheels-*
           path: dist/
           merge-multiple: true
 

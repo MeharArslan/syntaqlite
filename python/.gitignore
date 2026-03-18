@@ -8,6 +8,10 @@ build/
 dist/
 *.egg
 .eggs/
+wheelhouse/
+
+# CLI binary copied into package at build time
+syntaqlite/bin/
 
 # Virtual environments
 .venv/
