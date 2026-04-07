@@ -13,7 +13,7 @@ node UpsertClause {
 
   fmt {
     "ON CONFLICT"
-    if_set(columns) { group { " (" child(columns) ")" } }
+    if_set(columns) { group { " (" nest { softline child(columns) } softline ")" } }
     if_set(target_where) { " WHERE " child(target_where) }
     if_enum(action, UPDATE) {
       " DO UPDATE"
@@ -64,7 +64,7 @@ node SetClause {
 
   fmt {
     if_span(column) { span(column) } else {
-      if_set(columns) { group { "(" child(columns) ")" } }
+      if_set(columns) { group { "(" nest { softline child(columns) } softline ")" } }
     }
     " = " child_paren_list(value)
   }

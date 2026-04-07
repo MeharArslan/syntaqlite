@@ -1,7 +1,7 @@
 list ValuesRowList {
   ExprList
   fmt {
-    for_each(sep: "," line) { group { "(" child(_item) ")" } }
+    for_each(sep: "," line) { group { "(" nest { softline child(_item) } softline ")" } }
   }
 }
 

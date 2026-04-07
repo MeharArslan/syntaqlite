@@ -420,7 +420,9 @@ class JoinComment(TestSuite):
                 FROM t1
                 JOIN t2
                 -- c
-                 USING (id);
+                 USING (
+                  id
+                );
             """,
         )
 

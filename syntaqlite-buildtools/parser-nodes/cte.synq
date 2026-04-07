@@ -10,7 +10,7 @@ node CteDefinition {
 
   fmt {
     span(cte_name)
-    if_set(columns) { group { "(" child(columns) ")" } }
+    if_set(columns) { group { "(" nest { softline child(columns) } softline ")" } }
     " AS "
     if_enum(materialized, MATERIALIZED) { "MATERIALIZED " }
     if_enum(materialized, NOT_MATERIALIZED) { "NOT MATERIALIZED " }
