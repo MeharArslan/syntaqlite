@@ -532,3 +532,136 @@ class IndentWidthFormat(TestSuite):
                 );
             """,
         )
+
+
+class ParenBreakFormat(TestSuite):
+    """Verify parenthesized lists indent correctly when they break."""
+
+    def test_primary_key_breaks(self):
+        return DiffTestBlueprint(
+            sql="CREATE TABLE t (a INT, b INT, c INT, PRIMARY KEY(a_col, b_col, c_col))",
+            line_width=30,
+            out="""\
+                CREATE TABLE t(
+                  a INT,
+                  b INT,
+                  c INT,
+                  PRIMARY KEY(
+                    a_col,
+                    b_col,
+                    c_col
+                  )
+                );
+            """,
+        )
+
+    def test_unique_breaks(self):
+        return DiffTestBlueprint(
+            sql="CREATE TABLE t (a INT, b INT, UNIQUE(first_name, last_name, email))",
+            line_width=30,
+            out="""\
+                CREATE TABLE t(
+                  a INT,
+                  b INT,
+                  UNIQUE(
+                    first_name,
+                    last_name,
+                    email
+                  )
+                );
+            """,
+        )
+
+    def test_foreign_key_breaks(self):
+        return DiffTestBlueprint(
+            sql="CREATE TABLE t (a INT, FOREIGN KEY(col_a, col_b) REFERENCES other(x, y))",
+            line_width=30,
+            out="""\
+                CREATE TABLE t(
+                  a INT,
+                  FOREIGN KEY(col_a, col_b) REFERENCES other(
+                    x,
+                    y
+                  )
+                );
+            """,
+        )
+
+    def test_check_constraint_breaks(self):
+        return DiffTestBlueprint(
+            sql="CREATE TABLE t (a INT, b INT, CHECK(a > 0 AND b > 0 AND a <> b))",
+            line_width=30,
+            out="""\
+                CREATE TABLE t(
+                  a INT,
+                  b INT,
+                  CHECK(
+                    a > 0
+                    AND b > 0
+                    AND a != b
+                  )
+                );
+            """,
+        )
+
+    def test_create_index_breaks(self):
+        return DiffTestBlueprint(
+            sql="CREATE INDEX idx ON t (col_a, col_b, col_c, col_d)",
+            line_width=25,
+            out="""\
+                CREATE INDEX idx ON t (
+                  col_a,
+                  col_b,
+                  col_c,
+                  col_d
+                );
+            """,
+        )
+
+    def test_values_row_breaks(self):
+        return DiffTestBlueprint(
+            sql="VALUES (1, 2, 3, 4, 5, 6, 7, 8)",
+            line_width=15,
+            out="""\
+                VALUES
+                  (
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                  );
+            """,
+        )
+
+    def test_filter_where_breaks(self):
+        return DiffTestBlueprint(
+            sql="SELECT count(*) FILTER (WHERE status > 1 AND type > 2) FROM t",
+            line_width=35,
+            out="""\
+                SELECT
+                  count(*) FILTER (
+                    WHERE status > 1
+                    AND type > 2
+                  )
+                FROM t;
+            """,
+        )
+
+    def test_on_conflict_columns_break(self):
+        return DiffTestBlueprint(
+            sql="INSERT INTO t VALUES (1) ON CONFLICT (col_a, col_b, col_c) DO NOTHING",
+            line_width=30,
+            out="""\
+                INSERT INTO t
+                VALUES (1)
+                ON CONFLICT (
+                  col_a,
+                  col_b,
+                  col_c
+                ) DO NOTHING;
+            """,
+        )

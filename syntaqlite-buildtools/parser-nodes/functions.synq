@@ -19,7 +19,7 @@ node FunctionCall {
       }
       softline ")"
     }
-    if_set(filter_clause) { " FILTER (WHERE " child(filter_clause) ")" }
+    if_set(filter_clause) { group { " FILTER (" nest { softline "WHERE " child(filter_clause) } softline ")" } }
     if_set(over_clause) { " OVER " child(over_clause) }
   }
 }

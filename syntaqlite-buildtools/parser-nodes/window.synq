@@ -86,7 +86,7 @@ node FilterOver {
   over_name: inline SyntaqliteSourceSpan
 
   fmt {
-    if_set(filter_expr) { "FILTER (WHERE " child(filter_expr) ")" }
+    if_set(filter_expr) { group { "FILTER (" nest { softline "WHERE " child(filter_expr) } softline ")" } }
     if_set(over_def) { " OVER " child(over_def) }
     if_span(over_name) { " OVER " span(over_name) }
   }

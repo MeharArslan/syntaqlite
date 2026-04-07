@@ -19,7 +19,7 @@ node AggregateFunctionCall {
       if_set(orderby) { " ORDER BY " child(orderby) }
       softline ")"
     }
-    if_set(filter_clause) { " FILTER (WHERE " child(filter_clause) ")" }
+    if_set(filter_clause) { group { " FILTER (" nest { softline "WHERE " child(filter_clause) } softline ")" } }
     if_set(over_clause) { " OVER " child(over_clause) }
   }
 }
@@ -43,8 +43,8 @@ node OrderedSetFunctionCall {
       softline ")"
     }
     " WITHIN GROUP "
-    group { "(ORDER BY " child(orderby_expr) ")" }
-    if_set(filter_clause) { " FILTER (WHERE " child(filter_clause) ")" }
+    group { "(ORDER BY " nest { softline child(orderby_expr) } softline ")" }
+    if_set(filter_clause) { group { " FILTER (" nest { softline "WHERE " child(filter_clause) } softline ")" } }
     if_set(over_clause) { " OVER " child(over_clause) }
   }
 }
